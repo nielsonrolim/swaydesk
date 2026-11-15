@@ -41,7 +41,7 @@ A chave que assina o repositório:
 - impressão digital `71A5 E6CB 39B9 844E 42CE  42D3 5815 F0B6 5BE1 CFB9`;
 - RSA 4096, vence em 23/01/2029.
 
-Os comandos abaixo conferem por você: se a chave baixada não tiver esta impressão digital, nada é instalado.
+Os comandos abaixo conferem por você: se a chave baixada não for uma chave só, com essa impressão digital logo abaixo do `pub` e sem subchaves, nada é instalado.
 
 ### Debian 13, Ubuntu 26.04 e Linux Mint 27
 
@@ -50,9 +50,8 @@ Precisa do `curl` e do `gpg` (num sistema mínimo: `sudo apt install curl gpg`).
 ```sh
 repo=https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13
 key=$(mktemp) && curl -fsSL "$repo/Release.key" -o "$key" &&
-[ "$(gpg --show-keys --with-colons "$key" | grep -c '^pub:')" = 1 ] &&
-gpg --show-keys --with-colons "$key" | grep -q '^fpr:::::::::71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9:$' &&
-sudo install -m644 "$key" /usr/share/keyrings/swaydesk-archive-keyring.asc &&
+[ "$(gpg --show-keys --with-colons "$key" | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
+sudo install -m644 "$key" /usr/share/keyrings/swaydesk-archive-keyring.asc && rm -f "$key" &&
 printf 'Types: deb\nURIs: %s/\nSuites: ./\nSigned-By: /usr/share/keyrings/swaydesk-archive-keyring.asc\n' "$repo" |
   sudo tee /etc/apt/sources.list.d/swaydesk.sources >/dev/null &&
 sudo apt update && sudo apt install swaydesk-archive-keyring swaydesk-desktop
@@ -69,16 +68,27 @@ No `/etc/pacman.conf`:
 Server = https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/$arch
 ```
 
-Depois importe a chave e instale. O `--lsign-key` com a impressão digital inteira só aceita a chave certa:
+Depois confira e importe a chave, e instale. A mesma conferência: se a chave baixada não for uma chave só, com essa impressão digital logo abaixo do `pub` e sem subchaves, nada é importado:
 
 ```sh
-curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/x86_64/home_nielsonrolim_Arch.key | sudo pacman-key --add -
-sudo pacman-key --finger 71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9
-sudo pacman-key --lsign-key 71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9
-sudo pacman -Syu swaydesk-desktop
+key=$(mktemp) && curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/x86_64/home_nielsonrolim_Arch.key -o "$key" &&
+[ "$(gpg --show-keys --with-colons "$key" | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
+sudo pacman-key --add "$key" && rm -f "$key" &&
+sudo pacman-key --lsign-key 71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 &&
+sudo pacman -Syu swaydesk-desktop noto-fonts pipewire-jack
 ```
 
+O `noto-fonts` e o `pipewire-jack` respondem de antemão duas escolhas que o pacman faria (uma fonte e o provedor do JACK): o Swaydesk já usa a Noto, e o som dele é o PipeWire. Se você já tem o `jack2` e o pacman perguntar se pode removê-lo, responda s.
+
 Acrescente `swaydesk-greeter` à última linha para ter a tela de login do Swaydesk.
+
+#### Opcional: SwayFX
+
+O [SwayFX](https://github.com/WillPower3309/swayfx) é o Sway com cantos arredondados, blur e sombras, e no Arch pode substituir o Sway com o mesmo config. Ele vem do AUR, por um AUR helper: `yay -S swayfx` (ou `paru -S swayfx`); o pacman troca o `sway` por ele, e o `swaydesk-desktop` continua instalado, porque o `swayfx` provê o `sway`. Para voltar, `sudo pacman -S sway`.
+
+- É mantido por terceiros, fora do suporte do projeto, e uma atualização que traga um wlroots novo pode quebrá-lo até o AUR acompanhar. Se a sessão não abrir depois de uma atualização, volte ao Sway num console de texto (Ctrl+Alt+F2).
+- O Swaydesk liga os efeitos sozinho no próximo login, pela seção `[effects]` do `~/.config/sway-desktop/config.toml`.
+- O blur atrás da barra, da dock e dos popups (`layer_blur`) vem desligado por padrão, porque apareceu lixo visual numa VM; ligue com `layer_blur = true`.
 
 ### Requisitos
 
