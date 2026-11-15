@@ -11,8 +11,12 @@ pub const ICON_FONT: &str = "Symbols Nerd Font";
 // As mesmas chaves do Config do desktop_config.py
 const KNOWN: &[&str] = &[
     "locale", "weather_location", "holidays", "accent", "gtk_theme", "icon_theme", "folder_color", "file_manager",
-    "components",
+    "components", "effects",
 ];
+// As chaves do [effects] (o Effects do desktop_config.py)
+const EFFECT_KEYS: &[&str] = &["corner_radius", "blur", "shadows", "layer_blur", "dim_inactive"];
+/// O maior corner_radius aceito: mais que isso, os cantos comem o conteúdo das janelas
+pub const MAX_CORNER_RADIUS: i64 = 30;
 
 /// As cores do papirus-folders, com a cor da frente da pasta (48x48/places/folder-<cor>.svg). A adwaita e
 /// a yaru são o destaque padrão desses temas, e não a cor da pasta. Na ordem do desktop_config.py.
@@ -48,6 +52,65 @@ pub struct Config {
     pub file_manager: String,
     /// A versão dos componentes: auto (Rust onde houver), python ou rust
     pub components: String,
+    /// Os efeitos do SwayFX ([effects]); o Sway puro os ignora
+    pub effects: Effects,
+}
+
+/// Os efeitos do SwayFX, do [effects] da config. Cantos, sombras e o blur das janelas vêm ligados e discretos; o
+/// blur das camadas vem desligado (na VM, com virgl, ele deixou lixo visual na barra e nos popups) até um teste
+/// numa GPU real. Cada efeito liga ou desliga sozinho, e uma chave ausente fica com o padrão.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Effects {
+    /// Os cantos arredondados das janelas e das camadas, em pixels; 0 desliga
+    pub corner_radius: u32,
+    /// O blur atrás das janelas transparentes
+    pub blur: bool,
+    /// A sombra das janelas
+    pub shadows: bool,
+    /// O blur atrás da Waybar, da dock, da grade, dos popups, das notificações, do OSD e do switcher; desligado
+    /// por padrão
+    pub layer_blur: bool,
+    /// O escurecimento das janelas sem o foco, em centésimos (0.15 na config: 15); 0 desliga
+    pub dim_inactive: u32,
+}
+
+impl Default for Effects {
+    fn default() -> Self {
+        Effects { corner_radius: 10, blur: true, shadows: true, layer_blur: false, dim_inactive: 0 }
+    }
+}
+
+/// O [effects] da config, com os avisos de cada chave ruim (as outras valem).
+fn parse_effects(table: &toml::Table, warnings: &mut Vec<String>) -> Effects {
+    let mut effects = Effects::default();
+    for (key, value) in table {
+        if !EFFECT_KEYS.contains(&key.as_str()) {
+            warnings.push(format!("config: unknown option: effects.{key}"));
+            continue;
+        }
+        match (key.as_str(), value) {
+            ("corner_radius", toml::Value::Integer(n)) if (0..=MAX_CORNER_RADIUS).contains(n) => {
+                effects.corner_radius = *n as u32
+            }
+            ("corner_radius", _) => {
+                warnings.push(format!("config: invalid effects.corner_radius (use 0 to {MAX_CORNER_RADIUS})"))
+            }
+            ("blur", toml::Value::Boolean(on)) => effects.blur = *on,
+            ("shadows", toml::Value::Boolean(on)) => effects.shadows = *on,
+            ("layer_blur", toml::Value::Boolean(on)) => effects.layer_blur = *on,
+            ("blur" | "shadows" | "layer_blur", _) => {
+                warnings.push(format!("config: invalid effects.{key} (use true or false)"))
+            }
+            // 0 a 1, em float ou inteiro (0 e 1); guardado em centésimos, como o Python
+            ("dim_inactive", toml::Value::Float(x)) if (0.0..=1.0).contains(x) => {
+                effects.dim_inactive = (x * 100.0).round() as u32
+            }
+            ("dim_inactive", toml::Value::Integer(n)) if (0..=1).contains(n) => effects.dim_inactive = *n as u32 * 100,
+            ("dim_inactive", _) => warnings.push("config: invalid effects.dim_inactive (use 0.0 to 1.0)".to_string()),
+            _ => {}
+        }
+    }
+    effects
 }
 
 impl Default for Config {
@@ -62,6 +125,7 @@ impl Default for Config {
             folder_color: String::new(),
             file_manager: String::new(),
             components: "auto".to_string(),
+            effects: Effects::default(),
         }
     }
 }
@@ -128,6 +192,13 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
     for (key, value) in &table {
         if !KNOWN.contains(&key.as_str()) {
             warnings.push(format!("config: unknown option: {key}"));
+            continue;
+        }
+        if key == "effects" {
+            match value.as_table() {
+                Some(effects) => config.effects = parse_effects(effects, &mut warnings),
+                None => warnings.push("config: invalid value in effects (use an [effects] table)".to_string()),
+            }
             continue;
         }
         let Some(value) = value.as_str() else {
@@ -357,6 +428,35 @@ mod tests {
         assert_eq!(warnings.len(), 2);
         assert_eq!(parse_config("accent = 3").1, vec!["config: invalid value in accent"]);
         assert_eq!(parse_config("[[").0, Config::default());
+    }
+
+    #[test]
+    fn effects_like_python() {
+        // Os mesmos casos do EffectsTests do tests/test_desktop_config.py
+        assert_eq!(Config::default().effects, Effects { corner_radius: 10, blur: true, shadows: true, layer_blur: false, dim_inactive: 0 });
+        assert_eq!(parse_config("[effects]\n"), (Config::default(), vec![]));
+        let (config, warnings) = parse_config("[effects]\nblur = false\ndim_inactive = 0.15\n");
+        assert_eq!(config.effects, Effects { blur: false, dim_inactive: 15, ..Effects::default() });
+        assert!(warnings.is_empty());
+        assert_eq!(parse_config("[effects]\ndim_inactive = 1\n").0.effects.dim_inactive, 100);
+        for (text, warning) in [
+            ("corner_radius = 31", "effects.corner_radius"),
+            ("corner_radius = -1", "effects.corner_radius"),
+            ("corner_radius = 2.5", "effects.corner_radius"),
+            ("corner_radius = true", "effects.corner_radius"),
+            ("blur = \"yes\"", "effects.blur"),
+            ("shadows = 1", "effects.shadows"),
+            ("dim_inactive = 1.5", "effects.dim_inactive"),
+            ("dim_inactive = 2", "effects.dim_inactive"),
+            ("dim_inactive = true", "effects.dim_inactive"),
+            ("wobble = true", "unknown option: effects.wobble"),
+        ] {
+            let (config, warnings) = parse_config(&format!("[effects]\n{text}\n"));
+            assert_eq!(config, Config::default(), "{text}");
+            assert_eq!(warnings.len(), 1, "{text}");
+            assert!(warnings[0].contains(warning), "{text}: {}", warnings[0]);
+        }
+        assert_eq!(parse_config("effects = \"on\"\n"), (Config::default(), vec!["config: invalid value in effects (use an [effects] table)".to_string()]));
     }
 
     #[test]

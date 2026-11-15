@@ -7,7 +7,7 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use regex::Regex;
-use swaydesk_common::config::{self, contrast_with_white, data_home, font_css, font_families, mix, palette, Config, Palette, ICON_FONT};
+use swaydesk_common::config::{self, contrast_with_white, data_home, font_css, font_families, mix, palette, Config, Effects, Palette, ICON_FONT};
 use swaydesk_common::cursor::{cursor_theme, CURSOR_SIZE, CURSOR_THEMES};
 
 use crate::run_timeout;
@@ -289,6 +289,86 @@ pub fn sway_cursor(theme: Option<&str>) -> String {
     }
 }
 
+/// As camadas do layer-shell com o blur do SwayFX (layer_effects), pelo namespace de cada uma: a Waybar, a dock,
+/// os popups da Waybar, as notificações, o OSD, o switcher e os painéis de tela inteira (a grade e o menu de
+/// sessão), que borram a tela atrás do fundo escurecido. Ficam de fora o popup-click-catcher (a camada de tela
+/// inteira, quase transparente, que fecha os popups: borraria a tela toda), o hotspot da dock e a captura (quem
+/// escolhe a região ou a janela precisa vê-la nítida). A mesma lista do desktop_config.py.
+pub const BLUR_LAYERS: &[&str] = &[
+    "waybar",
+    "sway-dock",
+    "waybar-audio",
+    "waybar-battery-popup",
+    "waybar-bluetooth",
+    "waybar-brightness",
+    "waybar-caffeine",
+    "waybar-calendar",
+    "waybar-clipboard-popup",
+    "waybar-media",
+    "waybar-network",
+    "waybar-notifications-popup",
+    "waybar-system",
+    "waybar-weather",
+    "sway-notifd",
+    "sway-osd-bar",
+    "sway-switcher",
+    "sway-drawer",
+    "session-menu",
+];
+
+/// Se o `sway` instalado é o SwayFX: a primeira linha do `sway --version` diz "swayfx version ...". O
+/// SWAYDESK_SWAYFX (1 ou 0) decide no lugar dele, para os testes.
+pub fn is_swayfx() -> bool {
+    if let Ok(value) = std::env::var("SWAYDESK_SWAYFX") {
+        return value == "1";
+    }
+    program_is_swayfx("sway")
+}
+
+/// Se o programa (um sway) responde "swayfx version ..." ao --version. Sem ele: não.
+fn program_is_swayfx(program: impl AsRef<std::ffi::OsStr>) -> bool {
+    run_timeout(Command::new(program).arg("--version"), Duration::from_secs(5))
+        .is_some_and(|(_, out)| out.lines().next().is_some_and(|line| line.starts_with("swayfx")))
+}
+
+/// O config.d/10-effects.conf. No SwayFX, os efeitos do [effects]; no Sway puro, só um comentário: as diretivas
+/// do SwayFX dariam erro de config. O generate roda a cada sessão, então trocar um pelo outro (pacman) vale no
+/// próximo login.
+pub fn sway_effects(effects: &Effects, swayfx: bool) -> String {
+    if !swayfx {
+        return format!(
+            "{GENERATED}: o Sway sem os efeitos; com o SwayFX (no Arch, pelo AUR), o [effects] de\n\
+             # ~/.config/sway-desktop/config.toml vale aqui\n"
+        );
+    }
+    let on = |flag: bool| if flag { "enable" } else { "disable" };
+    let mut text = format!(
+        "{GENERATED}: os efeitos do SwayFX; mude em ~/.config/sway-desktop/config.toml ([effects])\n\
+         corner_radius {}\n",
+        effects.corner_radius
+    );
+    text.push_str(&format!("blur {}\n", on(effects.blur)));
+    if effects.blur {
+        text.push_str("blur_passes 2\nblur_radius 5\n");
+    }
+    text.push_str(&format!("shadows {}\n", on(effects.shadows)));
+    if effects.shadows {
+        // Uma sombra leve: preta a 30%
+        text.push_str("shadow_blur_radius 20\nshadow_color #0000004D\n");
+    }
+    text.push_str(&format!("default_dim_inactive {}.{:02}\n", effects.dim_inactive / 100, effects.dim_inactive % 100));
+    if effects.layer_blur {
+        // O blur só onde a camada desenha (blur_ignore_transparent): as margens transparentes dos popups ficam limpas
+        for layer in BLUR_LAYERS {
+            text.push_str(&format!(
+                "layer_effects \"{layer}\" blur enable; blur_ignore_transparent enable; corner_radius {}\n",
+                effects.corner_radius
+            ));
+        }
+    }
+    text
+}
+
 /// A linha font do Sway: a fonte do texto e, se faltar, a do sistema, no tamanho do sistema.
 pub fn sway_font(fonts: &Fonts) -> String {
     let (family, size) = fonts.font_name.rsplit_once(' ').unwrap_or(("", &fonts.font_name));
@@ -367,6 +447,7 @@ pub fn generated_files(colors: &Palette, config: &Config, fonts: &Fonts) -> std:
         ("sway/config.d/00-accent.conf", sway),
         ("sway/config.d/00-font.conf", sway_font(fonts)),
         ("sway/config.d/00-cursor.conf", sway_cursor(cursor_theme())),
+        ("sway/config.d/10-effects.conf", sway_effects(&config.effects, is_swayfx())),
         ("waybar/fonts.css", fonts_css),
         ("swaylock/config", render_template("swaylock.conf", colors)?),
         ("gtk-3.0/settings.ini", settings.clone()),
@@ -449,6 +530,47 @@ pub fn reload_sway() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sway_effects_like_python() {
+        // Os mesmos textos do EffectsTests do tests/test_desktop_config.py
+        let head = "# Gerado pelo sway-desktop-config: os efeitos do SwayFX; mude em ~/.config/sway-desktop/config.toml ([effects])\n";
+        let default = format!(
+            "{head}corner_radius 10\nblur enable\nblur_passes 2\nblur_radius 5\nshadows enable\nshadow_blur_radius 20\n\
+             shadow_color #0000004D\ndefault_dim_inactive 0.00\n"
+        );
+        let layers: String = BLUR_LAYERS
+            .iter()
+            .map(|l| format!("layer_effects \"{l}\" blur enable; blur_ignore_transparent enable; corner_radius 10\n"))
+            .collect();
+        assert_eq!(sway_effects(&Effects::default(), true), default);
+        assert_eq!(sway_effects(&Effects { layer_blur: true, ..Effects::default() }, true), format!("{default}{layers}"));
+        let off = Effects { corner_radius: 0, blur: false, shadows: false, layer_blur: false, dim_inactive: 15 };
+        assert_eq!(sway_effects(&off, true), format!("{head}corner_radius 0\nblur disable\nshadows disable\ndefault_dim_inactive 0.15\n"));
+        let plain = sway_effects(&Effects::default(), false);
+        assert_eq!(
+            plain,
+            "# Gerado pelo sway-desktop-config: o Sway sem os efeitos; com o SwayFX (no Arch, pelo AUR), o [effects] de\n\
+             # ~/.config/sway-desktop/config.toml vale aqui\n"
+        );
+        assert!(plain.lines().all(|l| l.starts_with('#')));
+        assert!(!BLUR_LAYERS.contains(&"popup-click-catcher") && !BLUR_LAYERS.contains(&"sway-capture"));
+    }
+
+    #[test]
+    fn swayfx_detection_by_version() {
+        // Um sway de mentira, que responde como o SwayFX ou como o Sway
+        let dir = std::env::temp_dir().join(format!("swaydesk-swayfx-detection-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for (name, line, want) in [("fx", "swayfx version 0.6.1", true), ("plain", "sway version 1.12", false)] {
+            let sway = dir.join(name);
+            std::fs::write(&sway, format!("#!/bin/sh\necho '{line}'\n")).unwrap();
+            std::fs::set_permissions(&sway, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
+            assert_eq!(program_is_swayfx(&sway), want, "{line}");
+        }
+        assert!(!program_is_swayfx(dir.join("missing")));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn sway_cursor_like_python() {

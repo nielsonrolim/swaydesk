@@ -33,3 +33,15 @@ file_manager = ""
 # onde ela estiver instalada (./install.sh --rust) e carregar; senão, a em Python. "python": sempre a
 # em Python. "rust": a em Rust, com um aviso no log quando ela faltar. Vale ao abrir o componente
 components = "auto"
+
+# Os efeitos do SwayFX, um Sway com cantos arredondados, blur e sombras. No Arch, ele é opcional e vem do
+# AUR (yay -S swayfx; para voltar, sudo pacman -S sway). Com o Sway comum, esta seção não faz nada. Cada
+# efeito liga ou desliga sozinho; sem a chave, vale o padrão. O blur da barra, da dock e dos popups vem
+# desligado por padrão: na VM (virgl) apareceu lixo visual; ligue com layer_blur = true. Mudou? Rode
+# sway-desktop-config generate e swaymsg reload (ou entre de novo na sessão)
+[effects]
+corner_radius = 10   # os cantos das janelas e das camadas, em pixels, de 0 (retos) a 30
+blur = true          # o blur atrás das janelas transparentes
+shadows = true       # uma sombra leve nas janelas
+layer_blur = false   # o blur atrás da Waybar, da dock, da grade, dos popups, das notificações e do OSD
+dim_inactive = 0.0   # escurecer as janelas sem o foco, de 0.0 (nada) a 1.0

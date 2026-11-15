@@ -244,27 +244,51 @@ fn check_toml(text: &str) -> Result<(), Error> {
     text.parse::<toml::Table>().map(|_| ()).map_err(|err| Error::Value(err.message().to_string()))
 }
 
-/// Troca só estas linhas do config.toml: os comentários e o resto ficam como estão.
+/// O config.toml em duas partes: as chaves do começo e, a partir da primeira tabela ([effects]) com os
+/// comentários logo acima dela, o resto. O split_tables do sway_themes.py.
+pub fn split_tables(text: &str) -> (String, &str) {
+    let mut starts = vec![0];
+    starts.extend(text.match_indices('\n').map(|(i, _)| i + 1).filter(|&i| i < text.len()));
+    let line = |i: usize| text[starts[i]..].lines().next().unwrap_or("");
+    let Some(mut cut) = (0..starts.len()).find(|&i| line(i).trim_start_matches([' ', '\t']).starts_with('[')) else {
+        return (text.to_string(), "");
+    };
+    while cut > 0 && line(cut - 1).trim_start().starts_with('#') {
+        cut -= 1;
+    }
+    let at = starts.get(cut).copied().unwrap_or(text.len());
+    (text[..at].to_string(), &text[at..])
+}
+
+/// Troca só estas linhas do config.toml: os comentários e o resto ficam como estão. As chaves são as do começo
+/// do arquivo, antes da primeira tabela ([effects]): uma chave nova entra ali, senão viraria parte da tabela.
 pub fn set_config_values(file: &Path, values: &[(&str, String)]) -> Result<(), Error> {
-    let mut text = match std::fs::read_to_string(file) {
+    let text = match std::fs::read_to_string(file) {
         Ok(text) => text,
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => String::new(),
         Err(err) => return Err(err.into()),
     };
     check_toml(&text)?; // um arquivo inválido é do usuário: não muda nada
+    let (mut head, tail) = split_tables(&text);
+    let mut appended = false;
     for (key, value) in values {
         let line = format!("{key} = {}", serde_json::to_string(value).unwrap_or_default());
         let pattern = Regex::new(&format!(r"(?m)^{}\s*=.*$", regex::escape(key))).expect("key pattern");
-        if pattern.is_match(&text) {
-            text = pattern.replacen(&text, 1, regex::NoExpand(&line)).into_owned();
+        if pattern.is_match(&head) {
+            head = pattern.replacen(&head, 1, regex::NoExpand(&line)).into_owned();
         } else {
-            if !text.is_empty() && !text.ends_with('\n') {
-                text.push('\n');
+            if !head.is_empty() && !head.ends_with('\n') {
+                head.push('\n');
             }
-            text.push_str(&line);
-            text.push('\n');
+            head.push_str(&line);
+            head.push('\n');
+            appended = true;
         }
     }
+    if appended && !tail.is_empty() && !head.ends_with("\n\n") {
+        head.push('\n');
+    }
+    let text = head + tail;
     check_toml(&text)?;
     dc::write_file(&dc::resolved(file), &text)?;
     Ok(())
@@ -702,6 +726,37 @@ pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: O
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn split_tables_like_python() {
+        // Os casos do ConfigValuesTests.test_split_tables do tests/test_sway_theme.py
+        assert_eq!(split_tables(""), (String::new(), ""));
+        assert_eq!(split_tables("a = 1\n# fim\n"), ("a = 1\n# fim\n".to_string(), ""));
+        assert_eq!(
+            split_tables("a = 1\n\n# fx\n[effects]\nblur = true\n"),
+            ("a = 1\n\n".to_string(), "# fx\n[effects]\nblur = true\n")
+        );
+        assert_eq!(split_tables("[effects]\n"), (String::new(), "[effects]\n"));
+    }
+
+    #[test]
+    fn new_key_goes_before_the_effects_table() {
+        let dir = std::env::temp_dir().join(format!("swaydesk-set-config-effects-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("config.toml");
+        let template = include_str!("../../../home-copy/.config/sway-desktop/config.toml");
+        std::fs::write(&file, template.replace("folder_color = \"\"\n", "")).unwrap();
+        set_config_values(&file, &[("folder_color", "teal".into()), ("accent", "#112233".into())]).unwrap();
+        let text = std::fs::read_to_string(&file).unwrap();
+        let (config, warnings) = swaydesk_common::config::parse_config(&text);
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!((config.folder_color.as_str(), config.accent.as_str()), ("teal", "#112233"));
+        assert_eq!(config.effects, swaydesk_common::config::Effects::default());
+        let (head, tail) = split_tables(&text);
+        assert!(head.ends_with("folder_color = \"teal\"\n\n"), "{head}");
+        assert!(tail.starts_with("# Os efeitos do SwayFX"), "{tail}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn foreign_desktop_only_outside_our_compositors() {

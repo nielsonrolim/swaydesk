@@ -42,6 +42,49 @@ ICONS_BASE_KEY = "X-SwayDesktop-Base"
 
 
 @dataclass(frozen=True)
+class Effects:
+    """Os efeitos do SwayFX, do [effects] da config (o Effects do swaydesk_common::config). Cantos, sombras e o
+    blur das janelas vêm ligados e discretos; o blur das camadas vem desligado (na VM, com virgl, ele deixou lixo
+    visual na barra e nos popups) até um teste numa GPU real. Cada um liga ou desliga sozinho, e uma chave ausente
+    fica com o padrão. O Sway puro os ignora."""
+    corner_radius: int = 10  # os cantos das janelas e das camadas, em pixels; 0 desliga
+    blur: bool = True  # o blur atrás das janelas transparentes
+    shadows: bool = True  # a sombra das janelas
+    layer_blur: bool = False  # o blur atrás da Waybar, da dock, da grade, dos popups, das notificações, do OSD e do
+    # switcher; desligado por padrão
+    dim_inactive: int = 0  # o escurecimento das janelas sem o foco, em centésimos (0.15 na config: 15); 0 desliga
+
+
+MAX_CORNER_RADIUS = 30  # mais que isso, os cantos comem o conteúdo das janelas
+
+
+def parse_effects(data, warnings):
+    """O [effects] da config; uma chave ruim vira aviso, e as outras valem."""
+    effects = Effects()
+    for key, value in data.items():
+        if key not in {f.name for f in fields(Effects)}:
+            warnings.append(f"config: unknown option: effects.{key}")
+        elif key == "corner_radius":
+            if type(value) is int and 0 <= value <= MAX_CORNER_RADIUS:
+                effects = replace(effects, corner_radius=value)
+            else:
+                warnings.append(f"config: invalid effects.corner_radius (use 0 to {MAX_CORNER_RADIUS})")
+        elif key == "dim_inactive":
+            # 0 a 1, em float ou inteiro (0 e 1), guardado em centésimos, como no Rust
+            if type(value) is float and 0.0 <= value <= 1.0:
+                effects = replace(effects, dim_inactive=round(value * 100))
+            elif type(value) is int and value in (0, 1):
+                effects = replace(effects, dim_inactive=value * 100)
+            else:
+                warnings.append("config: invalid effects.dim_inactive (use 0.0 to 1.0)")
+        elif type(value) is bool:
+            effects = replace(effects, **{key: value})
+        else:
+            warnings.append(f"config: invalid effects.{key} (use true or false)")
+    return effects
+
+
+@dataclass(frozen=True)
 class Config:
     locale: str = ""  # como "pt_BR"; vazio: o do ambiente
     weather_location: str = ""  # vazio: vem do IP
@@ -52,6 +95,7 @@ class Config:
     folder_color: str = ""  # a cor das pastas do Papirus, como "teal"; vazio: a mais perto do destaque
     file_manager: str = ""  # comando, como "thunar"; vazio: o primeiro instalado de FILE_MANAGERS
     components: str = "auto"  # a versão dos componentes: auto (Rust onde houver), python ou rust
+    effects: Effects = Effects()  # os efeitos do SwayFX ([effects])
 
 
 @dataclass(frozen=True)
@@ -81,6 +125,10 @@ def parse_config(data):
     for key, value in data.items():
         if key not in known:
             warnings.append(f"config: unknown option: {key}")
+        elif key == "effects" and isinstance(value, dict):
+            config = replace(config, effects=parse_effects(value, warnings))
+        elif key == "effects":
+            warnings.append("config: invalid value in effects (use an [effects] table)")
         elif not isinstance(value, str):
             warnings.append(f"config: invalid value in {key}")
         elif key == "locale" and value and not LOCALE.fullmatch(value):
@@ -413,6 +461,50 @@ def cursor_theme():
                 None)
 
 
+# As camadas do layer-shell com o blur do SwayFX (layer_effects), pelo namespace: a Waybar, a dock, os popups da
+# Waybar, as notificações, o OSD, o switcher e os painéis de tela inteira (a grade e o menu de sessão). Ficam de
+# fora o popup-click-catcher (de tela inteira e quase transparente: borraria a tela toda), o hotspot da dock e a
+# captura (quem escolhe a região ou a janela precisa vê-la nítida). O BLUR_LAYERS do swaydesk-theme
+BLUR_LAYERS = ("waybar", "sway-dock", "waybar-audio", "waybar-battery-popup", "waybar-bluetooth", "waybar-brightness",
+               "waybar-caffeine", "waybar-calendar", "waybar-clipboard-popup", "waybar-media", "waybar-network",
+               "waybar-notifications-popup", "waybar-system", "waybar-weather", "sway-notifd", "sway-osd-bar",
+               "sway-switcher", "sway-drawer", "session-menu")
+
+
+def is_swayfx():
+    """Se o sway instalado é o SwayFX ("swayfx version ..." no sway --version). SWAYDESK_SWAYFX=1 ou 0 decide
+    no lugar dele, para os testes."""
+    if "SWAYDESK_SWAYFX" in os.environ:
+        return os.environ["SWAYDESK_SWAYFX"] == "1"
+    try:
+        out = subprocess.run(["sway", "--version"], capture_output=True, text=True, timeout=5).stdout
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return out.startswith("swayfx")
+
+
+def sway_effects(effects, swayfx):
+    """O config.d/10-effects.conf: no SwayFX, os efeitos do [effects]; no Sway puro, só um comentário (as
+    diretivas do SwayFX dariam erro de config)."""
+    if not swayfx:
+        return (f"{GENERATED}: o Sway sem os efeitos; com o SwayFX (no Arch, pelo AUR), o [effects] de\n"
+                "# ~/.config/sway-desktop/config.toml vale aqui\n")
+    on = lambda flag: "enable" if flag else "disable"  # noqa: E731
+    text = (f"{GENERATED}: os efeitos do SwayFX; mude em ~/.config/sway-desktop/config.toml ([effects])\n"
+            f"corner_radius {effects.corner_radius}\nblur {on(effects.blur)}\n")
+    if effects.blur:
+        text += "blur_passes 2\nblur_radius 5\n"
+    text += f"shadows {on(effects.shadows)}\n"
+    if effects.shadows:
+        text += "shadow_blur_radius 20\nshadow_color #0000004D\n"  # uma sombra leve: preta a 30%
+    text += f"default_dim_inactive {effects.dim_inactive // 100}.{effects.dim_inactive % 100:02d}\n"
+    if effects.layer_blur:
+        # O blur só onde a camada desenha: as margens transparentes dos popups ficam limpas
+        text += "".join(f'layer_effects "{layer}" blur enable; blur_ignore_transparent enable; '
+                        f"corner_radius {effects.corner_radius}\n" for layer in BLUR_LAYERS)
+    return text
+
+
 def sway_cursor(theme):
     """O cursor do seat: vence a linha fixa do config do Sway (o Bibata). Sem nenhum, o padrão do Sway."""
     if theme:
@@ -475,6 +567,7 @@ def generated_files(colors, config=None, fonts=None):
         "sway/config.d/00-accent.conf": sway,
         "sway/config.d/00-font.conf": sway_font(fonts),
         "sway/config.d/00-cursor.conf": sway_cursor(cursor_theme()),
+        "sway/config.d/10-effects.conf": sway_effects(config.effects, is_swayfx()),
         "waybar/fonts.css": fonts_css,
         "swaylock/config": render_template("swaylock.conf", colors),
         "gtk-3.0/settings.ini": settings,
