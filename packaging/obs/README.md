@@ -87,14 +87,13 @@ Antes de passar o endereço a alguém:
 
 ### Debian, Ubuntu e Mint
 
-Precisa do `curl` e do `gpg` (num Debian mínimo: `sudo apt install curl gpg`). Na primeira vez, a chave e o `.sources` entram à mão. Use a pasta da distro: `Debian_13` ou `xUbuntu_26.04`, que também serve ao Mint 27. Os comandos vão em cadeia: se a chave baixada não for exatamente uma, com a impressão digital da seção "A chave", nada é instalado. São os mesmos blocos da página de instalação do site e do README do espelho público.
+Precisa do `curl` e do `gpg` (num Debian mínimo: `sudo apt install curl gpg`). Na primeira vez, a chave e o `.sources` entram à mão. Use a pasta da distro: `Debian_13` ou `xUbuntu_26.04`, que também serve ao Mint 27. Os comandos vão em cadeia: se a chave baixada não for exatamente uma chave primária, sem subchaves, com a impressão digital da seção "A chave", nada é instalado. Só conferir a impressão digital não basta: no OpenPGP v4, uma subchave tem o mesmo tipo de impressão digital, e uma chave de outra pessoa que trouxesse a nossa como subchave passaria. São os mesmos blocos da página de instalação do site e do README do espelho público.
 
 ```sh
 repo=https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13
 key=$(mktemp) && curl -fsSL "$repo/Release.key" -o "$key" &&
-[ "$(gpg --show-keys --with-colons "$key" | grep -c '^pub:')" = 1 ] &&
-gpg --show-keys --with-colons "$key" | grep -q '^fpr:::::::::71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9:$' &&
-sudo install -m644 "$key" /usr/share/keyrings/swaydesk-archive-keyring.asc &&
+[ "$(gpg --show-keys --with-colons "$key" | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
+sudo install -m644 "$key" /usr/share/keyrings/swaydesk-archive-keyring.asc && rm -f "$key" &&
 printf 'Types: deb\nURIs: %s/\nSuites: ./\nSigned-By: /usr/share/keyrings/swaydesk-archive-keyring.asc\n' "$repo" |
   sudo tee /etc/apt/sources.list.d/swaydesk.sources >/dev/null &&
 sudo apt update && sudo apt install swaydesk-archive-keyring swaydesk-desktop
@@ -111,11 +110,12 @@ No `/etc/pacman.conf`:
 Server = https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/$arch
 ```
 
-A chave e a instalação. O `--lsign-key` com a impressão digital inteira só aceita a chave certa:
+A chave e a instalação, com a mesma conferência do Debian antes do `pacman-key --add`: o `--lsign-key` procura a impressão digital também nas subchaves, então sozinho ele assinaria a chave primária de quem trouxesse a nossa como subchave:
 
 ```sh
-curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/x86_64/home_nielsonrolim_Arch.key | sudo pacman-key --add -
-sudo pacman-key --finger 71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9
+key=$(mktemp) && curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/x86_64/home_nielsonrolim_Arch.key -o "$key" &&
+[ "$(gpg --show-keys --with-colons "$key" | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
+sudo pacman-key --add "$key" && rm -f "$key" &&
 sudo pacman-key --lsign-key 71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9
 sudo pacman -Syu swaydesk-desktop
 ```
