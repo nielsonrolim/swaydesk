@@ -1,0 +1,15 @@
+<!-- Os alvos do projeto do OBS (os <repository> do meta do projeto; o meta.py troca só estes) -->
+<repositories>
+  <repository name="Debian_13">
+    <path project="Debian:13" repository="standard"/>
+    <arch>x86_64</arch>
+  </repository>
+  <repository name="xUbuntu_26.04">
+    <path project="Ubuntu:26.04" repository="universe"/>
+    <arch>x86_64</arch>
+  </repository>
+  <repository name="Arch">
+    <path project="Arch:Extra" repository="standard"/>
+    <arch>x86_64</arch>
+  </repository>
+</repositories>

@@ -1,0 +1,15 @@
+[package]
+name = "swaydesk-portal"
+description = "Backend do portal Settings com a cor de destaque da config"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-portal"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+gio.workspace = true

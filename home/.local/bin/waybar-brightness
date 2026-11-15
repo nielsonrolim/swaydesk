@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Ícone de brilho da Waybar (custom/brightness): brilho e luz noturna.
+# Lê tudo sem abrir processos, a cada 5 s, e só escreve quando algo muda. O sway-osd, o popup,
+# e o sway-nightlight mandam SIGUSR1 para atualizar na hora.
+set -uo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+# Uma vez: o ícone refaz a dica a cada mudança
+NIGHT_FAILED=$(t 'Night light failed') NIGHT_ON=$(t 'Night light on') NIGHT_AUTO=$(t 'Night light scheduled')
+NO_BRIGHTNESS=$(t 'No brightness control')
+self=$(readlink -f -- "$0")
+source "${self%/*}/waybar-icon-lib"
+backlight_root=${BACKLIGHT_DIR:-/sys/class/backlight}
+night_file="${XDG_CACHE_HOME:-$HOME/.cache}/sway-nightlight"
+night_pid="$run/sway-nightlight.pid"
+# Os bytes em UTF-8: o $'\U…' do bash depende do locale e, no C (um Arch sem locale-gen), sai literal
+SUN_LOW=$'\xf3\xb0\x83\x9f' SUN_MID=$'\xf3\xb0\x83\xa0' SUN_HIGH=$'\xf3\xb0\x83\xa1'  # U+F00DF, U+F00E0, U+F00E1
+
+# Só com bash: este laço não abre processos
+night_running() {
+  local pid
+  [[ -r $night_pid ]] || return 1
+  pid=$(<"$night_pid") 2>/dev/null || return 1
+  [[ $pid =~ ^[0-9]+$ && -r /proc/$pid/comm && $(<"/proc/$pid/comm") == gammastep ]]
+}
+
+line=
+build() {
+  local dir cur max pct= icon=$SUN_HIGH cls=normal v parts=() tip
+  for dir in "$backlight_root"/*; do
+    [[ -r $dir/brightness && -r $dir/max_brightness ]] || continue
+    cur=$(<"$dir/brightness")
+    max=$(<"$dir/max_brightness")
+    (( max > 0 )) && pct=$(( (cur * 100 + max / 2) / max ))
+    break
+  done
+  if [[ -n $pct ]]; then
+    if (( pct < 34 )); then icon=$SUN_LOW; elif (( pct < 67 )); then icon=$SUN_MID; fi
+    parts+=("$pct%")
+  fi
+  if [[ -r $night_file ]]; then
+    v=$(<"$night_file")
+    if [[ $v == on || $v == auto ]] && ! night_running; then
+      parts+=("$NIGHT_FAILED")
+    elif [[ $v == on ]]; then
+      parts+=("$NIGHT_ON")
+    elif [[ $v == auto ]]; then
+      parts+=("$NIGHT_AUTO")
+    fi
+  fi
+  (( ${#parts[@]} )) || parts=("$NO_BRIGHTNESS")
+  printf -v tip '%s · ' "${parts[@]}"
+  tip=${tip% · }
+  popup_open waybar-brightness-popup && tip=""
+  printf -v line '{"text":"%s","tooltip":"%s","class":"%s"}' "$icon" "$tip" "$cls"
+}
+
+icon_loop waybar-brightness

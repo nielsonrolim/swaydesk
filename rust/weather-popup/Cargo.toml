@@ -1,0 +1,18 @@
+[package]
+name = "swaydesk-weather-popup"
+description = "Popup do tempo da Waybar (GTK 4): agora, as próximas horas e os próximos 3 dias, pelo wttr.in"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-weather-popup"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-ui.workspace = true
+swaydesk-weather.workspace = true
+gtk4.workspace = true
+serde_json.workspace = true

@@ -1,0 +1,17 @@
+# Os pacotes binários (.deb e Arch) e os componentes em Rust de cada um: o binário swaydesk-<nome> vai
+# para /usr/bin. Todo nome do RUST_COMPONENTS do install.sh está em um pacote, e só em um (o
+# tests/test_packaging.py confere). O swaydesk-common não tem binário: leva as traduções.
+swaydesk-notifd: notifd notifications notifications-popup
+swaydesk-dock: dock
+swaydesk-drawer: drawer
+swaydesk-widgets: calendar caffeine-popup brightness-popup battery-popup system system-popup audio-popup network network-popup bluetooth bluetooth-popup weather weather-popup media-popup clipboard-popup osd-bar clip-store switcher
+swaydesk-capture: capture
+swaydesk-theme: theme desktop-config portal theme-app
+# Os scripts auxiliares que os binários chamam (paths::helper), sem binário em Rust
+swaydesk-scripts:
+swaydesk-session: session-menu keyring sessionmgr lock
+# A sessão completa (configs do Sway e da Waybar, scripts da sessão, o skel), sem binário em Rust
+swaydesk-desktop:
+# A tela de login sobre o greetd. Só nos pacotes: o install.sh --system usa o nwg-hello (não está no
+# RUST_COMPONENTS, veja o PACKAGE_ONLY do tests/test_packaging.py)
+swaydesk-greeter: greeter

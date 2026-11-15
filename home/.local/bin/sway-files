@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+# Abre o gerenciador de arquivos da config (file_manager), solto de quem o chamou: o atalho, a
+# gaveta e a dock. Os argumentos vão para ele, como uma pasta a abrir.
+# uso: sway-files [pasta...]
+#
+# O swaydesk-desktop-config em Rust, quando instalado, responde em uns 5 ms; o sway-desktop-config em
+# Python leva uns 100 ms ou mais, e o clique esperava por ele. A resposta é a mesma nas duas versões. A
+# em Python continua valendo com SWAY_DESKTOP_CONFIG_IMPL=python, com components = "python" no
+# config.toml e quando o binário falha.
+#
+# Instalado por pacote (swaydesk-scripts), este script fica em /usr/libexec/swaydesk, sem o lançador em
+# Python ao lado: vale o swaydesk-desktop-config do PATH.
+# O irmão pela pasta por onde este script foi chamado, sem resolver o link: nos dotfiles, o ~/.local/bin (o
+# readlink -f levaria ao repositório, e dali o sway-desktop-config seria sempre o Python, mesmo com o
+# --rust-only); no pacote, o /usr/libexec/swaydesk, sem o lançador ao lado
+# Na sessão do pacote swaydesk-desktop, só o do pacote: <prefixo>/bin, ao lado desta pasta. O ~/.local/bin
+# é da outra sessão, e o PATH do ~/.profile pode pô-lo na frente
+if [[ ${SWAYDESK_SESSION-} == package ]]; then
+  python= rust=${0%/*/*/*}/bin/swaydesk-desktop-config
+else
+  python=${0%/*}/sway-desktop-config
+  rust=$HOME/.local/bin/swaydesk-desktop-config
+  [[ -x $rust || -e $python ]] || rust=$(command -v swaydesk-desktop-config) || rust=
+fi
+fm=
+if [[ ${SWAY_DESKTOP_CONFIG_IMPL:-} != python && -n $rust && -x $rust ]] && [[ $("$rust" get components 2>/dev/null) != python ]]; then
+  fm=$("$rust" get file_manager 2>/dev/null) || fm=
+fi
+if [[ -z $fm && -n $python && -e $python ]]; then
+  fm=$("$python" get file_manager) || fm=
+fi
+[[ -n $fm ]] || fm=thunar
+# Sem o gerenciador escolhido instalado (uma instalação só com os pacotes), quem abre é o padrão do sistema.
+# Quem chama (o atalho, a gaveta, a dock) não tem onde mostrar um erro: uma falha vira uma notificação.
+# O gio open falha sem um app para pastas; ele roda solto, num bash que avisa se ele falhar.
+if ! command -v "$fm" >/dev/null; then
+  if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+  title=$(t 'File manager')
+  # shellcheck disable=SC2059
+  text=$(printf "$(t 'Could not open %s')" "${1:-$HOME}")
+  # O notify-send (libnotify-bin) é só Recommends; sem ele, o gdbus, que vem com o gio (libglib2.0-bin).
+  # Um texto que não é GVariant válido o gdbus passa como está
+  warn='if command -v notify-send >/dev/null; then notify-send -u critical -a "$0" "$0" "$1"
+    elif command -v gdbus >/dev/null; then gdbus call --session --dest org.freedesktop.Notifications \
+      --object-path /org/freedesktop/Notifications --method org.freedesktop.Notifications.Notify -- \
+      "$0" 0 "" "$0" "$1" "[]" "{\"urgency\": <byte 2>}" -1 >/dev/null; fi'
+  # A saída vai para o /dev/null: solto, o bash seguraria o terminal de quem chamou (um ssh) até o app fechar
+  if command -v gio >/dev/null; then
+    exec setsid -f bash -c "gio open \"\${@:2}\" || { $warn; }" "$title" "$text" "${@:-$HOME}" >/dev/null 2>&1 </dev/null
+  elif command -v xdg-open >/dev/null; then
+    exec setsid -f bash -c "xdg-open \"\$2\" || { $warn; }" "$title" "$text" "${1:-$HOME}" >/dev/null 2>&1 </dev/null
+  fi
+  bash -c "$warn" "$title" "$(t 'No file manager is installed')"
+  exit 1
+fi
+exec setsid -f "$fm" "$@"

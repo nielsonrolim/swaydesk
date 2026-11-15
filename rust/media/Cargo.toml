@@ -1,0 +1,14 @@
+[package]
+name = "swaydesk-media"
+description = "Os players de mídia pelo MPRIS e as capas, sem GTK: o que o popup de mídia lê e manda"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+swaydesk-common.workspace = true
+gio.workspace = true
+libc.workspace = true
+ureq.workspace = true
+url.workspace = true

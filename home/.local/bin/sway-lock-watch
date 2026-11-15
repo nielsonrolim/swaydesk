@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# O supervisor do bloqueio, aberto pelo sway-lock numa sessão própria (setsid). Não encerrar: sem ele,
+# um bloqueio que cai deixa a tela na cor sólida do Sway, sem senha. O popup "Sistema" não o oferece.
+# uso: sway-lock-watch LOCKER
+#
+# O locker recebe --notify-fd N e escreve no fd N: "L" ao receber locked do ext-session-lock, "F" se
+# recebeu finished (outro já bloqueou) e "U" só depois do unlock_and_destroy e de um roundtrip com o
+# Sway. Este script repassa "L" ou "F" ao sway-lock pela saída padrão e depois espera o "U". Se o
+# locker sair sem "U", mesmo com código 0, abre o swaylock, que assume o bloqueio abandonado.
+set -uo pipefail
+if [[ $# -ne 1 ]]; then
+  echo "usage: sway-lock-watch LOCKER" >&2
+  exit 2
+fi
+locker_pid=
+# Antes do bloqueio, o sway-lock pode desistir (prazo): o locker sai junto
+trap '[[ -n $locker_pid ]] && kill -TERM "$locker_pid" 2>/dev/null; exit 1' TERM INT HUP
+# O sway-lock pode já ter fechado o pipe: escrever nele não pode derrubar o supervisor
+trap '' PIPE
+
+# A saída do locker vai para a de erros (o log); o fd 5 dele é o pipe deste script
+exec 4< <(exec "$1" --notify-fd 5 5>&1 1>&2)
+locker_pid=$!
+
+code=
+read -r -n 1 code <&4
+case $code in
+  L)
+    # Daqui em diante, o supervisor fica até o desbloqueio: o sinal não o encerra mais. O swaylock do
+    # fim herda o sinal ignorado, o que também o protege
+    trap '' TERM INT HUP
+    printf L
+    exec 1>/dev/null
+    ;;
+  F)
+    # Só depois que o locker recusado saiu (fim do pipe, até 1 s): quem chamou nunca vê dois
+    while read -r -t 1 -n 1 _ <&4; do :; done
+    printf F
+    exit 0
+    ;;
+  *) exit 1 ;;  # não bloqueou: o sway-lock tenta o próximo
+esac
+
+while read -r -n 1 code <&4; do
+  [[ $code == U ]] && exit 0
+done
+logger -t sway-lock "the locker exited without unlocking; swaylock takes over" 2>/dev/null
+echo "sway-lock-watch: the locker exited without unlocking; swaylock takes over" >&2
+# Sem o papel de parede (só os pacotes), a cor dos popups: com um -i que não existe, a tela ficava branca
+wallpaper=$HOME/.local/share/wallpaper/current.jpg
+if [[ -r $wallpaper ]]; then
+  exec swaylock -f -s fill -i "$wallpaper"
+fi
+exec swaylock -f -c 2e2e33

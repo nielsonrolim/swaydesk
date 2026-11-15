@@ -1,0 +1,16 @@
+[package]
+name = "swaydesk-brightness-popup"
+description = "Popup do brilho da Waybar (GTK 4): brilho e luz noturna"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-brightness-popup"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true

@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+# Instala os arquivos de um pacote binário numa árvore (DESTDIR), a partir dos binários já compilados.
+# O debian/rules e o PKGBUILD chamam este script, para os dois formatos levarem os mesmos arquivos.
+# uso: packaging/install-tree.sh PACOTE DESTDIR [PASTA_DOS_BINÁRIOS]
+#      packaging/install-tree.sh --crates    os crates a compilar (-p swaydesk-...), de todos os pacotes
+#      packaging/install-tree.sh --sources   os arquivos de fora de rust/ e packaging/ que este script lê,
+#                                            relativos à raiz: o tarball de origem (make-orig.sh) só leva
+#                                            esses (o tests/test_packaging.py confere que bastam)
+set -euo pipefail
+root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+list=$root/packaging/components.list
+
+components() {  # os componentes de um pacote; vazio se ele não tem binário
+  awk -v pkg="$1:" '$1 == pkg { $1 = ""; print }' "$list"
+}
+
+if [[ ${1:-} == --crates ]]; then
+  for name in $(awk '!/^#/ && NF { $1 = ""; print }' "$list"); do printf -- '-p swaydesk-%s ' "$name"; done
+  echo
+  exit 0
+fi
+data=$root/home/.local/share
+bin=$root/home/.local/bin
+# Os scripts auxiliares: o Debian os põe em /usr/libexec, e o Arch em /usr/lib (SWAYDESK_LIBEXEC=/usr/lib)
+libexec=${SWAYDESK_LIBEXEC:-/usr/libexec}/swaydesk
+SCRIPTS=(session-action sway-brightness sway-caffeine sway-nightlight waybar-notify sway-idle sway-idle-suspend sway-lock
+         sway-lock-watch sway-files sway-shot sway-rec)
+# Os módulos em Python: o calendário roda o waybar_holidays.py com o python3, e ele importa os outros dois da
+# própria pasta. Sem o bit de execução (o debian/rules os tira do dh_fixperms)
+MODULES=(waybar_holidays.py sway_i18n.py desktop_config.py sway-i18n.sh)  # o sway-i18n.sh é incluído com "."
+# O swaydesk-desktop: os scripts que o config do Sway e o da Waybar do pacote chamam, além dos do
+# swaydesk-scripts, e a sessão (o sway-session e o sway-gpu, que no --system vão para /usr/local/bin). O
+# tests/test_packaging.py confere que todo programa que as configs chamam está num pacote
+SESSION_SCRIPTS=(sway-after-env sway-waybar sway-env-cleanup sway-polkit-agent sway-update-notifier
+                 blueman-agent bing-wallpaper sway-osd sway-super sway-resize sway-master sway-ws waybar-clock
+                 waybar-media waybar-volume waybar-battery waybar-brightness waybar-caffeine sway-launcher)
+SESSION_MODULES=(waybar-icon-lib)  # incluído com "." pelos módulos da Waybar
+share=/usr/share/swaydesk-desktop
+
+rust_components() {  # os componentes em Rust de todos os pacotes
+  awk '!/^#/ && NF { $1 = ""; print }' "$list"
+}
+
+# Os lançadores de home/.local/bin que só chamam um binário em Rust: o nome do arquivo e o componente, um par
+# por linha (packaging/launchers.list; o tarball não leva os lançadores em Python)
+rust_launchers() {
+  awk '!/^#/ && NF' "$root/packaging/launchers.list"
+}
+
+# Os arquivos de dados que os pacotes levam de home/ e system/ (os scripts estão nas listas acima)
+CAPTURE_ENTRIES=(gradia-screenshot.desktop gradia-screen-record.desktop)
+THEME_ENTRY=org.swaydesktop.Theme.desktop
+SESSION_CONFIGS=(sway/config waybar/config.jsonc waybar/style.css xdg-desktop-portal/sway-portals.conf)  # de home/.config
+SYSTEM_SCRIPTS=(sway-session sway-gpu)  # de system/usr/local/bin
+
+if [[ ${1:-} == --sources ]]; then
+  for name in "${SCRIPTS[@]}" "${MODULES[@]}" "${SESSION_SCRIPTS[@]}" "${SESSION_MODULES[@]}"; do
+    echo "home/.local/bin/$name"
+  done
+  (cd "$root" && printf '%s\n' home/.local/share/locale/*/LC_MESSAGES/sway-desktop.mo)
+  for entry in "${CAPTURE_ENTRIES[@]}" "$THEME_ENTRY"; do echo "home/.local/share/applications/$entry"; done
+  (cd "$root" && printf '%s\n' home/.local/share/sway-desktop/templates/* home/.local/share/sway-desktop/dconf/*)
+  for file in "${SESSION_CONFIGS[@]}"; do echo "home/.config/$file"; done
+  (cd "$root" && find home-copy -type f)
+  for name in "${SYSTEM_SCRIPTS[@]}"; do echo "system/usr/local/bin/$name"; done
+  exit 0
+fi
+
+pkg=${1:?pacote} dest=${2:?DESTDIR} bins=${3:-$root/rust/target/release}
+if [[ $pkg != swaydesk-common ]] && ! grep -q "^$pkg:" "$list"; then
+  echo "install-tree: unknown package: $pkg" >&2
+  exit 2
+fi
+# Cada binário com a sua man page (packaging/man, uma por binário: o tests/test_man_pages.py confere). Sem
+# compactar: o dh_compress do Debian e o makepkg do Arch compactam o que está em /usr/share/man
+man=$root/packaging/man
+for name in $(components "$pkg"); do
+  install -Dm755 "$bins/swaydesk-$name" "$dest/usr/bin/swaydesk-$name"
+  install -Dm644 "$man/swaydesk-$name.1" "$dest/usr/share/man/man1/swaydesk-$name.1"
+done
+
+# Nos arquivos de config do pacote, os scripts e os lançadores de ~/.local/bin passam a ser os do libexec
+package_paths() {
+  sed -e "s|^set \$bin  *~/\.local/bin\$|set \$bin $libexec|" -e "s|~/\.local/bin/|$libexec/|g" "$1"
+}
+case $pkg in
+  swaydesk-common)
+    # Os ícones da Symbols Nerd Font (a mesma v3.4.0 que o install.sh baixa), que o Debian não empacota. O
+    # Arch tem o ttf-nerd-fonts-symbols no repositório: lá, SWAYDESK_BUNDLED_FONT=0 e o pacote depende dele
+    if [[ ${SWAYDESK_BUNDLED_FONT:-1} == 1 ]]; then
+      install -Dm644 "$root/packaging/fonts/SymbolsNerdFont-Regular.ttf" \
+        "$dest/usr/share/fonts/truetype/swaydesk/SymbolsNerdFont-Regular.ttf"
+    fi
+    # A visão geral, swaydesk(7): o pacote de que todos os outros dependem
+    install -Dm644 "$man/swaydesk.7" "$dest/usr/share/man/man7/swaydesk.7"
+    # As traduções: os binários procuram em bin/../share/locale, que aqui é /usr/share/locale
+    for mo in "$data"/locale/*/LC_MESSAGES/sway-desktop.mo; do
+      lang=${mo#"$data/locale/"}
+      install -Dm644 "$mo" "$dest/usr/share/locale/$lang"
+    done
+    ;;
+  swaydesk-scripts)
+    for name in "${SCRIPTS[@]}"; do
+      install -Dm755 "$bin/$name" "$dest$libexec/$name"
+    done
+    for name in "${MODULES[@]}"; do
+      install -Dm644 "$bin/$name" "$dest$libexec/$name"
+    done
+    ;;
+  swaydesk-capture)
+    # Captura de Tela e Gravar Tela na grade, no lançador e no dock, como nos dotfiles. São entradas nossas: o
+    # prefixo gradia- é só do nome do arquivo, e o .desktop do Gradia é o be.alexandervanhee.gradia.desktop.
+    # O Exec dos dotfiles é o lançador de ~/.local/bin, que o pacote não tem: aqui, o binário em /usr/bin
+    install -d "$dest/usr/share/applications"
+    for entry in "${CAPTURE_ENTRIES[@]}"; do
+      sed 's/^Exec=sway-capture /Exec=swaydesk-capture /' "$data/applications/$entry" > "$dest/usr/share/applications/$entry"
+      chmod 644 "$dest/usr/share/applications/$entry"
+      grep -q '^Exec=swaydesk-capture ' "$dest/usr/share/applications/$entry" || {
+        echo "install-tree: $entry: no Exec=sway-capture line to point at the package binary" >&2
+        exit 1
+      }
+    done
+    ;;
+  swaydesk-theme)
+    # Os modelos e os perfis do dconf ficam em bin/../share/sway-desktop, onde o share_dir os acha
+    for file in "$data"/sway-desktop/templates/* "$data"/sway-desktop/dconf/*; do
+      install -Dm644 "$file" "$dest/usr/share/sway-desktop/${file#"$data/sway-desktop/"}"
+    done
+    install -Dm644 "$root/packaging/files/org.freedesktop.impl.portal.desktop.swaydesktop.service" \
+      "$dest/usr/share/dbus-1/services/org.freedesktop.impl.portal.desktop.swaydesktop.service"
+    install -Dm644 "$root/packaging/files/swaydesktop.portal" "$dest/usr/share/xdg-desktop-portal/portals/swaydesktop.portal"
+    # O app Tema do Desktop no menu. O nome do arquivo é o app_id do app, que é como a dock acha o ícone. O
+    # Exec dos dotfiles é o lançador de ~/.local/bin, que o pacote não tem: aqui, o binário em /usr/bin
+    entry=$THEME_ENTRY
+    install -d "$dest/usr/share/applications"
+    sed 's/^Exec=sway-theme-app$/Exec=swaydesk-theme-app/' "$data/applications/$entry" > "$dest/usr/share/applications/$entry"
+    chmod 644 "$dest/usr/share/applications/$entry"
+    grep -qx 'Exec=swaydesk-theme-app' "$dest/usr/share/applications/$entry" || {
+      echo "install-tree: $entry: no Exec=sway-theme-app line to point at the package binary" >&2
+      exit 1
+    }
+    ;;
+  swaydesk-desktop)
+    # A sessão "Sway Desktop": só com os pacotes, sem os dotfiles. O sway-session --package abre o Sway com
+    # o config daqui, e o setup copia o skel (o home-copy/) para a HOME no primeiro login
+    for name in "${SESSION_SCRIPTS[@]}"; do
+      install -Dm755 "$bin/$name" "$dest$libexec/$name"
+    done
+    for name in "${SESSION_MODULES[@]}"; do
+      install -Dm644 "$bin/$name" "$dest$libexec/$name"
+    done
+    for name in "${SYSTEM_SCRIPTS[@]}"; do
+      install -Dm755 "$root/system/usr/local/bin/$name" "$dest$libexec/$name"
+    done
+    # Os nomes que as configs e os scripts usam (sway-dock, waybar-network…) apontam para o binário em Rust,
+    # como no install.sh --rust-only: o lançador em Python de cada um diz o componente (sway_rust.exec_rust)
+    rust_launchers | while read -r name comp; do
+      install -d "$dest$libexec"
+      ln -sfn "/usr/bin/swaydesk-$comp" "$dest$libexec/$name"
+    done
+    mkdir -p "$dest$share/sway" "$dest$share/waybar"
+    package_paths "$root/home/.config/sway/config" > "$dest$share/sway/config"
+    package_paths "$root/home/.config/waybar/config.jsonc" > "$dest$share/waybar/config.jsonc"
+    # As cores e as fontes vêm do embrulho por usuário que o generate escreve; aqui, só as regras
+    grep -v '^@import' "$root/home/.config/waybar/style.css" > "$dest$share/waybar/style.css"
+    chmod 644 "$dest$share/sway/config" "$dest$share/waybar/config.jsonc" "$dest$share/waybar/style.css"
+    (cd "$root/home-copy" && find . -type f) | while IFS= read -r file; do
+      install -Dm644 "$root/home-copy/$file" "$dest$share/skel/${file#./}"
+    done
+    install -d "$dest/usr/share/wayland-sessions"
+    sed "s|@LIBEXEC@|$libexec|" "$root/packaging/files/swaydesk.desktop" > "$dest/usr/share/wayland-sessions/swaydesk.desktop"
+    chmod 644 "$dest/usr/share/wayland-sessions/swaydesk.desktop"
+    # A Waybar e o gammastep dos pacotes sobem em toda sessão que alcança o graphical-session.target; na
+    # nossa, a Waybar sobe pelo config e o sway-nightlight chama o gammastep. O --deps os mascara por usuário
+    for unit in gammastep.service gammastep-indicator.service; do
+      install -Dm644 "$root/packaging/files/not-in-swaydesk.conf" "$dest/usr/lib/systemd/user/$unit.d/swaydesk.conf"
+    done
+    # A Waybar, além disso, só sobe nos compositores wlroots: o pacote waybar a liga para todos, e no Plasma
+    # ela aparecia por cima do painel
+    install -Dm644 "$root/packaging/files/waybar-only-on-wlroots.conf" "$dest/usr/lib/systemd/user/waybar.service.d/swaydesk.conf"
+    # Os backends dos portais numa sessão sway (o dos dotfiles fica no ~/.config e vale mais)
+    install -Dm644 "$root/home/.config/xdg-desktop-portal/sway-portals.conf" "$dest/etc/xdg/xdg-desktop-portal/sway-portals.conf"
+    ;;
+  swaydesk-greeter)
+    # O greetd abre o Sway da tela pelo drop-in, com o greetd.toml do pacote: o /etc/greetd/config.toml da
+    # distro fica intocado. O usuário do greeter e o VT são os do pacote greetd de cada distro: _greetd e 7
+    # no Debian e no Ubuntu; greeter e 1 no Arch (o PKGBUILD passa os dois)
+    greeter_user=${SWAYDESK_GREETER_USER:-_greetd} greeter_vt=${SWAYDESK_GREETER_VT:-7}
+    files=$root/packaging/files
+    install -Dm644 "$files/greeter-sway.conf" "$dest/usr/share/swaydesk-greeter/sway.conf"
+    install -d "$dest/usr/share/swaydesk-greeter" "$dest/usr/lib/systemd/system/greetd.service.d" "$dest/usr/lib/tmpfiles.d"
+    sed -e "s|@USER@|$greeter_user|g" -e "s|@VT@|$greeter_vt|g" "$files/greeter-greetd.toml" \
+      > "$dest/usr/share/swaydesk-greeter/greetd.toml"
+    install -m644 "$files/greeter-greetd.service.conf" "$dest/usr/lib/systemd/system/greetd.service.d/swaydesk-greeter.conf"
+    sed "s|@USER@|$greeter_user|g" "$files/greeter-tmpfiles.conf" > "$dest/usr/lib/tmpfiles.d/swaydesk-greeter.conf"
+    chmod 644 "$dest/usr/share/swaydesk-greeter/greetd.toml" "$dest/usr/lib/tmpfiles.d/swaydesk-greeter.conf"
+    ;;
+esac

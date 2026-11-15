@@ -1,0 +1,13 @@
+[package]
+name = "swaydesk-lock-logic"
+description = "A lógica do bloqueio de tela, sem GTK: hora, data, usuário, fundo desfocado, estado do sistema e o PAM"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+swaydesk-media.workspace = true
+libc.workspace = true
+serde_json.workspace = true
+sha2.workspace = true

@@ -1,0 +1,24 @@
+.TH SWAYDESK-SYSTEM-POPUP 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-system\-popup \- system monitor popup for Waybar
+.SH SYNOPSIS
+.B swaydesk\-system\-popup
+.SH DESCRIPTION
+CPU, memory, disk, temperature and the processes that use the most. A process of the user (never one of the session) can be ended: a second click within 3 seconds sends SIGTERM, and if it is still alive the button becomes Force (SIGKILL).
+.PP
+Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
+.PP
+The session runs it under the name waybar\-system\-popup (a link in the package's helper directory to /usr/bin/swaydesk\-system\-popup); the process name is waybar\-system\-popup too.
+.SH OPTIONS
+.TP
+.B \-\-monitor
+Only open the system monitor application (the right click on the icon).
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR swaydesk (7)

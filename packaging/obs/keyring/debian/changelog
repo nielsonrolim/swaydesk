@@ -1,0 +1,6 @@
+swaydesk-archive-keyring (2026.11.15) unstable; urgency=medium
+
+  * The key of the home:nielsonrolim OBS project (5815F0B65BE1CFB9, expires
+    2029-01-23) and the APT source.
+
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Sun, 15 Nov 2026 12:00:00 -0300

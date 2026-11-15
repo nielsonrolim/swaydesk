@@ -1,0 +1,15 @@
+[package]
+name = "swaydesk-desktop-config"
+description = "Lê a config do desktop e aplica a cor de destaque (sway-desktop-config)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-desktop-config"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-theme.workspace = true

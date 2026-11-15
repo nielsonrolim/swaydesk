@@ -1,0 +1,315 @@
+#!/usr/bin/env bash
+# Luz noturna: deixa a tela mais quente pelo gammastep.
+# uso: sway-nightlight off|on|auto|status|restore
+#      sway-nightlight schedule [INÍCIO FIM]
+#   on        sempre mais quente (4500 K)
+#   auto      no horário de ~/.config/gammastep/config.ini
+#   status    off | on | auto | unavailable; "on failed" ou "auto failed" se o gammastep não
+#             estiver rodando
+#   restore   no início da sessão, volta ao último modo
+#   schedule  mostra "INÍCIO FIM", ou grava novos horários (HH:MM); FIM precisa vir antes de
+#             INÍCIO no mesmo dia, como 18:00 e 06:00: o gammastep não aceita outra forma
+#   watch     interno: espera o fim do período para trocar o gammastep sem a tela piscar
+set -uo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+mode_file="${XDG_CACHE_HOME:-$HOME/.cache}/sway-nightlight"
+config="${XDG_CONFIG_HOME:-$HOME/.config}/gammastep/config.ini"
+run=${XDG_RUNTIME_DIR:-/tmp}
+pidfile="$run/sway-nightlight.pid"
+watch_pidfile="$run/sway-nightlight-watch.pid"
+on_config="$run/sway-nightlight-on.ini"
+self=$(readlink -f "$0")
+bin=$(dirname "$self")
+
+available() { command -v gammastep >/dev/null; }
+
+# Trocas ao mesmo tempo passam uma por vez: dois gammastep disputariam as cores da tela
+serialize() {
+  exec 8>"$run/sway-nightlight.lock"
+  flock 8 || exit 1
+}
+
+saved() {
+  local m
+  m=$(cat "$mode_file" 2>/dev/null) || m=off
+  case $m in on|auto) echo "$m" ;; *) echo off ;; esac
+}
+
+# O modo salvo é a intenção; o PID diz se o gammastep está mesmo rodando
+running() {
+  local pid
+  [[ -r $pidfile ]] || return 1
+  pid=$(<"$pidfile") 2>/dev/null || return 1
+  [[ $pid =~ ^[0-9]+$ && -r /proc/$pid/comm && $(<"/proc/$pid/comm") == gammastep ]]
+}
+
+# Qual gammastep está rodando: ligado (-t, ou -O de uma versão anterior deste script) ou
+# automático (só -c). Qualquer outra coisa não é nossa: conta como nenhum.
+running_mode() {
+  local pid a args mode=none
+  if ! running; then
+    echo none
+    return
+  fi
+  pid=$(<"$pidfile")
+  mapfile -d '' -t args 2>/dev/null <"/proc/$pid/cmdline" || { echo none; return; }
+  for a in "${args[@]}"; do
+    [[ $a == -t || $a == -O ]] && { echo on; return; }
+    [[ $a == -c ]] && mode=auto
+  done
+  echo "$mode"
+}
+
+# Até o anterior terminar: ele segura o controle de cores da tela, e o novo falharia.
+# Desligando, não espera: o gammastep apaga a cor aos poucos (fade) e sai sozinho, e ficar
+# esperando aqui seguraria a trava durante o fade — os cliques seguintes pareceriam travados.
+# Quem vier depois mata o que ainda estiver saindo.
+stop_running() {
+  local i
+  if [[ ${1:-off} == off ]]; then
+    pkill -x gammastep 2>/dev/null || true
+    return 0
+  fi
+  pkill -KILL -x gammastep 2>/dev/null || true
+  for (( i = 0; i < 50; i++ )); do
+    pgrep -x gammastep >/dev/null || return 0
+    sleep 0.02
+  done
+}
+
+show_schedule() {
+  local start end
+  start=$(sed -n 's/^dusk-time *= *\([0-9:]*\).*/\1/p' "$config" 2>/dev/null)
+  end=$(sed -n 's/^dawn-time *= *\([0-9:]*\).*/\1/p' "$config" 2>/dev/null)
+  echo "${start:-18:00} ${end:-06:00}"
+}
+
+config_value() {
+  sed -n "s/^$1 *= *\([0-9:-]*\).*/\1/p" "$config" 2>/dev/null | head -n 1
+}
+
+# O automático mostra à noite a mesma cor do ligado? Só com a temperatura e sem ajustes extras.
+same_night_color() {
+  local night
+  night=$(config_value temp-night)
+  [[ ${night:-4500} == 4500 ]] && ! grep -qE '^(brightness|gamma)' "$config" 2>/dev/null
+}
+
+# Segundos até o amanhecer, se agora automático e ligado mostram a mesma cor; senão, vazio.
+# O período atravessa a meia-noite: INÍCIO maior que FIM, como 18:00 e 06:00. Com faixas
+# ("18:00-19:30"), a noite plena vai do fim da faixa do anoitecer ao início da do amanhecer.
+until_end() {
+  local dusk dawn start end now h m s time='[0-9]{1,2}:[0-9]{2}'
+  dusk=$(config_value dusk-time)
+  dawn=$(config_value dawn-time)
+  [[ $dusk =~ ^$time(-$time)?$ && $dawn =~ ^$time(-$time)?$ ]] || return 0  # usa a localização
+  same_night_color || return 0
+  dusk=${dusk##*-}
+  dawn=${dawn%%-*}
+  start=$(( 10#${dusk%%:*} * 3600 + 10#${dusk##*:} * 60 ))
+  end=$(( 10#${dawn%%:*} * 3600 + 10#${dawn##*:} * 60 ))
+  (( start > end )) || return 0
+  IFS=: read -r h m s < <(date +%T)  # uma leitura só: a hora não pode virar no meio
+  now=$(( 10#$h * 3600 + 10#$m * 60 + 10#$s ))
+  if (( now >= start )); then
+    echo $(( 86400 - now + end ))
+  elif (( now < end )); then
+    echo $(( end - now ))
+  fi
+}
+
+# Troca a linha ou, se ela não existir, acrescenta logo depois de [general]
+set_key() {
+  local file=$1 key=$2 value=$3
+  if grep -qE "^$key *=" "$file"; then
+    sed -i -E "s/^$key *=.*/$key=$value/" "$file"
+  elif grep -q '^\[general\]' "$file"; then
+    sed -i "/^\[general\]/a $key=$value" "$file"
+  else
+    return 1
+  fi
+}
+
+set_schedule() {
+  local start=$1 end=$2 valid='^([01][0-9]|2[0-3]):[0-5][0-9]$' tmp
+  if ! [[ $start =~ $valid && $end =~ $valid ]]; then
+    echo "sway-nightlight: $(t 'use HH:MM')" >&2
+    return 2
+  fi
+  if ! [[ $end < $start ]]; then
+    echo "sway-nightlight: $(t 'the end must come before the start on the same day')" >&2
+    return 2
+  fi
+  [[ -w $config ]] || { printf "sway-nightlight: $(t 'could not write %s')\n" "$config" >&2; return 1; }
+  # Numa cópia, trocada de uma vez: uma falha no meio não perde o arquivo
+  tmp=$(mktemp "$config.XXXXXX") || return 1
+  if cp -p -- "$config" "$tmp" && set_key "$tmp" dusk-time "$start" && set_key "$tmp" dawn-time "$end" \
+      && [[ $(sed -n 's/^dusk-time=//p' "$tmp") == "$start" && $(sed -n 's/^dawn-time=//p' "$tmp") == "$end" ]]; then
+    mv -f -- "$tmp" "$config"
+    return
+  fi
+  rm -f -- "$tmp"
+  printf "sway-nightlight: $(t 'could not find [general] in %s')\n" "$config" >&2
+  return 1
+}
+
+# Deixa o gammastep apagar a cor aos poucos e espera ele sair.
+fade_out() {
+  local i
+  pkill -x gammastep 2>/dev/null || return 0
+  for (( i = 0; i < 300; i++ )); do
+    pgrep -x gammastep >/dev/null || return 0
+    sleep 0.02
+  done
+}
+
+# apply MODO [instant]: instant aplica a cor de uma vez (-r), sem subir do neutro aos poucos
+apply() {
+  local no_fade=()
+  [[ ${2:-} == instant ]] && no_fade=(-r)
+  stop_running "$1"
+  case $1 in
+    # 8>&-: sem isso, o gammastep herdaria a trava e as próximas trocas esperariam para sempre
+    # on: -t 4500:4500 em vez de -O (que é modo "one shot" e morre no SIGTERM sem apagar a
+    # cor aos poucos); assim desligar também faz o fade, como no automático. O -c é só para
+    # ter horários: sem eles o gammastep -t pede a localização e não muda a cor sem ela.
+    on)
+      printf '[general]\nfade=1\ndawn-time=06:00\ndusk-time=18:00\n' >"$on_config"
+      gammastep -c "$on_config" -m wayland -t 4500:4500 "${no_fade[@]}" </dev/null >/dev/null 2>&1 8>&- &
+      ;;
+    auto) gammastep -c "$config" </dev/null >/dev/null 2>&1 8>&- & ;;
+    *)    rm -f "$pidfile"; return 0 ;;
+  esac
+  echo $! >"$pidfile"
+  disown
+}
+
+# O gammastep não troca de modo sem reiniciar (SIGHUP mata o processo) e reiniciar zera a
+# gama por um instante: a tela pisca. Dentro do período, automático e ligado mostram a mesma
+# cor, então só a intenção muda agora e o processo é trocado depois:
+#   automático: já no amanhecer, com fade. É a mudança de cor que ia acontecer de qualquer jeito.
+#   ligado: pouco antes do amanhecer, porque o automático ia esfriar. A cor não muda, então a
+#   troca é sem fade: a tela só fica neutra entre um processo morrer e o outro aplicar a cor.
+is_watcher() {
+  local args
+  [[ $1 =~ ^[0-9]+$ ]] && mapfile -d '' -t args 2>/dev/null <"/proc/$1/cmdline" \
+    && (( ${#args[@]} >= 2 )) && [[ ${args[-1]} == watch && ${args[-2]} == */sway-nightlight ]]
+}
+
+stop_watch() {
+  local pid
+  [[ -r $watch_pidfile ]] || return 0
+  pid=$(<"$watch_pidfile") 2>/dev/null || return 0
+  # O arquivo pode ter sobrado de um vigia morto, com o número já em uso por outro processo
+  if is_watcher "$pid"; then
+    # setsid põe o vigia numa sessão só dele: mata também o sleep pendente
+    kill -- "-$pid" 2>/dev/null || kill "$pid" 2>/dev/null || true
+  fi
+  rm -f "$watch_pidfile"
+}
+
+start_watch() {
+  stop_watch
+  # 8>&-: o vigia vive horas; herdando a trava, todo sway-nightlight ficaria esperando
+  if command -v setsid >/dev/null; then
+    setsid "$self" watch >/dev/null 2>&1 8>&- &
+  else
+    "$self" watch >/dev/null 2>&1 8>&- &
+  fi
+  echo $! >"$watch_pidfile"  # já aqui: um clique logo depois precisa conseguir parar o vigia
+  disown
+}
+
+watch_period_end() {
+  local left want current
+  while :; do
+    want=$(saved)
+    current=$(running_mode)
+    [[ $want == off || $current == "$want" ]] && return 0
+    [[ $current != none ]] || break  # o gammastep morreu: a tela está neutra, não dá para esperar
+    left=$(until_end)
+    [[ -n $left ]] || break          # a cor já não é a mesma: troca agora
+    if [[ $want == on ]]; then
+      (( left > 20 )) || break       # antes de o automático esfriar
+      left=$(( left - 20 ))
+    fi
+    # Passos de até 1 min: o sleep não conta o tempo em suspensão, e assim acorda logo depois
+    sleep $(( left > 60 ? 60 : left ))
+  done
+  # A trava de novo: o modo pode ter mudado enquanto esperava.
+  serialize
+  want=$(saved)
+  current=$(running_mode)
+  [[ $want == off || $current == "$want" ]] && return 0
+  if [[ $current == none ]]; then
+    apply "$want"
+  elif [[ $want == on ]]; then
+    apply on instant
+  else
+    fade_out
+    apply auto
+  fi
+}
+
+case ${1:-} in
+  status)
+    if ! available; then
+      echo unavailable
+    else
+      mode=$(saved)
+      if [[ $mode == off ]] || running; then echo "$mode"; else echo "$mode failed"; fi
+    fi
+    ;;
+  restore)
+    serialize
+    stop_watch
+    available && apply "$(saved)"
+    ;;
+  off|on|auto)
+    if ! available; then
+      echo "sway-nightlight: $(t 'install gammastep')" >&2
+      exit 1
+    fi
+    serialize
+    stop_watch
+    mkdir -p "$(dirname "$mode_file")"
+    current=$(running_mode)
+    echo "$1" >"$mode_file"
+    if [[ $current == "$1" ]]; then
+      :  # já está assim: reiniciar só faria a tela piscar
+    elif [[ $1 != off && $current != none && -n $(until_end) ]]; then
+      start_watch  # mesma cor agora; o processo troca no fim do período
+    else
+      apply "$1"
+    fi
+    "$bin/waybar-notify" waybar-brightness
+    ;;
+  watch)
+    # Interno: espera o fim do período para trocar o gammastep sem a tela piscar.
+    echo $$ >"$watch_pidfile"
+    watch_period_end
+    [[ -r $watch_pidfile && $(<"$watch_pidfile") == $$ ]] && rm -f "$watch_pidfile"
+    ;;
+  schedule)
+    if (( $# == 1 )); then
+      show_schedule
+    elif (( $# == 3 )); then
+      serialize
+      set_schedule "$2" "$3" || exit $?
+      # O automático só lê o horário ao iniciar, então precisa reiniciar. Na troca adiada, depende
+      # de quem está rodando: o do ligado não usa o horário, e o vigia refaz a conta agora; o
+      # automático seguiria o horário velho, e a troca para o ligado não pode mais esperar.
+      if available; then
+        case $(saved):$(running_mode) in
+          auto:on) start_watch ;;
+          on:auto) stop_watch; apply on ;;
+          auto:*)  apply auto ;;
+        esac
+      fi
+    else
+      echo "$(t 'usage: sway-nightlight schedule [START END]')" >&2
+      exit 2
+    fi
+    ;;
+  *) echo "$(t 'usage: sway-nightlight off|on|auto|status|restore|schedule')" >&2; exit 2 ;;
+esac

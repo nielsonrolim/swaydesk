@@ -1,0 +1,17 @@
+[package]
+name = "swaydesk-audio-popup"
+description = "Popup de áudio da Waybar (GTK 4): volume, mudo e dispositivos de saída e de entrada"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-audio-popup"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true
+serde_json.workspace = true

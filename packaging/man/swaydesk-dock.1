@@ -1,0 +1,39 @@
+.TH SWAYDESK-DOCK 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-dock \- dock for Sway
+.SH SYNOPSIS
+.B swaydesk\-dock
+.br
+.B swaydesk\-dock
+reload
+.br
+.B swaydesk\-dock
+pin ID
+.br
+.B swaydesk\-dock
+unpin ID
+.SH DESCRIPTION
+The bottom dock: the pinned applications and the open windows, one dock per session. A second start exits. sway\-theme, the app grid and the pin command find it by its process name.
+.PP
+The session runs it under the name sway\-dock (a link in the package's helper directory to /usr/bin/swaydesk\-dock); the process name is sway\-dock too.
+.SH OPTIONS
+.TP
+.B reload
+Ask the running dock to read its configuration again.
+.TP
+.B pin ID, unpin ID
+Ask the running dock to pin or unpin an application, by the ID of its .desktop file; the app grid uses it. Without a running dock, exit 1 and change nothing.
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-dock/config.toml
+The dock configuration.
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR sway (5),
+.BR swaydesk (7),
+.BR swaydesk\-drawer (1)

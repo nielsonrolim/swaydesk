@@ -1,0 +1,144 @@
+#!/usr/bin/env bash
+# Relógio da Waybar: o módulo clock da 0.9.24 ignora "locale", então usa o strftime no locale da config.
+# uso: waybar-clock         contínuo: uma linha JSON a cada minuto
+#      waybar-clock once    uma linha só
+# Confere o minuto a cada 5 s sem abrir nenhum processo (printf e read são do próprio bash),
+# então o relógio nunca atrasa mais que isso, nem depois de suspender. O calendário
+# (waybar-calendar) manda SIGUSR1 ao abrir e ao fechar, para a dica sumir com ele aberto.
+set -uo pipefail
+self=$(readlink -f -- "$0")
+# Um programa do projeto: o de ~/.local/bin primeiro (o link do --rust-only vai direto ao binário em
+# Rust, sem o Python), depois o da pasta deste script (o repositório, ou o /usr/libexec/swaydesk do pacote).
+# Na sessão do pacote (SWAYDESK_SESSION=package), só o do pacote: os dotfiles da mesma conta não entram
+sibling() {
+  if [[ ${SWAYDESK_SESSION-} != package && -x $HOME/.local/bin/$1 ]]; then
+    printf '%s' "$HOME/.local/bin/$1"
+  else
+    printf '%s' "${self%/*}/$1"
+  fi
+}
+locale=$("$(sibling sway-desktop-config)" get locale 2>/dev/null) || locale=
+# Se o locale existe: o locale -a escreve "pt_BR.utf8". Um que não foi gerado faria o strftime
+# cair no C, em inglês
+installed() {
+  locale -a 2>/dev/null | grep -qixF -e "$1" -e "${1%%.*}.utf8"
+}
+if [[ -n $locale ]] && installed "$locale.UTF-8"; then
+  export LC_TIME=$locale.UTF-8
+else
+  locale=
+fi
+# O formato segue o idioma em que o strftime escreve: o "de" de "07 de nov." só existe em português
+time_locale=${LC_ALL:-${LC_TIME:-${LANG:-}}}
+if [[ $time_locale == pt* ]] && installed "$time_locale"; then
+  clock_format='%a. %d de %b. %H:%M'
+  date_format='%A, %d de %B de %Y'
+else
+  clock_format='%a %d %b %H:%M'
+  date_format='%A, %-d %B %Y'
+fi
+source "${self%/*}/waybar-icon-lib"
+cache="$run/waybar-clock-calendar"
+
+# O mês como o calendar.LocaleTextCalendar(6).formatmonth do Python, sem o Python: o nome do mês e o ano
+# centralizados em 20 colunas, as iniciais dos dias (2 letras, do domingo ao sábado) e as semanas, sem
+# espaço no fim das linhas. Os nomes vêm do date, no LC_TIME já escolhido.
+# uso: month_text ANO MÊS
+month_text() {
+  local year=$1 month=$2 first header pad days names=() line= day column
+  # O ${name:0:2} conta letras, não bytes, só com o LC_CTYPE em UTF-8 (o bash relê o locale ao mudar)
+  local LC_CTYPE=C.UTF-8
+  printf -v first '%04d-%02d-01' "$year" "$month"
+  header=$(date -d "$first" '+%B %Y') || return 1
+  # O center do Python: a sobra à esquerda é a metade, para baixo (20 é par)
+  pad=$(( 20 - ${#header} ))
+  (( pad > 0 )) || pad=0
+  printf '%*s%s\n' $(( pad / 2 )) '' "$header" | sed 's/ *$//'
+  # 1 a 7/1/2023 vão do domingo ao sábado
+  mapfile -t names < <(printf '2023-01-0%d\n' 1 2 3 4 5 6 7 | date -f - '+%a')
+  (( ${#names[@]} == 7 )) || return 1
+  line=
+  for day in "${names[@]}"; do
+    day=${day:0:2}
+    # O center de 2 colunas: uma letra só ganha o espaço à direita
+    (( ${#day} >= 2 )) || day="$day "
+    line+="${line:+ }$day"
+  done
+  printf '%s\n' "$line" | sed 's/ *$//'
+  column=$(date -d "$first" +%w)  # 0: domingo, a primeira coluna
+  days=$(date -d "$first +1 month -1 day" +%-d) || return 1
+  printf -v line '%*s' $(( column * 3 )) ''
+  for (( day = 1; day <= days; day++ )); do
+    printf -v line '%s%2d' "$line" "$day"
+    if (( (column + day) % 7 == 0 )); then
+      printf '%s\n' "$line" | sed 's/ *$//'
+      line=
+    else
+      line+=' '
+    fi
+  done
+  [[ -z ${line// /} ]] || printf '%s\n' "$line" | sed 's/ *$//'
+}
+
+# Calendário do mês na dica, com hoje em negrito. Muda uma vez por dia, então fica guardado:
+# a primeira linha do arquivo é o dia e o locale (outro idioma não reaproveita o do anterior).
+calendar_text() {
+  local today cal tmp
+  printf -v today '%(%F)T' -1
+  today+=" $time_locale"
+  if [[ -r $cache && $(sed -n 1p "$cache" 2>/dev/null) == "$today" ]]; then
+    sed -n 2p "$cache"
+    return
+  fi
+  cal=$(month_text "$(date +%Y)" "$(date +%-m)" 2>/dev/null) || cal=
+  if [[ -z $cal ]]; then
+    # Sem o calendário, ao menos a data por extenso (e tenta de novo na próxima vez)
+    date +"$date_format"
+    return
+  fi
+  cal=$(printf '%s\n' "$cal" | sed -E "3,\$s/(^| )($(date +%-d))( |\$)/\\1<b>\\2<\/b>\\3/" \
+    | sed ':a;N;$!ba;s/\n/\\n/g; s/"/\\"/g')
+  tmp="$cache.$$"
+  { printf '%s\n%s\n' "$today" "$cal" >"$tmp" && mv -f "$tmp" "$cache"; } 2>/dev/null || rm -f "$tmp"
+  printf '%s\n' "$cal"
+}
+
+emit() {
+  local text
+  printf -v text "%($clock_format)T" -1
+  if popup_open waybar-calendar; then
+    printf '{"text":"%s","tooltip":""}\n' "$text"
+  else
+    printf '{"text":"%s","tooltip":"<tt>%s</tt>"}\n' "$text" "$(calendar_text)"
+  fi
+}
+
+if [[ ${1:-} == once ]]; then
+  emit
+  exit
+fi
+
+# O sinal precisa estar tratado antes de publicar o PID: o padrão do SIGUSR1 encerraria.
+# No bash, um sinal não interrompe o read: a rotina escreve no FIFO que o read está lendo.
+pending=0
+trap 'pending=1; { printf "\n" >&3; } 2>/dev/null' USR1
+echo $$ >"$run/waybar-clock.pid"
+# O read com -t espera sem abrir um processo de sleep
+fifo="$run/waybar-clock.fifo.$$"
+if mkfifo "$fifo" 2>/dev/null; then
+  exec 3<>"$fifo"
+  rm -f "$fifo"
+fi
+last=
+while true; do
+  printf -v now '%(%F %H:%M)T' -1
+  if [[ $now != "$last" || $pending == 1 ]]; then
+    pending=0
+    last=$now
+    # Falha ao escrever: a Waybar foi embora
+    emit || exit 0
+  fi
+  rc=0
+  read -r -t 5 -u 3 _ 2>/dev/null || rc=$?
+  (( rc == 0 || rc > 128 )) || sleep 5  # sem o FIFO, o read volta na hora com erro
+done

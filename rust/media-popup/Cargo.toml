@@ -1,0 +1,17 @@
+[package]
+name = "swaydesk-media-popup"
+description = "Popup de mídia da Waybar (GTK 4): capa, faixa, progresso e os controles, pelo MPRIS"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-media-popup"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-media.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true

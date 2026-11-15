@@ -1,0 +1,17 @@
+[package]
+name = "swaydesk-system"
+description = "Ícone Sistema da Waybar: CPU, memória e temperatura, sem GTK"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-system"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-system-logic.workspace = true
+libc.workspace = true
+serde_json.workspace = true

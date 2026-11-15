@@ -1,0 +1,314 @@
+#!/usr/bin/env bash
+# O lançador do Alt+Espaço e as janelas do Super+`: o rofi com o tema do desktop (o pacote swaydesk-desktop
+# depende dele). Chamado de novo com o rofi aberto, fecha.
+#
+# No rofi:
+# - apps (drun), janelas abertas (da usada mais recentemente à mais antiga), área de transferência (o
+#   histórico do cliphist) e web (busca e endereços);
+# - tudo menos os apps são modos de script deste script (o rofi chama "sway-launcher windows-mode" e os
+#   outros), iguais nos dois rofi, sem plugins: o 1.7 do Debian 13 roda pelo Xwayland e não vê as janelas
+#   Wayland, e o 2.0 do Ubuntu só as vê com o protocolo do wlroots;
+# - as buscas da web ficam no ~/.config/sway-desktop/launcher.conf (veja o read_config);
+# - o tema é o gerado pelo sway-desktop-config, nas cores do destaque, nunca o ~/.config/rofi de quem usa.
+#
+# uso: sway-launcher toggle    apps, janelas e área de transferência
+#      sway-launcher windows   só as janelas abertas
+set -u
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+self=$(readlink -f "$0")
+# O rofi separa os modos por vírgula e o comando por espaço: com um desses no caminho, pelo PATH
+mode_cmd=$self
+[[ $self == *[\ ,]* ]] && mode_cmd=sway-launcher
+theme=${XDG_DATA_HOME:-$HOME/.local/share}/sway-desktop/rofi/sway-desktop.rasi
+config=${XDG_CONFIG_HOME:-$HOME/.config}/sway-desktop/launcher.conf
+
+# O ícone de uma janela: o Icon= do .desktop do app (pelo nome do app_id, sem diferenciar maiúsculas, ou pelo
+# StartupWMClass). O app_id nem sempre é nome de ícone (org.kde.kcalc é accessories-calculator), e a caixa
+# importa (org.gnome.Calculator). Sem .desktop, o próprio app_id. O resultado vai no REPLY: chamada sem $(…),
+# para o cache valer entre as janelas
+declare -A icons=()
+icon_for() {
+  local app=$1 dir file found icon= want
+  REPLY=
+  [[ -n $app ]] || return 0
+  if [[ -n ${icons[$app]+x} ]]; then REPLY=${icons[$app]}; return; fi
+  want=${app,,}.desktop
+  local IFS=:
+  for dir in ${XDG_DATA_HOME:-$HOME/.local/share} ${XDG_DATA_DIRS:-/usr/local/share:/usr/share}; do
+    [[ -d $dir/applications ]] || continue
+    found=
+    for file in "$dir"/applications/*.desktop; do
+      [[ ${file##*/} == "$want" || ${file,,} == */"$want" ]] && { found=$file; break; }
+    done
+    [[ -n $found ]] || found=$(grep -lixF -- "StartupWMClass=$app" "$dir"/applications/*.desktop 2>/dev/null | head -n 1)
+    if [[ -n $found ]]; then
+      icon=$(sed -n 's/^Icon=//p' "$found" 2>/dev/null | head -n 1)
+      [[ -n $icon ]] && break
+    fi
+  done
+  icons[$app]=${icon:-$app}
+  REPLY=${icons[$app]}
+}
+
+# Os modos de script do rofi: sem argumento, lista; com a linha escolhida (e o ROFI_INFO), age
+windows_mode() {
+  if (($# == 0)); then
+    printf '\0no-custom\x1ftrue\n'
+    # Cada janela: "app — título", o ícone do app e o id do Sway no info. O jq entrega uma janela por linha,
+    # sem escapes (o @tsv dobraria as contrabarras), com os campos separados pelo \x1f: o tab é espaço em
+    # branco para o read, que juntaria um app vazio com o título. Quebras de linha e o \x1f viram espaço
+    local id app title
+    while IFS=$'\x1f' read -r id app title; do
+      icon_for "$app"
+      printf '%s — %s\0icon\x1f%s\x1finfo\x1f%s\n' "$app" "$title" "$REPLY" "$id"
+    done < <(swaymsg -t get_tree 2>/dev/null | jq -r '
+      # Da usada mais recentemente à mais antiga: a lista "focus" de cada nó traz os filhos nessa ordem (exata
+      # dentro de um workspace, aproximada entre eles: o Sway não guarda um histórico global). As do
+      # scratchpad, ocultas de propósito, ficam de fora. A atual vai para o fim, como no Alt+Tab: Enter na
+      # primeira volta à anterior (o rofi não está na árvore: o 1.7 é do X, o 2.0 é uma camada)
+      def windows($ws):
+        (if .type == "workspace" then .name else $ws end) as $ws
+        | if (.type == "con" or .type == "floating_con") and .pid != null then {ws: $ws, win: .}
+          else ((.nodes // []) + (.floating_nodes // [])) as $kids | (.focus // []) as $focus
+            | ([$focus[] as $id | $kids[] | select(.id == $id)]
+               + [$kids[] | select(.id as $id | any($focus[]; . == $id) | not)])[]
+            | windows($ws)
+          end;
+      [windows(null) | select(.ws != "__i3_scratch") | .win]
+      | (map(.focused == true) | index(true)) as $current
+      | (if $current == null then . else del(.[$current]) + [.[$current]] end)[]
+      | [(.id | tostring), (.app_id // .window_properties.class // ""), (.name // "")]
+      | map(gsub("[\n\r\u001f]"; " ")) | join("\u001f")' 2>/dev/null)
+    return 0
+  fi
+  [[ ${ROFI_INFO:-} =~ ^[0-9]+$ ]] || return 0
+  swaymsg -q "[con_id=$ROFI_INFO] focus" >/dev/null 2>&1
+}
+
+clip_list() {
+  printf '\0no-custom\x1ftrue\n'
+  [[ -n ${1:-} ]] && printf '\0message\x1f%s\n' "$(markup "$1")"
+  local items
+  items=$(cliphist list 2>/dev/null)
+  if [[ -n $items ]]; then
+    printf '%s\n' "$items"
+  else
+    # Uma linha que não se escolhe: sem nenhuma, o rofi fecha depois do Enter e o aviso não aparece
+    printf '%s\0nonselectable\x1ftrue\n' "$(t 'The clipboard history is empty.')"
+  fi
+}
+
+clip_mode() {
+  if (($# == 0)); then
+    clip_list
+    return 0
+  fi
+  # A linha do cliphist ("id<tab>prévia") volta inteira: o decode a usa para achar o item. Primeiro num
+  # arquivo (pode ser uma imagem, com bytes nulos): um item que já saiu do histórico volta vazio, e a área
+  # de transferência ficaria vazia. Nesse caso o rofi continua aberto, com o aviso e a lista de agora
+  local file
+  file=$(mktemp "${XDG_RUNTIME_DIR:-${TMPDIR:-/tmp}}/sway-launcher.XXXXXX") || return 0
+  printf '%s' "$1" | cliphist decode >"$file" 2>/dev/null
+  if [[ -s $file ]]; then
+    # O wl-copy lê tudo antes de ir para o segundo plano servir a seleção; com o stdout no pipe do rofi,
+    # ele esperaria o EOF
+    wl-copy <"$file" >/dev/null 2>&1
+    rm -f -- "$file"
+    return 0
+  fi
+  rm -f -- "$file"
+  clip_list "$(t 'This item is no longer in the clipboard history.')"
+}
+
+# Um texto para o \0message do rofi, que usa o Pango markup. As substituições entre aspas: no bash 5.2, um &
+# solto nelas é o texto achado
+markup() {
+  local text=${1//'&'/'&amp;'}
+  text=${text//'<'/'&lt;'}
+  printf '%s' "${text//'>'/'&gt;'}"
+}
+
+# O launcher.conf, linhas "chave = valor" (# comenta):
+#   search = ex https://example.com/?q=%s    um prefixo e o endereço da busca (%s é o termo): soma às
+#                                             padrão, ou troca a de mesmo prefixo
+#   default = d                               a busca do texto sem prefixo (sem a linha, a do g)
+# As padrão: Google (g), DuckDuckGo (d), Wikipédia na língua dos textos (w), YouTube (yt), o Google
+# Tradutor para a língua dos textos (gt) e uma conversa nova com o texto no Claude (cl) ou no ChatGPT
+# (gpt). Um prefixo só vale com o espaço depois: o g não pega o "gt termo" nem o "gpt termo".
+# Preenche o array searches ("prefixo endereço") e o default_search, a do texto sem prefixo
+read_config() {
+  # A Wikipédia e a tradução na língua dos textos (a do config, ou a do ambiente); sem uma, o inglês
+  local lang=${_sway_i18n_lang:-${LANGUAGE:-${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}}}
+  [[ $lang =~ ^([a-z]{2})([_.@:]|$) ]] && lang=${BASH_REMATCH[1]} || lang=en
+  searches=("g https://www.google.com/search?q=%s" "d https://duckduckgo.com/?q=%s"
+            "w https://$lang.wikipedia.org/w/index.php?search=%s"
+            "yt https://www.youtube.com/results?search_query=%s"
+            "gt https://translate.google.com/?sl=auto&tl=$lang&text=%s&op=translate"
+            "cl https://claude.ai/new?q=%s" "gpt https://chatgpt.com/?q=%s")
+  local key value line default=g i found
+  if [[ -r $config ]]; then
+    while IFS= read -r line || [[ -n $line ]]; do
+      line=${line%%$'\r'}
+      [[ $line =~ ^[[:space:]]*([a-z]+)[[:space:]]*=[[:space:]]*(.*[^[:space:]])[[:space:]]*$ ]] || continue
+      key=${BASH_REMATCH[1]} value=${BASH_REMATCH[2]}
+      case $key in
+        search)
+          [[ $value =~ ^([^[:space:]]+)[[:space:]]+(https?://[^[:space:]]*%s[^[:space:]]*)$ ]] || continue
+          value="${BASH_REMATCH[1]} ${BASH_REMATCH[2]}" found=
+          for i in "${!searches[@]}"; do
+            if [[ ${searches[i]%% *} == "${BASH_REMATCH[1]}" ]]; then
+              searches[i]=$value found=1
+              break
+            fi
+          done
+          [[ -n $found ]] || searches+=("$value") ;;
+        default) [[ $value =~ ^[^[:space:]]+$ ]] && default=$value ;;
+      esac
+    done <"$config"
+  fi
+  # Um default sem busca com esse prefixo fica no g
+  default_search=${searches[0]}
+  for i in "${searches[@]}"; do
+    [[ ${i%% *} == "$default" ]] && default_search=$i && break
+  done
+}
+
+# O nome de uma busca para a dica: o do site, pelo endereço
+search_name() {
+  local host=${1#*://}
+  host=${host%%[/?#]*}
+  host=${host##*@}
+  [[ $host =~ :[0-9]+$ ]] && host=${host%:*}
+  case $host in
+    www.google.com) printf 'Google' ;;
+    translate.google.com) t 'Google Translate' ;;
+    duckduckgo.com) printf 'DuckDuckGo' ;;
+    *.wikipedia.org) printf 'Wikipedia' ;;
+    www.youtube.com) printf 'YouTube' ;;
+    claude.ai) printf 'Claude' ;;
+    chatgpt.com) printf 'ChatGPT' ;;
+    *) printf '%s' "${host#www.}" ;;
+  esac
+}
+
+# O termo para o endereço da busca: tudo fora de A-Z, a-z, 0-9 e -._~ vira %XX, byte a byte
+url_encode() {
+  local LC_ALL=C text=$1 out= c i
+  for ((i = 0; i < ${#text}; i++)); do
+    c=${text:i:1}
+    if [[ $c == [A-Za-z0-9._~-] ]]; then out+=$c; else printf -v c '%%%02X' "'$c"; out+=$c; fi
+  done
+  printf '%s' "$out"
+}
+
+# O endereço que um texto digitado abre: com http(s)://, ele mesmo; com cara de domínio (kde.org,
+# kde.org/x, localhost:8080), com o https:// na frente; senão, nada. Um final que também é extensão de
+# arquivo (notes.txt, main.rs, script.sh) só vale como domínio com o www. ou um caminho: sem eles, busca.
+# Menos os sites conhecidos com esses finais (known_hosts)
+file_ext='^(txt|md|rs|py|sh|js|ts|json|toml|ya?ml|ini|conf|cfg|log|csv|xml|html?|css|c|h|cpp|hpp|go|java|rb|php|pdf|png|jpe?g|gif|svg|webp|zip|gz|xz|tar|deb|rpm|iso|odt|ods|docx?|xlsx?)$'
+known_hosts=' docs.rs bun.sh '
+address_of() {
+  local text=$1 host
+  if [[ $text =~ ^https?://[^[:space:]]+$ ]]; then
+    printf '%s' "$text"
+  elif [[ $text =~ ^([[:alnum:]][[:alnum:]-]*\.)+([[:alpha:]]{2,})(:[0-9]+)?(/[^[:space:]]*)?$ ]]; then
+    host=${text%%/*}
+    if [[ ${BASH_REMATCH[2],,} =~ $file_ext && $text != www.* && $text == "$host" \
+          && $known_hosts != *" ${host,,} "* ]]; then
+      return 0
+    fi
+    printf 'https://%s' "$text"
+  elif [[ $text =~ ^localhost(:[0-9]+)?(/[^[:space:]]*)?$ ]]; then
+    printf 'https://%s' "$text"
+  fi
+}
+
+# Web: "g termo" busca pelo prefixo, um endereço abre direto e o resto busca no default_search
+web_mode() {
+  read_config
+  if (($# == 0)); then
+    local each hint=
+    for each in "${searches[@]}"; do
+      hint+="${hint:+, }${each%%[[:space:]]*} $(t 'term')"
+    done
+    printf '\0message\x1f%s\n' "$(markup "$(printf "$(t 'Type to search %s, or use %s, or type an address, like kde.org, and press Enter.')" \
+      "$(search_name "${default_search##* }")" "$hint")")"
+    return 0
+  fi
+  local text url each prefix
+  text=$(printf '%s' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  [[ -n $text ]] || return 0
+  url=$(address_of "$text")
+  if [[ -z $url ]]; then
+    each=$default_search
+    for prefix in "${searches[@]}"; do
+      if [[ $text == "${prefix%%[[:space:]]*}"[[:space:]]* ]]; then
+        each=$prefix
+        text=${text#"${prefix%%[[:space:]]*}"}
+        text=${text#"${text%%[![:space:]]*}"}
+        break
+      fi
+    done
+    url=${each##*[[:space:]]}
+    url=${url//%s/"$(url_encode "$text")"}
+  fi
+  setsid -f xdg-open "$url" >/dev/null 2>&1 </dev/null
+}
+
+# O nome de um modo, traduzido ($1), que o rofi mostra no botão e usa no -show; o original ($2) se a tradução
+# tiver vírgula ou dois-pontos, que separam os modos e o comando. O t de cada um fica no texto, para o xgettext
+mode_name() {
+  local name=$1
+  [[ $name == *[,:]* || -z $name ]] && name=$2
+  printf '%s' "$name"
+}
+
+# rofi_open placeholder modo-inicial modos...: cada modo é "nome" (drun) ou "nome:comando"
+rofi_open() {
+  # Fecha o que estiver aberto
+  if pgrep -u "$UID" -x rofi >/dev/null; then
+    pkill -u "$UID" -x rofi
+    return 0
+  fi
+  # O Gio esconde os apps com OnlyShowIn=sway (o Tema) sem o XDG_CURRENT_DESKTOP: o Sway aberto do tty
+  [[ -n ${XDG_CURRENT_DESKTOP:-} || -z ${SWAYSOCK:-} ]] || export XDG_CURRENT_DESKTOP=sway
+  # O rofi 2 sai na hora ("Failed to set locale.") se o locale da sessão não existir, como num Arch sem o
+  # locale-gen: com o C.UTF-8, que a glibc sempre tem, ele abre (em inglês). O locale avisa no stderr
+  if command -v locale >/dev/null && [[ -n $(locale 2>&1 >/dev/null) ]]; then
+    export LC_ALL=C.UTF-8
+  fi
+  local placeholder=$1 show=$2 modes
+  shift 2
+  modes=$(IFS=,; printf '%s' "$*")
+  # O Tab troca de modo (o padrão do rofi só desce uma linha); Shift+Tab volta
+  local args=(-show-icons -drun-display-format '{name}' -display-drun "$(mode_name "$(t 'Apps')" Apps)"
+              -kb-row-tab '' -kb-element-next '' -kb-element-prev ''
+              -kb-mode-next 'Tab,Control+Tab' -kb-mode-previous 'ISO_Left_Tab,Control+ISO_Left_Tab'
+              -theme-str "entry { placeholder: \"$(printf '%s' "$placeholder" | sed 's/["\\]/\\&/g')\"; }")
+  [[ -r $theme ]] && args+=(-theme "$theme")
+  # O rofi 1.7 (Debian 13) é do X: sem o Xwayland, que o pacote só recomenda, ele não abriria, sem aviso.
+  # O fork rofi-wayland ("1.7.x+wayland") é Wayland e abre sem ele
+  local version
+  if ! command -v Xwayland >/dev/null && version=$(rofi -version 2>/dev/null) \
+      && [[ $version =~ Version:\ *1\. && $version != *+wayland* ]]; then
+    notify-send -a sway-launcher "$(t 'The launcher needs Xwayland')" \
+      "$(t 'This rofi runs through Xwayland. Install the xwayland package.')" 2>/dev/null
+    exit 1
+  fi
+  exec rofi "${args[@]}" -modes "$modes" -show "$show"
+}
+
+case ${1:-} in
+  toggle)
+    windows=$(mode_name "$(t 'Windows')" Windows)
+    rofi_open "$(t 'Search…')" drun drun "$windows:$mode_cmd windows-mode" \
+      "$(mode_name "$(t 'Clipboard')" Clipboard):$mode_cmd clip-mode" \
+      "$(mode_name "$(t 'Web')" Web):$mode_cmd web-mode" ;;
+  windows)
+    windows=$(mode_name "$(t 'Windows')" Windows)
+    rofi_open "$(t 'Open windows…')" "$windows" "$windows:$mode_cmd windows-mode" ;;
+  windows-mode) shift; windows_mode "$@" ;;
+  clip-mode) shift; clip_mode "$@" ;;
+  web-mode) shift; web_mode "$@" ;;
+  *) echo "$(t 'usage: sway-launcher toggle|windows')" >&2; exit 2 ;;
+esac

@@ -1,0 +1,178 @@
+#!/usr/bin/env bash
+# Baixa a imagem do dia do Bing e aplica como wallpaper nos ambientes pedidos.
+# uso: bing-wallpaper [gnome|kde|cinnamon|xfce|mango|sway|hyprland ...]
+# Sai com 75 se aplicou uma imagem antiga por falha de rede: o serviço do systemd tenta de novo.
+set -euo pipefail
+
+self=$(readlink -f -- "$0")
+# Um programa do projeto: o de ~/.local/bin primeiro (o link do --rust-only vai direto ao binário em
+# Rust, sem o Python), depois o da pasta deste script (o repositório, ou o /usr/libexec/swaydesk do pacote).
+# Na sessão do pacote (SWAYDESK_SESSION=package), só o do pacote: os dotfiles da mesma conta não entram
+sibling() {
+  if [[ ${SWAYDESK_SESSION-} != package && -x $HOME/.local/bin/$1 ]]; then
+    printf '%s' "$HOME/.local/bin/$1"
+  else
+    printf '%s' "${self%/*}/$1"
+  fi
+}
+api='https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1'
+locale=$("$(sibling sway-desktop-config)" get locale 2>/dev/null) || locale=
+# Sem locale, o Bing escolhe o mercado pelo IP
+[[ -z $locale ]] || api+="&mkt=${locale/_/-}"
+keep=30   # quantas imagens guardar na pasta
+# Só os arquivos baixados por este script: uma imagem sua na pasta não entra na conta
+own='[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9].jpg'
+
+pictures=$(xdg-user-dir PICTURES 2>/dev/null) || true
+dir="${pictures:-$HOME/Pictures}/Wallpapers/bing"
+current="$HOME/.local/share/wallpaper/current.jpg"
+
+log() { echo "bing-wallpaper: $*" >&2; }
+
+# Ambientes pedidos; sem argumentos, os da sessão atual.
+desktops=()
+if (( $# )); then
+  for arg; do
+    de=${arg,,}
+    case $de in
+      gnome|kde|cinnamon|xfce|mango|sway|hyprland) desktops+=("$de") ;;
+      *) log "unknown desktop: $arg (use gnome, kde, cinnamon, xfce, mango, sway or hyprland)"
+         exit 2 ;;
+    esac
+  done
+else
+  IFS=: read -ra session <<<"${XDG_CURRENT_DESKTOP:-}"
+  for de in "${session[@]}"; do
+    case ${de,,} in
+      gnome) desktops+=(gnome) ;;
+      kde) desktops+=(kde) ;;
+      x-cinnamon|cinnamon) desktops+=(cinnamon) ;;
+      xfce) desktops+=(xfce) ;;
+      mango) desktops+=(mango) ;;
+      sway) desktops+=(sway) ;;
+      hyprland) desktops+=(hyprland) ;;
+    esac
+  done
+fi
+
+mkdir -p "$dir" "${current%/*}"
+
+# O timer e o login do Sway podem rodar juntos. O segundo espera o primeiro e reaproveita
+# a imagem que ele baixou, em vez de competir pelo mesmo download.
+exec 9>"$dir/.lock"
+flock -w 300 9 || { log "another run has not finished"; exit 75; }
+
+# Cada função devolve 0 = aplicado, 1 = falhou, 3 = sessão não está rodando.
+apply_gnome() {
+  gsettings set org.gnome.desktop.background picture-uri "file://$1" &&
+  gsettings set org.gnome.desktop.background picture-uri-dark "file://$1" &&
+  gsettings set org.gnome.desktop.background picture-options zoom
+}
+
+apply_cinnamon() {
+  gsettings set org.cinnamon.desktop.background picture-uri "file://$1" &&
+  gsettings set org.cinnamon.desktop.background picture-options zoom
+}
+
+apply_kde() {
+  pgrep -x plasmashell >/dev/null || return 3
+  plasma-apply-wallpaperimage "$1" >/dev/null
+}
+
+apply_xfce() {
+  pgrep -x xfdesktop >/dev/null || return 3
+  local prop props
+  # Sem nenhuma propriedade, nada mudaria: isso é falha, não "aplicado"
+  props=$(xfconf-query -c xfce4-desktop -l | grep '/last-image$') || return 1
+  # Uma propriedade por monitor e workspace; image-style 5 = ampliado.
+  while read -r prop; do
+    xfconf-query -c xfce4-desktop -p "$prop" -s "$1" || return 1
+    xfconf-query -c xfce4-desktop -p "${prop%/last-image}/image-style" -n -t int -s 5 || return 1
+  done <<<"$props"
+}
+
+apply_mango() {
+  pgrep -x mango >/dev/null || return 3
+  # A Noctalia sobe junto no login: espera o IPC responder antes de aplicar.
+  for _ in {1..30}; do
+    noctalia msg status >/dev/null 2>&1 && break
+    sleep 1
+  done
+  noctalia msg wallpaper-set "$1"
+}
+
+apply_sway() {
+  swaymsg -t get_version >/dev/null 2>&1 || return 3
+  # O próprio Sway reinicia o swaybg com a imagem nova
+  swaymsg "output * bg $current fill #1e1e1e" >/dev/null || return 1
+  # O fundo desfocado da tela de bloqueio, já pronto: o bloqueio não o gera (prazo do sway-lock)
+  "$(sibling sway-lock-blur)" >/dev/null 2>&1 || true
+}
+
+apply_hyprland() {
+  hyprctl version >/dev/null 2>&1 || return 3
+  [[ $(hyprctl hyprpaper reload ",$1") == ok ]]
+}
+
+apply() {
+  ln -sfn "$1" "$current"
+  local de rc failed=0
+  for de in "${desktops[@]}"; do
+    rc=0
+    "apply_$de" "$1" || rc=$?
+    case $rc in
+      0) log "$de: aplicado" ;;
+      3) log "$de: session is not running, skipping" ;;
+      *) log "$de: failed"; failed=1 ;;
+    esac
+  done
+  return $failed
+}
+
+# Sem imagem nova, aplica a mais recente que já está na pasta.
+fallback() {
+  local last
+  last=$(find "$dir" -maxdepth 1 -name "$own" -size +0 | sort | tail -n 1)
+  if [[ -z $last ]]; then
+    log "$1, and no saved image"
+    exit 1
+  fi
+  log "$1; using $last"
+  apply "$last"
+  # A tela tem uma imagem, mas não a de hoje: não é sucesso, para o systemd tentar de novo
+  exit 75
+}
+
+# No login a rede pode ainda não estar pronta: espera até cerca de 1 minuto.
+online=false
+for _ in {1..12}; do
+  if curl -fsS -o /dev/null --max-time 10 https://www.bing.com; then
+    online=true
+    break
+  fi
+  sleep 5
+done
+$online || fallback "no network"
+
+json=$(curl -fsSL --retry 3 --max-time 30 "$api") || fallback "API failure"
+meta=$(jq -er '.images[0]
+  | select((.urlbase | type) == "string" and (.startdate | test("^[0-9]{8}$")))
+  | "\(.urlbase) \(.startdate)"' <<<"$json") || fallback "unexpected API answer"
+read -r base date <<<"$meta"
+
+file="$dir/$date.jpg"
+if [[ ! -s $file ]]; then
+  # Baixa para um arquivo temporário: um download cortado nunca vira o arquivo final.
+  tmp=$(mktemp "$dir/.download.XXXXXX")
+  trap 'rm -f "$tmp"' EXIT
+  curl -fsSL --retry 3 --max-time 120 "https://www.bing.com${base}_UHD.jpg" -o "$tmp" \
+    || fallback "download failure"
+  chmod 644 "$tmp"
+  mv "$tmp" "$file"
+
+  # Limpar é um extra: uma falha aqui não pode impedir de aplicar a imagem nova
+  find "$dir" -maxdepth 1 -name "$own" -print0 | sort -rz | tail -zn "+$((keep + 1))" | xargs -0r rm -f -- \
+    || log "could not delete old images"
+fi
+
+apply "$file"

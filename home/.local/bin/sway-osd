@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# uso: sway-osd volume up|down [passo] | sway-osd volume mute | sway-osd brightness up|down
+# Muda o volume ou o brilho e mostra o nível no sway-osd-bar (volume na cor de destaque, mudo cinza,
+# brilho branco). O passo do volume é em %, 5 por padrão; a rolagem no ícone usa 1.
+set -euo pipefail
+run=${XDG_RUNTIME_DIR:-/tmp}
+bin=$(dirname "$(readlink -f "$0")")
+
+step=${3:-5}
+if ! [[ $step =~ ^[0-9]{1,2}$ ]] || (( 10#$step < 1 )); then
+  echo "sway-osd: the step is a number from 1 to 99" >&2
+  exit 2
+fi
+step=$((10#$step))
+case ${1:-}/${2:-} in
+  volume/up|volume/down|volume/mute|brightness/up|brightness/down) ;;
+  *) echo "usage: sway-osd volume up|down [step] | volume mute | brightness up|down" >&2; exit 2 ;;
+esac
+
+# Um por vez, da mudança até o aviso: com a tecla repetindo ou a rolagem rápida, dois em paralelo
+# podiam gravar o nível mais velho por último, e o indicador mostrava um volume que já mudou
+# Sem a trava (pasta sem escrita, sem flock), segue assim mesmo
+{ exec 9>"$run/sway-osd.lock" && flock -w 2 9; } 2>/dev/null || true
+
+case $1/$2 in
+  volume/up)       wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ "$step%+" ;;
+  volume/down)     wpctl set-volume @DEFAULT_AUDIO_SINK@ "$step%-" ;;
+  volume/mute)     wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+  brightness/up|brightness/down)
+    # O sway-brightness garante o piso e avisa o ícone
+    "$bin/sway-brightness" "$2" ;;
+esac
+
+if [ "$1" = volume ]; then
+  # "Volume: 0.70" ou "Volume: 0.70 [MUTED]"
+  read -r _ vol muted < <(wpctl get-volume @DEFAULT_AUDIO_SINK@)
+  line="volume $(awk -v v="$vol" 'BEGIN { printf "%d", v * 100 + 0.5 }')"
+  [ -n "${muted:-}" ] && line+=" muted"
+else
+  line="brightness $("$bin/sway-brightness" get)"
+fi
+
+# Só com o sway-osd-bar no ar (o PID do arquivo é dele: o número pode ter sido reutilizado). O
+# estado vai inteiro para o arquivo antes do sinal, e o mv troca de uma vez: ele nunca lê metade
+pid=$(cat "$run/sway-osd-bar.pid" 2>/dev/null) || exit 0
+[[ $pid =~ ^[0-9]+$ ]] || exit 0
+mapfile -d '' -t args 2>/dev/null <"/proc/$pid/cmdline" || exit 0
+# A versão em Rust roda com o nome puro no argv[0] (o sway_rust passa a vez com ele)
+[[ ${args[0]:-} == sway-osd-bar || ${args[0]:-} == */sway-osd-bar || ${args[1]:-} == */sway-osd-bar ]] || exit 0
+tmp="$run/sway-osd-bar.state.$$"
+printf '%s\n' "$line" >"$tmp" && mv -f "$tmp" "$run/sway-osd-bar.state" || { rm -f "$tmp"; exit 0; }
+kill -USR1 "$pid" 2>/dev/null || true

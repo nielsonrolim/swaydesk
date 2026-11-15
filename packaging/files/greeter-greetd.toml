@@ -1,0 +1,8 @@
+# O greetd com a tela de login do Sway Desktop (swaydesk-greeter). O greetd.service lê este arquivo pelo
+# drop-in do pacote; o /etc/greetd/config.toml da distro fica intocado e volta a valer sem o pacote.
+[terminal]
+vt = @VT@
+
+[default_session]
+command = "sway --config /usr/share/swaydesk-greeter/sway.conf"
+user = "@USER@"

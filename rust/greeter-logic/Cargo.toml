@@ -1,0 +1,18 @@
+[package]
+name = "swaydesk-greeter-logic"
+description = "A lógica da tela de login (swaydesk-greeter), sem GTK: o protocolo do greetd, as sessões, os usuários e a memória"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "swaydesk_greeter_logic"
+path = "src/lib.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-lock-logic.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+shlex.workspace = true

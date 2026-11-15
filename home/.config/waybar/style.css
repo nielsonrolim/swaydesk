@@ -1,0 +1,100 @@
+/* As cores do destaque e as fontes são geradas: sway-desktop-config apply. As fontes: a Noto Sans,
+   a do sistema se ela faltar, e a Symbols Nerd Font para os ícones */
+@import url("accent.css");
+@import url("fonts.css");
+
+* {
+  font-size: 13px;
+  border: none;
+  border-radius: 0;
+  min-height: 0;
+}
+
+window#waybar {
+  background: rgba(46, 46, 51, 0.90); /* Mint-Y-Dark bg #2e2e33 */
+  color: #dadada;
+}
+
+button {
+  box-shadow: none;
+  text-shadow: none;
+}
+
+/* Workspaces: ocupados brancos, vazios apagados, focado com fundo */
+#workspaces button {
+  min-width: 20px;
+  padding: 0 6px;
+  background: transparent;
+  color: #dadada;
+  font-weight: bold;
+}
+#workspaces button.persistent { color: #8a8a8f; }
+/* hover antes dos estados: passar o mouse não esconde o focado nem o urgente */
+#workspaces button:hover      { background: #4c4c50; }
+#workspaces button.focused    { background: @accent; color: @on_accent; }
+#workspaces button.urgent     { background: #fc4138; }
+
+#mode { padding: 0 8px; background: @accent; }
+
+#custom-weather, #custom-clock {
+  padding: 0 5px;
+  font-weight: bold;
+}
+
+
+/* Ícones da direita em "casas" de mesma largura (16px + 5px de cada lado),
+   centralizados, no mesmo passo de 26px dos ícones da bandeja (16px + spacing 10) */
+#custom-media, #custom-clipboard, #language, #custom-system, #custom-brightness, #custom-caffeine, #custom-notification,
+#custom-bluetooth, #custom-network, #custom-volume, #custom-battery, #custom-power {
+  min-width: 16px;
+  padding: 0 5px;
+}
+/* Tamanho de cada ícone, escolhido pelo usuário. Cada glifo da Nerd Font ocupa uma parte diferente do
+   tamanho da fonte (a bateria deitada, 58%; o sino, 94%): por isso os tamanhos variam de um para outro */
+#custom-clipboard, #custom-notification, #custom-brightness, #language { font-size: 14px; }
+#custom-power, #custom-volume, #custom-network, #custom-caffeine { font-size: 14px; }
+#custom-bluetooth, #custom-media, #custom-battery { font-size: 16px; }
+#custom-system { font-size: 18px; }
+#custom-battery.charging, #custom-battery.plugged { font-size: 14px; }  /* raio e tomada */
+/* O play/pausa e o Bluetooth ficam 1px acima do centro da barra: o padding de cima os desce 1px
+   (medido com o grim; os outros ficam a até 0,5px do centro) */
+#custom-media, #custom-bluetooth { padding-top: 2px; }
+
+/* À direita também: sem isso, o último ícone da bandeja encosta na área de transferência */
+#tray { padding: 0 5px; }
+#custom-power { padding-right: 10px; }
+
+#language { font-weight: bold; }
+
+#custom-battery.warning     { color: #f27835; }
+#custom-battery.critical    { color: #fc4138; }
+#custom-battery.charging    { color: @accent; }  /* raio; na tomada = tomada; na bateria = nível */
+#custom-volume.muted, #custom-network.disconnected, #custom-network.connecting { color: #8a8a8f; }
+#custom-network.limited { color: #f27835; }
+#custom-bluetooth.off { color: #8a8a8f; }
+
+/* Cafeína: apagada quando desligada, teal quando ligada */
+/* O <sup> do ponto aumenta a linha e desce o sino 1,5px abaixo dos outros ícones; o padding o
+   devolve ao centro (medido com o grim) */
+#custom-notification.notification, #custom-notification.dnd-notification,
+#custom-notification.inhibited-notification, #custom-notification.dnd-inhibited-notification {
+  padding-bottom: 3px;
+}
+#custom-notification.offline { color: #fc4138; }  /* sem o sway-notifd, as notificações se perdem */
+#custom-caffeine.off { color: #8a8a8f; }
+#custom-system.warn { color: #f27835; }
+#custom-caffeine.on  { color: @accent; }
+
+#custom-media.paused { color: #8a8a8f; }
+
+#custom-rec.recording { padding: 0 8px; color: #fc4138; font-weight: bold; }
+
+/* Menus da bandeja (nm-applet etc.): o "* { min-height: 0 }" lá de cima
+   zera as setas de submenu e as marcas de seleção do Mint-Y; devolve o tamanho */
+menu menuitem arrow,
+menu menuitem check,
+menu menuitem radio {
+  min-width: 16px;
+  min-height: 16px;
+}
+

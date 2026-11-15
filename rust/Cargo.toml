@@ -1,0 +1,52 @@
+# Os componentes em Rust. O alvo mínimo é o Debian 13: rustc 1.85, GTK 4.18 e gtk4-layer-shell 1.0.
+# As versões dos crates do GTK são as que o Debian 13 empacota (gtk4 0.9, gtk4-layer-shell 0.4).
+[workspace]
+resolver = "2"
+members = ["common", "drawer-logic", "drawer", "ui", "calendar", "vpointer", "notifd-logic", "notifd", "notifications", "notifications-popup", "caffeine-popup", "brightness-popup", "battery-popup", "system-logic", "system", "system-popup", "audio-popup", "nm", "network", "network-popup", "bluez", "bluetooth", "bluetooth-popup", "weather", "weather-popup", "dock-logic", "dock", "clipboard", "media", "media-popup", "clipboard-popup", "keyring", "sessionmgr", "portal", "theme", "desktop-config", "session-menu", "osd-bar", "theme-app", "lock-logic", "lock", "clip-store", "capture", "switcher-logic", "switcher", "greeter-logic", "greeter"]
+# O binário GTK precisa do gtk4-layer-shell, que o Mint 22 não tem: `cargo test` aqui roda o resto, e
+# `cargo build -p swaydesk-drawer` compila ele (no Debian 13, no Ubuntu 26.04 ou no contêiner)
+default-members = ["common", "drawer-logic", "notifd-logic", "notifications", "system-logic", "system", "nm", "network", "bluez", "bluetooth", "weather", "dock-logic", "clipboard", "media", "keyring", "sessionmgr", "portal", "theme", "desktop-config", "lock-logic", "clip-store", "switcher-logic", "greeter-logic"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT"
+
+[workspace.dependencies]
+swaydesk-common = { path = "common" }
+swaydesk-drawer-logic = { path = "drawer-logic" }
+swaydesk-dock-logic = { path = "dock-logic" }
+swaydesk-ui = { path = "ui" }
+swaydesk-notifd-logic = { path = "notifd-logic" }
+swaydesk-notifd = { path = "notifd" }
+swaydesk-system-logic = { path = "system-logic" }
+swaydesk-clipboard = { path = "clipboard" }
+swaydesk-weather = { path = "weather" }
+swaydesk-media = { path = "media" }
+swaydesk-lock-logic = { path = "lock-logic" }
+swaydesk-theme = { path = "theme" }
+swaydesk-nm = { path = "nm" }
+swaydesk-bluez = { path = "bluez" }
+swaydesk-switcher-logic = { path = "switcher-logic" }
+swaydesk-greeter-logic = { path = "greeter-logic" }
+gettext = "0.4"
+gio = "0.20"
+gtk4 = { version = "0.9", package = "gtk4", features = ["v4_14"] }
+gtk4-layer-shell = "0.4"
+pangocairo = "0.20"
+libc = "0.2"
+regex = { version = "1", default-features = false, features = ["std", "unicode"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+shlex = "1.3"
+url = "2"
+ureq = { version = "2", default-features = false, features = ["tls", "native-certs"] }
+sha2 = "0.10"
+toml = { version = "0.8", default-features = false, features = ["parse"] }
+unicode-general-category = "0.6"
+unicode-normalization = "0.1"
+
+[profile.release]
+lto = true
+strip = true

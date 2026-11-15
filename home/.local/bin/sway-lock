@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+# O único jeito de bloquear a tela: o atalho, o swayidle (inatividade e before-sleep) e o menu da sessão
+# chamam este script. Volta 0 só com a tela bloqueada, como o swaylock -f: o swayidle -w espera por
+# ele, e a máquina só suspende depois do bloqueio.
+#
+# Tenta, nesta ordem (SWAY_LOCK_IMPL=rust|python|swaylock força um):
+#   1. swaydesk-lock (Rust + GTK 4);
+#   2. sway-lock-gtk (Python + GTK 3, gtk-session-lock);
+#   3. swaylock, como antes, que fica instalado como último recurso.
+# Os dois primeiros sobem pelo sway-lock-watch, o supervisor, e avisam por um pipe: "L" bloqueado,
+# "F" já estava bloqueado (o protocolo responde finished ao segundo cliente). Sem o aviso a tempo,
+# ou com o fim do pipe, tenta o próximo. Nada de pgrep para decidir: ele pode ver um bloqueio que está
+# morrendo. O prazo total fica bem abaixo dos 5 s do InhibitDelayMaxSec do logind, senão a máquina
+# suspende desbloqueada.
+# uso: sway-lock
+set -uo pipefail
+if [[ $# -ne 0 ]]; then
+  echo "usage: sway-lock" >&2
+  exit 2
+fi
+bin=$(dirname "$(readlink -f "$0")")
+run=${XDG_RUNTIME_DIR:-/tmp}
+wallpaper=$HOME/.local/share/wallpaper/current.jpg
+# O swaylock com o papel de parede; sem ele (só os pacotes, sem os dotfiles), a cor dos popups: com um
+# -i que não existe, a tela ficava toda branca
+swaylock_args=(-f -c 2e2e33)
+[[ -r $wallpaper ]] && swaylock_args=(-f -s fill -i "$wallpaper")
+# Prazo por tentativa e prazo total dos nossos lockers, em microssegundos. O Rust sobe rápido (1,5 s). O
+# Python com o GTK 3 leva mais a frio (a primeira vez depois do boot ou da instalação, sem nada no cache
+# de páginas: 1,5 s não bastavam na VM do Debian 13, onde ele é o locker de fato; medido lá a frio, 0,5 a
+# 0,8 s): 2,5 s. Depois do total (3 s) sobram 2 s para o swaylock subir (0,5 a 1 s) antes dos 5 s do logind
+to_us() { local s=${1%.*} f=${1#*.}; [[ $1 == *.* ]] || f=0; f=${f}000000; echo $(( 10#$s * 1000000 + 10#${f:0:6} )); }
+now_us() { echo $(( ${EPOCHREALTIME/[.,]/} )); }
+attempt_us=$(to_us "${SWAY_LOCK_TIMEOUT:-1.5}")
+python_attempt_us=$(to_us "${SWAY_LOCK_PYTHON_TIMEOUT:-2.5}")
+deadline_us=$(( $(now_us) + $(to_us "${SWAY_LOCK_BUDGET:-3}") ))
+reread_us=300000
+
+case ${SWAY_LOCK_IMPL:-} in
+  "")       impls=(rust python swaylock) ;;
+  rust|python|swaylock) impls=("$SWAY_LOCK_IMPL") ;;
+  *) echo "sway-lock: SWAY_LOCK_IMPL is rust, python or swaylock" >&2; exit 2 ;;
+esac
+
+# O programa de cada versão, se existir. O Rust fica ao lado deste script ou no PATH
+locker() {
+  case $1 in
+    rust)
+      if [[ -x $bin/swaydesk-lock ]]; then echo "$bin/swaydesk-lock"; else command -v swaydesk-lock; fi ;;
+    python)
+      [[ -x $bin/sway-lock-gtk ]] && echo "$bin/sway-lock-gtk" ;;
+  esac
+}
+
+# Abre o locker pelo supervisor e espera o aviso por $1 microssegundos. 0: bloqueado (ou já estava);
+# 1: o locker saiu sem bloquear; 2: estourou o prazo
+try_locker() {
+  local code= watch rc wait=$(printf '%d.%06d' $(( $1 / 1000000 )) $(( $1 % 1000000 )))
+  # O stdin de quem chamou não fica preso ao supervisor, ao locker e ao swaylock, que vivem até o
+  # desbloqueio. Sem job control (script), o subshell não lidera o grupo, e o setsid faz exec direto:
+  # o $! é o PID do supervisor. Num shell interativo, o setsid faria fork, e o kill erraria o processo
+  exec 3< <(exec setsid "$bin/sway-lock-watch" "$2" </dev/null 2>>"$run/sway-lock.log")
+  watch=$!
+  read -r -t "$wait" -n 1 code <&3
+  rc=$?
+  if [[ $code != [LF] ]]; then
+    # Antes de "L", o supervisor encerra o locker junto. Depois, ignora o sinal e o "L" ainda chega aqui
+    kill -TERM "$watch" 2>/dev/null
+    read -r -t 0.3 -n 1 code <&3
+  fi
+  exec 3<&-
+  [[ $code == [LF] ]] && return 0
+  (( rc > 128 )) && return 2
+  return 1
+}
+
+for impl in "${impls[@]}"; do
+  if [[ $impl == swaylock ]]; then
+    exec swaylock "${swaylock_args[@]}"
+  fi
+  program=$(locker "$impl") || continue
+  [[ -n $program ]] || continue
+  left=$(( deadline_us - $(now_us) - reread_us ))
+  (( left > 100000 )) || { echo "sway-lock: out of time, going to swaylock" >>"$run/sway-lock.log"; continue; }
+  limit=$attempt_us
+  [[ $impl != python ]] || limit=$python_attempt_us
+  try_locker $(( left < limit ? left : limit )) "$program"
+  case $? in
+    0) exit 0 ;;
+    2)
+      # Um locker travado costuma ser o sistema (GPU, Wayland): o outro em GTK travaria igual
+      echo "sway-lock: $impl did not answer in time, going to swaylock" >>"$run/sway-lock.log"
+      [[ " ${impls[*]} " == *" swaylock "* ]] && exec swaylock "${swaylock_args[@]}"
+      ;;
+    *) echo "sway-lock: $impl did not lock, trying the next one" >>"$run/sway-lock.log" ;;
+  esac
+done
+echo "sway-lock: no locker could lock the screen" >&2
+exit 1

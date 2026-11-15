@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# blueman-applet sem o ícone da bandeja, só para a sessão do Sway.
+#
+# O applet continua sendo o agente de pareamento do BlueZ (PIN, confirmação). O ícone e o menu são os do
+# waybar-bluetooth. O ícone é o plugin StatusIcon, que abre o blueman-tray. Ele sai do plugin-list do
+# blueman ("!StatusIcon") junto com o ShowConnected: o blueman carrega as dependências de um plugin sem
+# olhar o plugin-list, e o ShowConnected (só a dica e o ícone da bandeja) depende do StatusIcon. Os dois
+# saem só na base do dconf do Sway, a do DCONF_PROFILE que o sway-session exporta: o Cinnamon e o GNOME
+# leem a base normal e continuam com o ícone. Fora dessa base nunca se grava nada; o pior caso é o ícone
+# voltar à bandeja.
+# uso: blueman-agent (no lugar do blueman-applet)
+set -u
+OFF=("'!StatusIcon'" "'!ShowConnected'")
+if [[ ${DCONF_PROFILE:-} == */sway-desktop/dconf/sway ]] && command -v gsettings >/dev/null; then
+  current=$(gsettings get org.blueman.general plugin-list 2>/dev/null) || current=
+  if [[ -n $current ]]; then
+    # "@as []" ou "['A', '!B']": acrescenta só o que falta, sem perder o que já está lá
+    items=${current#@as }
+    items=${items#[}
+    items=${items%]}
+    changed=0
+    for entry in "${OFF[@]}"; do
+      if [[ $current != *"$entry"* ]]; then
+        items+=${items:+, }$entry
+        changed=1
+      fi
+    done
+    (( ! changed )) || gsettings set org.blueman.general plugin-list "[$items]" 2>/dev/null || true
+  fi
+fi
+exec blueman-applet "$@"

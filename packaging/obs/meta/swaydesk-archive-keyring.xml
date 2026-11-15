@@ -1,0 +1,7 @@
+<package name="swaydesk-archive-keyring" project="home:nielsonrolim">
+  <title>Sway desktop components - APT source and signing key</title>
+  <description>The APT source of this repository and the key that signs it (Debian and Ubuntu only).</description>
+  <build>
+    <disable repository="Arch"/>
+  </build>
+</package>

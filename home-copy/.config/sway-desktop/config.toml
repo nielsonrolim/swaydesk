@@ -1,0 +1,35 @@
+# Config do desktop. Este arquivo é seu: a instalação não o sobrescreve.
+# Os programas leem ao abrir: o que fica aberto, como a Waybar, precisa ser reiniciado.
+
+# Idioma dos textos, data, tempo e wallpaper do dia, como "pt_BR". Vazio: os textos seguem o
+# LANGUAGE ou o LANG, e a data, o LC_TIME ou o LANG
+locale = ""
+
+# Cidade da previsão do tempo, como "Fortaleza". Vazio: vem do IP
+weather_location = ""
+
+# O país dos feriados do calendário, como "BR" ou "US", com a python3-holidays instalada (a do Debian 13 ou
+# do Ubuntu 26.04: a do Mint 22 é antiga demais). Vazio: o país do locale ("BR" em pt_BR), sem aviso se
+# faltar a biblioteca. "none": nenhum
+holidays = ""
+
+# Tema, ícones e cor de destaque. Para trocar tudo junto, em todo o desktop: o app Tema do Desktop
+# ou o sway-theme. Com o Papirus, as pastas ficam na cor de folder_color, uma das do sway-theme colors.
+# Vazio: a cor do Papirus mais perto do destaque. Mudou à mão? Rode sway-desktop-config apply
+gtk_theme = "Mint-Y-Dark-Teal"
+icon_theme = "Papirus-Dark"
+accent = "#199ca8"
+folder_color = ""
+
+# Gerenciador de arquivos do atalho Ctrl+Alt+E, da gaveta e da dock: o nome do comando.
+# Vazio: o primeiro instalado entre nemo, thunar, nautilus e dolphin. No Mint é o Nemo; no Ubuntu
+# e no Debian, o ./install.sh --deps instala o Thunar, mais leve que o Nemo.
+# Também servem o "nautilus" (GNOME) e o "dolphin" (KDE), se instalados; o Dolphin traz parte do
+# KDE e segue o tema do Qt, não o do GTK. Para trocar, instale o pacote, escreva o nome aqui
+# e rode sway-desktop-config generate, para as pastas abertas por outros apps também irem para ele
+file_manager = ""
+
+# A versão dos componentes (grade de apps e, aos poucos, os outros). "auto": a versão em Rust + GTK 4
+# onde ela estiver instalada (./install.sh --rust) e carregar; senão, a em Python. "python": sempre a
+# em Python. "rust": a em Rust, com um aviso no log quando ela faltar. Vale ao abrir o componente
+components = "auto"

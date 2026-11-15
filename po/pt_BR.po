@@ -1,0 +1,2484 @@
+# Portuguese translations for sway-desktop package
+# Traduções em português brasileiro para o pacote sway-desktop.
+# Copyright (C) 2026 THE sway-desktop'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the sway-desktop package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: sway-desktop\n"
+"Report-Msgid-Bugs-To: \n"
+"PO-Revision-Date: 2026-11-08 18:00-0300\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+#: home/.local/bin/session-menu
+msgid "Lock"
+msgstr "Bloquear"
+
+#: home/.local/bin/session-menu
+msgid "Log out"
+msgstr "Sair"
+
+#: home/.local/bin/session-menu
+msgid "Suspend"
+msgstr "Suspender"
+
+#: home/.local/bin/session-menu
+msgid "Restart"
+msgstr "Reiniciar"
+
+#: home/.local/bin/session-menu
+msgid "Shut down"
+msgstr "Desligar"
+
+#: home/.local/bin/session-menu home/.local/bin/session-action
+msgid "Session"
+msgstr "Sessão"
+
+#: home/.local/bin/session-menu
+#, python-format
+msgid "Could not run: %s."
+msgstr "Falha ao executar: %s."
+
+#: home/.local/bin/session-menu
+#, python-format
+msgid "%d day"
+msgid_plural "%d days"
+msgstr[0] "%d dia"
+msgstr[1] "%d dias"
+
+#: home/.local/bin/session-menu
+#, python-format
+msgid "up %s"
+msgstr "ligado há %s"
+
+#: home/.local/bin/session-menu
+msgid "arrows and Enter · click outside or Esc to close"
+msgstr "setas e Enter · clique fora ou Esc fecha"
+
+#: home/.local/bin/sway-capture
+msgid "Region"
+msgstr "Região"
+
+#: home/.local/bin/sway-capture
+msgid "Full screen"
+msgstr "Tela inteira"
+
+#: home/.local/bin/sway-capture
+msgid "Window"
+msgstr "Janela"
+
+#: home/.local/bin/sway-capture
+msgid "No audio"
+msgstr "Sem áudio"
+
+#: home/.local/bin/sway-capture home/.local/bin/sway-drawer
+msgid "System"
+msgstr "Sistema"
+
+#: home/.local/bin/sway-capture
+msgid "Microphone"
+msgstr "Microfone"
+
+#: home/.local/bin/sway-capture home/.local/bin/sway-shot
+msgid "Screenshot"
+msgstr "Captura de tela"
+
+#: home/.local/bin/sway-capture
+msgid "Record screen"
+msgstr "Gravar tela"
+
+#: home/.local/bin/sway-capture
+msgid "Esc closes"
+msgstr "Esc fecha"
+
+#: home/.local/bin/sway-capture
+msgid "Shift + key: system · Ctrl + key: microphone · Esc closes"
+msgstr "Shift + tecla: sistema · Ctrl + tecla: microfone · Esc fecha"
+
+#: home/.local/bin/sway-capture
+msgid "Open folder"
+msgstr "Abrir pasta"
+
+#: home/.local/bin/sway-capture
+msgid "Delay · d"
+msgstr "Atraso · d"
+
+#: home/.local/bin/sway-capture
+msgid "Now"
+msgstr "Agora"
+
+#: home/.local/bin/sway-capture
+msgid "Open in Gradia"
+msgstr "Abrir no Gradia"
+
+#: home/.local/bin/sway-capture
+msgid "to annotate, crop and decorate · g"
+msgstr "para anotar, recortar e enfeitar · g"
+
+#: home/.local/bin/sway-capture
+msgid "Audio · a"
+msgstr "Áudio · a"
+
+#: home/.local/bin/sway-capture
+msgid "Capture"
+msgstr "Captura"
+
+#: home/.local/bin/sway-capture home/.local/bin/sway-files
+#, python-format
+msgid "Could not open %s"
+msgstr "Não foi possível abrir %s"
+
+#: home/.local/bin/sway-capture
+msgid "usage: sway-capture shot|rec"
+msgstr "uso: sway-capture shot|rec"
+
+#: home/.local/bin/sway-desktop-config
+msgid ""
+"usage: sway-desktop-config get <key>   shows a value, for the Bash scripts\n"
+"       sway-desktop-config generate      writes the files that depend on the color\n"
+"       sway-desktop-config apply         writes the files and reloads Sway\n"
+"       sway-desktop-config css           shows the accent colors as GTK CSS (@define-color)"
+msgstr ""
+"uso: sway-desktop-config get <chave>   mostra um valor, para os scripts em Bash\n"
+"     sway-desktop-config generate      grava os arquivos que dependem da cor\n"
+"     sway-desktop-config apply         grava os arquivos e recarrega o Sway\n"
+"     sway-desktop-config css           mostra as cores do destaque em CSS do GTK (@define-color)"
+
+#: home/.local/bin/sway-desktop-config
+msgid ""
+"The popups already open with the new color. The rest changes when you log in again or restart it:\n"
+"  Waybar: ~/.local/bin/sway-waybar restart\n"
+"  drawer: pkill -x sway-drawer; ~/.local/bin/sway-drawer start\n"
+"  volume and brightness indicator: pkill -x sway-osd-bar (it opens again by itself)\n"
+"  dock and notifications: when you log in again"
+msgstr ""
+"Os popups já abrem com a cor nova. O resto muda ao entrar de novo na sessão ou ao reiniciar:\n"
+"  Waybar: ~/.local/bin/sway-waybar restart\n"
+"  gaveta: pkill -x sway-drawer; ~/.local/bin/sway-drawer start\n"
+"  indicador de volume e brilho: pkill -x sway-osd-bar (ele abre de novo sozinho)\n"
+"  dock e notificações: ao entrar de novo na sessão"
+
+#: home/.local/bin/sway-desktop-config
+#, python-format
+msgid "could not write: %s"
+msgstr "não foi possível gravar: %s"
+
+#: home/.local/bin/sway-desktop-config home/.local/bin/sway-theme
+msgid "Could not write the theme to dconf (gsettings)"
+msgstr "Não foi possível gravar o tema no dconf (gsettings)"
+
+#: home/.local/bin/sway-desktop-config
+#, python-format
+msgid "unknown key: %s"
+msgstr "chave desconhecida: %s"
+
+#: home/.local/bin/sway-desktop-config
+msgid "Sway did not reload: run swaymsg reload in the session."
+msgstr "O Sway não recarregou: rode swaymsg reload na sessão."
+
+#: home/.local/bin/sway-dock
+msgid "Applications"
+msgstr "Aplicativos"
+
+#: home/.local/bin/sway-dock home/.local/bin/waybar-clipboard-popup
+msgid "Unpin"
+msgstr "Desafixar"
+
+#: home/.local/bin/sway-dock home/.local/bin/waybar-clipboard-popup
+msgid "Pin"
+msgstr "Fixar"
+
+#: home/.local/bin/sway-dock
+msgid "New window"
+msgstr "Nova janela"
+
+#: home/.local/bin/sway-dock
+msgid "Close"
+msgstr "Fechar"
+
+#: home/.local/bin/sway-dock
+#, python-format
+msgid "Close all (%d)"
+msgstr "Fechar todas (%d)"
+
+#: home/.local/bin/sway-dock
+msgid "sway-dock is not running"
+msgstr "sway-dock não está rodando"
+
+#: home/.local/bin/sway-dock
+msgid "usage: sway-dock [reload | pin ID | unpin ID]"
+msgstr "uso: sway-dock [reload | pin ID | unpin ID]"
+
+#: home/.local/bin/sway-dock
+msgid "sway-dock is already running"
+msgstr "sway-dock já está rodando"
+
+#: home/.local/bin/sway-drawer
+msgid "Office"
+msgstr "Escritório"
+
+#: home/.local/bin/sway-drawer
+msgid "Utilities"
+msgstr "Utilitários"
+
+#: home/.local/bin/sway-drawer
+msgid "Type to search"
+msgstr "Digite para buscar"
+
+#: home/.local/bin/sway-drawer
+msgid "Copy the result"
+msgstr "Copiar o resultado"
+
+#: home/.local/bin/sway-drawer
+msgid "No applications found"
+msgstr "Nenhum aplicativo encontrado"
+
+#: home/.local/bin/sway-drawer
+msgid "Group name"
+msgstr "Nome do grupo"
+
+#: home/.local/bin/sway-drawer
+msgid "Groups"
+msgstr "Grupos"
+
+#: home/.local/bin/sway-drawer
+msgid "Remove from this group"
+msgstr "Remover deste grupo"
+
+#: home/.local/bin/sway-drawer
+msgid "Rename"
+msgstr "Renomear"
+
+#: home/.local/bin/sway-drawer
+msgid "Delete group"
+msgstr "Apagar grupo"
+
+#: home/.local/bin/sway-drawer
+msgctxt "app grid"
+msgid "Home"
+msgstr "Início"
+
+#: home/.local/bin/sway-drawer
+msgid "Add group"
+msgstr "Adicionar grupo"
+
+#: home/.local/bin/sway-drawer
+msgid "Group"
+msgstr "Grupo"
+
+#: home/.local/bin/sway-drawer
+#, python-format
+msgid "%d application"
+msgid_plural "%d applications"
+msgstr[0] "%d aplicativo"
+msgstr[1] "%d aplicativos"
+
+#. TRANSLATORS: the decimal separator of your language
+#: home/.local/bin/sway-drawer home/.local/bin/sway_i18n.py
+msgctxt "decimal separator"
+msgid "."
+msgstr ","
+
+#: home/.local/bin/sway-drawer
+msgid "Remove from favorites"
+msgstr "Desfavoritar"
+
+#: home/.local/bin/sway-drawer
+msgid "Add to favorites"
+msgstr "Favoritar"
+
+#: home/.local/bin/sway-drawer
+msgid "Unpin from the dock"
+msgstr "Desafixar da dock"
+
+#: home/.local/bin/sway-drawer
+msgid "Pin to the dock"
+msgstr "Fixar na dock"
+
+#: home/.local/bin/sway-drawer
+msgid "usage: sway-drawer [start]"
+msgstr "uso: sway-drawer [start]"
+
+#: home/.local/bin/sway-lock-gtk
+msgid "Password"
+msgstr "Senha"
+
+#: home/.local/bin/sway-lock-gtk
+msgid "Caps Lock is on"
+msgstr "Caps Lock ligado"
+
+#: home/.local/bin/sway-lock-gtk
+msgid "Checking…"
+msgstr "Verificando…"
+
+#: home/.local/bin/sway-lock-gtk
+msgid "The password check did not answer: try again"
+msgstr "A verificação da senha não respondeu: tente de novo"
+
+#: home/.local/bin/sway-lock-gtk
+msgid "Wrong password"
+msgstr "Senha incorreta"
+
+#: home/.local/bin/sway-lock-gtk
+msgid "The account needs attention: log in on a text console"
+msgstr "A conta precisa de atenção: entre por um console de texto"
+
+#: home/.local/bin/sway-lock-gtk
+msgid "Could not check the password"
+msgstr "Não foi possível verificar a senha"
+
+#: home/.local/bin/sway-lock-gtk
+msgid "Too many attempts: wait a few seconds"
+msgstr "Muitas tentativas: aguarde alguns segundos"
+
+#: home/.local/bin/sway-switcher
+msgid "usage: sway-switcher daemon|next|prev"
+msgstr "uso: sway-switcher daemon|next|prev"
+
+#: home/.local/bin/sway-theme home/.local/bin/sway_theme_families.py
+msgid "dark"
+msgstr "escuro"
+
+#: home/.local/bin/sway-theme home/.local/bin/sway_theme_families.py
+msgid "light"
+msgstr "claro"
+
+#: home/.local/bin/sway-theme
+msgid "no color"
+msgstr "sem cor"
+
+#: home/.local/bin/sway-theme
+#, python-format
+msgid "%(theme)s · icons %(icons)s · accent %(accent)s"
+msgstr "%(theme)s · ícones %(icons)s · destaque %(accent)s"
+
+#: home/.local/bin/sway-theme
+msgid "Others"
+msgstr "Outros"
+
+#: home/.local/bin/sway-theme
+msgid "not installed"
+msgstr "não instalada"
+
+#: home/.local/bin/sway-theme
+msgid "The Papirus icons are not installed: install the papirus-icon-theme package"
+msgstr "Os ícones Papirus não estão instalados: instale o pacote papirus-icon-theme"
+
+#: home/.local/bin/sway-theme
+#, python-format
+msgid "Theme: %s"
+msgstr "Tema: %s"
+
+#: home/.local/bin/sway-theme
+#, python-format
+msgid "Could not update: %s"
+msgstr "Não foi possível atualizar: %s"
+
+#: home/.local/bin/sway-theme
+msgid "Lists the installed GTK themes and changes theme, icons and accent color across the desktop."
+msgstr "Lista os temas GTK instalados e troca tema, ícones e cor de destaque em todo o desktop."
+
+#: home/.local/bin/sway-theme-app
+msgid "In use"
+msgstr "Em uso"
+
+#: home/.local/bin/sway-theme-app
+msgid "Documents"
+msgstr "Documentos"
+
+#: home/.local/bin/sway-theme-app
+msgid "Home"
+msgstr "Pasta pessoal"
+
+#: home/.local/bin/sway-theme-app
+msgid "Downloads"
+msgstr "Downloads"
+
+#: home/.local/bin/sway-theme-app
+msgid "Music"
+msgstr "Música"
+
+#: home/.local/bin/sway-theme-app
+msgid "Pictures"
+msgstr "Imagens"
+
+#: home/.local/bin/sway-theme-app
+msgid "Projects"
+msgstr "Projetos"
+
+#: home/.local/bin/sway-theme-app
+msgid "Apply"
+msgstr "Aplicar"
+
+#: home/.local/bin/sway-theme-app
+msgid "Desktop Theme"
+msgstr "Tema do Desktop"
+
+#: home/.local/bin/sway-theme-app
+msgid "Back to the theme in use"
+msgstr "Voltar ao tema em uso"
+
+#: home/.local/bin/sway-theme-app
+msgid "Search themes"
+msgstr "Buscar tema"
+
+#: home/.local/bin/sway-theme-app
+msgid "No theme found"
+msgstr "Nenhum tema encontrado"
+
+#: home/.local/bin/sway-theme-app
+msgid "Themes"
+msgstr "Temas"
+
+#: home/.local/bin/sway-theme-app
+msgid "Other themes"
+msgstr "Outros temas"
+
+#: home/.local/bin/sway-theme-app
+msgid "Style"
+msgstr "Estilo"
+
+#: home/.local/bin/sway-theme-app
+msgid "Light"
+msgstr "Claro"
+
+#: home/.local/bin/sway-theme-app
+msgid "Dark"
+msgstr "Escuro"
+
+#: home/.local/bin/sway-theme-app
+msgid "Accent color"
+msgstr "Cor de destaque"
+
+#: home/.local/bin/sway-theme-app
+msgid "The Papirus icons are not installed: the color changes the accent, but not the folders. Install the papirus-icon-theme package."
+msgstr "Os ícones Papirus não estão instalados: a cor muda o destaque, mas não as pastas. Instale o pacote papirus-icon-theme."
+
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "%(theme)s has no %(style)s version"
+msgstr "%(theme)s não tem versão %(style)s"
+
+#: home/.local/bin/sway-theme-app
+msgid "This theme has a fixed style"
+msgstr "Este tema tem estilo fixo"
+
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "%s folders"
+msgstr "pastas %s"
+
+#: home/.local/bin/sway-theme-app
+msgid "Will apply:"
+msgstr "Será aplicado:"
+
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "%s. Choose a theme to save it in the config."
+msgstr "%s. Escolha um tema para gravá-lo na config."
+
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "%(family)s has no %(color)s variant: it uses %(theme)s. The bar, the folders and the GTK 4 apps get the exact color."
+msgstr "%(family)s não tem a variante %(color)s: usa o %(theme)s. A barra, as pastas e os apps GTK 4 ficam com a cor exata."
+
+#: home/.local/bin/sway-theme-app
+msgid "This theme keeps its own colors: the accent changes the bar, the folders and the GTK 4 apps."
+msgstr "Este tema mantém as próprias cores: o destaque muda a barra, as pastas e os apps GTK 4."
+
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "Applying %s..."
+msgstr "Aplicando %s..."
+
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "%(theme)s applied. %(message)s"
+msgstr "%(theme)s aplicado. %(message)s"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "%(wanted)s is not installed: using %(used)s"
+msgstr "%(wanted)s não está instalado: em uso, %(used)s"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "%s takes its colors from the KDE color scheme (~/.config/gtk-3.0/colors.css): the GTK 3 apps follow it, not the style chosen here. Change the scheme in the KDE System Settings"
+msgstr "O %s usa as cores do esquema do KDE (~/.config/gtk-3.0/colors.css): os apps GTK 3 seguem esse esquema, e não o estilo escolhido aqui. Troque o esquema nas Configurações do Sistema do KDE"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "Open outside Sway (%s): the GTK and icon themes applied here also change the settings of that desktop"
+msgstr "Aberto fora do Sway (%s): os temas GTK e de ícones aplicados aqui também mudam as configurações desse desktop"
+
+#: home/.local/bin/sway_themes.py
+msgid "drawer"
+msgstr "gaveta"
+
+#: home/.local/bin/sway_themes.py
+msgid "volume indicator (log in again)"
+msgstr "indicador de volume (entre de novo na sessão)"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "unknown folder color: %(color)s. See them with: sway-theme colors"
+msgstr "cor de pasta desconhecida: %(color)s. Veja com: sway-theme colors"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "theme family not installed: %s. See them with: sway-theme families"
+msgstr "família de temas não instalada: %s. Veja com: sway-theme families"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "%(family)s has no %(style)s version"
+msgstr "%(family)s não tem versão %(style)s"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "theme not installed: %s. See them with: sway-theme list"
+msgstr "tema não instalado: %s. Veja com: sway-theme list"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "invalid color: %(color)s (use one like %(example)s)"
+msgstr "cor inválida: %(color)s (use como %(example)s)"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "fix the file first: %s"
+msgstr "corrija antes o arquivo: %s"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "templates not found in %s: run ./install.sh"
+msgstr "modelos não encontrados em %s: rode o ./install.sh"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "%(theme)s does not define an accent color: kept %(color)s. To change it, use --accent"
+msgstr "%(theme)s não define uma cor de destaque: ficou %(color)s. Para trocar, use --accent"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "There are no icons for %(theme)s: kept %(icons)s"
+msgstr "Não há ícones para %(theme)s: ficaram os %(icons)s"
+
+#: home/.local/bin/sway_themes.py
+msgid "The GTK settings.ini files belong to another desktop (KDE, for example) and were left as they were: the X11 apps in Sway follow their theme"
+msgstr "Os settings.ini do GTK são de outro desktop (o KDE, por exemplo) e ficaram como estavam: os apps X11 do Sway seguem o tema deles"
+
+#: home/.local/bin/sway_themes.py
+msgid "theme in dconf (gsettings)"
+msgstr "tema no dconf (gsettings)"
+
+#: home/.local/bin/sway_themes.py
+msgid "This session uses the same dconf database as GNOME and KDE: to separate them, run ./install.sh --system and log in again"
+msgstr "Esta sessão usa a mesma base do dconf que o GNOME e o KDE: para separar, rode ./install.sh --system e entre de novo"
+
+#: home/.local/bin/sway_themes.py
+msgid "No Sway session: the rest changes when you log in to it"
+msgstr "Sem sessão do Sway: o resto muda ao entrar nela"
+
+#: home/.local/bin/sway_themes.py
+msgid "Notifications change at the next login. Some open apps may need to be reopened"
+msgstr "As notificações mudam no próximo login. Alguns apps abertos podem precisar ser reabertos"
+
+#: home/.local/bin/waybar-audio
+msgid "Mute"
+msgstr "Mudo"
+
+#: home/.local/bin/waybar-audio
+msgid "No device"
+msgstr "Nenhum dispositivo"
+
+#: home/.local/bin/waybar-audio
+msgid "Unmute"
+msgstr "Ativar som"
+
+#: home/.local/bin/waybar-audio
+msgid "Output"
+msgstr "Saída"
+
+#: home/.local/bin/waybar-audio
+msgid "Input"
+msgstr "Entrada"
+
+#: home/.local/bin/waybar-audio home/.local/bin/waybar-bluetooth-popup
+msgid "More options"
+msgstr "Mais opções"
+
+#: home/.local/bin/waybar-audio
+msgid "Open the volume control (pavucontrol)"
+msgstr "Abrir o controle de volume (pavucontrol)"
+
+#: home/.local/bin/waybar-audio home/.local/bin/waybar-volume
+msgid "Audio unavailable"
+msgstr "Áudio indisponível"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+msgid "Power saver"
+msgstr "Economia"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+msgid "Balanced"
+msgstr "Equilibrado"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+msgid "Performance"
+msgstr "Desempenho"
+
+#: home/.local/bin/waybar-battery-popup
+msgid "Power draw"
+msgstr "Consumo"
+
+#: home/.local/bin/waybar-battery-popup
+msgid "Energy"
+msgstr "Energia"
+
+#: home/.local/bin/waybar-battery-popup
+msgid "Health"
+msgstr "Saúde"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-bluetooth-popup
+#: home/.local/bin/waybar-battery
+msgid "Battery"
+msgstr "Bateria"
+
+#: home/.local/bin/waybar-battery-popup
+#, python-format
+msgid "%d h ago"
+msgstr "%d h atrás"
+
+#: home/.local/bin/waybar-battery-popup
+msgid "now"
+msgstr "agora"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+msgid "Power profile"
+msgstr "Perfil de energia"
+
+#: home/.local/bin/waybar-battery-popup
+msgid "More information"
+msgstr "Mais informações"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-bluetooth-popup
+msgid "Other devices"
+msgstr "Outros dispositivos"
+
+#: home/.local/bin/waybar-battery-popup
+msgid "No battery"
+msgstr "Sem bateria"
+
+#: home/.local/bin/waybar-battery-popup
+msgid "Plugged in"
+msgstr "Na tomada"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+msgid "Charging"
+msgstr "Carregando"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+#, python-format
+msgid "Full in %s"
+msgstr "Cheia em %s"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+msgid "Charged"
+msgstr "Carregada"
+
+#: home/.local/bin/waybar-battery-popup
+msgid "Not charging"
+msgstr "Sem carregar"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+msgid "Discharging"
+msgstr "Descarregando"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+#, python-format
+msgid "%s left"
+msgstr "Restam %s"
+
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+msgid "On battery"
+msgstr "Na bateria"
+
+#: home/.local/bin/waybar-battery-popup
+#, python-format
+msgid "%(now)s of %(full)s Wh"
+msgstr "%(now)s de %(full)s Wh"
+
+#: home/.local/bin/waybar-battery-popup
+#, python-format
+msgid "%d%% of the original capacity"
+msgstr "%d%% da capacidade original"
+
+#: home/.local/bin/waybar-battery-popup
+#, python-format
+msgid "%s cycle"
+msgid_plural "%s cycles"
+msgstr[0] "%s ciclo"
+msgstr[1] "%s ciclos"
+
+#: home/.local/bin/waybar-battery-popup
+msgid "Could not change the power profile"
+msgstr "Não foi possível mudar o perfil de energia"
+
+#: home/.local/bin/waybar-bluetooth
+msgid "Bluetooth service is not running"
+msgstr "Serviço de Bluetooth parado"
+
+#: home/.local/bin/waybar-bluetooth home/.local/bin/waybar-bluetooth-popup
+msgid "No Bluetooth adapter"
+msgstr "Nenhum adaptador Bluetooth"
+
+#: home/.local/bin/waybar-bluetooth home/.local/bin/waybar-bluetooth-popup
+msgid "Bluetooth off"
+msgstr "Bluetooth desligado"
+
+#: home/.local/bin/waybar-bluetooth
+msgid "No device connected"
+msgstr "Nenhum dispositivo conectado"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Headphones"
+msgstr "Fone"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Headset"
+msgstr "Fone com microfone"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Audio"
+msgstr "Áudio"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Speaker"
+msgstr "Caixa de som"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Keyboard"
+msgstr "Teclado"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Mouse"
+msgstr "Mouse"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Game controller"
+msgstr "Controle"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Phone"
+msgstr "Celular"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Computer"
+msgstr "Computador"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Printer"
+msgstr "Impressora"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Display"
+msgstr "Tela"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Visible"
+msgstr "Visível"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Lets other devices find this computer"
+msgstr "Permite que outros aparelhos encontrem este computador"
+
+#: home/.local/bin/waybar-bluetooth-popup home/.local/bin/waybar-network-popup
+msgid "Back"
+msgstr "Voltar"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Back to the list of devices"
+msgstr "Voltar à lista de dispositivos"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Open the Bluetooth manager (blueman-manager)"
+msgstr "Abrir o gerenciador do Bluetooth (blueman-manager)"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "My devices"
+msgstr "Meus dispositivos"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "No paired devices"
+msgstr "Nenhum dispositivo pareado"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Details"
+msgstr "Detalhes"
+
+#: home/.local/bin/waybar-bluetooth-popup
+#, python-format
+msgid "Connected · %s%%"
+msgstr "Conectado · %s%%"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Connected"
+msgstr "Conectado"
+
+#: home/.local/bin/waybar-bluetooth-popup home/.local/bin/waybar-network-popup
+msgid "Show details"
+msgstr "Ver detalhes"
+
+#: home/.local/bin/waybar-bluetooth-popup home/.local/bin/waybar-network-popup
+msgid "Disconnect"
+msgstr "Desconectar"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Paired"
+msgstr "Pareado"
+
+#: home/.local/bin/waybar-bluetooth-popup home/.local/bin/waybar-network-popup
+msgid "Connect"
+msgstr "Conectar"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Pair and connect"
+msgstr "Parear e conectar"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Searching..."
+msgstr "Procurando..."
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Click to stop"
+msgstr "Clique para parar"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Search for devices"
+msgstr "Procurar dispositivos"
+
+#: home/.local/bin/waybar-bluetooth-popup
+#, python-format
+msgid "Searches for %d s; Bluetooth audio may stutter meanwhile"
+msgstr "Procura por %d s; pode atrapalhar o áudio Bluetooth nesse tempo"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Yes"
+msgstr "Sim"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "No"
+msgstr "Não"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Name"
+msgstr "Nome"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Address"
+msgstr "Endereço"
+
+#: home/.local/bin/waybar-bluetooth-popup home/.local/bin/waybar-network-popup
+msgid "Type"
+msgstr "Tipo"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Other"
+msgstr "Outro"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Trusted"
+msgstr "Confiável"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Send file"
+msgstr "Enviar arquivo"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Confirm: forget"
+msgstr "Confirmar: esquecer"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Forget"
+msgstr "Esquecer"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Removes the pairing; to use it again, pair it again"
+msgstr "Remove o pareamento; para usar de novo, será preciso parear"
+
+#: home/.local/bin/waybar-bluetooth-popup home/.local/bin/waybar-network-popup
+msgid "Connecting..."
+msgstr "Conectando..."
+
+#: home/.local/bin/waybar-bluetooth-popup home/.local/bin/waybar-network-popup
+#, python-format
+msgid "Could not connect: %s"
+msgstr "Não foi possível conectar: %s"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Disconnecting..."
+msgstr "Desconectando..."
+
+#: home/.local/bin/waybar-bluetooth-popup home/.local/bin/waybar-network-popup
+#, python-format
+msgid "Could not disconnect: %s"
+msgstr "Não foi possível desconectar: %s"
+
+#: home/.local/bin/waybar-bluetooth-popup
+msgid "Pairing: confirm in the dialog, if one appears"
+msgstr "Pareando: confirme no diálogo, se aparecer"
+
+#: home/.local/bin/waybar-bluetooth-popup
+#, python-format
+msgid "Could not pair: %s"
+msgstr "Não foi possível parear: %s"
+
+#: home/.local/bin/waybar-bluetooth-popup
+#, python-format
+msgid "Could not forget: %s"
+msgstr "Não foi possível esquecer: %s"
+
+#: home/.local/bin/waybar-bluetooth-popup
+#, python-format
+msgid "Could not change: %s"
+msgstr "Não foi possível alterar: %s"
+
+#: home/.local/bin/waybar-bluetooth-popup
+#, python-format
+msgid "Could not search: %s"
+msgstr "Não foi possível procurar: %s"
+
+#: home/.local/bin/waybar-brightness-popup
+msgctxt "night light"
+msgid "Off"
+msgstr "Desligada"
+
+#: home/.local/bin/waybar-brightness-popup
+msgctxt "night light"
+msgid "On"
+msgstr "Ligada"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "Scheduled"
+msgstr "Automática"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "Brightness"
+msgstr "Brilho"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "Night light"
+msgstr "Luz noturna"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "From"
+msgstr "Das"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "to"
+msgstr "às"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "Use the format 18:00"
+msgstr "Use o formato 18:00"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "The end must come before the start on the same day"
+msgstr "O fim precisa vir antes do início no mesmo dia"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "4500 K during these hours"
+msgstr "4500 K nesse horário"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "Could not save the schedule"
+msgstr "Não foi possível gravar o horário"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "Install gammastep to use it"
+msgstr "Instale o gammastep para usar"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "gammastep is not running; choose the mode again"
+msgstr "O gammastep não está rodando; escolha o modo de novo"
+
+#: home/.local/bin/waybar-brightness-popup
+msgid "4500 K all the time"
+msgstr "4500 K o tempo todo"
+
+#: home/.local/bin/waybar-caffeine-popup
+msgctxt "caffeine"
+msgid "Off"
+msgstr "Desligada"
+
+#: home/.local/bin/waybar-caffeine-popup
+#: home/.local/bin/waybar-notifications-popup
+msgid "Always"
+msgstr "Sempre"
+
+#: home/.local/bin/waybar-caffeine-popup
+msgid "No lock, screen blanking or suspend when idle"
+msgstr "Sem bloqueio, tela apagada ou suspensão por inatividade"
+
+#: home/.local/bin/waybar-caffeine-popup
+msgid "Caffeine"
+msgstr "Cafeína"
+
+#: home/.local/bin/waybar-caffeine-popup
+#, python-format
+msgid "Turns off at %s"
+msgstr "Desliga às %s"
+
+#: home/.local/bin/waybar-caffeine-popup
+msgid "On until you turn it off"
+msgstr "Ligada até você desligar"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "January"
+msgstr "janeiro"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "February"
+msgstr "fevereiro"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "March"
+msgstr "março"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "April"
+msgstr "abril"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "May"
+msgstr "maio"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "June"
+msgstr "junho"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "July"
+msgstr "julho"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "August"
+msgstr "agosto"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "September"
+msgstr "setembro"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "October"
+msgstr "outubro"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "November"
+msgstr "novembro"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "month"
+msgid "December"
+msgstr "dezembro"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "calendar weekday"
+msgid "Sun"
+msgstr "dom"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "calendar weekday"
+msgid "Mon"
+msgstr "seg"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "calendar weekday"
+msgid "Tue"
+msgstr "ter"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "calendar weekday"
+msgid "Wed"
+msgstr "qua"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "calendar weekday"
+msgid "Thu"
+msgstr "qui"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "calendar weekday"
+msgid "Fri"
+msgstr "sex"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "calendar weekday"
+msgid "Sat"
+msgstr "sáb"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "weekday"
+msgid "Monday"
+msgstr "segunda-feira"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "weekday"
+msgid "Tuesday"
+msgstr "terça-feira"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "weekday"
+msgid "Wednesday"
+msgstr "quarta-feira"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "weekday"
+msgid "Thursday"
+msgstr "quinta-feira"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "weekday"
+msgid "Friday"
+msgstr "sexta-feira"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "weekday"
+msgid "Saturday"
+msgstr "sábado"
+
+#: home/.local/bin/waybar-calendar
+msgctxt "weekday"
+msgid "Sunday"
+msgstr "domingo"
+
+#: home/.local/bin/waybar-calendar
+#, python-format
+msgid "%(weekday)s, %(month)s %(day)d"
+msgstr "%(weekday)s, %(day)d de %(month)s"
+
+#: home/.local/bin/waybar-calendar home/.local/bin/waybar-weather
+msgid "Today"
+msgstr "Hoje"
+
+#: home/.local/bin/waybar-calendar
+#, python-format
+msgid "%s (optional holiday)"
+msgstr "%s (ponto facultativo)"
+
+#: home/.local/bin/waybar-calendar
+msgid "No holidays this month"
+msgstr "Sem feriados neste mês"
+
+#: home/.local/bin/waybar-calendar
+#, python-format
+msgid "%s (optional)"
+msgstr "%s (facultativo)"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Click to copy"
+msgstr "Clique para copiar"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Remove from pinned"
+msgstr "Remover dos fixados"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Delete from history"
+msgstr "Apagar do histórico"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Image"
+msgstr "Imagem"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Binary content"
+msgstr "Conteúdo binário"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Unknown format"
+msgstr "Formato desconhecido"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Text"
+msgstr "Texto"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Search the history…"
+msgstr "Buscar no histórico…"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Pinned"
+msgstr "Fixados"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Recent"
+msgstr "Recentes"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Clear history"
+msgstr "Limpar histórico"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Deletes the history; pinned items stay"
+msgstr "Apaga o histórico; os itens fixados ficam"
+
+#: home/.local/bin/waybar-clipboard-popup
+#, python-format
+msgid "Nothing found for “%s”"
+msgstr "Nada encontrado para “%s”"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "History is empty"
+msgstr "Histórico vazio"
+
+#: home/.local/bin/waybar-clipboard-popup
+#, python-format
+msgid "%d item"
+msgid_plural "%d items"
+msgstr[0] "%d item"
+msgstr[1] "%d itens"
+
+#: home/.local/bin/waybar-clipboard-popup home/.local/bin/waybar_clipboard.py
+msgid "This item is no longer in the history."
+msgstr "Este item não está mais no histórico."
+
+#: home/.local/bin/waybar-clipboard-popup
+#, python-format
+msgid "Could not copy: %s"
+msgstr "Não foi possível copiar: %s"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgctxt "clipboard status"
+msgid "Pinned"
+msgstr "Fixado"
+
+#: home/.local/bin/waybar-clipboard-popup
+#, python-format
+msgid "Could not pin: %s"
+msgstr "Não foi possível fixar: %s"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Removed from pinned"
+msgstr "Removido dos fixados"
+
+#: home/.local/bin/waybar-clipboard-popup
+#, python-format
+msgid "Could not unpin: %s"
+msgstr "Não foi possível desafixar: %s"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Deleted from history"
+msgstr "Apagado do histórico"
+
+#: home/.local/bin/waybar-clipboard-popup
+#, python-format
+msgid "Could not delete: %s"
+msgstr "Não foi possível apagar: %s"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "History cleared"
+msgstr "Histórico limpo"
+
+#: home/.local/bin/waybar-clipboard-popup
+#, python-format
+msgid "Could not clear: %s"
+msgstr "Não foi possível limpar: %s"
+
+#: home/.local/bin/waybar-clipboard-popup
+msgid "Confirm: clear history"
+msgstr "Confirmar: limpar histórico"
+
+#: home/.local/bin/waybar_clipboard.py
+#, python-format
+msgid "Could not run %(program)s: %(error)s"
+msgstr "Não foi possível executar %(program)s: %(error)s"
+
+#: home/.local/bin/waybar_clipboard.py
+#, python-format
+msgid "%s failed"
+msgstr "%s falhou"
+
+#: home/.local/bin/waybar_clipboard.py
+msgid "The item is empty."
+msgstr "O item está vazio."
+
+#: home/.local/bin/waybar_clipboard.py
+#, python-format
+msgid "%s did not answer"
+msgstr "%s não respondeu"
+
+#: home/.local/bin/waybar_clipboard.py
+msgid "image"
+msgstr "imagem"
+
+#: home/.local/bin/waybar_clipboard.py
+msgid "binary"
+msgstr "binário"
+
+#: home/.local/bin/waybar_clipboard.py
+msgid "The pinned items file is unreadable; it will not be overwritten."
+msgstr "O arquivo de fixados está ilegível; não vou sobrescrevê-lo."
+
+#: home/.local/bin/waybar_holidays.py
+msgid "Install python3-holidays to see the holidays"
+msgstr "Instale a python3-holidays para ver os feriados"
+
+#: home/.local/bin/waybar_holidays.py
+#, python-format
+msgid "No holidays known for %s"
+msgstr "Nenhum feriado conhecido para %s"
+
+#: home/.local/bin/waybar-media-popup
+msgid "Nothing playing"
+msgstr "Nada tocando"
+
+#: home/.local/bin/waybar-media-popup
+msgid "Previous"
+msgstr "Anterior"
+
+#: home/.local/bin/waybar-media-popup
+msgid "Play"
+msgstr "Tocar"
+
+#: home/.local/bin/waybar-media-popup
+msgid "Next"
+msgstr "Próxima"
+
+#: home/.local/bin/waybar-media-popup
+msgid "Pause"
+msgstr "Pausar"
+
+#: home/.local/bin/waybar-network home/.local/bin/waybar-network-popup
+msgid "NetworkManager is not running"
+msgstr "NetworkManager parado"
+
+#: home/.local/bin/waybar-network home/.local/bin/waybar-network-popup
+msgid "Networking disabled"
+msgstr "Rede desativada"
+
+#: home/.local/bin/waybar-network
+#, python-format
+msgid "Connecting to %s"
+msgstr "Conectando a %s"
+
+#: home/.local/bin/waybar-network home/.local/bin/waybar-network-popup
+msgid "Wi-Fi off"
+msgstr "Wi-Fi desligado"
+
+#: home/.local/bin/waybar-network
+msgid "Not connected"
+msgstr "Sem conexão"
+
+#: home/.local/bin/waybar-network
+msgid "No internet access"
+msgstr "Sem acesso à internet"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Open"
+msgstr "Aberta"
+
+#: home/.local/bin/waybar-network-popup
+msgid "2.4 GHz"
+msgstr "2,4 GHz"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Network"
+msgstr "Rede"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Back to the list of networks"
+msgstr "Voltar à lista de redes"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Hidden network"
+msgstr "Rede oculta"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Create a connection to a hidden or enterprise network"
+msgstr "Criar conexão para uma rede oculta ou corporativa"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Edit connections"
+msgstr "Editar conexões"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Open the connection editor"
+msgstr "Abrir o editor de conexões"
+
+#: home/.local/bin/waybar-network-popup
+#, python-format
+msgid "Could not connect to %s"
+msgstr "Falha ao conectar a %s"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Wi-Fi blocked by the hardware switch"
+msgstr "Wi-Fi bloqueado pelo interruptor do aparelho"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Wired"
+msgstr "Cabeada"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Searching for networks..."
+msgstr "Procurando redes..."
+
+#: home/.local/bin/waybar-network-popup
+#, python-format
+msgid "Connected · %s"
+msgstr "Conectado · %s"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Waiting for password"
+msgstr "Aguardando senha"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: home/.local/bin/waybar-network-popup
+#, python-format
+msgid "%s · saved"
+msgstr "%s · salva"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Cable unplugged"
+msgstr "Cabo desconectado"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Disconnected"
+msgstr "Desconectado"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Add VPN"
+msgstr "Adicionar VPN"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Create or import a VPN in the connection editor"
+msgstr "Criar ou importar uma VPN no editor de conexões"
+
+#: home/.local/bin/waybar-network-popup
+#, python-format
+msgid "%s · disconnected"
+msgstr "%s · desconectada"
+
+#: home/.local/bin/waybar-network-popup
+#, python-format
+msgid "%s · connected"
+msgstr "%s · conectada"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Connection"
+msgstr "Conexão"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Interface"
+msgstr "Interface"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Security"
+msgstr "Segurança"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Signal"
+msgstr "Sinal"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Frequency"
+msgstr "Frequência"
+
+#: home/.local/bin/waybar-network-popup
+msgid "Speed"
+msgstr "Velocidade"
+
+#: home/.local/bin/waybar-network-popup
+#, python-format
+msgid "%s is out of range"
+msgstr "%s está fora de alcance"
+
+#: home/.local/bin/waybar-notifications-popup
+msgctxt "do not disturb"
+msgid "Off"
+msgstr "Desligado"
+
+#: home/.local/bin/waybar-notifications-popup
+msgid "On until you turn it off. Only critical ones show up"
+msgstr "Ligado até você desligar. Só as críticas aparecem"
+
+#: home/.local/bin/waybar-notifications-popup
+#, python-format
+msgid "On until %s. Only critical ones show up"
+msgstr "Ligado até %s. Só as críticas aparecem"
+
+#: home/.local/bin/waybar-notifications-popup
+msgid "Dismiss"
+msgstr "Dispensar"
+
+#: home/.local/bin/waybar-notifications-popup
+msgid "Notifications"
+msgstr "Notificações"
+
+#: home/.local/bin/waybar-notifications-popup
+msgid "Clear all"
+msgstr "Limpar tudo"
+
+#: home/.local/bin/waybar-notifications-popup
+msgid "Dismisses all notifications"
+msgstr "Dispensa todas as notificações"
+
+#: home/.local/bin/waybar-notifications-popup
+msgid "Do not disturb"
+msgstr "Não perturbe"
+
+#: home/.local/bin/waybar-notifications-popup
+#, python-format
+msgid "Notification center unavailable: %s"
+msgstr "Central de notificações indisponível: %s"
+
+#: home/.local/bin/waybar-notifications-popup
+msgid "No notifications"
+msgstr "Nenhuma notificação"
+
+#: home/.local/bin/waybar-notifications-popup
+msgid "No name"
+msgstr "Sem nome"
+
+#: home/.local/bin/waybar-notifications-popup
+msgid "Clear"
+msgstr "Limpar"
+
+#: home/.local/bin/waybar-notifications-popup
+#, python-format
+msgid "Dismisses the notifications from %s"
+msgstr "Dispensa as notificações de %s"
+
+#: home/.local/bin/waybar-notifications-popup
+msgid "no name"
+msgstr "sem nome"
+
+#: home/.local/bin/waybar_notifications.py
+msgctxt "notification time"
+msgid "now"
+msgstr "agora"
+
+#: home/.local/bin/waybar_notifications.py
+#, python-format
+msgctxt "notification time"
+msgid "%d min ago"
+msgstr "há %d min"
+
+#: home/.local/bin/waybar_notifications.py
+#, python-format
+msgctxt "notification time"
+msgid "%d h ago"
+msgstr "há %d h"
+
+#: home/.local/bin/waybar_notifications.py
+#, python-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] "há %d dia"
+msgstr[1] "há %d dias"
+
+#: home/.local/bin/waybar_popup.py
+#, python-format
+msgid "Could not open %(program)s: %(error)s"
+msgstr "Não foi possível abrir %(program)s: %(error)s"
+
+#: home/.local/bin/waybar-system
+#, python-format
+msgid "CPU: %s%%"
+msgstr "CPU: %s%%"
+
+#: home/.local/bin/waybar-system
+msgid "CPU: …"
+msgstr "CPU: …"
+
+#: home/.local/bin/waybar-system
+#, python-format
+msgid "Memory: %(used)s of %(total)s"
+msgstr "Memória: %(used)s de %(total)s"
+
+#: home/.local/bin/waybar-system
+#, python-format
+msgid "Temperature: %s °C"
+msgstr "Temperatura: %s °C"
+
+#: home/.local/bin/waybar-system-popup
+msgid "End"
+msgstr "Encerrar"
+
+#: home/.local/bin/waybar-system-popup
+msgid "Confirm"
+msgstr "Confirmar"
+
+#: home/.local/bin/waybar-system-popup
+msgid "Ending…"
+msgstr "Encerrando…"
+
+#: home/.local/bin/waybar-system-popup
+msgid "Force"
+msgstr "Forçar"
+
+#: home/.local/bin/waybar-system-popup
+msgid "End the process (SIGTERM)"
+msgstr "Encerra o processo (SIGTERM)"
+
+#: home/.local/bin/waybar-system-popup
+msgid "Click again to end it"
+msgstr "Clique de novo para encerrar"
+
+#: home/.local/bin/waybar-system-popup
+msgid "Still running: kill it (SIGKILL)"
+msgstr "Ainda rodando: força o fim (SIGKILL)"
+
+#: home/.local/bin/waybar-system-popup
+msgid "CPU"
+msgstr "CPU"
+
+#: home/.local/bin/waybar-system-popup
+msgid "Memory"
+msgstr "Memória"
+
+#: home/.local/bin/waybar-system-popup
+msgid "Disk"
+msgstr "Disco"
+
+#: home/.local/bin/waybar-system-popup
+msgid "Processes"
+msgstr "Processos"
+
+#: home/.local/bin/waybar-system-popup
+msgid "System monitor"
+msgstr "Monitor do sistema"
+
+#: home/.local/bin/waybar-system-popup
+#, python-format
+msgid "Open %s"
+msgstr "Abre o %s"
+
+#: home/.local/bin/waybar-system-popup
+msgid "Could not read the system data"
+msgstr "Não foi possível ler os dados do sistema"
+
+#: home/.local/bin/waybar-system-popup
+#, python-format
+msgid "Load: %s"
+msgstr "Carga: %s"
+
+#: home/.local/bin/waybar-system-popup
+#, python-format
+msgid "%s °C"
+msgstr "%s °C"
+
+#: home/.local/bin/waybar-system-popup
+#, python-format
+msgid "Swap: %(used)s of %(total)s"
+msgstr "Swap: %(used)s de %(total)s"
+
+#: home/.local/bin/waybar-system-popup
+msgid "No swap"
+msgstr "Sem swap"
+
+#: home/.local/bin/waybar-system-popup
+#, python-format
+msgid "%(used)s of %(total)s"
+msgstr "%(used)s de %(total)s"
+
+#: home/.local/bin/waybar-system-popup
+#, python-format
+msgid "Could not kill %s"
+msgstr "Não foi possível forçar o fim de %s"
+
+#: home/.local/bin/waybar-system-popup
+#, python-format
+msgid "Could not end %s"
+msgstr "Não foi possível encerrar %s"
+
+#: home/.local/bin/waybar-weather
+msgctxt "weekday"
+msgid "Mon"
+msgstr "seg."
+
+#: home/.local/bin/waybar-weather
+msgctxt "weekday"
+msgid "Tue"
+msgstr "ter."
+
+#: home/.local/bin/waybar-weather
+msgctxt "weekday"
+msgid "Wed"
+msgstr "qua."
+
+#: home/.local/bin/waybar-weather
+msgctxt "weekday"
+msgid "Thu"
+msgstr "qui."
+
+#: home/.local/bin/waybar-weather
+msgctxt "weekday"
+msgid "Fri"
+msgstr "sex."
+
+#: home/.local/bin/waybar-weather
+msgctxt "weekday"
+msgid "Sat"
+msgstr "sáb."
+
+#: home/.local/bin/waybar-weather
+msgctxt "weekday"
+msgid "Sun"
+msgstr "dom."
+
+#: home/.local/bin/waybar-weather
+msgctxt "compass point"
+msgid "N"
+msgstr "N"
+
+#: home/.local/bin/waybar-weather
+msgctxt "compass point"
+msgid "E"
+msgstr "L"
+
+#: home/.local/bin/waybar-weather
+msgctxt "compass point"
+msgid "S"
+msgstr "S"
+
+#: home/.local/bin/waybar-weather
+msgctxt "compass point"
+msgid "W"
+msgstr "O"
+
+#: home/.local/bin/waybar-weather
+msgid "Loading…"
+msgstr "Carregando…"
+
+#: home/.local/bin/waybar-weather
+msgid "No answer from wttr.in"
+msgstr "Sem resposta do wttr.in"
+
+#: home/.local/bin/waybar-weather
+msgid "Invalid or outdated data from wttr.in"
+msgstr "Dados do wttr.in inválidos ou antigos"
+
+#: home/.local/bin/waybar-weather
+#, python-format
+msgid "Feels like %(feels)s° · high %(high)s° · low %(low)s°"
+msgstr "Sensação %(feels)s° · máx. %(high)s° · mín. %(low)s°"
+
+#: home/.local/bin/waybar-weather
+#, python-format
+msgid "Humidity %(humidity)s%% · wind %(speed)s km/h %(direction)s"
+msgstr "Umidade %(humidity)s%% · vento %(speed)s km/h %(direction)s"
+
+#: home/.local/bin/waybar-weather
+#, python-format
+msgid "Sunrise %(rise)s · sunset %(set)s"
+msgstr "Nascer %(rise)s · pôr %(set)s"
+
+#: home/.local/bin/waybar-weather
+msgid "Open in the browser"
+msgstr "Abrir no navegador"
+
+#: home/.local/bin/waybar-weather
+#, python-format
+msgid "Source: %s"
+msgstr "Fonte: %s"
+
+#: home/.local/bin/waybar-weather
+#, python-format
+msgid "offline (data from %s)"
+msgstr "sem conexão (dados das %s)"
+
+#: home/.local/bin/waybar-weather
+#, python-format
+msgid "updating… (data from %s)"
+msgstr "atualizando… (dados das %s)"
+
+#: home/.local/bin/waybar-weather
+#, python-format
+msgid "updated at %s"
+msgstr "atualizado às %s"
+
+#: home/.local/bin/waybar-weather
+msgid "Refresh"
+msgstr "Atualizar"
+
+#: home/.local/bin/session-action
+msgid "usage: session-action lock|logout|suspend|reboot|poweroff"
+msgstr "uso: session-action lock|logout|suspend|reboot|poweroff"
+
+#: home/.local/bin/session-action
+msgid "Lock requested from the system. Check that the screen locked."
+msgstr "Bloqueio pedido ao sistema. Confira se a tela bloqueou."
+
+#: home/.local/bin/session-action
+msgid "cannot log out of this session (XDG_SESSION_ID is empty)"
+msgstr "não sei sair desta sessão (XDG_SESSION_ID vazio)"
+
+#: home/.local/bin/sway-caffeine
+msgid "XDG_RUNTIME_DIR is not set"
+msgstr "XDG_RUNTIME_DIR não definido"
+
+#: home/.local/bin/sway-caffeine
+msgid "usage: sway-caffeine off|1h|2h|on|toggle|status|login"
+msgstr "uso: sway-caffeine off|1h|2h|on|toggle|status|login"
+
+#: home/.local/bin/sway-files
+msgid "File manager"
+msgstr "Gerenciador de arquivos"
+
+#: home/.local/bin/sway-files
+msgid "No file manager is installed"
+msgstr "Nenhum gerenciador de arquivos instalado"
+
+#: home/.local/bin/sway-idle-suspend
+msgid "usage: sway-idle-suspend start|stop"
+msgstr "uso: sway-idle-suspend start|stop"
+
+#: home/.local/bin/sway-launcher
+msgid "The clipboard history is empty."
+msgstr "O histórico da área de transferência está vazio."
+
+#: home/.local/bin/sway-launcher
+msgid "This item is no longer in the clipboard history."
+msgstr "Este item não está mais no histórico da área de transferência."
+
+#: home/.local/bin/sway-launcher
+msgid "Google Translate"
+msgstr "Google Tradutor"
+
+#: home/.local/bin/sway-launcher
+msgid "term"
+msgstr "termo"
+
+#: home/.local/bin/sway-launcher
+msgid "Type to search %s, or use %s, or type an address, like kde.org, and press Enter."
+msgstr "Digite para buscar em %s, ou use %s, ou digite um endereço, como kde.org, e tecle Enter."
+
+#: home/.local/bin/sway-launcher
+msgid "Apps"
+msgstr "Apps"
+
+#: home/.local/bin/sway-launcher
+msgid "The launcher needs Xwayland"
+msgstr "O lançador precisa do Xwayland"
+
+#: home/.local/bin/sway-launcher
+msgid "This rofi runs through Xwayland. Install the xwayland package."
+msgstr "Este rofi roda pelo Xwayland. Instale o pacote xwayland."
+
+#: home/.local/bin/sway-launcher
+msgid "Windows"
+msgstr "Janelas"
+
+#: home/.local/bin/sway-launcher
+msgid "Search…"
+msgstr "Buscar…"
+
+#: home/.local/bin/sway-launcher
+msgid "Clipboard"
+msgstr "Área de transferência"
+
+#: home/.local/bin/sway-launcher
+msgid "Web"
+msgstr "Web"
+
+#: home/.local/bin/sway-launcher
+msgid "Open windows…"
+msgstr "Janelas abertas…"
+
+#: home/.local/bin/sway-launcher
+msgid "usage: sway-launcher toggle|windows"
+msgstr "uso: sway-launcher toggle|windows"
+
+#: home/.local/bin/sway-nightlight
+msgid "use HH:MM"
+msgstr "use HH:MM"
+
+#: home/.local/bin/sway-nightlight
+msgid "the end must come before the start on the same day"
+msgstr "o fim precisa vir antes do início no mesmo dia"
+
+#: home/.local/bin/sway-nightlight
+msgid "could not write %s"
+msgstr "não consegui gravar %s"
+
+#: home/.local/bin/sway-nightlight
+msgid "could not find [general] in %s"
+msgstr "não encontrei [general] em %s"
+
+#: home/.local/bin/sway-nightlight
+msgid "install gammastep"
+msgstr "instale o gammastep"
+
+#: home/.local/bin/sway-nightlight
+msgid "usage: sway-nightlight schedule [START END]"
+msgstr "uso: sway-nightlight schedule [INÍCIO FIM]"
+
+#: home/.local/bin/sway-nightlight
+msgid "usage: sway-nightlight off|on|auto|status|restore|schedule"
+msgstr "uso: sway-nightlight off|on|auto|status|restore|schedule"
+
+#: home/.local/bin/sway-polkit-agent
+msgid "Polkit agent"
+msgstr "Agente de polkit"
+
+#: home/.local/bin/sway-polkit-agent
+msgid "No agent found: administrator actions will fail. Install mate-polkit."
+msgstr "Nenhum agente encontrado: ações de administrador vão falhar. Instale o mate-polkit."
+
+#: home/.local/bin/sway-rec
+msgid "Recording failed"
+msgstr "Gravação falhou"
+
+#: home/.local/bin/sway-rec
+msgid "Recording"
+msgstr "Gravação"
+
+#: home/.local/bin/sway-rec
+msgid "Recording · audio: %s · click to stop"
+msgstr "Gravando · áudio: %s · clique para parar"
+
+#: home/.local/bin/sway-rec
+msgid "The region is too small."
+msgstr "A região é pequena demais."
+
+#: home/.local/bin/sway-rec
+msgid "usage: sway-rec region|full|window|stop|status"
+msgstr "uso: sway-rec region|full|window|stop|status"
+
+#: home/.local/bin/sway-rec
+msgid "Unexpected error at line %s of sway-rec"
+msgstr "Erro inesperado na linha %s do sway-rec"
+
+#: home/.local/bin/sway-rec
+msgid "A recording is already in progress."
+msgstr "Já existe uma gravação em andamento."
+
+#: home/.local/bin/sway-rec home/.local/bin/sway-shot
+msgid "Could not find the focused screen."
+msgstr "Não foi possível descobrir a tela em foco."
+
+#: home/.local/bin/sway-rec home/.local/bin/sway-shot
+msgid "No screen in focus."
+msgstr "Nenhuma tela em foco."
+
+#: home/.local/bin/sway-rec home/.local/bin/sway-shot
+msgid "Could not find the focused window."
+msgstr "Não foi possível descobrir a janela em foco."
+
+#: home/.local/bin/sway-rec home/.local/bin/sway-shot
+msgid "No window in focus."
+msgstr "Nenhuma janela em foco."
+
+#: home/.local/bin/sway-rec
+msgid "Could not find the sound output."
+msgstr "Não foi possível achar a saída de som."
+
+#: home/.local/bin/sway-rec
+msgid "system sound"
+msgstr "sistema"
+
+#: home/.local/bin/sway-rec
+msgid "Could not find the microphone."
+msgstr "Não foi possível achar o microfone."
+
+#: home/.local/bin/sway-rec
+msgid "microphone"
+msgstr "microfone"
+
+#: home/.local/bin/sway-rec
+msgid "none"
+msgstr "nenhum"
+
+#: home/.local/bin/sway-rec home/.local/bin/sway-shot
+msgid "Could not create %s"
+msgstr "Não foi possível criar %s"
+
+#: home/.local/bin/sway-rec
+msgid "Incomplete recording"
+msgstr "Gravação incompleta"
+
+#: home/.local/bin/sway-rec
+msgid "%s may not open."
+msgstr "%s pode não abrir."
+
+#: home/.local/bin/sway-rec
+msgid "%s · audio: %s"
+msgstr "%s · áudio: %s"
+
+#: home/.local/bin/sway-rec
+msgid "Encoded by the processor: no GPU here encodes H.264 by VA-API."
+msgstr "Codificada pelo processador: nenhuma placa de vídeo daqui codifica H.264 por VA-API."
+
+#: home/.local/bin/sway-rec
+msgid "Recording saved"
+msgstr "Gravação salva"
+
+#: home/.local/bin/sway-resize
+msgid "usage: sway-resize left|right|up|down [pixels]"
+msgstr "uso: sway-resize left|right|up|down [pixels]"
+
+#: home/.local/bin/sway-resize
+msgid "invalid pixels: %s"
+msgstr "pixels inválido: %s"
+
+#: home/.local/bin/sway-shot
+msgid "Screenshot failed"
+msgstr "Captura falhou"
+
+#: home/.local/bin/sway-shot
+msgid "Unexpected error at line %s of sway-shot"
+msgstr "Erro inesperado na linha %s do sway-shot"
+
+#: home/.local/bin/sway-shot
+msgid "usage: sway-shot region|full|window [edit]"
+msgstr "uso: sway-shot region|full|window [edit]"
+
+#: home/.local/bin/sway-shot
+msgid "grim could not capture the region."
+msgstr "O grim não conseguiu capturar a região."
+
+#: home/.local/bin/sway-shot
+msgid "grim could not capture the screen %s."
+msgstr "O grim não conseguiu capturar a tela %s."
+
+#: home/.local/bin/sway-shot
+msgid "grim could not capture the window."
+msgstr "O grim não conseguiu capturar a janela."
+
+#: home/.local/bin/sway-shot
+msgid "copied"
+msgstr "copiada"
+
+#: home/.local/bin/sway-shot
+msgid "not copied"
+msgstr "não foi copiada"
+
+#: home/.local/bin/sway-shot
+msgid "Gradia not installed"
+msgstr "Gradia não instalado"
+
+#: home/.local/bin/sway-shot
+msgid "The screenshot was saved, but did not open in the editor. Install: %s"
+msgstr "A captura foi salva, mas não abriu no editor. Instale: %s"
+
+#: home/.local/bin/waybar-battery
+msgid "less than 1 min"
+msgstr "menos de 1 min"
+
+#: home/.local/bin/waybar-battery
+msgid "full in %s"
+msgstr "cheia em %s"
+
+#: home/.local/bin/waybar-battery
+msgid "Charged · plugged in"
+msgstr "Carregada · na tomada"
+
+#: home/.local/bin/waybar-battery
+msgid "Plugged in, not charging"
+msgstr "Na tomada, sem carregar"
+
+#: home/.local/bin/waybar-battery
+msgid "No battery found"
+msgstr "Nenhuma bateria encontrada"
+
+#: home/.local/bin/waybar-battery
+msgid "Waiting to charge"
+msgstr "Aguardando carga"
+
+#: home/.local/bin/waybar-battery
+msgid "Profile: %s"
+msgstr "Perfil: %s"
+
+#: home/.local/bin/waybar-battery
+msgid "Could not change to %s"
+msgstr "Não foi possível mudar para %s"
+
+#: home/.local/bin/waybar-battery
+msgid "usage: waybar-battery watch|info|profile"
+msgstr "uso: waybar-battery watch|info|profile"
+
+#: home/.local/bin/waybar-brightness
+msgid "Night light failed"
+msgstr "Luz noturna com falha"
+
+#: home/.local/bin/waybar-brightness
+msgid "Night light on"
+msgstr "Luz noturna ligada"
+
+#: home/.local/bin/waybar-brightness
+msgid "Night light scheduled"
+msgstr "Luz noturna automática"
+
+#: home/.local/bin/waybar-brightness
+msgid "No brightness control"
+msgstr "Sem controle de brilho"
+
+#: home/.local/bin/waybar-caffeine
+msgid "Caffeine off"
+msgstr "Cafeína desligada"
+
+#: home/.local/bin/waybar-caffeine
+msgid "Caffeine on: no lock, screen blanking or suspend"
+msgstr "Cafeína ligada: sem bloqueio, tela apagada ou suspensão"
+
+#: home/.local/bin/waybar-caffeine
+msgid "Caffeine until %s: no lock, screen blanking or suspend"
+msgstr "Cafeína até %s: sem bloqueio, tela apagada ou suspensão"
+
+#: home/.local/bin/waybar-media
+msgid "Paused"
+msgstr "Pausado"
+
+#: home/.local/bin/waybar-volume
+msgid "Muted · %s"
+msgstr "Mudo · %s"
+
+#: install.sh
+msgid "usage: ./install.sh [--dry-run] [--system] [--deps [--yes]] [--rust | --rust-from=DIR] [--rust-only] | --check"
+msgstr "uso: ./install.sh [--dry-run] [--system] [--deps [--yes]] [--rust | --rust-from=PASTA] [--rust-only] | --check"
+
+#: install.sh
+msgid "warning: %s %s is not supported (Linux Mint 22.3, Ubuntu 26.04 or Debian 13, or newer)"
+msgstr "aviso: %s %s não é suportado (Linux Mint 22.3, Ubuntu 26.04 ou Debian 13, ou mais novos)"
+
+#: install.sh
+msgid "distro: %s %s"
+msgstr "distro: %s %s"
+
+#: install.sh
+msgid "warning: NetworkManager does not manage %s, and the network popup has no control over it."
+msgstr "aviso: o NetworkManager não gerencia %s, e o popup de rede fica sem controle."
+
+#: install.sh
+msgid "On Ubuntu Server, hand netplan over to NetworkManager from the console (see"
+msgstr "No Ubuntu Server, passe o netplan para o NetworkManager pelo console (veja"
+
+#: install.sh
+msgid "On Debian, take the interface out of /etc/network/interfaces from the console (see"
+msgstr "No Debian, tire a interface do /etc/network/interfaces pelo console (veja"
+
+#: install.sh
+msgid "\"Debian ou Ubuntu Server sem desktop\" in the guide)"
+msgstr "\"Debian ou Ubuntu Server sem desktop\" no guia)"
+
+#: install.sh
+msgid "this distro does not use apt"
+msgstr "esta distro não usa apt"
+
+#: install.sh
+msgid "firefox (Mozilla repository)"
+msgstr "firefox (repositório da Mozilla)"
+
+#: install.sh
+msgid "No login screen: --deps installs greetd, nwg-hello and basic apps ([sem-desktop])"
+msgstr "Sem tela de login: o --deps instala o greetd, o nwg-hello e apps básicos ([sem-desktop])"
+
+#: install.sh
+msgid "%d package missing:"
+msgid_plural "%d packages missing:"
+msgstr[0] "Falta %d pacote:"
+msgstr[1] "Faltam %d pacotes:"
+
+#: install.sh
+msgid "No apt package: %s"
+msgstr "Sem pacote no apt: %s"
+
+#: install.sh
+msgid "The universe repository seems to be disabled:"
+msgstr "O universe parece desativado:"
+
+#: install.sh
+msgid "If the package list is out of date: sudo apt update"
+msgstr "Se a lista de pacotes estiver desatualizada: sudo apt update"
+
+#: install.sh
+msgid "Missing optional packages:"
+msgstr "Opcionais que faltam:"
+
+#: install.sh
+msgid "Outside apt, not found: %s"
+msgstr "Fora do apt, não encontrados: %s"
+
+#: install.sh
+msgid "To install everything: ./install.sh --deps"
+msgstr "Para instalar tudo: ./install.sh --deps"
+
+#: install.sh
+msgid "No required package missing."
+msgstr "Nenhum pacote obrigatório faltando."
+
+#: install.sh
+msgid "To install what is outside apt: ./install.sh --deps"
+msgstr "Para instalar o que está fora do apt: ./install.sh --deps"
+
+#: install.sh
+msgid "waiting for apt: another program (like packagekitd) is using the lists"
+msgstr "esperando o apt: outro programa (como o packagekitd) está usando as listas"
+
+#: install.sh
+msgid "the Mozilla key does not have the expected fingerprint"
+msgstr "a chave da Mozilla não tem a impressão digital esperada"
+
+#: install.sh
+msgid "the checksum of the download changed: check the upstream release before updating the hash"
+msgstr "o checksum do download mudou: confira a versão do upstream antes de atualizar o hash"
+
+#: install.sh
+msgid "download failed or with a wrong checksum"
+msgstr "download falhou ou com checksum errado"
+
+#: install.sh
+msgid "no .deb for the %s architecture"
+msgstr "sem .deb para a arquitetura %s"
+
+#: install.sh
+msgid "apt packages"
+msgstr "pacotes do apt"
+
+#: install.sh
+msgid "no apt package: %s"
+msgstr "sem pacote no apt: %s"
+
+#: install.sh
+msgid "Rust build packages"
+msgstr "pacotes para compilar o Rust"
+
+#: install.sh
+msgid "Not installed:"
+msgstr "Não instalado:"
+
+#: install.sh
+msgid "rust: no apt package: %s"
+msgstr "rust: sem pacote no apt: %s"
+
+#: install.sh
+msgid "rust: still missing to build: %s"
+msgstr "rust: ainda falta para compilar: %s"
+
+#: install.sh
+msgid "components: %s (components in config.toml)"
+msgstr "componentes: %s (components no config.toml)"
+
+#: install.sh
+msgid "Rust version not installed: ./install.sh --rust"
+msgstr "versão em Rust não instalada: ./install.sh --rust"
+
+#: install.sh
+msgid "the Rust version does not load here"
+msgstr "a versão em Rust não carrega aqui"
+
+#: install.sh
+msgid "rust: folder not found: %s"
+msgstr "rust: pasta não encontrada: %s"
+
+#: install.sh
+msgid "rust: missing to build, kept the Python versions: %s"
+msgstr "rust: falta para compilar, as versões em Python continuam: %s"
+
+#: install.sh
+msgid "rust: Linux Mint 22 has no gtk4-layer-shell; the Rust versions need Debian 13, Ubuntu 26.04 or Linux Mint 27"
+msgstr "rust: o Linux Mint 22 não tem o gtk4-layer-shell; as versões em Rust precisam do Debian 13, do Ubuntu 26.04 ou do Linux Mint 27"
+
+#: install.sh
+msgid "rust: on Debian 13 or Ubuntu 26.04: sudo apt install cargo rustc pkg-config libgtk-4-dev libgtk4-layer-shell-dev"
+msgstr "rust: no Debian 13 ou no Ubuntu 26.04: sudo apt install cargo rustc pkg-config libgtk-4-dev libgtk4-layer-shell-dev"
+
+#: install.sh
+msgid "rust: --rust-only needs the Rust versions; run ./install.sh --deps --rust-only"
+msgstr "rust: o --rust-only precisa das versões em Rust; rode ./install.sh --deps --rust-only"
+
+#: install.sh
+msgid "rust: building %s"
+msgstr "rust: compilando %s"
+
+#: install.sh
+msgid "rust: %s not found in %s"
+msgstr "rust: %s não encontrado em %s"
+
+#: install.sh
+msgid "rust: would install %s (dry run)"
+msgstr "rust: instalaria %s (simulação)"
+
+#: install.sh
+msgid "rust: %s does not load here, and with --rust-only nothing replaces it"
+msgstr "rust: %s não carrega aqui, e com o --rust-only nada o substitui"
+
+#: install.sh
+msgid "rust: %s does not load here; the Python version stays in use"
+msgstr "rust: %s não carrega aqui; a versão em Python continua em uso"
+
+#: install.sh
+msgid "rust: installed %s; it takes over at the next login (or: pkill -x sway-%s)"
+msgstr "rust: %s instalado; ele assume no próximo login (ou: pkill -x sway-%s)"
+
+#: install.sh
+msgid "different, saved first: %s"
+msgstr "diferente, guardado antes: %s"
+
+#: install.sh
+msgid "broken link to remove: %s"
+msgstr "link quebrado a remover: %s"
+
+#: install.sh
+msgid "broken link removed: %s"
+msgstr "link quebrado removido: %s"
+
+#: install.sh
+msgid "old nwg-drawer file to remove: %s"
+msgstr "arquivo antigo do nwg-drawer a remover: %s"
+
+#: install.sh
+msgid "old nwg-drawer file removed: %s"
+msgstr "arquivo antigo do nwg-drawer removido: %s"
+
+#: install.sh
+msgid "old Albert plugin to remove: %s"
+msgstr "plugin antigo do Albert a remover: %s"
+
+#: install.sh
+msgid "old Albert plugin removed: %s"
+msgstr "plugin antigo do Albert removido: %s"
+
+#: install.sh
+msgid "kept, differs from the repository: %s"
+msgstr "mantido, difere do repositório: %s"
+
+#: install.sh
+msgid "could not generate the accent color files: run sway-desktop-config generate"
+msgstr "não foi possível gerar os arquivos da cor de destaque: rode sway-desktop-config generate"
+
+#: install.sh
+msgid "system: %s"
+msgstr "sistema: %s"
+
+#: install.sh
+msgid "system: greetd as the login screen"
+msgstr "sistema: greetd como tela de login"
+
+#: install.sh
+msgid "The new login screen shows up after a restart."
+msgstr "A tela de login nova aparece ao reiniciar."
+
+#: install.sh
+msgid "notify-send: could not read %s, so it was left alone."
+msgstr "notify-send: não deu para ler %s, então ele ficou como estava."
+
+#: install.sh
+msgid "The notify-send change takes effect after a restart."
+msgstr "O ajuste do notify-send vale depois de reiniciar."
+
+#: install.sh
+msgid "notify-send: the AppArmor rules did not compile, so %s is back as it was:"
+msgstr "notify-send: as regras do AppArmor não compilaram, e %s voltou a ser o que era:"
+
+#: install.sh
+msgid "system: diversion of /usr/share/wayland-sessions/sway.desktop (the package's Sway session)"
+msgstr "sistema: desvio de /usr/share/wayland-sessions/sway.desktop (sessão Sway do pacote)"
+
+#: install.sh
+msgid "system: Flathub in Flatpak"
+msgstr "sistema: Flathub no Flatpak"
+
+#: install.sh
+msgid "new links: %d · already right: %d · different, saved: %d · copied: %d · kept: %d · without the program: %d"
+msgstr "links novos: %d · já certos: %d · diferentes guardados: %d · copiados: %d · mantidos: %d · sem o programa: %d"
+
+#: install.sh
+msgid "copies in %s"
+msgstr "cópias em %s"
+
+#: install.sh
+msgid "Waybar: restarted, to load the new configuration"
+msgstr "Waybar: reiniciada, para carregar a configuração nova"
+
+#: install.sh
+msgid "Waybar: not restarted. To load the new configuration, run inside Sway: ~/.local/bin/sway-waybar restart"
+msgstr "Waybar: não reiniciada. Para carregar a configuração nova, rode dentro do Sway: ~/.local/bin/sway-waybar restart"
+
+#: install.sh
+msgid "volume and brightness indicator: sway-osd-bar in place of the wob"
+msgstr "indicador de volume e brilho: sway-osd-bar no lugar do wob"
+
+#: install.sh
+msgid "volume and brightness indicator: log in to Sway again to open the sway-osd-bar"
+msgstr "indicador de volume e brilho: entre de novo no Sway para abrir o sway-osd-bar"
+
+#: rust/greeter/src/main.rs
+msgid "Type a valid user name"
+msgstr "Digite um nome de usuário válido"
+
+#: rust/greeter/src/main.rs
+msgid "No session is installed"
+msgstr "Nenhuma sessão instalada"
+
+#: rust/greeter/src/main.rs
+msgid "Could not log in:"
+msgstr "Não foi possível entrar:"
+
+#: rust/greeter/src/main.rs
+msgid "The login service did not answer: try again"
+msgstr "O serviço de login não respondeu: tente de novo"
+
+#: rust/greeter/src/main.rs
+msgid "Other user…"
+msgstr "Outro usuário…"
+
+#: rust/greeter/src/main.rs
+msgid "User name"
+msgstr "Nome de usuário"
+
+#: rust/greeter/src/main.rs
+msgid "Log in"
+msgstr "Entrar"
+
+#: rust/greeter/src/main.rs
+msgid "Keyboard layout"
+msgstr "Layout do teclado"
+
+#: rust/network-popup/src/agent.rs
+msgid "Password for %s"
+msgstr "Senha de %s"
+
+#: rust/network-popup/src/main.rs rust/nm/src/rules.rs
+#: rust/nm/src/standalone/tests.rs
+msgid "No permission to use iwd"
+msgstr "Sem permissão para usar o iwd"
+
+#: rust/network-popup/src/main.rs
+msgid "Enterprise networks are not supported"
+msgstr "Redes corporativas não são suportadas"
+
+#: rust/network-popup/src/main.rs
+msgid "Could not connect to %s. Check the password."
+msgstr "Falha ao conectar a %s. Confira a senha."
+
+#: rust/network-popup/src/main.rs
+msgid "Another password agent is active"
+msgstr "Outro agente de senhas está ativo"
+
+#: rust/nm/src/rules.rs rust/nm/src/standalone/tests.rs
+msgid "No network service running"
+msgstr "Nenhum serviço de rede ativo"

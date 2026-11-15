@@ -1,0 +1,23 @@
+.TH SWAYDESK-AUDIO-POPUP 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-audio\-popup \- audio popup for Waybar
+.SH SYNOPSIS
+.B swaydesk\-audio\-popup
+.SH DESCRIPTION
+Volume and mute of the output and the microphone, and the choice of output and input device, the current one in the accent color. It follows changes made elsewhere (volume keys, a headset plugged in). It reads pw\-dump and acts through wpctl and pactl.
+.PP
+Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
+.PP
+The session runs it under the name waybar\-audio (a link in the package's helper directory to /usr/bin/swaydesk\-audio\-popup); the process name is waybar\-audio too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR pactl (1),
+.BR swaydesk (7),
+.BR wpctl (1)

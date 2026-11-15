@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+# A chave do projeto do OBS e o .sources do repositório. O OBS compila este mesmo fonte para cada distro;
+# a pasta do repositório vem do /etc/os-release da raiz de build (sources.sh).
+%:
+	dh $@
+
+override_dh_auto_build:
+	./sources.sh /etc/os-release > debian/swaydesk.sources
+
+override_dh_auto_install:
+	install -Dm644 swaydesk-archive-keyring.asc debian/swaydesk-archive-keyring/usr/share/keyrings/swaydesk-archive-keyring.asc
+	install -Dm644 debian/swaydesk.sources debian/swaydesk-archive-keyring/etc/apt/sources.list.d/swaydesk.sources
+
+override_dh_auto_clean:
+	rm -f debian/swaydesk.sources

@@ -1,0 +1,15 @@
+[package]
+name = "swaydesk-switcher-logic"
+description = "A ordem de uso e a seleção do Alt+Tab (sway-switcher), sem GTK"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "swaydesk_switcher_logic"
+path = "src/lib.rs"
+
+[dependencies]
+swaydesk-dock-logic.workspace = true
+serde_json.workspace = true

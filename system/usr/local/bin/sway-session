@@ -1,0 +1,179 @@
+#!/bin/sh
+# Sessão do Sway: ambiente Wayland e a placa de vídeo da sessão.
+# Nada aqui pode impedir o login: o log, o ~/.profile e o setup são opcionais, o Sway não.
+#
+# Dois modos (SWAYDESK_SESSION):
+# - dotfiles (o install.sh --system o põe em /usr/local/bin): o Sway lê o ~/.config/sway/config, que liga
+#   os scripts e os lançadores de ~/.local/bin;
+# - package (--package, a sessão do pacote swaydesk-desktop, em /usr/libexec/swaydesk): o Sway lê o config
+#   do pacote, em <prefixo>/share/swaydesk-desktop, que chama os scripts da pasta deste arquivo. Os arquivos
+#   do usuário (config.toml, cores, config.d) são os mesmos das duas sessões.
+mode=dotfiles
+[ "${1-}" = --package ] && mode=package
+
+# A tela de login nem sempre lê o ~/.profile numa sessão Wayland. O LightDM lê, e o
+# ~/.local/bin no PATH mostra isso: ler de novo repetiria cada linha do arquivo.
+# Lido num processo à parte: um erro de sintaxe ou um "exit" lá não derruba a sessão.
+# Só o ambiente exportado volta para cá (um umask definido lá, por exemplo, não).
+profile_failed=
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *)
+    if [ -f "$HOME/.profile" ]; then
+      env_dump=$(timeout 10 sh -c '. "$HOME/.profile" >/dev/null 2>&1 </dev/null; export -p' 2>/dev/null)
+      if [ -n "$env_dump" ]; then
+        eval "$env_dump"
+      else
+        profile_failed=1
+      fi
+    fi
+    ;;
+esac
+
+# O sway-env-cleanup, ao sair do Sway, deixa estas variáveis vazias no D-Bus, que não sabe
+# removê-las, e o GDM as repassa ao login seguinte. Vazio não é o mesmo que ausente: com
+# SWAYSOCK vazio, o Sway abre o IPC num caminho vazio e o swaymsg para de funcionar
+for var in WAYLAND_DISPLAY SWAYSOCK I3SOCK DISPLAY XDG_SESSION_DESKTOP XDG_CURRENT_DESKTOP XDG_SESSION_TYPE \
+           MOZ_ENABLE_WAYLAND QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME ELECTRON_OZONE_PLATFORM_HINT \
+           _JAVA_AWT_WM_NONREPARENTING DCONF_PROFILE XDG_MENU_PREFIX SWAYDESK_SESSION; do
+  eval "[ -n \"\${$var-x}\" ] || unset $var"
+done
+
+export XDG_CURRENT_DESKTOP=sway
+export XDG_SESSION_DESKTOP=sway
+export XDG_SESSION_TYPE=wayland
+export MOZ_ENABLE_WAYLAND=1
+export QT_QPA_PLATFORM="wayland;xcb"
+# Apps Qt: o plugin gtk3 do Qt 5, e do Qt 6 até o 6.4, não passa a paleta, e o VLC e os outros
+# ficavam claros. O qt5ct (que no Qt 6 carrega o qt6ct) usa a paleta gerada pelo sway-desktop-config.
+# Com o Plasma instalado fica o gtk3: os apps do KDE pintam listas e visores com as cores do
+# kdeglobals, e com o qt5ct elas ficavam brancas e ilegíveis
+if command -v qt5ct >/dev/null 2>&1 && command -v qt6ct >/dev/null 2>&1 && ! command -v plasmashell >/dev/null 2>&1; then
+  export QT_QPA_PLATFORMTHEME=qt5ct
+else
+  export QT_QPA_PLATFORMTHEME=gtk3
+fi
+export ELECTRON_OZONE_PLATFORM_HINT=auto   # Slack e VS Code (Electron) nativos em Wayland; o Chrome não lê esta variável
+export _JAVA_AWT_WM_NONREPARENTING=1
+# O dconf do Sway grava numa base própria (~/.config/dconf/sway) e lê a normal por baixo: trocar
+# o tema aqui não muda o do GNOME nem o do KDE. Sem o arquivo, fica a base normal. O do pacote vem no
+# swaydesk-theme
+here=$(cd "${0%/*}" 2>/dev/null && pwd -P)
+share="${here%/*/*}/share"
+if [ "$mode" = package ]; then
+  dconf_profile="$share/sway-desktop/dconf/sway"
+else
+  dconf_profile="$HOME/.local/share/sway-desktop/dconf/sway"
+fi
+[ -f "$dconf_profile" ] && export DCONF_PROFILE="$dconf_profile"
+export SWAYDESK_SESSION=$mode
+# Já no systemd do usuário, antes do Sway: as units que o graphical-session.target sobe (a Waybar e o
+# gammastep dos pacotes) conferem a variável, e os serviços ativados pelo D-Bus a herdam
+systemctl --user import-environment SWAYDESK_SESSION >/dev/null 2>&1 || true
+
+# Log do sway (o da sessão anterior fica em sway.log.old). Os apps abertos pelo Sway
+# herdam o mesmo arquivo, então ele pode ter dados deles e crescer: fica só para o
+# dono e é cortado no tamanho LOG_MAX, mantendo o final (LOG_KEEP).
+LOG_MAX=20971520
+LOG_KEEP=5242880
+LOG_CHECK=60
+logdir="${XDG_STATE_HOME:-$HOME/.local/state}/sway"
+log="$logdir/sway.log"
+log_ok=
+if (umask 077; mkdir -p "$logdir") 2>/dev/null; then
+  [ -f "$log" ] && mv -f "$log" "$log.old" 2>/dev/null
+  # Testa antes: no dash, um redirecionamento que falha no exec encerra o script
+  if (umask 077; : >>"$log") 2>/dev/null; then
+    chmod 700 "$logdir" 2>/dev/null
+    chmod 600 "$log" "$log.old" 2>/dev/null
+    log_ok=1
+  fi
+fi
+if [ -n "$log_ok" ] && command exec >>"$log" 2>&1; then
+  [ -n "$profile_failed" ] && echo "sway-session: ~/.profile failed and was ignored"
+  # Os escritores abrem o arquivo em modo append, então ele pode ser reescrito no lugar.
+  # O $$ continua valendo depois do exec: é o processo do próprio Sway.
+  (
+    while kill -0 $$ 2>/dev/null; do
+      sleep "$LOG_CHECK"
+      size=$(wc -c <"$log" 2>/dev/null) || continue
+      if [ "$size" -gt "$LOG_MAX" ]; then
+        tail -c "$LOG_KEEP" "$log" >"$log.tmp" && cat "$log.tmp" >"$log"
+        rm -f "$log.tmp"
+      fi
+    done
+  ) </dev/null >/dev/null 2>&1 &
+fi
+
+# Fixa o Sway na placa da sessão (sway-gpu card, ao lado deste arquivo): num notebook híbrido, a
+# integrada, mesmo que o módulo da NVIDIA carregue depois do login e o Sway tente usar a placa nova.
+# A numeração muda entre boots. Sem resposta, segue sem fixar e deixa o aviso no log.
+gpu="${0%/*}/sway-gpu"
+[ -x "$gpu" ] || gpu=$(command -v sway-gpu 2>/dev/null)
+card=
+[ -n "$gpu" ] && [ -x "$gpu" ] && card=$("$gpu" card 2>/dev/null)
+if [ -n "$card" ]; then
+  export WLR_DRM_DEVICES="/dev/dri/$card"
+else
+  echo "sway-session: sway-gpu found no GPU; WLR_DRM_DEVICES not set"
+fi
+# Na virtio-gpu (as VMs do QEMU e do virt-manager), o cursor de hardware do Sway aparece de ponta-cabeça.
+# Só na sessão do pacote, e só se a variável não veio de fora: quem a definiu (até vazia) decide
+if [ "$mode" = package ] && [ -z "${WLR_NO_HARDWARE_CURSORS+x}" ] && [ -n "$card" ] \
+   && [ "$("$gpu" driver 2>/dev/null)" = virtio_gpu ]; then
+  export WLR_NO_HARDWARE_CURSORS=1
+fi
+
+# Os apps do KDE (KService) montam a lista de aplicativos pelo menu XDG
+# ${XDG_MENU_PREFIX}applications.menu, e cada desktop exporta o seu prefixo. Sem nenhum, no Sway, o
+# "Abrir com" do Konsole, do Dolphin ou do Okular ficava vazio: o Kubuntu 26.04 só tem o
+# plasma-applications.menu, e o Mint só os do Cinnamon, do GNOME e do MATE. Vale o primeiro que existir
+menu_exists() {
+  # Numa variável: o ":" escrito entre duas expansões não separaria as pastas
+  _dirs="${XDG_CONFIG_HOME:-$HOME/.config}:${XDG_CONFIG_DIRS:-/etc/xdg}"
+  _old_ifs=$IFS
+  IFS=:
+  for _dir in $_dirs; do
+    if [ -f "$_dir/menus/$1" ]; then
+      IFS=$_old_ifs
+      return 0
+    fi
+  done
+  IFS=$_old_ifs
+  return 1
+}
+if [ -z "${XDG_MENU_PREFIX-}" ] && ! menu_exists applications.menu; then
+  for prefix in plasma- gnome- cinnamon- mate- xfce-; do
+    if menu_exists "${prefix}applications.menu"; then
+      export XDG_MENU_PREFIX=$prefix
+      break
+    fi
+  done
+fi
+# O cache do KService (ksycoca) montado antes, sem o prefixo, não se refaz sozinho: o nome do arquivo
+# só depende das pastas XDG. Refaz uma vez, em segundo plano, quando o prefixo muda
+if [ -n "${XDG_MENU_PREFIX-}" ]; then
+  stamp="${XDG_CACHE_HOME:-$HOME/.cache}/sway-desktop/ksycoca-menu-prefix"
+  if [ "$(cat "$stamp" 2>/dev/null)" != "$XDG_MENU_PREFIX" ]; then
+    for build in kbuildsycoca6 kbuildsycoca5; do
+      if command -v "$build" >/dev/null 2>&1; then
+        (
+          "$build" --noincremental >/dev/null 2>&1 \
+            && mkdir -p "${stamp%/*}" 2>/dev/null && echo "$XDG_MENU_PREFIX" >"$stamp"
+        ) </dev/null &
+      fi
+    done
+  fi
+fi
+
+if [ "$mode" = package ]; then
+  # O primeiro login copia o skel para a HOME (só o que falta) e gera as cores, as fontes e o style.css da
+  # Waybar, que o config do pacote lê: antes do Sway, senão a Waybar abre sem o CSS. Rápido; com prazo,
+  # para nunca prender o login
+  # Pelo caminho do pacote: o PATH do ~/.profile pode pôr na frente o dos dotfiles, mais velho e sem o setup
+  timeout 20 "${here%/*/*}/bin/swaydesk-desktop-config" setup || echo "sway-session: swaydesk-desktop-config setup failed"
+  # Sem efeito se não houver driver proprietário; evita a recusa se ele carregar neste instante
+  exec sway --unsupported-gpu --config "$share/swaydesk-desktop/sway/config"
+fi
+# Sem efeito se não houver driver proprietário; evita a recusa se ele carregar neste instante
+exec sway --unsupported-gpu

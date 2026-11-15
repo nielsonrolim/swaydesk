@@ -1,0 +1,15 @@
+.TH SWAYDESK-SESSIONMGR 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-sessionmgr \- minimal org.gnome.SessionManager for Sway
+.SH SYNOPSIS
+.B swaydesk\-sessionmgr
+.SH DESCRIPTION
+Answers only Reboot and Shutdown of org.gnome.SessionManager, for the "Restart and update" of GNOME Software; the other methods return UnknownMethod. The Sway configuration starts it, never D\-Bus activation, and it exits with the session.
+.PP
+The session runs it under the name sway\-sessionmgr (a link in the package's helper directory to /usr/bin/swaydesk\-sessionmgr); the process name is sway\-sessionmgr too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH SEE ALSO
+.BR swaydesk (7)

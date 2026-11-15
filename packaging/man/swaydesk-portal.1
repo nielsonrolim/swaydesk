@@ -1,0 +1,23 @@
+.TH SWAYDESK-PORTAL 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-portal \- accent color backend for xdg\-desktop\-portal
+.SH SYNOPSIS
+.B swaydesk\-portal
+.SH DESCRIPTION
+Answers org.freedesktop.appearance accent\-color for libadwaita applications through xdg\-desktop\-portal, which merges it with the gtk backend (sway\-portals.conf: Settings=swaydesktop;gtk). D\-Bus activation starts it; it tells the applications when the configuration changes and exits with Sway.
+.PP
+The session runs it under the name sway\-portal (a link in the package's helper directory to /usr/bin/swaydesk\-portal); the process name is sway\-portal too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.TP
+.I /usr/share/xdg\-desktop\-portal/portals/swaydesktop.portal
+The portal backend entry.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR xdg\-desktop\-portal (1)

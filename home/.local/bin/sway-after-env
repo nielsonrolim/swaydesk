@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Abre o programa só depois que o ambiente desta sessão chegou ao systemd. Os exec do config sobem
+# juntos: um app GTK que pede o portal antes do dbus-update-activation-environment faz o systemd
+# subir o xdg-desktop-portal sem o WAYLAND_DISPLAY. O portal do gtk morre, a ativação fica presa
+# até o timeout de 120 s, e a Waybar e os outros desistem (visto no Ubuntu Server 26.04, com a
+# GNOME Software). O SWAYSOCK é único por Sway: o de uma sessão anterior não conta.
+# Sem o ambiente em 5 s, sem o SWAYSOCK ou sem o systemctl, abre assim mesmo.
+# uso: sway-after-env programa [argumentos...]
+for _ in $(seq "${SWAY_DESKTOP_ENV_TRIES:-50}"); do
+  [[ -n ${SWAYSOCK:-} ]] && command -v systemctl >/dev/null || break
+  [[ $'\n'$(systemctl --user show-environment 2>/dev/null)$'\n' == *$'\n'"SWAYSOCK=$SWAYSOCK"$'\n'* ]] && break
+  sleep 0.1
+done
+# O exec mantém o PID: o programa (os laços do config com sh -c) fica com a marca do próprio processo,
+# PID e starttime (campo 22 do stat), e os filhos herdam a marca de outro. O popup "Sistema" não
+# oferece encerrar um shell com a própria marca, para ninguém derrubar o laço que reinicia a Waybar ou
+# a dock. O starttime evita que um PID reaproveitado por um descendente conte
+read -r _stat </proc/$$/stat
+_stat=${_stat##*) }
+_fields=($_stat)
+export SWAY_DESKTOP_LOOP="$$:${_fields[19]}"
+unset _stat _fields
+exec "$@"

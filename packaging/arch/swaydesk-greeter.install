@@ -1,0 +1,18 @@
+# O pacman não liga serviços: só avisa, como manda a política do Arch.
+post_install() {
+  if ! systemctl is-enabled -q greetd.service 2>/dev/null; then
+    echo ':: Login screen: turn off the current display manager, if any, then: systemctl enable greetd'
+  fi
+  echo ':: greetd now opens this login screen; to keep the greeter of /etc/greetd/config.toml instead:'
+  echo '   mkdir -p /etc/systemd/system/greetd.service.d && ln -s /dev/null /etc/systemd/system/greetd.service.d/swaydesk-greeter.conf && systemctl daemon-reload'
+  # O /etc/pam.d/greetd do Arch não abre o chaveiro no login (o do Debian abre). O Arch usa o mesmo serviço
+  # do PAM para a sessão do próprio greeter: o pam_succeed_if pula a linha seguinte para o usuário greeter,
+  # que não tem chaveiro (sem ele, um erro no journal a cada boot e logout)
+  if ! grep -q pam_gnome_keyring /etc/pam.d/greetd 2>/dev/null; then
+    echo ':: To unlock gnome-keyring at login, append to /etc/pam.d/greetd:'
+    echo '   auth     [success=1 default=ignore] pam_succeed_if.so quiet user = greeter'
+    echo '   auth     optional pam_gnome_keyring.so'
+    echo '   session  [success=1 default=ignore] pam_succeed_if.so quiet user = greeter'
+    echo '   session  optional pam_gnome_keyring.so auto_start'
+  fi
+}

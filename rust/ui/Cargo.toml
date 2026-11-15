@@ -1,0 +1,14 @@
+[package]
+name = "swaydesk-ui"
+description = "A base dos popups da Waybar em GTK 4: a janela sob a barra, o CSS, as formas de fechar e um aberto por vez"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+swaydesk-common.workspace = true
+gtk4.workspace = true
+gtk4-layer-shell.workspace = true
+libc.workspace = true
+serde_json.workspace = true

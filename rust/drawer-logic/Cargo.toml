@@ -1,0 +1,14 @@
+[package]
+name = "swaydesk-drawer-logic"
+description = "A lógica da grade de apps, sem GTK: categorias, busca, contas, fixados e busca de arquivos"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+swaydesk-common.workspace = true
+shlex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+regex.workspace = true

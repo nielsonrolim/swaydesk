@@ -1,0 +1,10 @@
+# A configuração do projeto do OBS (osc meta prjconf): as escolhas que o OBS não faz sozinho ao montar a
+# raiz de build ("have choice for ...")
+%if "%_repository" == "Debian_13"
+# libjpeg-dev é virtual no Debian 13: o pacote real é o libjpeg62-turbo-dev
+Prefer: libjpeg62-turbo-dev
+%endif
+%if "%_repository" == "Arch"
+# cargo é provido pelo rust e pelo rustup: o rust é o compilador da distro
+Prefer: rust
+%endif

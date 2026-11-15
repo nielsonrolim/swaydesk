@@ -1,0 +1,60 @@
+.TH SWAYDESK-GREETER 1 2026-11-15 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-greeter \- login screen for greetd, in the look of the Sway desktop lock screen
+.SH SYNOPSIS
+.B swaydesk\-greeter
+.SH DESCRIPTION
+A graphical login screen in GTK 4. greetd starts it inside a Sway of its own, with no key bindings and no
+Xwayland, through
+.IR /usr/share/swaydesk\-greeter/sway.conf ;
+the package's drop-in for greetd.service makes greetd read
+.I /usr/share/swaydesk\-greeter/greetd.toml
+instead of
+.IR /etc/greetd/config.toml .
+.PP
+It lists the people's accounts (UID between UID_MIN and UID_MAX of
+.IR /etc/login.defs ,
+with a login shell) with their AccountsService photo, plus "Other user\&...". The password answers PAM's first
+question; any further question (a code, an expired password) appears in the same field, one at a time. The
+session list comes from the wayland\-sessions directories of XDG_DATA_DIRS, with Sway Desktop first. The last
+account and each account's session are remembered. It uses the system keyboard layout, language and session
+cursor, and has suspend, restart and shut down buttons.
+.PP
+It takes no arguments and exits with 2 when given any.
+.SH ENVIRONMENT
+.TP
+.B GREETD_SOCK
+The greetd socket, set by greetd.
+.TP
+.B SWAYDESK_GREETER_CONFIG, SWAYDESK_GREETER_STATE
+Replace the configuration and the memory file; for tests only.
+.SH FILES
+.TP
+.I /etc/swaydesk\-greeter/config.toml
+Optional: accent (\fBaccent = "#8e44ad"\fR) and language (\fBlocale = "pt_BR"\fR), in the format of the user's
+config.toml.
+.TP
+.I /etc/swaydesk\-greeter/sway.d/*.conf
+Sway commands for this machine's login screen (outputs, scale).
+.TP
+.I /var/lib/swaydesk\-greeter/state.json
+The last account and session, written only by the greeter user (the directory is 0700).
+.TP
+.I /var/lib/AccountsService/icons/<login>
+The account photo: PNG or JPEG, up to 2 MiB and 2048x2048.
+.TP
+.I /etc/default/keyboard, /etc/locale.conf, /etc/default/locale
+The system keyboard (or systemd's, without the first file) and language.
+.SH NOTES
+To go back to the greeter of /etc/greetd/config.toml without removing the package:
+.PP
+.nf
+mkdir \-p /etc/systemd/system/greetd.service.d
+ln \-s /dev/null /etc/systemd/system/greetd.service.d/swaydesk\-greeter.conf
+systemctl daemon\-reload
+.fi
+.SH SEE ALSO
+.BR greetd (1),
+.BR greetd (5),
+.BR sway (1),
+.BR swaydesk (7)

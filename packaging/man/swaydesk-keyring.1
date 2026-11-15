@@ -1,0 +1,16 @@
+.TH SWAYDESK-KEYRING 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-keyring \- fix the login keyring created on the first login
+.SH SYNOPSIS
+.B swaydesk\-keyring
+.SH DESCRIPTION
+On the first login through a display manager without a desktop (greetd), gnome\-keyring\-daemon can create the login keyring without exporting it on D\-Bus (Ubuntu bug LP 2065296). A new daemon exports it locked. This program detects that case at login and asks for the password once, so the following logins unlock it by themselves. Without the problem, it does nothing.
+.PP
+The session runs it under the name sway\-keyring (a link in the package's helper directory to /usr/bin/swaydesk\-keyring); the process name is sway\-keyring too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH SEE ALSO
+.BR gnome\-keyring\-daemon (1),
+.BR swaydesk (7)

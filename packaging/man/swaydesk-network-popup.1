@@ -1,0 +1,29 @@
+.TH SWAYDESK-NETWORK-POPUP 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-network\-popup \- network popup for Waybar
+.SH SYNOPSIS
+.B swaydesk\-network\-popup
+.SH DESCRIPTION
+Turns networking and Wi\-Fi on and off, lists the wired connections, the VPNs and the Wi\-Fi networks, connects, disconnects and shows the details of the active connection. It talks to NetworkManager over D\-Bus.
+.PP
+Without NetworkManager on the bus, it talks to iwd (Wi\-Fi) and systemd\-networkd (the cable, state only). There are no VPNs, connection editor or networking switch then, and they are hidden.
+.PP
+With NetworkManager it never reads, receives or stores passwords: NetworkManager asks its secret agent (nm\-applet) for them. With iwd, which has no agent of its own, the open popup registers as iwd's agent: the password of a new network is typed in the popup and goes only in the D\-Bus reply to iwd. With the popup closed there is no agent, and iwd connects only to the networks it already knows. Enterprise (802.1X) networks need iwd's own provisioning file.
+.PP
+Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
+.PP
+The session runs it under the name waybar\-network\-popup (a link in the package's helper directory to /usr/bin/swaydesk\-network\-popup); the process name is waybar\-network\-popup too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR NetworkManager (8),
+.BR nm\-applet (1),
+.BR iwd (8),
+.BR systemd\-networkd (8),
+.BR swaydesk (7)

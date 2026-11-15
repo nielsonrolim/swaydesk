@@ -1,0 +1,16 @@
+Source: swaydesk-archive-keyring
+Section: misc
+Priority: optional
+Maintainer: Nielson Rolim <nielsonrolim@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Homepage: https://swaydesk.nielsonrolim.com
+Rules-Requires-Root: no
+
+Package: swaydesk-archive-keyring
+Architecture: all
+Depends: ${misc:Depends}
+Description: Sway desktop components - package repository and signing key
+ The APT source of the swaydesk packages (built on the openSUSE Build
+ Service) and the public key that signs it. Installing this package
+ adds the repository; updates of the key come through it.

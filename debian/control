@@ -1,0 +1,137 @@
+Source: swaydesk
+Section: x11
+Priority: optional
+Maintainer: Nielson Rolim <nielsonrolim@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13),
+               cargo,
+               rustc (>= 1.85),
+               pkgconf | pkg-config,
+               libgtk-4-dev (>= 4.14),
+               libgtk4-layer-shell-dev,
+               libpam0g,
+Standards-Version: 4.7.0
+Homepage: https://swaydesk.nielsonrolim.com
+Rules-Requires-Root: no
+
+Package: swaydesk-common
+Architecture: all
+Depends: ${misc:Depends}
+Description: Sway desktop components - shared data
+ The translations and the Symbols Nerd Font (the icons) shared by the
+ swaydesk components: a dock, a
+ notification daemon, Waybar popups and icons, an app grid and the theme
+ tools, written in Rust and GTK 4 for wlroots compositors with
+ layer-shell (Sway, Hyprland, river, niri).
+
+Package: swaydesk-scripts
+Architecture: all
+Depends: ${misc:Depends}, python3, python3-holidays
+Recommends: brightnessctl, swayidle, swaylock, gammastep, libnotify-bin
+Description: Sway desktop components - helper scripts
+ The scripts the components call, in /usr/libexec/swaydesk: session
+ actions, brightness, caffeine (idle inhibit), night light, Waybar module
+ refresh, idle and lock handling, the file manager launcher and the
+ calendar holidays (read by python3-holidays).
+
+Package: swaydesk-notifd
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Provides: notification-daemon
+Description: Sway desktop components - notification daemon
+ The org.freedesktop.Notifications daemon with toasts (swaydesk-notifd),
+ the notification center popup and its Waybar icon.
+
+Package: swaydesk-dock
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, sway
+Description: Sway desktop components - dock
+ A bottom dock for Sway with pinned apps, running windows and
+ workspaces, in GTK 4 with layer-shell.
+
+Package: swaydesk-drawer
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: thunar | file-manager, xdg-user-dirs
+Description: Sway desktop components - app grid
+ A full-screen app grid with search, groups and favorites, in GTK 4 with
+ layer-shell.
+
+Package: swaydesk-widgets
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: wireplumber, pulseaudio-utils, network-manager, bluez, upower, cliphist, wl-clipboard, fonts-noto-color-emoji
+Description: Sway desktop components - Waybar popups and icons
+ Popups for the Waybar modules (calendar, weather, battery, audio,
+ brightness, caffeine, network, Bluetooth, system, media and clipboard),
+ the icons for weather, network, Bluetooth and system, and the on-screen
+ volume and brightness indicator.
+
+Package: swaydesk-capture
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: grim, slurp, wf-recorder, jq, wl-clipboard, libnotify-bin
+Description: Sway desktop components - screenshot and screen recording panels
+ The screenshot and screen recording panels (region, full screen or
+ window, with delay, Gradia and audio options) over a dimmed screen.
+
+Package: swaydesk-theme
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, libglib2.0-bin
+Recommends: papirus-icon-theme, dconf-cli, gnome-themes-extra
+Description: Sway desktop components - theme tools and accent portal
+ sway-theme and sway-desktop-config: the GTK theme, icons and accent
+ color across the desktop, with the Papirus folder colors, and an
+ org.freedesktop.impl.portal.Settings backend that gives the accent color
+ to libadwaita apps. The Desktop Theme app picks the theme family, light or
+ dark style and color with a live preview.
+
+Package: swaydesk-session
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, systemd, libpam0g, swaylock
+Description: Sway desktop components - session menu, lock screen and services
+ The full-screen session menu (lock, log out, suspend, reboot, power
+ off), a minimal org.gnome.SessionManager for Sway (reboot and shutdown
+ for GNOME Software updates) and the first-login keyring fix for
+ gnome-keyring.
+ .
+ The lock screen (swaydesk-lock) uses ext-session-lock through
+ gtk4-layer-shell 1.2 or newer. It checks the password with the PAM
+ service of swaylock (/etc/pam.d/swaylock), which loads libpam at run
+ time; swaylock also stays as the fallback locker.
+
+Package: swaydesk-desktop
+Architecture: all
+Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), swaydesk-notifd (>= ${source:Version}), swaydesk-notifd (<< ${source:Version}.1~), swaydesk-dock (>= ${source:Version}), swaydesk-dock (<< ${source:Version}.1~), swaydesk-drawer (>= ${source:Version}), swaydesk-drawer (<< ${source:Version}.1~), swaydesk-widgets (>= ${source:Version}), swaydesk-widgets (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-theme (>= ${source:Version}), swaydesk-theme (<< ${source:Version}.1~), swaydesk-session (>= ${source:Version}), swaydesk-session (<< ${source:Version}.1~), ${misc:Depends}, sway, swaybg, swayidle, swaylock, waybar, kitty, rofi, qalc, jq, curl, wl-clipboard, cliphist, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, dconf-cli, libglib2.0-bin, fonts-noto-core, fonts-noto-color-emoji, gnome-themes-extra, systemd
+Recommends: papirus-icon-theme, thunar | file-manager, grim, slurp, wf-recorder, brightnessctl, playerctl, pavucontrol, gammastep, blueman, network-manager-applet | network-manager-gnome, mate-polkit | lxpolkit, libnotify-bin, power-profiles-daemon, xwayland, qt5ct, qt6ct, nwg-displays
+Description: Sway desktop - the full session
+ The "Sway Desktop" session for the display manager: the Sway and Waybar
+ configuration, the session scripts and the first-login setup, using
+ only the swaydesk components. It sits beside any session that the
+ repository's install.sh sets up, and shares the user's settings
+ (colors, fonts, keyboard, wallpaper) with it.
+ .
+ Alt+Space opens rofi. On Debian 13, rofi 1.7 runs through Xwayland
+ (recommended). qalc powers the calculator of the app grid.
+ .
+ Not in the Debian archive, and optional: the Bibata cursor.
+
+Package: swaydesk-greeter
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, greetd, sway
+Recommends: libpam-gnome-keyring
+Description: Sway desktop - login screen for greetd
+ A graphical login screen in GTK 4, in the look of the Sway desktop lock
+ screen: the account list with AccountsService photos, the password and
+ any further PAM question (a code, an expired password), the session
+ list from wayland-sessions with the last one remembered, the system
+ keyboard layout and language, and suspend, restart and shut down.
+ .
+ It runs in its own Sway, opened by greetd through a drop-in for
+ greetd.service; /etc/greetd/config.toml is left untouched. greetd turns
+ itself on when no other display manager is set; otherwise
+ "systemctl enable greetd" after disabling the current one switches to it.
+ A greeter already set in /etc/greetd/config.toml is replaced; to keep it
+ without removing this package, mask the drop-in:
+ "sudo mkdir -p /etc/systemd/system/greetd.service.d && sudo ln -s
+ /dev/null /etc/systemd/system/greetd.service.d/swaydesk-greeter.conf &&
+ sudo systemctl daemon-reload", effective at the next boot.

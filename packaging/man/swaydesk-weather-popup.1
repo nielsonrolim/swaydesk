@@ -1,0 +1,25 @@
+.TH SWAYDESK-WEATHER-POPUP 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-weather\-popup \- weather popup for Waybar
+.SH SYNOPSIS
+.B swaydesk\-weather\-popup
+.SH DESCRIPTION
+The weather now, the next hours and the next three days, from wttr.in, centered under the bar. It reads the same cache as swaydesk\-weather, so it opens at once and shows the same numbers.
+.PP
+Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
+.PP
+The session runs it under the name waybar\-weather (a link in the package's helper directory to /usr/bin/swaydesk\-weather\-popup); the process name is waybar\-weather too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.TP
+.I $XDG_RUNTIME_DIR/waybar\-weather.json
+The cached forecast shared with swaydesk\-weather.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR swaydesk\-weather (1)

@@ -1,0 +1,175 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 26,
+  "spacing": 0,
+  "modules-left":   ["sway/workspaces"],
+  "modules-center": ["custom/weather", "custom/clock"],
+  "modules-right":  ["sway/mode", "custom/rec", "custom/media", "custom/notification", "tray", "custom/clipboard", "sway/language", "custom/system", "custom/brightness", "custom/caffeine",
+                     "custom/bluetooth", "custom/network", "custom/volume", "custom/battery", "custom/power"],
+
+  // 9 workspaces sempre visíveis; os vazios ganham a classe .persistent
+  "sway/workspaces": {
+    "format": "{name}",
+    "persistent-workspaces": {
+      "1": [], "2": [], "3": [], "4": [], "5": [], "6": [], "7": [], "8": [], "9": []
+    }
+  },
+  "sway/mode": { "format": "{}" },
+
+  // Tempo pela localização do IP, do mesmo cache do popup; o sinal atualiza quando o popup busca
+  "custom/weather": {
+    "exec": "exec ~/.local/bin/waybar-weather-bar",
+    "interval": 60,
+    "signal": 8,
+    "tooltip": false,
+    "on-click": "~/.local/bin/waybar-weather",
+    "on-click-right": "gnome-weather"
+  },
+
+  // Como no KDE: qui. 29 de out. 08:55
+  // (custom porque o clock da Waybar 0.9.24 ignora "locale")
+  // Clique abre o waybar-calendar; com ele aberto a dica some (ele avisa o script)
+  "custom/clock": {
+    "exec": "exec ~/.local/bin/waybar-clock",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/waybar-calendar"
+  },
+
+  // Gravação de tela (sway-rec): some quando não está gravando
+  "custom/rec": {
+    "exec": "exec ~/.local/bin/sway-rec watch",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/sway-rec stop"
+  },
+
+  // Mídia: só aparece com algo tocando ou pausado (cinza). Clique abre o popup (capa, progresso e
+  // controles); clique do meio toca ou pausa e clique direito passa para a próxima, no player mostrado
+  "custom/media": {
+    "exec": "exec ~/.local/bin/waybar-media",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/waybar-media-popup",
+    "on-click-middle": "~/.local/bin/waybar-media play-pause",
+    "on-click-right": "~/.local/bin/waybar-media next"
+  },
+
+  "tray": { "icon-size": 16, "spacing": 10 },
+
+  "custom/clipboard": {
+    "format": "",
+    "tooltip": false,
+    "on-click": "~/.local/bin/waybar-clipboard-popup"
+  },
+
+  "sway/language": {
+    "format": "{short}",
+    "on-click": "swaymsg input type:keyboard xkb_switch_layout next"
+  },
+
+  // Sistema: CPU em laranja com CPU alta, memória quase cheia ou CPU quente; clique abre o popup
+  // (processos e encerrar), clique direito abre o monitor do sistema, se houver
+  "custom/system": {
+    "exec": "exec ~/.local/bin/waybar-system",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/waybar-system-popup",
+    "on-click-right": "~/.local/bin/waybar-system-popup --monitor"
+  },
+
+  // Cafeína: clique abre as opções (1 h, 2 h, sempre); clique direito liga ou desliga
+  "custom/caffeine": {
+    "exec": "exec ~/.local/bin/waybar-caffeine",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/waybar-caffeine-popup",
+    "on-click-right": "~/.local/bin/sway-caffeine toggle"
+  },
+
+  // Brilho e luz noturna: clique abre o popup; rolagem muda o brilho
+  "custom/brightness": {
+    "exec": "exec ~/.local/bin/waybar-brightness",
+    "return-type": "json",
+    "restart-interval": 5,
+    "smooth-scrolling-threshold": 1,
+    "on-click": "~/.local/bin/waybar-brightness-popup",
+    "on-scroll-up": "~/.local/bin/sway-osd brightness up",
+    "on-scroll-down": "~/.local/bin/sway-osd brightness down"
+  },
+
+  // Notificações: o sway-notifd guarda a lista; clique abre o popup e clique direito liga ou
+  // desliga o não perturbe. O ícone escolhe o nome em format-icons pelo "alt"
+  "custom/notification": {
+    "exec": "exec ~/.local/bin/waybar-notifications",
+    "return-type": "json",
+    "restart-interval": 5,
+    "escape": true,
+    "format": "{icon}",
+    "format-icons": {
+      "notification": "<sup> ●</sup>",
+      "none": "",
+      "dnd-notification": "<sup> ●</sup>",
+      "dnd-none": "",
+      "inhibited-notification": "<sup> ●</sup>",
+      "inhibited-none": "",
+      "dnd-inhibited-notification": "<sup> ●</sup>",
+      "dnd-inhibited-none": ""
+    },
+    "tooltip": false,
+    "on-click": "~/.local/bin/waybar-notifications-popup",
+    "on-click-right": "~/.local/bin/waybar-notifications toggle-dnd"
+  },
+
+  // Volume: script próprio em vez do módulo pulseaudio, para a dica sumir com o
+  // popup de áudio aberto (o waybar-audio avisa o script ao abrir e ao fechar)
+  "custom/volume": {
+    "exec": "exec ~/.local/bin/waybar-volume",
+    "return-type": "json",
+    "restart-interval": 5,
+    "smooth-scrolling-threshold": 1,
+    "on-click": "~/.local/bin/waybar-audio",
+    "on-click-middle": "pavucontrol",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "on-scroll-up": "~/.local/bin/sway-osd volume up 1",
+    "on-scroll-down": "~/.local/bin/sway-osd volume down 1"
+  },
+
+  // Bateria: script próprio em vez do módulo battery, para a dica sumir com o
+  // popup aberto (o waybar-battery-popup avisa o script ao abrir e ao fechar)
+  "custom/battery": {
+    "exec": "exec ~/.local/bin/waybar-battery watch",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/waybar-battery-popup",
+    "on-click-middle": "~/.local/bin/waybar-battery info",
+    "on-click-right": "~/.local/bin/waybar-battery profile"
+  },
+
+  // Bluetooth: ícone e popup próprios; o blueman-agent segue rodando sem ícone,
+  // só para responder aos pedidos de pareamento (PIN, confirmação)
+  "custom/bluetooth": {
+    "exec": "exec ~/.local/bin/waybar-bluetooth",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/waybar-bluetooth-popup",
+    "on-click-middle": "blueman-manager"
+  },
+
+  // Rede: ícone e popup próprios no lugar do ícone do nm-applet, que segue rodando
+  // sem ícone só como agente de segredos (é ele que pergunta as senhas)
+  "custom/network": {
+    "exec": "exec ~/.local/bin/waybar-network",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/waybar-network-popup",
+    "on-click-middle": "nm-connection-editor"
+  },
+
+  "custom/power": {
+    "format": "",
+    "tooltip": false,
+    "on-click": "~/.local/bin/session-menu"
+  }
+}

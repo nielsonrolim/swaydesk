@@ -1,0 +1,55 @@
+# Biblioteca dos ícones em bash da Waybar, carregada com source (não é um programa).
+# Nada aqui abre processos: o ícone roda o dia todo, em um laço por barra.
+run=${XDG_RUNTIME_DIR:-/tmp}
+
+# O popup está aberto? O PID pode ter sido reutilizado: confere se ainda é o popup.
+popup_open() {
+  local pid args
+  [[ -r $run/$1.pid ]] || return 1
+  pid=$(<"$run/$1.pid") 2>/dev/null || return 1
+  [[ $pid =~ ^[0-9]+$ ]] || return 1
+  mapfile -d '' -t args 2>/dev/null <"/proc/$pid/cmdline" || return 1
+  # O nome no argv[0] (as versões em Rust) ou o script no argv[1] (python3 ou bash antes dele)
+  [[ ${args[0]##*/} == "$1" || ${args[1]:-} == */"$1" ]]
+}
+
+# Avô: a Waybar, se houver um sh -c entre os dois.
+grandparent() {
+  local s
+  read -r s 2>/dev/null <"/proc/$PPID/stat" || { echo gone; return; }
+  s=${s##*) }
+  set -- $s
+  echo "$2"
+}
+
+# Laço de um ícone que relê a cada 5 s: build põe a linha JSON em $line, e só o que mudou é escrito.
+# SIGUSR1 atualiza na hora. uso: icon_loop NOME (um pidfile por instância, com o PID no nome).
+icon_loop() {
+  local name=$1 pidfile="$run/$1.$$.pid" fifo="$run/$1.fifo.$$" gp tick=0 last= rc
+  # O sinal precisa estar tratado antes de publicar o PID: o padrão do SIGUSR1 encerraria.
+  # No bash, um sinal não interrompe o read: a rotina escreve no FIFO que o read está lendo.
+  trap '{ printf "\n" >&3; } 2>/dev/null' USR1
+  trap 'rm -f "$pidfile"; exit 0' TERM INT HUP
+  echo $$ >"$pidfile"
+  if mkfifo "$fifo" 2>/dev/null; then
+    exec 3<>"$fifo"
+    rm -f "$fifo"
+  fi
+  gp=$(grandparent)
+  while true; do
+    build
+    if [[ $line != "$last" ]]; then
+      last=$line
+      # Falha ao escrever: a Waybar foi embora
+      printf '%s\n' "$line" || { rm -f "$pidfile"; exit 0; }
+    fi
+    rc=0
+    read -r -t 5 -u 3 _ 2>/dev/null || rc=$?
+    (( rc == 0 || rc > 128 )) || sleep 5  # sem o FIFO, o read volta na hora com erro
+    tick=$(( tick + 5 ))
+    if (( tick >= 30 )); then
+      tick=0
+      [[ $(grandparent) == "$gp" ]] || { rm -f "$pidfile"; exit 0; }
+    fi
+  done
+}

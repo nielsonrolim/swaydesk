@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# A Waybar da sessão, num laço que a abre de novo se ela sair com erro (com o portal fora do ar no
+# login, ela desistia e não voltava) ou cair (SEGV). Encerrada de propósito, ou com o Sway fora, o
+# laço termina.
+# uso: sway-waybar                    o laço: o config do Sway o abre pelo sway-after-env
+#      sway-waybar restart  se a Waybar estiver rodando, encerra e abre outra pelo Sway, com o laço.
+#                           Assim um módulo novo do config aparece na hora. O SIGUSR2 da Waybar não
+#                           serve: na 0.15 o recarregar às vezes leva mais de um minuto, e na 0.12
+#                           deixa os scripts dos módulos rodando para trás
+#
+# Na sessão do pacote swaydesk-desktop (SWAYDESK_SESSION=package), a Waybar abre com a config do pacote e a
+# folha por usuário que o sway-desktop-config generate grava (as cores e as fontes, depois a do pacote), e o
+# restart reabre pelos programas ao lado deste script (/usr/libexec/swaydesk), não pelo ~/.local/bin.
+set -u
+tries=${SWAY_WAYBAR_TRIES:-50}  # tentativas de 0,1 s; os testes encurtam
+package=0
+[[ ${SWAYDESK_SESSION:-} == package ]] && package=1
+share=${SWAYDESK_SHARE:-/usr/share/swaydesk-desktop}  # os testes trocam
+self=$(readlink -f "$0")
+here=${self%/*}
+
+# pgrep e pkill só deste usuário: com outro logado, a Waybar dele faria esperar à toa
+gone() {  # espera o programa sair: até $2 tentativas de 0,1 s
+  local i
+  for ((i = 0; i < $2; i++)); do
+    pgrep -u "$UID" -x "$1" >/dev/null || return 0
+    sleep 0.1
+  done
+  ! pgrep -u "$UID" -x "$1" >/dev/null
+}
+
+if [[ ${1:-} == restart ]]; then
+  # Sem o Sway (SWAYSOCK de fora, TTY): 2, para quem chamou não dizer que reiniciou
+  swaymsg -t get_version >/dev/null 2>&1 || exit 2
+  pgrep -u "$UID" -x waybar >/dev/null || exit 0  # quem a fechou de propósito não a vê voltar
+  # A nova abre pelo caminho fixo: sem ele (antes do install criar os links), não derruba a que está
+  # rodando, que não voltaria. No pacote, a pasta deste script. O Sway expande $ e separa por ; antes
+  # do sh: um caminho com outros caracteres não vai para o exec
+  if ((package)); then
+    dir=$here
+    if [[ ! $dir =~ ^[A-Za-z0-9/._-]+$ ]]; then
+      echo "sway-waybar: unexpected folder: $dir" >&2
+      exit 1
+    fi
+  else
+    dir='~/.local/bin'
+  fi
+  for need in sway-after-env sway-waybar; do
+    check=$dir/$need
+    ((package)) || check=$HOME/.local/bin/$need
+    if [[ ! -x $check ]]; then
+      if ((package)); then
+        echo "sway-waybar: $check not found" >&2
+      else
+        echo "sway-waybar: $check not found; run ./install.sh" >&2
+      fi
+      exit 1
+    fi
+  done
+  pkill -u "$UID" -x waybar
+  # Espera a antiga sair: a nova, com a antiga ainda de pé, seriam duas barras, e a nova sem bandeja.
+  # Uma Waybar travada (visto na 0.15) leva KILL; o laço antigo termina com 137, sem reabrir
+  if ! gone waybar "$tries"; then
+    pkill -KILL -u "$UID" -x waybar
+    gone waybar 20
+  fi
+  # Pelo Sway, e não daqui: a Waybar não pode ser filha de quem a reiniciou (o install.sh, um
+  # terminal) e precisa do ambiente da sessão. Caminho fixo: o Sway expande $ e separa por ; antes
+  # do sh, e o ~ fica para o sh
+  swaymsg -q exec "$dir/sway-after-env $dir/sway-waybar"
+  exit 0
+fi
+
+# Termina quando a Waybar sai normalmente (0) ou é encerrada de propósito: HUP, INT, KILL ou TERM
+# (129, 130, 137, 143), como no restart. Um erro (1-127) ou uma queda por outro sinal (SEGV 139, ABRT
+# 134, BUS 135...) a abre de novo, enquanto o Sway estiver no ar. A espera dobra a cada queda seguida
+# (1, 2, 4... até 30 s): uma que cai sem parar (config ou CSS quebrados) não sobe os scripts dos
+# módulos a cada segundo. Uma que ficou de pé 30 s volta a esperar só 1 s
+args=()
+((package)) && args=(-c "$share/waybar/config.jsonc" -s "${XDG_CONFIG_HOME:-$HOME/.config}/swaydesk-desktop/waybar/style.css")
+delay=1
+while :; do
+  start=$SECONDS
+  waybar "${args[@]}"
+  rc=$?
+  case $rc in
+    0 | 129 | 130 | 137 | 143) break ;;
+  esac
+  swaymsg -t get_version >/dev/null 2>&1 || break
+  (( SECONDS - start >= 30 )) && delay=1
+  sleep "$delay"
+  (( delay = delay * 2 > 30 ? 30 : delay * 2 ))
+done

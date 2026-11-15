@@ -1,0 +1,34 @@
+.TH SWAYDESK-LOCK 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-lock \- lock screen
+.SH SYNOPSIS
+.B swaydesk\-lock
+\-\-notify\-fd N
+.br
+.B swaydesk\-lock
+\-\-blur
+.SH DESCRIPTION
+The lock screen, through ext\-session\-lock\-v1 (gtk4\-layer\-shell 1.2 or newer). Do not run it directly: the sway\-lock helper starts it through its supervisor, which falls back to swaylock if it fails. The password field is on every monitor, and PAM checks the password with the swaylock service.
+.PP
+Without the lock support in gtk4\-layer\-shell, it exits 1 and sway\-lock uses the next locker.
+.SH OPTIONS
+.TP
+.B \-\-notify\-fd N
+Write L to the file descriptor N when locked, F if another client already locked, and U after the unlock.
+.TP
+.B \-\-blur
+Generate the blurred background of each monitor in advance (also when run as sway\-lock\-blur); without Sway or a wallpaper, do nothing and exit 0.
+.TP
+.B \-\-check
+Exit 0 if the installed gtk4\-layer\-shell supports locking, 1 if not.
+.SH FILES
+.TP
+.I /etc/pam.d/swaylock
+The PAM service used to check the password.
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR pam (8),
+.BR swaydesk (7),
+.BR swaylock (1)

@@ -1,0 +1,18 @@
+[package]
+name = "swaydesk-system-popup"
+description = "Popup Sistema da Waybar (GTK 4): CPU, memória, disco, temperatura e os processos que mais consomem"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-system-popup"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-system-logic.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true
+libc.workspace = true

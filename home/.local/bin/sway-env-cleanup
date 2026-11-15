@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Ajusta o ambiente do systemd e do D-Bus para o Sway e o limpa quando ele sai. O gerenciador do
+# usuário pode sobreviver ao logout, e um login no Cinnamon, no GNOME ou no KDE herdaria essas
+# variáveis nos apps abertos pelo D-Bus. A lista é a do dbus-update-activation-environment no
+# sway/config, menos o DCONF_PROFILE, que tem tratamento próprio.
+set -uo pipefail
+# O DISPLAY também: o do Xwayland do Sway sobrava no systemd, e um portal ativado entre as sessões
+# tentava abri-lo e morria
+vars=(WAYLAND_DISPLAY DISPLAY SWAYSOCK XDG_SESSION_DESKTOP XDG_CURRENT_DESKTOP XDG_SESSION_TYPE MOZ_ENABLE_WAYLAND
+      QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME ELECTRON_OZONE_PLATFORM_HINT _JAVA_AWT_WM_NONREPARENTING XDG_MENU_PREFIX
+      SWAYDESK_SESSION)
+# Os portais leem o dconf com o perfil do ambiente em que iniciaram, e podem ter sobrado de outra
+# sessão. try-restart só reinicia os que estão rodando
+portals=(xdg-desktop-portal-gtk xdg-desktop-portal-wlr xdg-desktop-portal-gnome xdg-desktop-portal-kde
+         plasma-xdg-desktop-portal-kde xdg-desktop-portal)
+profile=${DCONF_PROFILE:-}
+if [[ -n $profile ]]; then
+  dbus-update-activation-environment --systemd DCONF_PROFILE 2>/dev/null
+  for unit in "${portals[@]}"; do systemctl --user try-restart "$unit.service" 2>/dev/null; done
+fi
+# Termina no evento de saída ou quando a conexão cai, se o Sway morrer
+swaymsg -t subscribe '["shutdown"]' >/dev/null 2>&1 || true
+# Os portais primeiro, enquanto o display ainda existe: o xdg-desktop-portal via o do gtk morrer com o
+# display e o reativava na hora, com o ambiente velho, e a ativação presa (120 s) travava o login seguinte.
+# O sway-portal-gtk barra essa reativação; parar aqui encurta a janela
+for unit in "${portals[@]}"; do systemctl --user stop --no-block "$unit.service" 2>/dev/null; done
+# O D-Bus não tem como remover: vazio equivale a não definido para os serviços que ele mesmo inicia
+empty=()
+for v in "${vars[@]}"; do empty+=("$v="); done
+# Menos o DCONF_PROFILE: vazio, ele faz o dconf ignorar as configurações do usuário. Vai para o perfil padrão
+default=/etc/dconf/profile/user
+[[ -f $default ]] || default=$HOME/.local/share/sway-desktop/dconf/default
+[[ -n $profile ]] && empty+=("DCONF_PROFILE=$default")
+dbus-update-activation-environment "${empty[@]}" 2>/dev/null || true
+# Só depois: o dbus-daemon repassa ao systemd o que recebe, inclusive os vazios, e o GDM entrega o
+# ambiente do systemd ao login seguinte. Com SWAYSOCK vazio, o Sway seguinte ficava sem IPC
+systemctl --user unset-environment "${vars[@]}" ${profile:+DCONF_PROFILE} 2>/dev/null || true
+# O serviço da GNOME Software foi aberto pelo Sway e sobrevive ao logout: entre as sessões, ele
+# reativava os portais com o ambiente que sobrou
+if command -v pgrep >/dev/null && pgrep -x gnome-software >/dev/null; then
+  gnome-software --quit 2>/dev/null || true
+fi
+# Os outros avisos de atualização que o Sway abriu (sway-update-notifier), para um GNOME ou um KDE
+# aberto depois não ficar com dois
+if command -v pkill >/dev/null; then
+  pkill -x -u "$(id -u)" update-notifier 2>/dev/null
+  pkill -x -u "$(id -u)" DiscoverNotifier 2>/dev/null
+fi
+# Parados, os portais iniciam de novo na próxima sessão, já com o ambiente dela. Um failed ou um
+# start preso deixava o login seguinte sem o portal: a Waybar esperava o portal até o timeout e saía
+for unit in "${portals[@]}"; do systemctl --user stop "$unit.service" 2>/dev/null; done
+systemctl --user reset-failed "${portals[@]/%/.service}" 2>/dev/null || true
+exit 0

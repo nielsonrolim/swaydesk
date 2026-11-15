@@ -1,0 +1,18 @@
+[package]
+name = "swaydesk-battery-popup"
+description = "Popup da bateria da Waybar (GTK 4): carga, tempo, saúde, gráfico de 12 h e perfis de energia"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-battery-popup"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true
+libc.workspace = true
+serde_json.workspace = true

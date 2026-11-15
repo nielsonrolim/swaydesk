@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Troca a janela focada com a primeira do workspace (a principal).
+set -euo pipefail
+ws=$(swaymsg -t get_workspaces | jq -r '.[] | select(.focused) | .name')
+read -r focused master contains < <(swaymsg -t get_tree | jq -r --arg ws "$ws" '
+  first(recurse(.nodes[]?) | select(.type == "workspace" and .name == $ws)) as $w
+  | [$w.nodes[]? | recurse(.nodes[]?)] as $all
+  | (first($all[] | select(.focused == true)) // null) as $f
+  | (first($all[] | select(.type == "con" and (.nodes | length) == 0)) // null) as $m
+  | "\($f.id) \($m.id) \(if $f == null or $m == null then false else any($f | recurse(.nodes[]?); .id == $m.id) end)"')
+# Flutuante ou workspace vazio: nada a fazer. Com um contêiner focado que já tem a principal
+# dentro (focus parent), o Sway recusaria a troca
+[[ $focused != null && $master != null && $contains != true ]] || exit 0
+swaymsg "swap container with con_id $master" >/dev/null

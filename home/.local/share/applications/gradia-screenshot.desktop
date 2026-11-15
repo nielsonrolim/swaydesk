@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=Screenshot
+Name[pt_BR]=Captura de Tela
+GenericName=Screenshot tool
+GenericName[pt_BR]=Ferramenta de captura de tela
+Comment=Opens the screenshot panel (same as Super+Shift+E)
+Comment[pt_BR]=Abre o painel de captura de tela (igual a Super+Shift+E)
+Exec=sway-capture shot
+Icon=applets-screenshooter
+Terminal=false
+StartupNotify=false
+Categories=Graphics;
+Keywords=screenshot;print;screen;gradia;
+Keywords[pt_BR]=screenshot;print;captura;tela;gradia;
+# Só no Sway e nos compositores do app Tema: o painel e os helpers usam o Sway e o wlroots
+OnlyShowIn=sway;Hyprland;river;niri;

@@ -1,0 +1,22 @@
+.TH SWAYDESK-CLIP-STORE 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-clip\-store \- store non\-text clipboard content in cliphist
+.SH SYNOPSIS
+.B swaydesk\-clip\-store
+.SH DESCRIPTION
+Not meant to be run directly: the Sway configuration runs it under wl\-paste \-\-watch, with no type. It reads the copied content on standard input and stores it with cliphist store when it is neither text nor an image (a PDF, a file copied as bytes), since text and images have their own watchers. Above 5 MB it does not store anything.
+.PP
+The session runs it under the name sway\-clip\-store (a link in the package's helper directory to /usr/bin/swaydesk\-clip\-store); the process name is sway\-clip\-store too.
+.SH ENVIRONMENT
+.TP
+.B CLIPBOARD_STATE
+Set by wl\-paste; anything other than data (sensitive, clear) is left to the text watcher.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH SEE ALSO
+.BR cliphist (1),
+.BR swaydesk (7),
+.BR swaydesk\-clipboard\-popup (1),
+.BR wl\-paste (1)

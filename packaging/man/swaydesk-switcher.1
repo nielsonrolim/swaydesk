@@ -1,0 +1,40 @@
+.TH SWAYDESK-SWITCHER 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-switcher \- Alt+Tab window switcher for Sway
+.SH SYNOPSIS
+.B swaydesk\-switcher
+daemon
+.br
+.B swaydesk\-switcher
+next
+.br
+.B swaydesk\-switcher
+prev
+.SH DESCRIPTION
+Switches windows in the order of use, with a card in the middle of the screen showing the icon, title and workspace of each window. Releasing Alt focuses the chosen window; Esc cancels. A quick tap does not show the card.
+.PP
+The session runs it under the name sway\-switcher (a link in the package's helper directory to /usr/bin/swaydesk\-switcher); the process name is sway\-switcher too.
+.SH NOTES
+.TP
+.B next, prev
+They signal the resident process (SIGUSR1 and SIGUSR2) and exit. Without it, they walk the Sway tree without the card.
+.SH OPTIONS
+.TP
+.B daemon
+The resident process, started by the Sway configuration: it keeps the order of use.
+.TP
+.B next
+Alt+Tab: the window used before; again, the next one.
+.TP
+.B prev
+Alt+Shift+Tab: the oldest window; again, the previous one.
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR sway (5),
+.BR swaydesk (7)

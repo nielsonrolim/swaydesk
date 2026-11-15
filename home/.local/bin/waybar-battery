@@ -1,0 +1,208 @@
+#!/usr/bin/env bash
+# Ícone e ações da bateria na Waybar.
+# uso: waybar-battery watch     ícone (exec do custom/battery): uma linha JSON a cada mudança
+#      waybar-battery info      notificação com estado e perfil
+#      waybar-battery profile   alterna o perfil de energia
+set -euo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+
+# "/battery_": um mouse aparece como .../mouse_hidpp_battery_0. Sem grep -m 1 e head: sair
+# antes do fim mata o upower com SIGPIPE, e o pipefail encerraria o script. Sem bateria
+# (o serviço ainda não subiu, ou um desktop) devolve vazio em vez de encerrar.
+find_bat() { { upower -e 2>/dev/null || true; } | awk '/\/battery_/ && !found { print; found = 1 }'; }
+bat=$(find_bat)
+
+# "3.2 hours" -> "3 h 12 min", como no popup. Vazio acima de 48 h: com consumo quase zero
+# o upower estima dias sem sentido.
+fmt_time() {
+  awk -v t="$1" -v under="$(t 'less than 1 min')" 'BEGIN {
+    if (split(t, p, " ") < 2) exit
+    m = p[1]
+    if (p[2] ~ /^hour/) m *= 60; else if (p[2] ~ /^day/) m *= 1440; else if (p[2] ~ /^second/) m /= 60
+    m = int(m + 0.5)
+    if (m > 48 * 60) exit
+    if (m < 1) print under
+    else if (m < 60) print m " min"
+    else if (m % 60) printf "%d h %02d min\n", m / 60, m % 60
+    else printf "%d h\n", m / 60
+  }'
+}
+
+# O perfil de energia pelo D-Bus, como o popup: o powerprofilesctl só vem com o power-profiles-daemon, e o
+# tlp-pd (o daemon de perfis do TLP) tem a mesma interface sem esse comando
+PP=(net.hadess.PowerProfiles /net/hadess/PowerProfiles net.hadess.PowerProfiles ActiveProfile)
+profile_get() { timeout -k 1 3 busctl --system get-property "${PP[@]}" 2>/dev/null | sed -n 's/^s "\(.*\)"$/\1/p'; }
+# Os perfis que o daemon oferece, na ordem do ciclo: o power-profiles-daemon sem suporte da plataforma não
+# tem o performance. Vazio sem o daemon (ou sem o jq)
+profile_list() {
+  local offered
+  offered=$(timeout -k 1 3 busctl --system --json=short get-property "${PP[@]:0:3}" Profiles 2>/dev/null |
+            jq -r '.data[].Profile.data' 2>/dev/null) || true
+  for p in power-saver balanced performance; do
+    grep -qx -- "$p" <<<"$offered" && echo "$p"
+  done
+  return 0
+}
+profile_set() { timeout -k 1 35 busctl --system --timeout=30 set-property "${PP[@]}" s "$1" >/dev/null 2>&1; }
+
+profile_name() {
+  case $1 in
+    power-saver) t 'Power saver'; echo ;;
+    balanced)    t 'Balanced'; echo ;;
+    performance) t 'Performance'; echo ;;
+    *)           echo "$1" ;;
+  esac
+}
+
+# Campo da saída do upower; LC_ALL=C deixa os nomes em inglês e o decimal com ponto.
+field() { [[ -n $bat ]] || return 0; LC_ALL=C upower -i "$bat" | sed -n "s/^ *$1: *//p" | head -n 1; }
+
+# A mesma notificação é substituída a cada clique, em vez de empilhar.
+notify() {
+  notify-send -a "$(t 'Battery')" -h string:x-canonical-private-synchronous:battery \
+    -i "$(field icon-name | tr -d "'")" "$@"
+}
+
+# Ícone da barra. É um custom/battery em vez do módulo battery só para a dica
+# sumir com o popup (waybar-battery-popup) aberto; o popup manda SIGUSR1 ao
+# abrir e ao fechar. Três estados com ícones diferentes:
+#   carregando              raio (classe charging, teal no CSS)
+#   na tomada, sem carregar tomada (classe plugged): carregada, ou segurando a carga
+#   na bateria              nível da bateria (discharging; warning ≤ 20%, critical ≤ 10%)
+# "Na tomada" vem do /sys/class/power_supply/AC*/online, não do estado da bateria.
+watch() {
+  local run self
+  self=$(readlink -f -- "$0")
+  source "${self%/*}/waybar-icon-lib"
+  local retry=5 rc tick=0 gp
+  monitor_pid=
+  # O sinal só marca: a linha é escrita no laço principal, e nunca no meio de outra
+  # escrita, que imprimiria a dica antiga por último. Precisa vir antes de publicar o PID:
+  # o padrão do SIGUSR1 encerraria o script. No bash, um sinal não interrompe o read: a
+  # rotina escreve no FIFO que o read está lendo, o mesmo em que o upower escreve.
+  pending=0
+  trap 'pending=1; { printf "\n" >&3; } 2>/dev/null' USR1
+  trap 'exit 0' TERM INT HUP
+  trap 'if [[ -n $monitor_pid ]]; then kill "$monitor_pid" 2>/dev/null || true; fi' EXIT
+  echo $$ >"$run/waybar-battery-watch.pid"
+  local icons=($'' $'' $'' $'' $'') bolt=$'' plug=$''
+  emit() {
+    local info pct state icon cls tip t ac=0 f
+    info=
+    [[ -n $bat ]] && { info=$(LC_ALL=C upower -i "$bat" 2>/dev/null) || info=; }
+    get() { sed -n "s/^ *$1: *//p" <<<"$info" | head -n 1; }
+    pct=$(get percentage); pct=${pct%\%}; pct=${pct%%.*}
+    if [[ -z $pct ]]; then  # sem bateria ou serviço fora do ar: módulo vazio, até voltar
+      bat=$(find_bat)
+      echo '{"text":""}'
+      return 0
+    fi
+    state=$(get state)
+    for f in "${POWER_SUPPLY_DIR:-/sys/class/power_supply}"/AC*/online; do [[ $(cat "$f" 2>/dev/null) == 1 ]] && ac=1; done
+    if [[ $state == charging ]]; then
+      icon=$bolt; cls=charging
+      t=$(fmt_time "$(get 'time to full')"); tip=$(t 'Charging'); [[ -n $t ]] && tip+=" · $(printf "$(t 'full in %s')" "$t")"
+    elif (( ac )); then
+      icon=$plug; cls=plugged
+      [[ $state == fully-charged ]] && tip=$(t 'Charged · plugged in') || tip=$(t 'Plugged in, not charging')
+    else
+      icon=${icons[$(( pct >= 100 ? 4 : pct / 20 ))]}; cls=discharging
+      if (( pct <= 10 )); then cls+=" critical"; elif (( pct <= 20 )); then cls+=" warning"; fi
+      t=$(fmt_time "$(get 'time to empty')"); tip=$(t 'On battery'); [[ -n $t ]] && tip+=" · $(printf "$(t '%s left')" "$t")"
+    fi
+    tip="$pct% · $tip"
+    if popup_open waybar-battery-popup; then tip=""; fi
+    local -a c=($cls)
+    printf '{"text":"%s","tooltip":"%s","class":[%s],"percentage":%d}\n' \
+      "$icon" "$tip" "$(printf '"%s",' "${c[@]}" | sed 's/,$//')" "$pct"
+  }
+  # Avô: a Waybar, por meio do sh -c. Se ela sair sem avisar, este processo sobraria até
+  # o próximo evento do upower, o que numa bateria cheia pode levar horas
+  gp=$(grandparent)
+  local fifo="$run/waybar-battery.fifo.$$"
+  if mkfifo "$fifo" 2>/dev/null; then
+    exec 3<>"$fifo"
+    rm -f "$fifo"
+  fi
+  # O laço de fora reabre o monitor: ele termina quando o upowerd reinicia
+  while true; do
+    [[ -n $bat ]] || bat=$(find_bat)
+    pending=0
+    emit
+    # upower --monitor imprime uma linha a cada atualização
+    upower --monitor >&3 2>/dev/null &
+    monitor_pid=$!
+    while true; do
+      rc=0
+      read -r -t 5 -u 3 _ 2>/dev/null || rc=$?
+      if (( rc == 0 )); then
+        # Agrupa a rajada de eventos numa linha só
+        while read -r -t 0.2 -u 3 _ 2>/dev/null; do :; done
+        pending=0
+        emit
+      elif (( rc > 128 )); then
+        # Com o FIFO aberto aqui para escrita, o fim do monitor não vira fim de arquivo
+        kill -0 "$monitor_pid" 2>/dev/null || break
+        tick=$(( tick + 5 ))
+        if (( tick >= 30 )); then
+          tick=0
+          [[ $(grandparent) == "$gp" ]] || exit 0
+        fi
+      else
+        sleep 5  # sem o FIFO, o read volta na hora com erro
+        kill -0 "$monitor_pid" 2>/dev/null || break
+      fi
+    done
+    monitor_pid=
+    sleep "$retry"
+  done
+}
+
+case ${1:-info} in
+  watch) watch ;;
+  info)
+    if [[ -z $bat ]]; then
+      notify-send -a "$(t 'Battery')" -i battery-missing "$(t 'Battery')" "$(t 'No battery found')"
+      exit 0
+    fi
+    pct=$(field percentage)
+    raw=$(field state)
+    case $raw in
+      charging)      state=$(t 'Charging') ;;
+      discharging)   state=$(t 'Discharging') ;;
+      fully-charged) state=$(t 'Charged') ;;
+      pending-charge) state=$(t 'Waiting to charge') ;;
+      *)             state=$raw ;;
+    esac
+    body=$(printf "$(t 'Profile: %s')" "$(profile_name "$(profile_get)")")
+    # carregada, o upower dá um tempo sem sentido (dias)
+    case $raw in
+      discharging) t=$(field 'time to empty'); label=$(t '%s left') ;;
+      charging)    t=$(field 'time to full');  label=$(t 'Full in %s') ;;
+      *)           t= ;;
+    esac
+    if [[ -n $t ]]; then
+      t=$(fmt_time "$t")
+      [[ -z $t ]] || body="$(printf "$label" "$t") · $body"
+    fi
+    notify "$state · $pct" "$body"
+    ;;
+  profile)
+    # O próximo da lista oferecida, dando a volta; sem a lista, o ciclo dos três de sempre
+    mapfile -t offered < <(profile_list)
+    (( ${#offered[@]} )) || offered=(power-saver balanced performance)
+    current=$(profile_get) next=${offered[0]}
+    for i in "${!offered[@]}"; do
+      if [[ ${offered[i]} == "$current" ]]; then
+        next=${offered[(i + 1) % ${#offered[@]}]}
+      fi
+    done
+    if profile_set "$next"; then
+      notify "$(t 'Power profile')" "$(profile_name "$next")"
+    else
+      notify "$(t 'Power profile')" "$(printf "$(t 'Could not change to %s')" "$(profile_name "$next")")"
+      exit 1
+    fi
+    ;;
+  *) echo "$(t 'usage: waybar-battery watch|info|profile')" >&2; exit 2 ;;
+esac

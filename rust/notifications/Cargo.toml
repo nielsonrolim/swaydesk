@@ -1,0 +1,18 @@
+[package]
+name = "swaydesk-notifications"
+description = "Ícone das notificações na Waybar (custom/notification), lido do sway-notifd; só gio, sem GTK"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-notifications"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-notifd-logic.workspace = true
+gio.workspace = true
+libc.workspace = true
+serde_json.workspace = true

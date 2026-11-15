@@ -1,0 +1,15 @@
+[package]
+name = "swaydesk-sessionmgr"
+description = "O mínimo do org.gnome.SessionManager no Sway: Reboot e Shutdown"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-sessionmgr"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+gio.workspace = true

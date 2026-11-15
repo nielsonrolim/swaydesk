@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# Atualiza as traduções depois de mudar um texto no código. Só para quem desenvolve: precisa do
+# pacote gettext (xgettext, msgmerge, msgfmt). Extrai os textos para o sway-desktop.pot, junta os
+# novos em cada <língua>.po e compila o .mo que o install.sh liga em ~/.local/share/locale.
+# Uso: po/update        depois, traduza as entradas novas ou "fuzzy" do .po e rode de novo
+set -euo pipefail
+cd "$(dirname "$(readlink -f "$0")")/.."
+# Os textos saem de todos os scripts de home/.local/bin: numa árvore parcial (o espelho público, o tarball do
+# OBS), o .pot perderia os que ficaram de fora. O repositório completo é o que tem o install.sh
+if [[ ! -f install.sh ]]; then
+  echo "po/update: run it in the full repository; in this tree the strings would be lost" >&2
+  exit 1
+fi
+
+python_files=() shell_files=()
+for file in home/.local/bin/*; do
+  [[ -f $file && $file != */sway-i18n.sh ]] || continue
+  if [[ $file == *.py ]] || head -n 1 "$file" | grep -q python; then
+    grep -q 'sway_i18n' "$file" && python_files+=("$file")
+  elif grep -q 'sway-i18n.sh' "$file"; then
+    shell_files+=("$file")
+  fi
+done
+grep -q 'sway-i18n.sh' install.sh && shell_files+=(install.sh)
+
+common=(--from-code=UTF-8 --add-comments=TRANSLATORS: --add-location=file --package-name=sway-desktop
+        --no-wrap)
+pot=po/sway-desktop.pot
+xgettext "${common[@]}" --language=Python --keyword=_ --keyword=ngettext:1,2 --keyword=pgettext:1c,2 \
+  -o "$pot" "${python_files[@]}"
+if ((${#shell_files[@]})); then
+  xgettext "${common[@]}" --language=Shell --keyword= --keyword=t --keyword=tn:1,2 --join-existing -o "$pot" "${shell_files[@]}"
+fi
+# Os textos do Rust: quase todos repetem um do Python, mas os componentes só em Rust (o backend iwd do
+# popup de rede, o sway-desktop-config) têm os seus. O xgettext não tem a língua Rust, e o modo C lê bem
+# os tr("...") e ntr/ptr (o CSS em r#"..."# dá um aviso de aspas, sem efeito). Num .pot à parte: o modo C
+# marcaria c-format nos textos com %s, que são do Python (python-format), e o msgcat junta os dois
+mapfile -t rust_files < <(find rust -path rust/target -prune -o -name '*.rs' -print | sort)
+rust_pot=$(mktemp --suffix=.pot)
+trap 'rm -f "$rust_pot"' EXIT
+xgettext "${common[@]}" --language=C --keyword= --keyword=tr --keyword=ntr:1,2 --keyword=ptr:1c,2 \
+  -o "$rust_pot" "${rust_files[@]}" 2> >(grep -v 'unterminated' >&2)
+sed -i -e '/^#, c-format$/d' -e 's/^#, c-format, /#, /' "$rust_pot"
+msgcat --use-first --no-wrap --add-location=file -o "$pot" "$pot" "$rust_pot"
+# O cabeçalho muda a cada execução: sem a data, o .pot só muda quando um texto muda
+sed -i '/^"POT-Creation-Date:/d' "$pot"
+
+for po in po/*.po; do
+  lang=$(basename "$po" .po)
+  msgmerge --quiet --update --backup=none --no-wrap "$po" "$pot"
+  msgattrib --no-obsolete --no-wrap -o "$po" "$po"  # um texto que saiu do código sai do .po
+  mkdir -p "home/.local/share/locale/$lang/LC_MESSAGES"
+  msgfmt --check -o "home/.local/share/locale/$lang/LC_MESSAGES/sway-desktop.mo" "$po"
+  echo "$lang: $(msgfmt --statistics -o /dev/null "$po" 2>&1)"
+done

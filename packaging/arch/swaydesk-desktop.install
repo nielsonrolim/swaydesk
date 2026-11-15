@@ -1,0 +1,32 @@
+# O pacman não liga serviços: sem eles, o blueman não acha o adaptador, o applet de rede fica vazio e o app de
+# energia não troca de perfil. Só avisa, como manda a política do Arch, e só sobre o que ainda está desligado.
+_swaydesk_enabled() { systemctl is-enabled -q "$1" 2>/dev/null; }
+
+_swaydesk_service() { # serviço, explicação
+  if systemctl cat -q "$1" >/dev/null 2>&1 && ! _swaydesk_enabled "$1"; then
+    echo ":: $2: systemctl enable --now $1"
+  fi
+}
+
+post_install() {
+  _swaydesk_service bluetooth.service 'Bluetooth'
+  # Energia: o depends power-profiles-daemon também é satisfeito pelo tlp-pd, do TLP, que tem a mesma interface
+  # no D-Bus. Quem usa o tlp sem o tlp-pd recebeu o power-profiles-daemon: os dois brigam pela energia
+  if _swaydesk_enabled tlp.service && [ ! -e /usr/bin/tlp-pd ]; then
+    echo ':: TLP is in use: replace power-profiles-daemon with its own daemon, then enable it:'
+    # O power-profiles-daemon antigo segue rodando com o nome no D-Bus até parar: sem o stop, o tlp-pd falha
+    echo '   pacman -S tlp-pd && systemctl stop power-profiles-daemon && systemctl enable --now tlp-pd.service'
+  elif [ -e /usr/bin/tlp-pd ]; then
+    _swaydesk_service tlp-pd.service 'Power profiles (TLP)'
+  else
+    _swaydesk_service power-profiles-daemon.service 'Power profiles'
+  fi
+  # Rede: os widgets falam com o NetworkManager ou, sem ele, com o iwd e o systemd-networkd. Com qualquer
+  # um deles ligado não há o que dizer (o NM com o iwd de backend tem os dois); sem nenhum, sugere o NM
+  if _swaydesk_enabled NetworkManager.service || _swaydesk_enabled iwd.service || _swaydesk_enabled systemd-networkd.service; then
+    :
+  else
+    _swaydesk_service NetworkManager.service 'Network'
+  fi
+  echo ':: Choose "Sway Desktop" in your login manager, or run /usr/lib/swaydesk/sway-session --package from a tty.'
+}

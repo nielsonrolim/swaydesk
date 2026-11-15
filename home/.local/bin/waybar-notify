@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Avisa os ícones de um módulo (um processo por barra) de que algo mudou.
+# uso: waybar-notify waybar-brightness|waybar-caffeine|waybar-volume|waybar-system|waybar-media
+# É só um aviso: nunca falha para quem chamou. Apaga o que sobrou de instâncias mortas.
+run=${XDG_RUNTIME_DIR:-/tmp}
+name=${1:-}
+case $name in
+  waybar-brightness|waybar-caffeine|waybar-volume|waybar-system|waybar-media) ;;
+  *) echo "usage: waybar-notify waybar-brightness|waybar-caffeine|waybar-volume|waybar-system|waybar-media" >&2; exit 0 ;;
+esac
+for f in "$run/$name".*.pid; do
+  [[ -r $f ]] || continue
+  pid=$(<"$f") 2>/dev/null || continue
+  if [[ $pid =~ ^[0-9]+$ ]] && mapfile -d '' -t args 2>/dev/null <"/proc/$pid/cmdline" \
+      && [[ ${args[1]:-} == */"$name" ]]; then
+    kill -USR1 "$pid" 2>/dev/null
+  else
+    rm -f "$f"
+  fi
+done
+exit 0

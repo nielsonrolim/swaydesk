@@ -1,0 +1,24 @@
+.TH SWAYDESK-WEATHER 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-weather \- weather for Waybar
+.SH SYNOPSIS
+.B swaydesk\-weather
+.SH DESCRIPTION
+Prints one Waybar line with the current weather, from wttr.in, and exits. Waybar runs it every minute; the forecast is cached, so most runs do not reach the network.
+.PP
+The session runs it under the name waybar\-weather\-bar (a link in the package's helper directory to /usr/bin/swaydesk\-weather); the process name is waybar\-weather\-bar too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.TP
+.I $XDG_RUNTIME_DIR/waybar\-weather.json
+The cached forecast, shared with the popup.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR swaydesk\-weather\-popup (1),
+.BR waybar (5)

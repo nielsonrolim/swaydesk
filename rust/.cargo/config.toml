@@ -1,0 +1,4 @@
+# Com o rust-version do workspace (1.85, o do Debian 13), o `cargo update` escolhe sozinho as versões
+# compatíveis, em vez de trazer uma que pede um rustc mais novo (como o wayland-protocols 0.32.13)
+[resolver]
+incompatible-rust-versions = "fallback"

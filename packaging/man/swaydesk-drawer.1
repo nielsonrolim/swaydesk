@@ -1,0 +1,28 @@
+.TH SWAYDESK-DRAWER 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-drawer \- full\-screen application grid
+.SH SYNOPSIS
+.B swaydesk\-drawer
+.br
+.B swaydesk\-drawer
+start
+.SH DESCRIPTION
+The full\-screen grid of applications, with search and the user folders.
+.PP
+Without arguments, shows or hides the grid of the resident process; without one, it becomes the resident process, already open.
+.PP
+The session runs it under the name sway\-drawer (a link in the package's helper directory to /usr/bin/swaydesk\-drawer); the process name is sway\-drawer too.
+.SH OPTIONS
+.TP
+.B start
+Start the hidden resident process, at login.
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR swaydesk\-dock (1)

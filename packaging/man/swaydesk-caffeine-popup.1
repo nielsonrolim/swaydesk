@@ -1,0 +1,21 @@
+.TH SWAYDESK-CAFFEINE-POPUP 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-caffeine\-popup \- caffeine popup for Waybar
+.SH SYNOPSIS
+.B swaydesk\-caffeine\-popup
+.SH DESCRIPTION
+Turns caffeine on and off: while it is on there is no lock, screen blanking or suspend on idle; closing the lid still locks. The state belongs to the sway\-caffeine helper; this popup only has the buttons.
+.PP
+Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
+.PP
+The session runs it under the name waybar\-caffeine\-popup (a link in the package's helper directory to /usr/bin/swaydesk\-caffeine\-popup); the process name is waybar\-caffeine\-popup too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR swaydesk (7)

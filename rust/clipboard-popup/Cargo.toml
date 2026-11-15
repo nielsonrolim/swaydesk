@@ -1,0 +1,17 @@
+[package]
+name = "swaydesk-clipboard-popup"
+description = "Popup de clipboard da Waybar (GTK 4): histórico do cliphist, busca, miniaturas e fixados"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-clipboard-popup"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-clipboard.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true

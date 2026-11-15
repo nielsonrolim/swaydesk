@@ -1,0 +1,23 @@
+.TH SWAYDESK-SYSTEM 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-system \- system icon for Waybar
+.SH SYNOPSIS
+.B swaydesk\-system
+.SH DESCRIPTION
+A CPU icon, orange when the CPU load is high, the memory almost full or the CPU hot; the tooltip has the numbers. It reads /proc and /sys every 3 seconds without starting processes.
+.PP
+It is a Waybar custom module (custom/system): it prints one JSON line (text, tooltip, class, alt) on every change and keeps running. The popup sends it SIGUSR1 when it opens and closes, and the tooltip stays empty while the popup is open.
+.PP
+The session runs it under the name waybar\-system (a link in the package's helper directory to /usr/bin/swaydesk\-system); the process name is waybar\-system too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR swaydesk\-system\-popup (1),
+.BR waybar (5)

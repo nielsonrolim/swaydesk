@@ -1,0 +1,16 @@
+[package]
+name = "swaydesk-caffeine-popup"
+description = "Popup da cafeína da Waybar (GTK 4): desligada, 1 h, 2 h ou sempre"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-caffeine-popup"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true

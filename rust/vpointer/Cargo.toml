@@ -1,0 +1,16 @@
+[package]
+name = "swaydesk-vpointer"
+description = "Ponteiro virtual para os testes: move e clica num compositor wlroots (Sway headless) pelo zwlr_virtual_pointer_v1"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+
+[[bin]]
+name = "swaydesk-vpointer"
+path = "src/main.rs"
+
+[dependencies]
+wayland-client = "0.31"
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }

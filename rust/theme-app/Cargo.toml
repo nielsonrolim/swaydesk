@@ -1,0 +1,18 @@
+[package]
+name = "swaydesk-theme-app"
+description = "O app Tema do Desktop (GTK 4): família do tema, claro ou escuro, e a cor de destaque do Papirus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-theme-app"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-theme.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true
+pangocairo.workspace = true

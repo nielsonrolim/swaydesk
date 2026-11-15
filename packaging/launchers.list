@@ -1,0 +1,35 @@
+# Os lançadores de home/.local/bin que só chamam um binário em Rust (sway_rust.exec_rust), com o componente:
+# o swaydesk-desktop instala cada nome como um link para /usr/bin/swaydesk-<componente>. Assim o tarball
+# dos pacotes não precisa levar os lançadores em Python (o tests/test_packaging.py confere a lista com eles)
+session-menu session-menu
+sway-capture capture
+sway-clip-store clip-store
+sway-desktop-config desktop-config
+sway-dock dock
+sway-drawer drawer
+sway-keyring keyring
+sway-lock-blur lock
+sway-notifd notifd
+sway-osd-bar osd-bar
+sway-portal portal
+sway-sessionmgr sessionmgr
+sway-switcher switcher
+sway-theme theme
+sway-theme-app theme-app
+waybar-audio audio-popup
+waybar-battery-popup battery-popup
+waybar-bluetooth bluetooth
+waybar-bluetooth-popup bluetooth-popup
+waybar-brightness-popup brightness-popup
+waybar-caffeine-popup caffeine-popup
+waybar-calendar calendar
+waybar-clipboard-popup clipboard-popup
+waybar-media-popup media-popup
+waybar-network network
+waybar-network-popup network-popup
+waybar-notifications notifications
+waybar-notifications-popup notifications-popup
+waybar-system system
+waybar-system-popup system-popup
+waybar-weather weather-popup
+waybar-weather-bar weather

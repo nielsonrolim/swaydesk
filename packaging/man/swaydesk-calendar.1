@@ -1,0 +1,21 @@
+.TH SWAYDESK-CALENDAR 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-calendar \- calendar popup for the Waybar clock
+.SH SYNOPSIS
+.B swaydesk\-calendar
+.SH DESCRIPTION
+Shows the month in the interface language, today in the accent color, and the holidays of the configured country (through python3\-holidays, when it is installed). The arrows and the scroll wheel change the month; Today goes back. When it opens and closes it sends SIGUSR1 to the Waybar clock, which hides its tooltip.
+.PP
+Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
+.PP
+The session runs it under the name waybar\-calendar (a link in the package's helper directory to /usr/bin/swaydesk\-calendar); the process name is waybar\-calendar too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR swaydesk (7)

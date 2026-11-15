@@ -1,0 +1,20 @@
+.TH SWAYDESK-SESSION-MENU 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-session\-menu \- session menu: lock, log out, suspend, restart, shut down
+.SH SYNOPSIS
+.B swaydesk\-session\-menu
+.SH DESCRIPTION
+Opens in the middle of the screen over a dimmed background: Lock, Log out, Suspend, Restart, Shut down. The keys are l, e (exit), s, r (reboot) and p (power off); the arrows and Tab move, Enter activates, Esc or clicking outside closes. The actions go through the session\-action helper. Ctrl+Alt+Delete and the power button of Waybar open it; running it again closes it.
+.PP
+The session runs it under the name session\-menu (a link in the package's helper directory to /usr/bin/swaydesk\-session\-menu); the process name is session\-menu too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR swaydesk\-lock (1)

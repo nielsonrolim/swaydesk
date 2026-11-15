@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Inicia o agente de polkit, que pede a senha das ações de administrador: o primeiro encontrado.
+# O policykit-1-gnome não existe no Debian 13, e o mate-polkit existe em todas as distros suportadas. No Arch,
+# os dois ficam em /usr/lib/<pacote> (o mate-polkit e o polkit-gnome dos repositórios oficiais). O lxpolkit, a
+# alternativa do Recommends do pacote no Debian, fica por último.
+# Sem agente, as ações falham sem nenhum aviso, por isso a falta dele vira uma notificação.
+# SWAY_POLKIT_AGENTS troca a lista (caminhos separados por ":").
+set -uo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+
+default=/usr/libexec/polkit-mate-authentication-agent-1:/usr/lib/mate-polkit/polkit-mate-authentication-agent-1
+default+=:/usr/lib/policykit-1-gnome/polkit-gnome-authentication-agent-1:/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1
+default+=:/usr/bin/lxpolkit
+IFS=: read -ra agents <<<"${SWAY_POLKIT_AGENTS:-$default}"
+
+for agent in "${agents[@]}"; do
+  if [[ -x $agent ]]; then
+    # x11 primeiro: em Wayland nativo o agente do GNOME dá segfault. Sem o Xwayland (no Arch ele é opcional), o
+    # x11 falha e o GTK passa para o wayland, em vez de o agente morrer com "cannot open display"
+    GDK_BACKEND=x11,wayland exec "$agent"
+  fi
+done
+
+echo "sway-polkit-agent: no polkit agent found (${agents[*]})" >&2
+# O sway-notifd sobe junto com este script: pode ainda não estar pronto
+for _ in 1 2 3 4 5; do
+  notify-send -u critical "$(t 'Polkit agent')" \
+    "$(t 'No agent found: administrator actions will fail. Install mate-polkit.')" 2>/dev/null && break
+  sleep 2
+done
+exit 1

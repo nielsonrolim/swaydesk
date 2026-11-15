@@ -1,0 +1,15 @@
+[package]
+name = "swaydesk-keyring"
+description = "Conserta o chaveiro do primeiro login que o gnome-keyring não publica no D-Bus"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-keyring"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+gio.workspace = true

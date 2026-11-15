@@ -1,0 +1,125 @@
+#!/usr/bin/env bash
+# Ícone de mídia da Waybar (custom/media): só aparece com uma mídia tocando ou pausada.
+# Imprime uma linha JSON a cada mudança; sem mídia, o texto vazio faz a Waybar esconder o módulo.
+# O player mostrado é o primeiro tocando e, sem nenhum, o primeiro pausado (o waybar-media-popup
+# segue a mesma regra). Pausado, o mesmo ícone fica cinza (classe paused).
+# A dica some com o popup de mídia aberto: ele manda SIGUSR1 para este script ao abrir e ao fechar.
+set -uo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+PAUSED=$(t 'Paused')
+
+self=$(readlink -f -- "$0")
+source "${self%/*}/waybar-icon-lib"
+# Um pidfile por instância: a Waybar abre um script por barra (por monitor)
+pidfile="$run/waybar-media.$$.pid"
+sub=
+dirty=1
+last=
+
+# O mesmo ícone tocando e pausado: pausado, o CSS (classe paused) só o deixa cinza
+ICON='󰐎'  # nf-md-play-pause
+
+# Instância, status, player, título e artista de cada player com mídia. O markup_escape do playerctl
+# escapa para o Pango da dica. O separador é o 0x1f, e não a tabulação: o read junta as tabulações
+# seguidas, e um título vazio passaria o artista para o lugar dele
+FORMAT=$'{{playerInstance}}\x1f{{status}}\x1f{{playerName}}\x1f{{markup_escape(title)}}\x1f{{markup_escape(artist)}}'
+
+# Os players com mídia, um por linha, na ordem dos nomes no barramento: a mesma do popup
+players() {
+  playerctl --all-players metadata --format "$FORMAT" 2>/dev/null | LC_ALL=C sort -t $'\x1f' -k1,1
+}
+
+# Escolhe o player a mostrar: o primeiro tocando e, sem nenhum, o primeiro pausado. Deixa os campos
+# em instance, status, player, title e artist; falha sem nenhum
+choose() {
+  local state
+  for state in Playing Paused; do
+    while IFS=$'\x1f' read -r instance status player title artist; do
+      [[ $status == "$state" ]] && return 0
+    done <<<"$1"
+  done
+  return 1
+}
+
+# A linha JSON da mídia a mostrar, a partir da saída de players
+line_for() {
+  local instance status player title artist tooltip class
+  if ! choose "$1"; then
+    printf '{"text":""}\n'
+    return
+  fi
+  [[ -n $title ]] || title=$player
+  tooltip=$title
+  [[ -n $artist ]] && tooltip+=$'\n'"$artist · $player" || tooltip+=$'\n'"$player"
+  [[ $status == Paused ]] && tooltip+=" · $PAUSED"
+  popup_open waybar-media-popup && tooltip=""
+  [[ $status == Playing ]] && class=playing || class=paused
+  jq -cn --arg text "$ICON" --arg tooltip "$tooltip" --arg class "$class" '{text: $text, tooltip: $tooltip, class: $class}'
+}
+
+# Só escreve o que mudou. Se a Waybar saiu, a escrita falha e o script termina
+emit() {
+  local line
+  line=$(line_for "$(players)") || return
+  [[ $line == "$last" ]] && return
+  last=$line
+  printf '%s\n' "$line" || exit 0
+}
+
+# Os cliques da barra vão para o player que o ícone mostra, e não para o padrão do playerctl. Pelo
+# nome completo no barramento: o --player do playerctl casa pelo começo (vlc pegaria vlc.instance42)
+case ${1:-} in
+  play-pause|next|previous)
+    declare -A methods=([play-pause]=PlayPause [next]=Next [previous]=Previous)
+    if choose "$(players)"; then
+      exec gdbus call --session --dest "org.mpris.MediaPlayer2.$instance" --object-path /org/mpris/MediaPlayer2 \
+        --method "org.mpris.MediaPlayer2.Player.${methods[$1]}" >/dev/null
+    fi
+    exit 0
+    ;;
+esac
+[[ ${1:-} == --once ]] && { emit; exit 0; }  # para os testes
+
+cleanup() {
+  rm -f "$pidfile"
+  [[ -n $sub ]] && kill "$sub" 2>/dev/null
+}
+trap cleanup EXIT
+trap 'exit 0' TERM INT HUP
+# O sinal só marca: redesenhar dentro do trap poderia intercalar com um emit em andamento
+trap 'dirty=1' USR1
+echo $$ >"$pidfile"
+
+# O playerctl --follow só avisa que algo mudou (um player abriu, fechou, tocou ou trocou de faixa);
+# a rajada de avisos vira uma leitura só. No bash, o SIGUSR1 não interrompe o read: o timeout de 1 s
+# é o atraso máximo para a dica sumir com o popup aberto. A cada 5 s sem aviso, relê assim mesmo.
+# Se o playerctl termina, reconecta.
+while true; do
+  exec 3< <(exec setpriv --pdeathsig TERM playerctl --all-players --follow metadata \
+    --format '{{playerName}} {{status}} {{title}} {{artist}}' 2>/dev/null)
+  sub=$!
+  idle=0
+  while true; do
+    if ((dirty)); then
+      dirty=0
+      idle=0
+      emit
+    fi
+    if read -r -t 1 _ <&3; then
+      # O que chegar em 0,05 s, até 100 linhas: um player que avisa sem parar (uma aba com o título
+      # piscando) não pode prender o laço aqui
+      for ((n = 0; n < 100; n++)); do read -r -t 0.05 _ <&3 || break; done
+      dirty=1
+    elif (($? > 128)); then
+      ((++idle >= 5)) && dirty=1
+    else
+      break # fim do playerctl (timeout e sinal voltam com mais de 128)
+    fi
+  done
+  exec 3<&-
+  kill "$sub" 2>/dev/null
+  wait "$sub" 2>/dev/null
+  sub=
+  dirty=1
+  sleep 2
+done

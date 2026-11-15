@@ -1,0 +1,21 @@
+[package]
+name = "swaydesk-dock"
+description = "Dock inferior do Sway: fixados, apps abertos e o botão da grade de apps (GTK 4)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-dock"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-dock-logic.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true
+gtk4-layer-shell.workspace = true
+libc.workspace = true
+serde_json.workspace = true
+shlex.workspace = true

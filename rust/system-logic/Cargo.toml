@@ -1,0 +1,10 @@
+[package]
+name = "swaydesk-system-logic"
+description = "A lógica do ícone e do popup Sistema, sem GTK: CPU, memória, disco, temperatura e processos"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+libc.workspace = true

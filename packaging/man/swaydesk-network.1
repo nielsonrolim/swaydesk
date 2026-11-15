@@ -1,0 +1,23 @@
+.TH SWAYDESK-NETWORK 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-network \- network icon for Waybar
+.SH SYNOPSIS
+.B swaydesk\-network
+.SH DESCRIPTION
+The state of the network, read from NetworkManager over D\-Bus (without it, from iwd and systemd\-networkd), and read again every 10 seconds for the Wi\-Fi signal. The network name is escaped, since anyone can name a network with Pango markup.
+.PP
+It is a Waybar custom module (custom/network): it prints one JSON line (text, tooltip, class, alt) on every change and keeps running. The popup sends it SIGUSR1 when it opens and closes, and the tooltip stays empty while the popup is open.
+.PP
+The session runs it under the name waybar\-network (a link in the package's helper directory to /usr/bin/swaydesk\-network); the process name is waybar\-network too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR swaydesk\-network\-popup (1),
+.BR waybar (5)

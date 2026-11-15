@@ -1,0 +1,18 @@
+[package]
+name = "swaydesk-bluetooth-popup"
+description = "Popup de Bluetooth da Waybar (GTK 4): liga, busca, pareia e conecta pelo BlueZ"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-bluetooth-popup"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-bluez.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true
+libc.workspace = true

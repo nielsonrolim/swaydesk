@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# Ícone de volume da Waybar (custom/volume, no lugar do módulo pulseaudio).
+# Imprime uma linha JSON a cada mudança de volume, mudo ou saída padrão.
+# Existe porque o módulo pulseaudio não deixa esconder a dica: com o popup
+# de áudio (waybar-audio) aberto a dica some, senão aparece por cima dele.
+# O popup manda SIGUSR1 para este script ao abrir e ao fechar.
+set -uo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+UNAVAILABLE=$(t 'Audio unavailable') MUTED=$(t 'Muted · %s')
+
+self=$(readlink -f -- "$0")
+source "${self%/*}/waybar-icon-lib"
+# Um pidfile por instância: a Waybar abre um script por barra (por monitor)
+pidfile="$run/waybar-volume.$$.pid"
+sub=
+dirty=1
+
+# fa-volume-off / fa-volume-down / fa-volume-up da Nerd Font
+icons=($'' $'' $'')
+
+# text tooltip class percentage. Se a Waybar saiu, a escrita falha e o script termina
+output() {
+  local line
+  line=$(jq -cn --arg text "$1" --arg tooltip "$2" --arg class "$3" --argjson percentage "$4" \
+    '{text: $text, tooltip: $tooltip, class: $class, percentage: $percentage}') || return
+  printf '%s\n' "$line" || exit 0
+}
+
+emit() {
+  local out vol pct muted icon desc tooltip class
+  # Sem áudio o ícone continua na barra, para o clique abrir o popup
+  if ! out=$(wpctl get-volume @DEFAULT_AUDIO_SINK@ 2>/dev/null); then
+    popup_open waybar-audio && tooltip="" || tooltip=$UNAVAILABLE
+    output "${icons[0]}" "$tooltip" muted 0
+    return
+  fi
+  vol=$(awk '{print $2}' <<<"$out")
+  pct=$(awk -v v="$vol" 'BEGIN { printf "%d", v * 100 + 0.5 }')
+  [[ $out == *MUTED* ]] && muted=1 || muted=0
+  if ((muted)); then icon=${icons[0]}; class=muted
+  elif ((pct < 34)); then icon=${icons[0]}; class=low
+  elif ((pct < 67)); then icon=${icons[1]}; class=mid
+  else icon=${icons[2]}; class=high
+  fi
+  desc=$(wpctl inspect @DEFAULT_AUDIO_SINK@ 2>/dev/null | sed -n 's/^ *\* node.description = "\(.*\)"$/\1/p' | head -n 1)
+  # A dica da Waybar é markup do Pango
+  desc=${desc//&/"&amp;"}
+  desc=${desc//</"&lt;"}
+  desc=${desc//>/"&gt;"}
+  tooltip="$pct% · $desc"
+  ((muted)) && tooltip=${MUTED//%s/$desc}
+  popup_open waybar-audio && tooltip=""
+  output "$icon" "$tooltip" "$class" "$pct"
+}
+
+cleanup() {
+  rm -f "$pidfile"
+  [[ -n $sub ]] && kill "$sub" 2>/dev/null
+}
+trap cleanup EXIT
+trap 'exit 0' TERM INT HUP
+# O sinal só marca: redesenhar dentro do trap poderia intercalar com um emit em andamento
+trap 'dirty=1' USR1
+echo $$ >"$pidfile"
+
+# pactl subscribe só avisa que algo mudou; agrupa a rajada de eventos
+# (lê o que chegar em 0,05 s) e redesenha uma vez.
+# O laço roda no shell principal (substituição de processo, não pipe) para o
+# SIGUSR1 interromper o read; o timeout de 1 s cobre o sinal que chega entre
+# a conferência de dirty e o read. Se o pactl termina (áudio reiniciou), reconecta.
+while true; do
+  exec 3< <(LC_ALL=C exec setpriv --pdeathsig TERM pactl subscribe 2>/dev/null)
+  sub=$!
+  while true; do
+    if ((dirty)); then
+      dirty=0
+      emit
+    fi
+    if read -r -t 1 line <&3; then
+      [[ $line == *" sink #"* || $line == *"server"* || $line == *"card"* ]] || continue
+      while read -r -t 0.05 _ <&3; do :; done
+      dirty=1
+    elif (($? <= 128)); then
+      break # fim do pactl (timeout e sinal voltam com mais de 128)
+    fi
+  done
+  exec 3<&-
+  kill "$sub" 2>/dev/null
+  wait "$sub" 2>/dev/null
+  sub=
+  dirty=1
+  sleep 2
+done

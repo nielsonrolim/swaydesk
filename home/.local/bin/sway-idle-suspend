@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Suspende por inatividade, só na bateria. Chamado pelo swayidle depois de 30 min parado.
+# uso: sway-idle-suspend start|stop
+#   start  deixa em segundo plano o laço que confere a cada minuto (o swayidle -w espera o
+#          comando terminar). Assim, tirar da tomada com a máquina parada também vale.
+#   stop   encerra o laço; o swayidle chama quando alguém volta a usar a máquina
+# Não suspende com som tocando nem gravando a tela: nesses casos a máquina está em uso,
+# mesmo sem teclado e mouse. A cafeína funciona porque o swayidle nem chega aqui.
+set -uo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+run=${XDG_RUNTIME_DIR:-/tmp}
+pidfile="$run/sway-idle-suspend.pid"
+check=${SWAY_IDLE_CHECK:-60}
+supply=${POWER_SUPPLY_DIR:-/sys/class/power_supply}
+
+loop_pid() {  # só se ainda for este laço: o número do PID pode ter sido reutilizado
+  local pid args
+  [[ -r $pidfile ]] || return 1
+  pid=$(<"$pidfile")
+  [[ $pid =~ ^[0-9]+$ ]] || return 1
+  mapfile -d '' -t args 2>/dev/null <"/proc/$pid/cmdline" || return 1
+  [[ ${args[1]:-} == */sway-idle-suspend && ${args[2]:-} == run ]] || return 1
+  echo "$pid"
+}
+
+on_battery() {
+  local f
+  for f in "$supply"/AC*/online "$supply"/ADP*/online; do
+    [[ $(cat "$f" 2>/dev/null) == 1 ]] && return 1
+  done
+  # Sem bateria (um desktop) não há o que economizar
+  compgen -G "$supply/BAT*" >/dev/null
+}
+
+busy() {
+  pgrep -x wf-recorder >/dev/null && return 0
+  pactl list short sinks 2>/dev/null | grep -q RUNNING
+}
+
+case ${1:-} in
+  start)
+    loop_pid >/dev/null && exit 0
+    setsid "$0" run </dev/null >/dev/null 2>&1 &
+    ;;
+  run)
+    echo $$ >"$pidfile"
+    trap 'rm -f "$pidfile"; exit 0' TERM INT HUP
+    while true; do
+      if on_battery && ! busy; then
+        logger -t sway-idle-suspend "suspending after inactivity" 2>/dev/null || true
+        # Depois de acordar, o swayidle chama stop quando houver atividade
+        if systemctl suspend; then
+          rm -f "$pidfile"
+          exit 0
+        fi
+      fi
+      sleep "$check" &
+      wait $!
+    done
+    ;;
+  stop)
+    if pid=$(loop_pid); then
+      kill "$pid" 2>/dev/null || true
+    fi
+    ;;
+  *) echo "$(t 'usage: sway-idle-suspend start|stop')" >&2; exit 2 ;;
+esac

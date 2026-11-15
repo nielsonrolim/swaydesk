@@ -1,0 +1,19 @@
+#!/bin/sh
+# Os avisos de atualização da distro, no Sway. No GNOME e no KDE eles sobem pelo autostart, que o
+# Sway não lê. Vale o primeiro que existir:
+#   GNOME Software (Debian, e Debian ou Ubuntu Server sem desktop): avisa pelo sway-notifd e aplica
+#     pelo "Reiniciar e atualizar" (sway-sessionmgr);
+#   update-notifier (Ubuntu Desktop): abre o Atualizador de Programas quando há atualizações;
+#   DiscoverNotifier (Kubuntu e Debian com KDE): ícone na bandeja da Waybar, que abre o Discover.
+# Sem nenhum, como no Mint, não faz nada. O sway-env-cleanup os encerra ao sair do Sway.
+if command -v gnome-software >/dev/null 2>&1; then
+  exec gnome-software --gapplication-service
+fi
+if command -v update-notifier >/dev/null 2>&1; then
+  exec update-notifier
+fi
+# Debian e Ubuntu: /usr/lib/<arquitetura>/libexec ou /usr/libexec; Arch: /usr/lib
+for notifier in ${SWAY_DESKTOP_DISCOVER_NOTIFIER:-/usr/lib/*/libexec/DiscoverNotifier /usr/libexec/DiscoverNotifier /usr/lib/DiscoverNotifier}; do
+  [ -x "$notifier" ] && exec "$notifier" --check-delay 20
+done
+exit 0

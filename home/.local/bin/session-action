@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Bloquear, sair, suspender, reiniciar ou desligar conforme a sessão atual.
+# uso: session-action lock|logout|suspend|reboot|poweroff
+set -euo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+
+action=${1:-}
+case $action in
+  lock|logout|suspend|reboot|poweroff) ;;
+  *) echo "$(t 'usage: session-action lock|logout|suspend|reboot|poweroff')" >&2; exit 2 ;;
+esac
+
+# Sem XDG_CURRENT_DESKTOP (lançador diferente), o socket do Sway ainda identifica a sessão
+desktop=${XDG_CURRENT_DESKTOP:-}
+[[ -z $desktop && -n ${SWAYSOCK:-} ]] && desktop=sway
+
+# A variável é uma lista separada por ":" (por exemplo sway:wlroots)
+case $desktop in
+  *[Ss]way*)
+    case $action in
+      lock)   exec "$(dirname "$(readlink -f "$0")")/sway-lock" ;;
+      # Os portais antes, com a tela ainda viva: parados com o display, o xdg-desktop-portal reativava
+      # o do gtk sem tela, e o login seguinte esperava 120 s por ele
+      # Sem os portais instalados, o stop devolve 5 e o set -e encerrava aqui, sem sair do Sway
+      logout) systemctl --user stop xdg-desktop-portal.service xdg-desktop-portal-gtk.service 2>/dev/null || true
+              exec swaymsg exit ;;
+      *)      exec systemctl "$action" ;;
+    esac
+    ;;
+  *Cinnamon*)
+    # O cinnamon-session-quit mostra o diálogo do Cinnamon antes de fechar a sessão
+    case $action in
+      lock)     exec cinnamon-screensaver-command --lock ;;
+      logout)   exec cinnamon-session-quit --logout ;;
+      reboot)   exec cinnamon-session-quit --reboot ;;
+      poweroff) exec cinnamon-session-quit --power-off ;;
+      suspend)  exec systemctl suspend ;;
+    esac
+    ;;
+  *GNOME*)
+    case $action in
+      lock)     exec loginctl lock-session ;;
+      logout)   exec gnome-session-quit --logout --no-prompt ;;
+      # --no-prompt só vale para --logout: aqui o GNOME mostra o próprio diálogo
+      reboot)   exec gnome-session-quit --reboot ;;
+      poweroff) exec gnome-session-quit --power-off ;;
+      suspend)  exec systemctl suspend ;;
+    esac
+    ;;
+  *)
+    case $action in
+      lock)
+        # Bloqueadores diretos primeiro: eles falham de forma visível
+        if [[ -n ${WAYLAND_DISPLAY:-} ]] && command -v swaylock >/dev/null; then
+          exec swaylock -f
+        elif [[ -n ${DISPLAY:-} ]] && command -v i3lock >/dev/null; then
+          exec i3lock
+        fi
+        # O loginctl só pede: sai com 0 mesmo se nada estiver escutando
+        loginctl lock-session ${XDG_SESSION_ID:+"$XDG_SESSION_ID"}
+        if command -v notify-send >/dev/null; then
+          notify-send -u critical "$(t 'Session')" "$(t 'Lock requested from the system. Check that the screen locked.')"
+        fi
+        ;;
+      logout)
+        if [[ -z ${XDG_SESSION_ID:-} ]]; then
+          echo "session-action: $(t 'cannot log out of this session (XDG_SESSION_ID is empty)')" >&2
+          exit 1
+        fi
+        exec loginctl terminate-session "$XDG_SESSION_ID"
+        ;;
+      *) exec systemctl "$action" ;;
+    esac
+    ;;
+esac

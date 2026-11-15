@@ -1,0 +1,20 @@
+.TH SWAYDESK-THEME-APP 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-theme\-app \- Desktop Theme application
+.SH SYNOPSIS
+.B swaydesk\-theme\-app
+.SH DESCRIPTION
+A window to choose the GTK theme family, light or dark, and the accent color among the Papirus colors. Choosing only changes the preview; Apply (or Enter) applies it through the same code as swaydesk\-theme, and the window stays open. Opening it again raises the open window. Its menu entry is org.swaydesktop.Theme.
+.PP
+The session runs it under the name sway\-theme\-app (a link in the package's helper directory to /usr/bin/swaydesk\-theme\-app); the process name is sway\-theme\-app too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR swaydesk\-theme (1)

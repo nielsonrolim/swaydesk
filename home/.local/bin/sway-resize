@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# uso: sway-resize left|right|up|down [pixels]
+# Move uma borda da janela focada no sentido pedido: a direita (ou a de baixo) quando há
+# algo depois dela; na última coluna (ou linha), a esquerda (ou a de cima). Passar a borda
+# ao Sway (grow right, shrink left...) faz só ela andar, em layout aninhado, na coluna do
+# meio e em janela flutuante. Com "grow width" ele escolhe sozinho, e pode mover as duas.
+set -euo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+dir=${1:-} step=${2:-50}
+case $dir in
+  right) first="grow right"   fallback="shrink left" ;;
+  left)  first="shrink right" fallback="grow left" ;;
+  down)  first="grow down"    fallback="shrink up" ;;
+  up)    first="shrink down"  fallback="grow up" ;;
+  *) echo "$(t 'usage: sway-resize left|right|up|down [pixels]')" >&2; exit 2 ;;
+esac
+[[ $step =~ ^[1-9][0-9]*$ ]] || { printf "sway-resize: $(t 'invalid pixels: %s')\n" "$step" >&2; exit 2; }
+
+swaymsg "resize $first ${step}px" >/dev/null 2>&1 && exit 0
+
+# O mesmo erro vale para "sem vizinha" e "já no tamanho mínimo". Só no primeiro caso a outra
+# borda é a certa; no segundo, o atalho de encolher acabaria aumentando a janela. O Sway também
+# devolve esse erro quando redimensiona só o grupo da janela (layout aninhado), e aí a janela
+# não encosta na borda do workspace: por isso a conferência é pela posição, não pelo erro.
+at_edge=$(swaymsg -t get_tree | jq -r --arg d "$dir" '
+  first(recurse(.nodes[]?, .floating_nodes[]?) | select(.type == "workspace"
+    and any(recurse(.nodes[]?, .floating_nodes[]?); .focused == true))) as $ws
+  | first($ws | recurse(.nodes[]?, .floating_nodes[]?) | select(.focused == true)) as $f
+  | if $f.type == "floating_con" then false
+    elif $d == "left" or $d == "right" then $ws.rect.x + $ws.rect.width - $f.rect.x - $f.rect.width < 40
+    else $ws.rect.y + $ws.rect.height - $f.rect.y - $f.rect.height < 40 end')
+if [[ $at_edge == true ]]; then
+  swaymsg "resize $fallback ${step}px" >/dev/null 2>&1 || true
+fi

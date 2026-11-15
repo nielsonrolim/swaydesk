@@ -1,0 +1,6 @@
+# A cor de destaque para os apps libadwaita (swaydesk-portal), pela ativação do D-Bus. Só vale para quem
+# escolhe o backend no <desktop>-portals.conf (org.freedesktop.impl.portal.Settings=swaydesktop;gtk): o
+# swaydesktop.portal não tem UseIn, então nenhum desktop o usa sozinho
+[D-BUS Service]
+Name=org.freedesktop.impl.portal.desktop.swaydesktop
+Exec=/usr/bin/swaydesk-portal

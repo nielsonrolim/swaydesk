@@ -1,0 +1,64 @@
+.TH SWAYDESK-THEME 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-theme \- list and change the desktop theme
+.SH SYNOPSIS
+.B swaydesk\-theme
+list
+.br
+.B swaydesk\-theme
+current
+.br
+.B swaydesk\-theme
+families
+.br
+.B swaydesk\-theme
+colors
+.br
+.B swaydesk\-theme
+init
+.br
+.B swaydesk\-theme
+set THEME [\-\-accent #RRGGBB] [\-\-folders COLOR]
+.br
+.B swaydesk\-theme
+pick FAMILY light|dark COLOR
+.SH DESCRIPTION
+Lists the installed GTK themes and changes the theme, the icons and the accent color across the desktop.
+.PP
+The session runs it under the name sway\-theme (a link in the package's helper directory to /usr/bin/swaydesk\-theme); the process name is sway\-theme too.
+.SH OPTIONS
+.TP
+.B list
+The installed GTK themes, the current one marked with *, with their accent color, icon theme and style.
+.TP
+.B current
+The current theme, icon theme and accent color.
+.TP
+.B families
+The installed theme families (Mint\-Y, Adwaita, Yaru and others), their light and dark styles and their variants, then the other themes.
+.TP
+.B colors
+The Papirus folder colors, the current one marked with *, and the ones not installed.
+.TP
+.B init
+Write the theme of the configuration to dconf (gsettings).
+.TP
+.B set THEME
+Use the GTK theme THEME; \-\-accent sets the accent color and \-\-folders the Papirus folder color.
+.TP
+.B pick FAMILY light|dark COLOR
+Use the theme of FAMILY in the light or dark style with COLOR.
+.TP
+.B \-h, \-\-help
+Show the usage and exit.
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR swaydesk\-desktop\-config (1),
+.BR swaydesk\-theme\-app (1)

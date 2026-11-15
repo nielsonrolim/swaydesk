@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# uso: sway-ws prev|next [move]
+# Anda pelos workspaces 1-9 pelo número. Fora dessa faixa (workspace com nome, ou acima
+# de 9), anda pelos que existem nesta tela. Com mais de uma tela, pula os números que
+# estão na outra, como Super+rolagem: o atalho não leva você nem a janela para lá.
+set -euo pipefail
+case ${1:-}/${2:-} in
+  prev/|next/|prev/move|next/move) ;;
+  *) echo "usage: sway-ws prev|next [move]" >&2; exit 2 ;;
+esac
+dir=$1 move=${2:-}
+
+go() {
+  if [[ $move == move ]]; then
+    swaymsg "move container to workspace $1, workspace $1" >/dev/null
+  else
+    swaymsg "workspace $1" >/dev/null
+  fi
+}
+
+workspaces=$(swaymsg -t get_workspaces)
+read -r cur output < <(jq -r '.[] | select(.focused) | "\(.num) \(.output)"' <<<"$workspaces")
+
+if (( cur < 1 || cur > 9 )); then
+  go "${dir}_on_output"
+  exit 0
+fi
+
+step=1
+[[ $dir == prev ]] && step=-1
+n=$(( cur + step ))
+while (( n >= 1 && n <= 9 )); do
+  # Número livre, ou nesta tela: é aqui. Na outra tela: tenta o seguinte
+  other=$(jq -r --argjson n "$n" --arg o "$output" \
+    'map(select(.num == $n and .output != $o)) | length' <<<"$workspaces")
+  if (( other == 0 )); then
+    go "number $n"
+    exit 0
+  fi
+  n=$(( n + step ))
+done

@@ -1,0 +1,22 @@
+[package]
+name = "swaydesk-theme"
+description = "Os temas GTK e a troca de tema em todo o desktop (sway-theme), sem GTK"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "swaydesk_theme"
+path = "src/lib.rs"
+
+[[bin]]
+name = "swaydesk-theme"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+libc.workspace = true
+regex.workspace = true
+serde_json.workspace = true
+toml.workspace = true

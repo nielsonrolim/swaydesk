@@ -1,0 +1,255 @@
+# Sway no Mint — atalhos alinhados ao KDE + Krohnkite (kglobalshortcutsrc)
+
+set $mod  Mod4
+set $term kitty
+set $bin  ~/.local/bin
+# Bloqueio pelo sway-lock: o bloqueio próprio, ou o swaylock como reserva
+set $lock $bin/sway-lock
+
+include /etc/sway/config.d/*
+
+# --- Aparência ---
+# Com a do sistema se faltar, no tamanho dela: config.d/00-font.conf, gerado pelo sway-desktop-config
+font pango:Noto Sans 10
+default_border pixel 2
+default_floating_border pixel 2
+gaps inner 5
+gaps outer 5
+smart_borders on
+# Cores do Mint-Y-Dark-Teal (/usr/share/themes/Mint-Y-Dark-Teal). O destaque em uso vem de config.d/00-accent.conf
+#                       borda    fundo    texto    indicador borda-filho
+client.focused          #199ca8  #199ca8  #ffffff  #29d0df   #199ca8
+client.focused_inactive #3a3a40  #3a3a40  #dadada  #3a3a40   #3a3a40
+client.unfocused        #2e2e33  #2e2e33  #8a8a8f  #2e2e33   #2e2e33
+client.urgent           #fc4138  #fc4138  #ffffff  #fc4138   #fc4138
+seat seat0 xcursor_theme Bibata-Modern-Classic 24
+
+# --- Tela ---
+output * bg ~/.local/share/wallpaper/current.jpg fill #1e1e1e
+
+# --- Touchpad ---
+input type:touchpad {
+    tap              enabled
+    natural_scroll   enabled
+    dwt              enabled
+    middle_emulation enabled
+}
+
+# --- Autostart ---
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE MOZ_ENABLE_WAYLAND QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME ELECTRON_OZONE_PLATFORM_HINT _JAVA_AWT_WM_NONREPARENTING DCONF_PROFILE SWAYDESK_SESSION
+# Só onde o sway-session o definiu (Kubuntu): o menu dos apps do KDE abertos pelo D-Bus
+exec sh -c '[ -z "${XDG_MENU_PREFIX:-}" ] || dbus-update-activation-environment --systemd XDG_MENU_PREFIX'
+# Em uma instalação nova, grava o tema da config no dconf. Depois disso, não faz nada
+exec $bin/sway-theme init
+# Reinicia os portais com a base do dconf do Sway e, na saída, tira essas variáveis do ambiente
+exec $bin/sway-env-cleanup
+# O chaveiro criado no primeiro login sem desktop fica fora do D-Bus e trava quem o usa: o
+# sway-keyring reinicia o daemon só nesse caso
+exec $bin/sway-keyring
+# Os apps GTK que pedem o portal esperam o ambiente chegar ao systemd (sway-after-env): antes dele,
+# o portal subia sem o WAYLAND_DISPLAY e travava por 120 s, levando a Waybar junto
+exec $bin/sway-after-env $bin/sway-polkit-agent
+# A Waybar num laço que a abre de novo se ela sair com erro (sway-waybar). O sway-theme e o
+# install.sh a reiniciam com "sway-waybar restart", que encerra esta e abre outra com o laço
+exec $bin/sway-after-env $bin/sway-waybar
+# Notificações e central própria. Sem o daemon nenhum app consegue notificar: o laço o reabre
+# se ele cair, e termina junto com o Sway
+exec $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-notifd; sleep 1; done'
+# Avisos de atualização da distro (GNOME Software, update-notifier do Ubuntu ou o do Discover no
+# Kubuntu): no GNOME e no KDE sobem pelo autostart; no Sway, só daqui. Sem nenhum, como no Mint, nada
+exec $bin/sway-after-env $bin/sway-update-notifier
+# O "Reiniciar e atualizar" da GNOME Software pede o reinício ao gerenciador de sessão do GNOME:
+# o sway-sessionmgr responde ao Reboot e ao Shutdown, e sai com o Sway
+exec $bin/sway-sessionmgr
+# Indicador de volume e brilho: o sway-osd muda o nível e avisa o sway-osd-bar, que aparece por 1 s.
+# O laço o reabre se ele cair e depois de uma troca de tema, que o encerra para ele ler as cores novas
+exec $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-osd-bar; sleep 1; done'
+# Agente de segredos (janela de senha). Ícone e menu próprios: waybar-network.
+# Sem ícone na bandeja: no Ubuntu e no Debian, em Wayland ele ignora o --no-indicator e se
+# registra nela. Em X11 (Xwayland) ele obedece, e o do Mint, sem appindicator, já roda assim.
+# Só com o NetworkManager no ar: sem ele (iwd e systemd-networkd), quem pede a senha é o popup de rede
+exec sh -c 'busctl --system status org.freedesktop.NetworkManager >/dev/null 2>&1 && exec env GDK_BACKEND=x11 nm-applet --no-indicator'
+# blueman-applet sem o ícone da bandeja: agente de pareamento (PIN, confirmação).
+# Ícone e menu próprios: waybar-bluetooth
+exec $bin/sway-after-env $bin/blueman-agent
+exec wl-paste --type text  --watch cliphist store
+exec wl-paste --type image --watch cliphist store
+# O resto (um PDF ou arquivo copiado como bytes); texto e imagem ficam com os dois acima
+exec wl-paste --watch $bin/sway-clip-store
+# A ordem de uso das janelas para o Alt+Tab (sway-switcher, com o seletor na tela). O laço o reabre se cair
+exec $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-switcher daemon; sleep 1; done'
+# Grade de apps (sway-drawer) residente e escondida; o Super e o botão da dock só a mostram
+exec $bin/sway-after-env $bin/sway-drawer start
+# Dock (config em ~/.config/sway-dock/config.toml). O laço a reabre se cair
+# O laço termina junto com o Sway: sem isso sobreviveria ao logout e abriria um segundo dock
+exec $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-dock; sleep 1; done'
+exec sh -c 'sleep 5; $bin/bing-wallpaper sway'
+# Bloqueio, tela e suspensão por inatividade: os tempos estão em sway-idle
+# (a cafeína troca o swayidle em execução; no login ela volta a desligada)
+exec $bin/sway-caffeine login
+# Luz noturna: volta ao último modo (sway-nightlight)
+exec $bin/sway-nightlight restore
+
+# --- Regras de janela ---
+for_window [app_id="^(pavucontrol|blueman-manager|nm-connection-editor|org.gnome.Weather)$"] floating enable
+for_window [window_role="pop-up"] floating enable
+# Aviso de compartilhamento do Chromium/Vivaldi: os botões não respondem no Sway; vai para o scratchpad (= "Hide")
+# Só no navegador e no fim do título: uma aba ou um arquivo com esse texto no nome não some
+for_window [app_id="(?i)^(vivaldi|google-chrome|com\.google\.chrome|chromium|brave)" title="(is sharing your screen|está compartilhando sua tela)\.?$"] floating enable, move scratchpad
+for_window [class="(?i)^(vivaldi|google-chrome|chromium|brave)" title="(is sharing your screen|está compartilhando sua tela)\.?$"] floating enable, move scratchpad
+# Gradia (editor dos screenshots: Ctrl+Print ou Super+Shift+E): flutuante e centralizado
+for_window [app_id="^be\.alexandervanhee\.gradia$"] floating enable, resize set 1400 900, move position center
+
+# --- Sessão e apps ---
+bindsym $mod+r reload
+# --no-repeat: segurar as teclas não abre e fecha o menu sem parar
+bindsym --no-repeat Ctrl+Alt+Delete exec $bin/session-menu
+bindsym Ctrl+Alt+l exec $lock
+# Resgate se a tela não voltar depois do power off (funciona com a tela bloqueada)
+bindsym --locked $mod+Shift+o exec swaymsg "output * power on"
+bindsym $mod+q kill
+bindsym $mod+Ctrl+Escape kill
+bindsym Ctrl+Alt+t exec $term
+bindsym Ctrl+Alt+e exec $bin/sway-files
+# Classe própria: um assign do kitty a um workspace não leva junto o Yazi
+bindsym Ctrl+Alt+y exec $term --class yazi -e yazi
+# O lançador: o rofi com o tema do desktop (sway-launcher)
+bindsym Alt+space exec $bin/sway-launcher toggle
+# Super sozinho (ao soltar) mostra/esconde a grade de apps, como no GNOME
+# sway-super: não abre se o Super foi usado com o mouse (arrastar janela, rolar workspace)
+bindsym --locked --no-repeat Super_L exec $bin/sway-super press
+bindsym --locked --release   Super_L exec $bin/sway-super release
+bindsym $mod+c exec $bin/waybar-notifications-popup
+bindsym $mod+v exec $bin/waybar-clipboard-popup
+# Janelas abertas em ordem de uso (plugin sway_windows); tecla à esquerda do 1, em qualquer layout
+bindcode $mod+49 exec $bin/sway-launcher windows
+bindsym $mod+space input type:keyboard xkb_switch_layout next
+
+# --- Foco (Krohnkite: Meta+H/J/K/L; KWin: Meta+Alt+setas, Alt+Tab) ---
+bindsym $mod+h focus left
+bindsym $mod+j focus down
+bindsym $mod+k focus up
+bindsym $mod+l focus right
+bindsym $mod+Alt+Left  focus left
+bindsym $mod+Alt+Down  focus down
+bindsym $mod+Alt+Up    focus up
+bindsym $mod+Alt+Right focus right
+# Alt+Tab em ordem de uso, em todos os workspaces, com o seletor (sway-switcher): segurando o Alt, cada Tab
+# anda e soltar foca; um toque rápido troca para a anterior. Super+Tab segue a ordem da tela
+bindsym Alt+Tab        exec $bin/sway-switcher next
+bindsym Alt+Shift+Tab  exec $bin/sway-switcher prev
+bindsym $mod+Tab       focus next
+bindsym $mod+Shift+Tab focus prev
+
+# --- Mover e redimensionar (Krohnkite: Meta+Shift / Meta+Ctrl + H/J/K/L) ---
+bindsym $mod+Shift+h move left
+bindsym $mod+Shift+j move down
+bindsym $mod+Shift+k move up
+bindsym $mod+Shift+l move right
+bindsym $mod+Ctrl+h exec $bin/sway-resize left
+bindsym $mod+Ctrl+l exec $bin/sway-resize right
+bindsym $mod+Ctrl+j exec $bin/sway-resize down
+bindsym $mod+Ctrl+k exec $bin/sway-resize up
+
+# --- Master (Krohnkite: Set master) ---
+bindsym $mod+Return exec $bin/sway-master
+
+# --- Estado da janela ---
+bindsym $mod+f floating toggle
+bindsym $mod+Shift+f [workspace=__focused__] floating toggle
+bindsym $mod+m         fullscreen toggle
+bindsym $mod+Page_Up   fullscreen toggle
+bindsym $mod+Ctrl+f    fullscreen toggle
+bindsym $mod+Page_Down move scratchpad
+bindsym $mod+BackSpace scratchpad show
+bindsym $mod+z         scratchpad show
+bindsym $mod+Shift+g   sticky toggle
+
+# --- Layouts (Krohnkite: Next Layout / Tile) ---
+bindsym $mod+bracketright layout toggle splith splitv stacking tabbed
+bindsym $mod+Ctrl+t       layout splith
+bindsym $mod+Ctrl+Return  split toggle
+bindsym $mod+Ctrl+x gaps inner current plus 2
+bindsym $mod+Ctrl+z gaps inner current minus 2
+bindsym $mod+Ctrl+r gaps inner current toggle 5
+
+# --- Workspaces (KWin: Meta+1–9, Meta+Ctrl+1–9, Meta(+Ctrl)+setas) ---
+bindsym $mod+1 workspace number 1
+bindsym $mod+2 workspace number 2
+bindsym $mod+3 workspace number 3
+bindsym $mod+4 workspace number 4
+bindsym $mod+5 workspace number 5
+bindsym $mod+6 workspace number 6
+bindsym $mod+7 workspace number 7
+bindsym $mod+8 workspace number 8
+bindsym $mod+9 workspace number 9
+bindsym $mod+Ctrl+1 move container to workspace number 1, workspace number 1
+bindsym $mod+Ctrl+2 move container to workspace number 2, workspace number 2
+bindsym $mod+Ctrl+3 move container to workspace number 3, workspace number 3
+bindsym $mod+Ctrl+4 move container to workspace number 4, workspace number 4
+bindsym $mod+Ctrl+5 move container to workspace number 5, workspace number 5
+bindsym $mod+Ctrl+6 move container to workspace number 6, workspace number 6
+bindsym $mod+Ctrl+7 move container to workspace number 7, workspace number 7
+bindsym $mod+Ctrl+8 move container to workspace number 8, workspace number 8
+bindsym $mod+Ctrl+9 move container to workspace number 9, workspace number 9
+bindsym $mod+Left       exec $bin/sway-ws prev
+bindsym $mod+Right      exec $bin/sway-ws next
+bindsym $mod+Ctrl+Left  exec $bin/sway-ws prev move
+bindsym $mod+Ctrl+Right exec $bin/sway-ws next move
+
+# --- Monitores (KWin: Meta+W/E, Meta+Ctrl+W/E, Meta+Shift+setas) ---
+bindsym $mod+w focus output left
+bindsym $mod+e focus output right
+bindsym $mod+Ctrl+w     move container to output left,  focus output left
+bindsym $mod+Ctrl+e     move container to output right, focus output right
+bindsym $mod+Shift+Left  move container to output left,  focus output left
+bindsym $mod+Shift+Right move container to output right, focus output right
+
+# --- Screenshot (teclas do Spectacle; com Ctrl, abre no Gradia) ---
+bindsym Print            exec $bin/sway-shot region
+bindsym Shift+Print      exec $bin/sway-shot full
+bindsym $mod+Print       exec $bin/sway-shot window
+bindsym Ctrl+Print       exec $bin/sway-shot region edit
+bindsym Ctrl+Shift+Print exec $bin/sway-shot full edit
+bindsym $mod+Ctrl+Print  exec $bin/sway-shot window edit
+
+# --- Painéis de captura e de gravação (sway-capture) ---
+# Abrem no centro da tela; teclas = iniciais em inglês: r Region · s Screen · w Window · Esc fecha.
+# Captura: g liga/desliga o Gradia, d muda o atraso (Delay).
+# Gravação: Shift+tecla = som do sistema, Ctrl+tecla = microfone, a muda o áudio (Audio);
+# durante a gravação, Super+Shift+R para (como o clique no ● da Waybar).
+# Super+Shift+E era o swaynag de sair; sair continua no Ctrl+Alt+Delete (session-menu)
+bindsym $mod+Shift+e exec $bin/sway-capture shot
+bindsym $mod+Shift+r exec $bin/sway-capture rec
+
+# --- Mídia e brilho (funcionam também com a tela bloqueada) ---
+bindsym --locked XF86AudioRaiseVolume  exec $bin/sway-osd volume up
+bindsym --locked XF86AudioLowerVolume  exec $bin/sway-osd volume down
+bindsym --locked XF86AudioMute         exec $bin/sway-osd volume mute
+bindsym --locked XF86AudioMicMute      exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+bindsym --locked XF86AudioPlay         exec playerctl play-pause
+bindsym --locked XF86AudioNext         exec playerctl next
+bindsym --locked XF86AudioPrev         exec playerctl previous
+bindsym --locked XF86MonBrightnessUp   exec $bin/sway-osd brightness up
+bindsym --locked XF86MonBrightnessDown exec $bin/sway-osd brightness down
+
+# --- Mouse e gestos ---
+floating_modifier $mod normal
+bindsym --whole-window $mod+button4 workspace prev_on_output; exec $bin/sway-super used
+bindsym --whole-window $mod+button5 workspace next_on_output; exec $bin/sway-super used
+bindgesture swipe:4:left  workspace next_on_output
+bindgesture swipe:4:right workspace prev_on_output
+bindgesture swipe:3:left  focus left
+bindgesture swipe:3:right focus right
+bindgesture swipe:3:up    focus up
+bindgesture swipe:3:down  focus down
+
+# --- Ajustes desta máquina: monitor, teclado, mouse, apps nos workspaces ---
+# Fora do Git, para valer mais que o resto (menos as telas, abaixo). Exemplos em config.d/50-local.conf
+include ~/.config/sway/config.d/*
+
+# As telas e os workspaces de cada tela, gravados pelo nwg-displays (na gaveta de apps). Depois dos
+# ajustes desta máquina: o que se escolhe na janela vale mais que um output do 50-local.conf.
+# Enquanto o arquivo não existe, o Sway só ignora a linha
+include ~/.config/sway/outputs
+include ~/.config/sway/workspaces

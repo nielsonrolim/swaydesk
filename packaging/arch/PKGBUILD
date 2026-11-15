@@ -1,0 +1,154 @@
+# Os componentes em Rust + GTK 4, divididos como no debian/ (packaging/components.list). Ainda não
+# publicado no AUR: a fonte é o tarball da tag no GitHub, que só existe quando o repositório abrir.
+# Para testar sem a tag, ponha ao lado deste arquivo o swaydesk-<versão>.tar.gz feito com
+#   git archive --prefix=sway-desktop-<versão>/ -o packaging/arch/swaydesk-<versão>.tar.gz HEAD
+# e rode o makepkg com --skipchecksums.
+# Maintainer: Nielson Rolim <nielsonrolim@users.noreply.github.com>
+pkgbase=swaydesk
+pkgname=(swaydesk-common swaydesk-scripts swaydesk-notifd swaydesk-dock swaydesk-drawer swaydesk-widgets swaydesk-capture swaydesk-theme swaydesk-session swaydesk-desktop swaydesk-greeter)
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Sway desktop components in Rust and GTK 4 for wlroots compositors with layer-shell"
+arch=(x86_64 aarch64)
+url="https://swaydesk.nielsonrolim.com"
+# Os binários ligam os crates de terceiros: as licenças deles (as do debian/copyright, que o
+# tests/test_packaging.py confere). Os pacotes sem binário (arch=any) ficam só com a MIT
+license=(MIT Apache-2.0 'Apache-2.0 WITH LLVM-exception' BSD-3-Clause CC0-1.0 CDLA-Permissive-2.0 ISC Unicode-3.0
+         Unlicense Zlib)
+makedepends=(cargo gtk4 gtk4-layer-shell pkgconf python)
+# O LTO do makepkg compila o C do ring (o TLS do tempo e das capas) com -flto, e o linker do Rust não junta
+# esses objetos: undefined symbol ring_core_*. O workspace já usa o LTO do próprio Rust (profile.release)
+options=(!lto)
+source=("$pkgbase-$pkgver.tar.gz::https://github.com/nielsonrolim/sway-desktop/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')  # na publicação: o sha256 do tarball da tag
+_src=sway-desktop-$pkgver
+
+prepare() {
+  cd "$_src/rust"
+  # O tarball do packaging/make-orig.sh (o do OBS, que compila sem rede) já traz os crates em vendor/
+  [[ -d vendor ]] && return
+  cargo fetch --locked --target "$(rustc -vV | sed -n 's/host: //p')"
+}
+
+build() {
+  cd "$_src/rust"
+  # shellcheck disable=SC2046 # os -p separados
+  cargo build --frozen --release $(../packaging/install-tree.sh --crates)
+}
+
+check() {
+  cd "$_src/rust"
+  cargo test --frozen --release
+}
+
+_install() {
+  cd "$srcdir/$_src"
+  packaging/install-tree.sh "$1" "$pkgdir" "$PWD/rust/target/release"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$1/LICENSE"
+  # As licenças dos crates que os binários do pacote ligam, em crates/ (nada nos pacotes sem binário)
+  (cd rust && python ../packaging/crate-licenses.py arch "$1" "$pkgdir/usr/share/licenses/$1")
+}
+
+package_swaydesk-common() {
+  pkgdesc="Sway desktop components - shared data (translations)"
+  arch=(any)
+  license=(MIT)
+  depends=(ttf-nerd-fonts-symbols)  # os ícones; no Debian, a fonte vai dentro do pacote
+  SWAYDESK_BUNDLED_FONT=0 _install swaydesk-common
+}
+
+package_swaydesk-scripts() {
+  pkgdesc="Sway desktop components - helper scripts (session actions, brightness, caffeine, night light, holidays)"
+  arch=(any)
+  license=(MIT)
+  depends=(bash)
+  optdepends=('brightnessctl: brightness' 'swayidle: idle and caffeine' 'swaylock: lock fallback'
+              'gammastep: night light' 'libnotify: session notices' 'python: calendar holidays')
+  # O Python só serve aos feriados do calendário, que também precisam do python-holidays. Ele só existe no
+  # AUR e fica fora, por decisão do usuário: sem ele, o calendário abre sem a caixa dos feriados
+  # No Arch, os programas internos de um pacote ficam em /usr/lib/<pacote>
+  SWAYDESK_LIBEXEC=/usr/lib _install swaydesk-scripts
+}
+
+package_swaydesk-notifd() {
+  pkgdesc="Sway desktop components - notification daemon, center and Waybar icon"
+  depends=(swaydesk-common gtk4 gtk4-layer-shell)
+  provides=(notification-daemon)
+  _install swaydesk-notifd
+}
+
+package_swaydesk-dock() {
+  pkgdesc="Sway desktop components - dock"
+  depends=(swaydesk-common gtk4 gtk4-layer-shell sway)
+  _install swaydesk-dock
+}
+
+package_swaydesk-drawer() {
+  pkgdesc="Sway desktop components - app grid"
+  depends=(swaydesk-common swaydesk-scripts gtk4 gtk4-layer-shell)
+  optdepends=('xdg-user-dirs: the user folders')
+  _install swaydesk-drawer
+}
+
+package_swaydesk-widgets() {
+  pkgdesc="Sway desktop components - Waybar popups and icons, volume and brightness indicator"
+  depends=(swaydesk-common swaydesk-scripts gtk4 gtk4-layer-shell)
+  optdepends=('wireplumber: audio' 'libpulse: audio devices (pactl)' 'networkmanager: network' 'bluez: Bluetooth'
+              'upower: battery' 'cliphist: clipboard history' 'wl-clipboard: clipboard'
+              'noto-fonts-emoji: weather icons')
+  _install swaydesk-widgets
+}
+
+package_swaydesk-capture() {
+  pkgdesc="Sway desktop components - screenshot and screen recording panels"
+  depends=(swaydesk-common swaydesk-scripts gtk4 gtk4-layer-shell)
+  optdepends=('grim: screenshots' 'slurp: region and window' 'wf-recorder: screen recording' 'jq: window geometry'
+              'wl-clipboard: copy the screenshot' 'libnotify: notices')
+  _install swaydesk-capture
+}
+
+package_swaydesk-theme() {
+  pkgdesc="Sway desktop components - theme tools, Desktop Theme app and accent color portal"
+  depends=(swaydesk-common glib2 gtk4)  # o gtk4 é do app Tema do Desktop (traz o pango e o cairo)
+  optdepends=('papirus-icon-theme: folder colors' 'dconf: the Sway dconf profile' 'gnome-themes-extra: Adwaita-dark for GTK 3')
+  _install swaydesk-theme
+}
+
+package_swaydesk-session() {
+  pkgdesc="Sway desktop components - session menu, lock screen and services (SessionManager, keyring fix)"
+  # O bloqueio abre a libpam na hora e usa o serviço PAM do swaylock (/etc/pam.d/swaylock)
+  depends=(swaydesk-common swaydesk-scripts gtk4 gtk4-layer-shell glib2 systemd pam swaylock)
+  _install swaydesk-session
+}
+
+package_swaydesk-desktop() {
+  pkgdesc="Sway desktop - the full session (Sway and Waybar configuration, session scripts, first-login setup)"
+  # O cursor Bibata do config do Sway não está nos repositórios oficiais: o capitaine-cursors, o mais parecido,
+  # é o que a sessão escolhe no lugar dele (swaydesk_common::cursor, no 00-cursor.conf e no dconf do GTK).
+  # O pacman não tem Recommends nem instala os optdepends: tudo o que o Debian recomenda vai nos depends, para
+  # o Arch ficar como uma instalação padrão do Debian (fora o python-holidays, que só existe no AUR). Os
+  # serviços que o pacman não liga (Bluetooth, NetworkManager, perfis de energia) ficam no aviso do .install.
+  # O power-profiles-daemon também é satisfeito pelo tlp-pd (provides), o caminho de quem usa o TLP. O
+  # gnome-keyring guarda as senhas dos apps (navegador, git, NetworkManager); no Debian, ele e o PAM vêm com o
+  # desktop ou pelo Recommends do swaydesk-greeter. O PAM de quem entra pelo greetd está no .install do greeter
+  arch=(any)
+  license=(MIT)
+  install=swaydesk-desktop.install
+  # libqalculate: o qalc da calculadora da grade de apps
+  depends=(swaydesk-common swaydesk-scripts swaydesk-notifd swaydesk-dock swaydesk-drawer swaydesk-widgets
+           swaydesk-capture swaydesk-theme swaydesk-session sway swaybg swayidle swaylock waybar kitty rofi libqalculate jq curl
+           wl-clipboard cliphist xdg-desktop-portal-wlr xdg-desktop-portal-gtk dconf glib2 noto-fonts noto-fonts-emoji gnome-themes-extra systemd
+           mate-polkit xorg-xwayland thunar blueman papirus-icon-theme grim slurp wf-recorder brightnessctl
+           playerctl pavucontrol wireplumber libpulse networkmanager network-manager-applet bluez upower gammastep
+           libnotify power-profiles-daemon xdg-user-dirs qt5ct qt6ct nwg-displays capitaine-cursors
+           gnome-keyring)
+  SWAYDESK_LIBEXEC=/usr/lib _install swaydesk-desktop
+}
+
+package_swaydesk-greeter() {
+  pkgdesc="Sway desktop - login screen for greetd (GTK 4, in the look of the lock screen)"
+  # O pacman não liga serviços: o .install mostra o systemctl enable greetd
+  install=swaydesk-greeter.install
+  depends=(swaydesk-common gtk4 gtk4-layer-shell glib2 greetd sway)
+  SWAYDESK_GREETER_USER=greeter SWAYDESK_GREETER_VT=1 _install swaydesk-greeter
+}

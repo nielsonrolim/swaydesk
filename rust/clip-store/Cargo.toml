@@ -1,0 +1,11 @@
+[package]
+name = "swaydesk-clip-store"
+description = "Guarda no cliphist o que não é texto nem imagem (um PDF, um arquivo copiado como bytes)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-clip-store"
+path = "src/main.rs"

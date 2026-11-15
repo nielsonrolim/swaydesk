@@ -1,0 +1,17 @@
+[package]
+name = "swaydesk-session-menu"
+description = "Menu da sessão (GTK 4): bloquear, sair, suspender, reiniciar e desligar"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-session-menu"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true
+libc.workspace = true

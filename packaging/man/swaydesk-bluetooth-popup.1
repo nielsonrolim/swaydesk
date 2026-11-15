@@ -1,0 +1,24 @@
+.TH SWAYDESK-BLUETOOTH-POPUP 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-bluetooth\-popup \- Bluetooth popup for Waybar
+.SH SYNOPSIS
+.B swaydesk\-bluetooth\-popup
+.SH DESCRIPTION
+Turns Bluetooth on and off, makes the computer visible, lists the paired devices, connects, disconnects, searches for and pairs new devices, shows details, forgets a device and sends files. It talks to BlueZ over D\-Bus. The search runs only on request and stops after 30 seconds.
+.PP
+It never reads or types pairing codes: the blueman agent answers them in its own dialog. While pairing, the popup stays open, because BlueZ cancels the pairing when the program that asked for it closes.
+.PP
+Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
+.PP
+The session runs it under the name waybar\-bluetooth\-popup (a link in the package's helper directory to /usr/bin/swaydesk\-bluetooth\-popup); the process name is waybar\-bluetooth\-popup too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR bluetoothctl (1),
+.BR swaydesk (7)

@@ -1,0 +1,130 @@
+#!/bin/sh
+# Qual GPU a sessão e a gravação de tela usam, a partir do /sys/class/drm.
+# uso: sway-gpu card      a placa da sessão (card1), para o WLR_DRM_DEVICES
+#      sway-gpu render    o render node dela (/dev/dri/renderD128)
+#      sway-gpu vendor    o fabricante dela (0x8086 Intel, 0x1002 AMD, 0x10de NVIDIA)
+#      sway-gpu vendors   o fabricante de cada placa, sem repetir (para o --check sugerir os drivers)
+#      sway-gpu driver    o driver DRM dela (i915, amdgpu, virtio_gpu...)
+#      sway-gpu encoder   um render node que codifica H.264 por VA-API: o da placa da sessão, ou o
+#                         de outra placa (a integrada, quando a sessão está na dedicada)
+# Sem resposta, não escreve nada e sai com 1.
+#
+# A placa da sessão, nesta ordem:
+# 1. a que tem a tela interna (eDP, LVDS, DSI) conectada. Num notebook híbrido é a integrada, mesmo
+#    quando o módulo da NVIDIA carrega antes e fica com o card0; com o MUX na dedicada, é a
+#    dedicada (as duas podem ter um eDP, mas só um fica "connected");
+# 2. a que o firmware usou ao ligar (boot_vga = 1), num PC sem tela interna;
+# 3. a primeira placa com conector (a virtio-gpu e algumas placas ARM não têm boot_vga).
+# A numeração cardN muda entre boots: a pergunta é refeita a cada login.
+# Fica em /usr/local/bin, ao lado do sway-session, que não pode depender da pasta pessoal.
+# O SWAY_DESKTOP_SYS_DRM troca o /sys/class/drm nos testes.
+drm=${SWAY_DESKTOP_SYS_DRM:-/sys/class/drm}
+
+# card0 card1 ... card10, na ordem numérica, sem os conectores (card0-eDP-1)
+cards() {
+  for c in "$drm"/card[0-9] "$drm"/card[0-9][0-9]; do
+    [ -e "$c" ] && echo "${c##*/}"
+  done
+}
+
+has_connector() {  # has_connector cardN
+  for conn in "$drm/$1"-*; do
+    [ -e "$conn" ] && return 0
+  done
+  return 1
+}
+
+has_panel() {  # has_panel cardN: uma tela interna conectada
+  for conn in "$drm/$1"-eDP-* "$drm/$1"-LVDS-* "$drm/$1"-DSI-*; do
+    [ "$(cat "$conn/status" 2>/dev/null)" = connected ] && return 0
+  done
+  return 1
+}
+
+card() {
+  for c in $(cards); do
+    has_panel "$c" && { echo "$c"; return 0; }
+  done
+  for c in $(cards); do
+    [ "$(cat "$drm/$c/device/boot_vga" 2>/dev/null)" = 1 ] && { echo "$c"; return 0; }
+  done
+  for c in $(cards); do
+    has_connector "$c" && { echo "$c"; return 0; }
+  done
+  return 1
+}
+
+render_of() {  # render_of cardN
+  for r in "$drm/$1"/device/drm/renderD*; do
+    [ -e "$r" ] && { echo "/dev/dri/${r##*/}"; return 0; }
+  done
+  return 1
+}
+
+render() {
+  c=$(card) || return 1
+  render_of "$c"
+}
+
+vendor() {
+  c=$(card) || return 1
+  v=$(cat "$drm/$c/device/vendor" 2>/dev/null) && [ -n "$v" ] && echo "$v"
+}
+
+# Na virtio, o cardN/device é o dispositivo PCI, com o driver de transporte (virtio-pci); o DRM é o do
+# dispositivo virtio logo abaixo (device/virtio0/driver -> virtio_gpu)
+driver() {
+  c=$(card) || return 1
+  d=$(readlink "$drm/$c/device/driver" 2>/dev/null) && [ -n "$d" ] || return 1
+  if [ "${d##*/}" = virtio-pci ]; then
+    for v in "$drm/$c"/device/virtio*/driver; do
+      sub=$(readlink "$v" 2>/dev/null) && [ -n "$sub" ] && { echo "${sub##*/}"; return 0; }
+    done
+  fi
+  echo "${d##*/}"
+}
+
+vendors() {
+  seen=
+  for c in $(cards); do
+    v=$(cat "$drm/$c/device/vendor" 2>/dev/null) || continue
+    case " $seen " in *" $v "*) continue ;; esac
+    seen="$seen $v"
+    echo "$v"
+  done
+  [ -n "$seen" ]
+}
+
+# encodes cardN: com o vainfo, vale a resposta dele (sem driver VA-API, ele falha, e a placa não
+# codifica). Sem o vainfo, vale o fabricante: a Intel e a AMD (Mesa) codificam H.264. O driver
+# VA-API da NVIDIA só decodifica: ela nem é consultada, para o vainfo não acordar a placa dedicada.
+encodes() {
+  dev=$(render_of "$1") || return 1
+  vendor=$(cat "$drm/$1/device/vendor" 2>/dev/null)
+  [ "$vendor" != 0x10de ] || return 1
+  if command -v vainfo >/dev/null 2>&1; then
+    out=$(timeout 3 vainfo --display drm --device "$dev" 2>/dev/null) || return 1
+    printf '%s\n' "$out" | grep -q 'VAProfileH264.*VAEntrypointEncSlice' || return 1
+  else
+    case $vendor in
+      0x8086|0x1002) ;;
+      *) return 1 ;;
+    esac
+  fi
+  echo "$dev"
+}
+
+# Primeiro a placa da sessão, que já está acordada; depois as outras
+encoder() {
+  session=$(card) && encodes "$session" && return 0
+  for c in $(cards); do
+    [ "$c" = "$session" ] && continue
+    encodes "$c" && return 0
+  done
+  return 1
+}
+
+case ${1:-} in
+  card|render|vendor|vendors|driver|encoder) "$1" ;;
+  *) echo "usage: sway-gpu card|render|vendor|vendors|driver|encoder" >&2; exit 2 ;;
+esac

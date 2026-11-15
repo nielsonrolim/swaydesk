@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Único lugar que altera o brilho, usado pelas teclas, pela rolagem e pelo popup.
+# uso: sway-brightness up|down|set N|get
+# Usa sempre o mesmo dispositivo (o primeiro da lista, como o ícone e o popup) e nunca desce de
+# 1% do máximo: chegar a 0 apaga a luz de fundo em muitos painéis, e a tela parece desligada.
+set -uo pipefail
+root=${BACKLIGHT_DIR:-/sys/class/backlight}
+device=
+for d in "$root"/*; do
+  if [[ -r $d/brightness && -r $d/max_brightness ]]; then
+    device=${d##*/}
+    break
+  fi
+done
+if [[ -z $device ]]; then
+  echo "sway-brightness: no brightness control" >&2
+  exit 1
+fi
+max=$(<"$root/$device/max_brightness")
+floor=$(( max / 100 ))
+(( floor > 0 )) || floor=1
+bin=$(dirname "$(readlink -f "$0")")
+case ${1:-}/${2:-} in
+  up/)   brightnessctl -q -d "$device" set 5%+ ;;
+  down/) brightnessctl -q -d "$device" "--min-value=$floor" set 5%- ;;
+  get/)
+    cur=$(<"$root/$device/brightness")
+    echo $(( (cur * 100 + max / 2) / max ))
+    exit 0
+    ;;
+  set/*)
+    # Sempre em base 10: no bash, um zero à esquerda seria lido como octal
+    if ! [[ ${2:-} =~ ^[0-9]{1,3}$ ]] || (( 10#$2 < 1 || 10#$2 > 100 )); then
+      echo "sway-brightness: use a value from 1 to 100" >&2
+      exit 2
+    fi
+    brightnessctl -q -d "$device" "--min-value=$floor" set "$((10#$2))%"
+    ;;
+  *) echo "usage: sway-brightness up|down|set N|get" >&2; exit 2 ;;
+esac
+rc=$?
+"$bin/waybar-notify" waybar-brightness
+exit $rc

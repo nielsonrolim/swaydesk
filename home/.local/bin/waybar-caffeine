@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# Ícone da cafeína na Waybar (custom/caffeine): xícara em teal quando ligada, apagada quando não.
+# Lê o estado sem abrir processos, a cada 5 s, e só escreve quando muda. O sway-caffeine e o popup
+# mandam SIGUSR1 para atualizar na hora.
+set -uo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+OFF_TIP=$(t 'Caffeine off') ON_TIP=$(t 'Caffeine on: no lock, screen blanking or suspend')
+UNTIL_TIP=$(t 'Caffeine until %s: no lock, screen blanking or suspend')
+self=$(readlink -f -- "$0")
+source "${self%/*}/waybar-icon-lib"
+# Os bytes em UTF-8: o $'\U…' do bash depende do locale e, no C (um Arch sem locale-gen), sai literal
+COFFEE=$'\xf3\xb0\x85\xb6'  # U+F0176
+
+line=
+build() {
+  local v= now cls=off tip=$OFF_TIP
+  [[ -r $run/sway-caffeine ]] && v=$(<"$run/sway-caffeine") 2>/dev/null
+  printf -v now '%(%s)T' -1
+  if [[ $v == forever ]]; then
+    cls=on tip=$ON_TIP
+  elif [[ $v =~ ^[0-9]{1,12}$ ]] && (( 10#$v > now )); then
+    printf -v v '%(%H:%M)T' "$((10#$v))"
+    cls=on tip=${UNTIL_TIP//%s/$v}
+  fi
+  popup_open waybar-caffeine-popup && tip=""
+  printf -v line '{"text":"%s","tooltip":"%s","class":"%s"}' "$COFFEE" "$tip" "$cls"
+}
+
+icon_loop waybar-caffeine

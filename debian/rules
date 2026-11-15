@@ -1,0 +1,40 @@
+#!/usr/bin/make -f
+# Os componentes em Rust (rust/). Os crates vêm do rust/vendor do tarball de origem
+# (packaging/make-orig.sh): o Launchpad compila sem rede. Sem a pasta (um build local do repositório), o
+# cargo baixa os crates.
+export DH_VERBOSE = 1
+export CARGO_HOME = $(CURDIR)/debian/cargo-home
+export CARGO_TARGET_DIR = $(CURDIR)/debian/cargo-target
+CRATES := $(shell packaging/install-tree.sh --crates)
+OFFLINE := $(if $(wildcard rust/vendor),--offline,)
+PACKAGES := $(shell dh_listpackages)
+
+%:
+	dh $@
+
+# Os pacotes Architecture: all (o common e os scripts) não compilam nada: um -A sai em segundos
+override_dh_auto_build-indep override_dh_auto_test-indep:
+
+override_dh_auto_build-arch:
+	cd rust && cargo build --release --locked $(OFFLINE) $(CRATES)
+
+# Os testes sem tela (os crates sem GTK); os de tela ficam nos testes do repositório
+override_dh_auto_test-arch:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	cd rust && cargo test --release --locked $(OFFLINE)
+endif
+
+override_dh_auto_install:
+	$(foreach pkg,$(PACKAGES),packaging/install-tree.sh $(pkg) $(CURDIR)/debian/$(pkg) $(CARGO_TARGET_DIR)/release;)
+
+override_dh_auto_clean:
+	rm -rf debian/cargo-home debian/cargo-target
+
+# O dh_fixperms deixa executável tudo em /usr/libexec; os módulos em Python do swaydesk-scripts não são
+# programas (o calendário roda o waybar_holidays.py pelo python3)
+override_dh_fixperms:
+	dh_fixperms -X.py -Xsway-i18n.sh -Xwaybar-icon-lib
+
+# O dh_clean apaga os *.orig, e o cargo confere os Cargo.toml.orig dos crates de rust/vendor pelo checksum
+override_dh_clean:
+	dh_clean -XCargo.toml.orig

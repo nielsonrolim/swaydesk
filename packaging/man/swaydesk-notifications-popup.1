@@ -1,0 +1,23 @@
+.TH SWAYDESK-NOTIFICATIONS-POPUP 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-notifications\-popup \- notification center popup
+.SH SYNOPSIS
+.B swaydesk\-notifications\-popup
+.SH DESCRIPTION
+The list of notifications kept by swaydesk\-notifd, with Do Not Disturb. The click on the Waybar icon and Super+C open it. The list lives only in the daemon's memory.
+.PP
+Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
+.PP
+The session runs it under the name waybar\-notifications\-popup (a link in the package's helper directory to /usr/bin/swaydesk\-notifications\-popup); the process name is waybar\-notifications\-popup too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR swaydesk\-notifd (1),
+.BR swaydesk\-notifications (1)

@@ -1,0 +1,209 @@
+#!/usr/bin/env bash
+# uso: sway-rec region|full|window [none|system|mic]  grava (sem áudio, som do sistema ou microfone)
+#      sway-rec stop                                  para
+#      sway-rec watch                                 módulo da Waybar (contínuo)
+#      sway-rec status                                uma linha JSON, para conferir
+# O painel de gravação (sway-capture rec, Super+Shift+R) chama este script.
+# Roda sem terminal e com a saída descartada: toda falha precisa virar notificação.
+set -euo pipefail
+state="${XDG_RUNTIME_DIR:-/tmp}/sway-rec"
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+
+recording() { pgrep -x wf-recorder >/dev/null; }
+# Avisa o módulo da Waybar. Pelo PID, conferindo se é ele: um "pkill waybar" também
+# pegaria os scripts com waybar no nome, e o sinal os encerraria.
+refresh() {
+  local pid args
+  [[ -r $state/watch.pid ]] || return 0
+  pid=$(<"$state/watch.pid")
+  [[ $pid =~ ^[0-9]+$ ]] || return 0
+  mapfile -d '' -t args 2>/dev/null <"/proc/$pid/cmdline" || return 0
+  [[ ${args[1]:-} == */sway-rec && ${args[2]:-} == watch ]] || return 0
+  kill -USR1 "$pid" 2>/dev/null || true
+}
+notify()    { notify-send "$@" 2>/dev/null || true; }
+# Sem -u critical: esse tipo não some sozinho e o sway-notifd não mostra o tempo normal
+fail()      { notify -i dialog-error "$(t 'Recording failed')" "$1"; exit 1; }
+# Nada deu errado: só não havia o que gravar
+nothing()   { notify -i dialog-information "$(t 'Recording')" "$1"; exit 0; }
+
+# H.264 exige largura e altura pares: "x,y wxh" -> arredonda w e h para baixo
+even() { awk '{ split($2, s, "x"); printf "%s %dx%d\n", $1, s[1] - s[1] % 2, s[2] - s[2] % 2 }'; }
+# Depois do arredondamento, uma região de 1 px vira 0: o wf-recorder não aceitaria
+tooltip_format() {
+  t 'Recording · audio: %s · click to stop'
+}
+status_line() {
+  local t start now audio
+  start=$(<"$state/start") || return 1
+  audio=$(<"$state/audio") || return 1
+  printf -v now '%(%s)T' -1
+  t=$(( now - start ))
+  printf -v line '{"text":"● %02d:%02d","class":"recording","tooltip":"%s"}' \
+    $((t / 60)) $((t % 60)) "${tooltip//%s/$audio}"
+}
+
+# Parado, não abre nenhum processo: só acorda com o sinal do refresh (ou a cada 30 s, para
+# o caso de um sinal perdido). Gravando, atualiza o tempo a cada segundo.
+watch() {
+  local last= pending=0 rc wait fifo gp grandparent tick=0
+  tooltip=$(tooltip_format)  # uma vez: o laço roda a cada segundo gravando
+  # No bash, um sinal não interrompe o read: a rotina escreve no FIFO que o read está lendo
+  trap 'pending=1; { printf "\n" >&3; } 2>/dev/null' USR1
+  mkdir -p "$state"
+  echo $$ >"$state/watch.pid"
+  fifo="$state/watch.fifo.$$"
+  if mkfifo "$fifo" 2>/dev/null; then
+    exec 3<>"$fifo"
+    rm -f "$fifo"
+  fi
+  grandparent() { awk '{ sub(/^.*\) /, ""); print $2 }' "/proc/$PPID/stat" 2>/dev/null || true; }
+  gp=$(grandparent)
+  while true; do
+    pending=0
+    line='{"text":""}'
+    wait=30
+    if [[ -f $state/start ]] && recording; then
+      status_line 2>/dev/null || line='{"text":""}'
+      wait=1
+    fi
+    if [[ $line != "$last" ]]; then
+      last=$line
+      printf '%s\n' "$line" || exit 0
+    fi
+    rc=0
+    read -r -t "$wait" -u 3 _ 2>/dev/null || rc=$?
+    (( rc == 0 || rc > 128 )) || sleep "$wait"  # sem o FIFO, o read volta na hora com erro
+    # Parado, nada é escrito: é assim que este processo sabe que a Waybar foi embora
+    tick=$(( tick + wait ))
+    if (( tick >= 30 )); then
+      tick=0
+      [[ $(grandparent) == "$gp" ]] || exit 0
+    fi
+  done
+}
+
+check_size() { case $1 in *\ 0x*|*x0) nothing "$(t 'The region is too small.')" ;; esac; }
+
+case ${1:-} in
+  stop)
+    pkill -INT -x wf-recorder || true
+    exit ;;
+  status)
+    if recording && [ -f "$state/start" ]; then
+      t=$(( $(date +%s) - $(cat "$state/start") ))
+      tooltip=$(tooltip_format)
+      printf '{"text":"● %02d:%02d","class":"recording","tooltip":"%s"}\n' \
+        $((t / 60)) $((t % 60)) "${tooltip//%s/$(cat "$state/audio")}"
+    else
+      echo '{"text":""}'
+    fi
+    exit ;;
+  watch) watch ;;
+  region|full|window) ;;
+  *) t 'usage: sway-rec region|full|window|stop|status' >&2; echo >&2; exit 2 ;;
+esac
+
+unexpected() {
+  # shellcheck disable=SC2059  # o formato vem da tradução
+  notify -i dialog-error "$(t 'Recording failed')" "$(printf "$(t 'Unexpected error at line %s of sway-rec')" "$1")"
+}
+trap 'unexpected $LINENO' ERR
+
+# Antes de pedir a seleção: não adianta escolher a região para depois não gravar
+if recording; then
+  notify -i dialog-information "$(t 'Recording')" "$(t 'A recording is already in progress.')"
+  exit 0
+fi
+
+# A placa que codifica H.264 por VA-API (sway-gpu encoder), antes da seleção: o vainfo não atrasa o
+# começo da gravação. Sem nenhuma, o wf-recorder grava pelo processador, e a notificação final diz
+# isso. O sway-gpu fica em /usr/local/bin (--system) e no repositório, ao lado deste script
+encoder= cpu_note=
+gpu=$(command -v sway-gpu 2>/dev/null) || gpu=
+self=$(readlink -f "$0" 2>/dev/null) || self=
+[ -n "$gpu" ] || [ -z "$self" ] || gpu="${self%/home/.local/bin/*}/system/usr/local/bin/sway-gpu"
+if [ -n "$gpu" ] && [ -x "$gpu" ]; then
+  encoder=$("$gpu" encoder 2>/dev/null) || { encoder=; cpu_note=1; }
+fi
+
+case $1 in
+  region)
+    # O Esc do slurp sai com erro e sem mensagem; uma falha real explica o motivo
+    err=$(mktemp)
+    if ! raw=$(slurp 2>"$err"); then
+      msg=$(head -n 1 "$err")
+      rm -f "$err"
+      case $msg in ''|*[Cc]ancel*) exit 0 ;; esac
+      fail "slurp: $msg"
+    fi
+    rm -f "$err"
+    geom=$(even <<<"$raw")
+    check_size "$geom"
+    args=(-g "$geom")
+    ;;
+  full)
+    output=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name') || fail "$(t 'Could not find the focused screen.')"
+    [ -n "$output" ] || fail "$(t 'No screen in focus.')"
+    args=(-o "$output")
+    ;;
+  window)
+    # Só janelas têm pid: num workspace vazio, o foco é o próprio workspace
+    geom=$(swaymsg -t get_tree | jq -r '.. | select(.focused? == true and .pid? != null) | .rect
+           | "\(.x),\(.y) \(.width)x\(.height)"' | head -n 1) || fail "$(t 'Could not find the focused window.')"
+    [ -n "$geom" ] || nothing "$(t 'No window in focus.')"
+    geom=$(even <<<"$geom")
+    check_size "$geom"
+    args=(-g "$geom")
+    ;;
+esac
+
+# Fora de uma atribuição de array: lá, a falha encerraria o script sem aviso
+case ${2:-none} in
+  system)
+    sink=$(pactl get-default-sink) && [ -n "$sink" ] || fail "$(t 'Could not find the sound output.')"
+    args+=("--audio=$sink.monitor"); audio=$(t 'system sound') ;;
+  mic)
+    source=$(pactl get-default-source) && [ -n "$source" ] || fail "$(t 'Could not find the microphone.')"
+    args+=("--audio=$source"); audio=$(t 'microphone') ;;
+  *) audio=$(t 'none') ;;
+esac
+
+if [ -n "$encoder" ]; then
+  args+=(-c h264_vaapi -d "$encoder")
+fi
+
+dir="$(xdg-user-dir VIDEOS 2>/dev/null || echo "$HOME/Videos")/Screencasts"
+mkdir -p "$dir" "$state" || fail "$(printf "$(t 'Could not create %s')" "$dir")"
+stamp=$(date +%Y%m%d_%H%M%S)
+file="$dir/screencast_$stamp.mp4"
+n=2
+while [ -e "$file" ]; do
+  file="$dir/screencast_${stamp}_$n.mp4"
+  n=$((n + 1))
+done
+date +%s > "$state/start"
+echo "$audio" > "$state/audio"
+refresh
+
+rc=0
+wf-recorder "${args[@]}" -f "$file" </dev/null >"$state/log" 2>&1 || rc=$?
+rm -f "$state/start" "$state/audio"
+refresh
+
+# Arquivo com dados não prova sucesso: uma queda no meio deixa um MP4 sem índice,
+# que não abre. Ele é mantido, porque às vezes ainda dá para recuperar algo.
+playable=1
+if [ -s "$file" ] && command -v ffprobe >/dev/null; then
+  ffprobe -v error -show_entries format=duration -of csv=p=0 "$file" >/dev/null 2>&1 || playable=0
+fi
+if [ ! -s "$file" ]; then
+  rm -f "$file"
+  notify -i dialog-error "$(t 'Recording failed')" "$(tail -n 3 "$state/log")"
+elif [ "$rc" -ne 0 ] || [ "$playable" -eq 0 ]; then
+  notify -i dialog-warning "$(t 'Incomplete recording')" "$(printf "$(t '%s may not open.')" "${file/#$HOME/\~}") $(tail -n 1 "$state/log")"
+else
+  body=$(printf "$(t '%s · audio: %s')" "${file/#$HOME/\~}" "$audio")
+  [ -z "$cpu_note" ] || body+=$'\n'$(t 'Encoded by the processor: no GPU here encodes H.264 by VA-API.')
+  notify -i video-x-generic "$(t 'Recording saved')" "$body"
+fi

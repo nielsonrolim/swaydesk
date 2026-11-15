@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# uso: sway-super press|release|used
+# Super sozinho abre a grade de apps (sway-drawer). O --release do Sway não vê o mouse:
+# depois de arrastar uma janela com Super+clique, soltar o Super abriria a grade.
+# press guarda workspace + janela em foco + posição/tamanho; release só abre se nada mudou.
+# used: os atalhos de Super+rolagem avisam por aqui, mesmo que o workspace não mude.
+# Limite: um Super+clique que não muda nada (ou arrastar de volta ao lugar) não é visível
+# aqui, porque o floating_modifier do Sway não passa por um atalho; a grade abre nesse caso.
+
+state="${XDG_RUNTIME_DIR:-/tmp}/sway-super.state"
+
+snapshot() {
+    local ws
+    # Com a grade aberta o teclado é dela e nenhuma janela tem foco: o estado ainda precisa existir
+    ws=$(swaymsg -t get_workspaces | jq -r '.[] | select(.focused) | .name') || return 1
+    swaymsg -t get_tree | jq -c --arg ws "$ws" '
+        (first(recurse(.nodes[]?, .floating_nodes[]?) | select(.focused)) // null) as $f
+        | [$ws, $f.id, $f.rect.x, $f.rect.y, $f.rect.width, $f.rect.height]'
+}
+
+# Os dois atalhos são --locked: sem isso, soltar na tela de bloqueio deixaria um estado velho,
+# e a grade abriria sozinha depois de desbloquear. Os três bloqueios do sway-lock
+locked() { pgrep -x 'swaylock|sway-lock-gtk|swaydesk-lock' >/dev/null; }
+
+case "${1:-}" in
+    press)
+        if locked; then
+            rm -f "$state"
+            exit 0
+        fi
+        # Aparece inteiro de uma vez: o release nunca lê pela metade
+        tmp="$state.$$"
+        if snapshot >"$tmp"; then
+            mv -f "$tmp" "$state"
+        else
+            rm -f "$tmp"
+        fi
+        ;;
+    release)
+        if locked; then
+            rm -f "$state"
+            exit 0
+        fi
+        # Num toque rápido, o press pode ainda estar terminando
+        for _ in 1 2 3 4 5 6 7 8 9 10; do
+            [ -s "$state" ] && break
+            sleep 0.02
+        done
+        [ -s "$state" ] || exit 0
+        before=$(cat "$state")
+        rm -f "$state"
+        [ "$(snapshot)" = "$before" ] && exec "$(dirname "$0")/sway-drawer"
+        ;;
+    used)
+        rm -f "$state"
+        ;;
+    *)
+        echo "usage: sway-super press|release|used" >&2
+        exit 2
+        ;;
+esac

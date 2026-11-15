@@ -1,0 +1,20 @@
+[package]
+name = "swaydesk-weather"
+description = "O tempo da Waybar: a busca no wttr.in, o cache que o ícone e o popup dividem, e o ícone (sem GTK)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "swaydesk-weather"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+gio.workspace = true
+serde_json.workspace = true
+ureq.workspace = true

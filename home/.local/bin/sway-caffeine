@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Cafeína: sem bloqueio, tela apagada ou suspensão por inatividade.
+# uso: sway-caffeine off|1h|2h|on|toggle|status|login
+#   status  off | forever | until <epoch> <HH:MM>
+#   login   no início da sessão: volta a desligada e sobe o swayidle normal
+set -uo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+run=${XDG_RUNTIME_DIR:-/nonexistent}
+state="$run/sway-caffeine"
+timerfile="$run/sway-caffeine-timer.pid"
+check=${SWAY_CAFFEINE_CHECK:-30}
+bin=$(dirname "$(readlink -f "$0")")
+
+pid_of() {  # PID do arquivo, só se ainda for este script com o argumento dado
+  local pid args
+  [[ -r $1 ]] || return 1
+  pid=$(<"$1")
+  [[ $pid =~ ^[0-9]+$ ]] || return 1
+  mapfile -d '' -t args 2>/dev/null <"/proc/$pid/cmdline" || return 1
+  [[ ${args[1]:-} == */sway-caffeine && ${args[2]:-} == "$2" ]] || return 1
+  echo "$pid"
+}
+
+read_state() {
+  # O vencimento vale mesmo antes de o temporizador conferir. Só dígitos: o valor entra numa
+  # conta do bash, que executaria um comando escondido no arquivo
+  local v
+  v=$(cat "$state" 2>/dev/null) || { echo off; return; }
+  if [[ $v == forever ]]; then
+    echo forever
+  elif [[ $v =~ ^[0-9]{1,12}$ ]] && (( 10#$v > $(date +%s) )); then
+    echo "until $v $(date -d "@$v" +%H:%M)"
+  else
+    echo off
+  fi
+}
+
+stop_timer() {
+  local pid
+  if pid=$(pid_of "$timerfile" timer); then kill "$pid" 2>/dev/null || true; fi
+  rm -f "$timerfile"
+}
+
+# 8>&-: sem isso, o filho herdaria a trava e os próximos comandos esperariam para sempre
+start_idle() { setsid "$bin/sway-idle" </dev/null >/dev/null 2>&1 8>&- & }
+
+turn_on() {  # $1 = forever ou segundos
+  local was
+  was=$(read_state)
+  stop_timer
+  if [[ $1 == forever ]]; then
+    echo forever >"$state"
+  else
+    echo $(( $(date +%s) + $1 )) >"$state"
+    setsid "$0" timer </dev/null >/dev/null 2>&1 8>&- &
+    # Aqui, ainda com a trava: se o temporizador publicasse sozinho, o próximo comando poderia
+    # não encontrá-lo, e ele ficaria órfão
+    echo $! >"$timerfile"
+  fi
+  # Trocar de 1 h para 2 h não precisa reiniciar nada
+  [[ $was == off ]] && start_idle
+  "$bin/waybar-notify" waybar-caffeine
+}
+
+turn_off() {
+  stop_timer
+  # Sem arquivo, já está desligada: reiniciar o swayidle zeraria os tempos à toa.
+  # Vencida, o arquivo ainda existe, e o swayidle continua sem os tempos
+  if [[ -e $state ]]; then
+    rm -f "$state"
+    start_idle
+  fi
+  "$bin/waybar-notify" waybar-caffeine
+}
+
+# O estado depende de um diretório só do usuário: em /tmp, outra pessoa poderia criá-lo
+need_runtime() {
+  if [[ -z ${XDG_RUNTIME_DIR:-} ]]; then
+    echo "sway-caffeine: $(t 'XDG_RUNTIME_DIR is not set')" >&2
+    exit 1
+  fi
+}
+
+# Duas trocas ao mesmo tempo liam o mesmo estado: passam uma por vez
+serialize() {
+  need_runtime
+  exec 8>"$run/sway-caffeine.lock"
+  flock 8 || exit 1
+}
+
+case ${1:-} in
+  status) read_state ;;
+  off) serialize; turn_off ;;
+  on) serialize; turn_on forever ;;
+  1h) serialize; turn_on 3600 ;;
+  2h) serialize; turn_on 7200 ;;
+  toggle)
+    serialize
+    if [[ $(read_state) == off ]]; then turn_on forever; else turn_off; fi ;;
+  login)
+    serialize
+    stop_timer
+    rm -f "$state"
+    start_idle
+    ;;
+  expire)
+    # Do temporizador. Confere de novo já com a trava: enquanto ele esperava, alguém pode ter
+    # ligado a cafeína de novo, e isso não pode ser desfeito
+    serialize
+    [[ $(read_state) == off ]] && turn_off
+    ;;
+  timer)
+    # Compara com o relógio: um sleep longo não contaria o tempo em que a máquina ficou suspensa
+    need_runtime
+    trap 'exit 0' TERM INT HUP
+    while [[ -f $state ]]; do
+      [[ $(read_state) == off ]] && exec "$0" expire
+      sleep "$check" &
+      wait $!
+    done
+    ;;
+  *) echo "$(t 'usage: sway-caffeine off|1h|2h|on|toggle|status|login')" >&2; exit 2 ;;
+esac

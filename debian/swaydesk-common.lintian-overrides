@@ -1,0 +1,2 @@
+# Os ícones dos componentes: o Debian não empacota a Symbols Nerd Font, e um pacote só dela traria pouco
+swaydesk-common: font-in-non-font-package [usr/share/fonts/truetype/swaydesk/SymbolsNerdFont-Regular.ttf]

@@ -1,0 +1,19 @@
+[package]
+name = "swaydesk-notifications-popup"
+description = "Popup da central de notificações (GTK 4), para o clique no ícone da Waybar e para o Super+C"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-notifications-popup"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-notifd.workspace = true
+swaydesk-notifd-logic.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true
+serde_json.workspace = true

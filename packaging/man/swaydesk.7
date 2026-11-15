@@ -1,0 +1,80 @@
+.TH SWAYDESK 7 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk \- Sway desktop components and the Sway Desktop session
+.SH DESCRIPTION
+The swaydesk packages turn Sway into a desktop: a dock, an application grid, Waybar popups, notifications, a
+lock screen, theme tools and the services a desktop session expects.
+The components are GTK 4 programs for wlroots compositors with layer\-shell.
+.PP
+The swaydesk\-desktop package adds the
+.B Sway Desktop
+session to the display manager.
+It starts Sway with the configuration in
+.IR /usr/share/swaydesk\-desktop/ ,
+and on the first login
+.B swaydesk\-desktop\-config setup
+copies the user files from
+.I /usr/share/swaydesk\-desktop/skel/
+into the home folder, without overwriting what is already there.
+.SH COMPONENTS
+The binaries are in
+.IR /usr/bin .
+The Sway and Waybar configurations call most of them by their older names (sway\-dock, waybar\-network and
+others), which are links in the helper directory to the binaries.
+.TP
+.B Login
+swaydesk\-greeter(1), the login screen for greetd (package swaydesk\-greeter)
+.TP
+.B Session
+swaydesk\-dock(1), swaydesk\-drawer(1), swaydesk\-switcher(1), swaydesk\-session\-menu(1), swaydesk\-lock(1),
+swaydesk\-capture(1), swaydesk\-osd\-bar(1)
+.TP
+.B Notifications
+swaydesk\-notifd(1), swaydesk\-notifications(1), swaydesk\-notifications\-popup(1)
+.TP
+.B Waybar icons
+swaydesk\-system(1), swaydesk\-network(1), swaydesk\-bluetooth(1), swaydesk\-weather(1)
+.TP
+.B Waybar popups
+swaydesk\-calendar(1), swaydesk\-audio\-popup(1), swaydesk\-battery\-popup(1), swaydesk\-bluetooth\-popup(1),
+swaydesk\-brightness\-popup(1), swaydesk\-caffeine\-popup(1), swaydesk\-clipboard\-popup(1),
+swaydesk\-media\-popup(1), swaydesk\-network\-popup(1), swaydesk\-system\-popup(1), swaydesk\-weather\-popup(1)
+.TP
+.B Theme
+swaydesk\-theme(1), swaydesk\-theme\-app(1), swaydesk\-desktop\-config(1), swaydesk\-portal(1)
+.TP
+.B Services
+swaydesk\-clip\-store(1), swaydesk\-keyring(1), swaydesk\-sessionmgr(1)
+.SH KEYS
+In the Sway Desktop session (Super is the logo key):
+.TP
+.B Super
+Show or hide the application grid.
+.TP
+.B Alt+Tab, Alt+Shift+Tab
+Switch windows in the order of use.
+.TP
+.B Super+C, Super+V
+The notification center and the clipboard history.
+.TP
+.B Super+Shift+E, Super+Shift+R
+Screenshot and screen recording.
+.TP
+.B Ctrl+Alt+Delete
+The session menu.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language (locale), accent color (accent), GTK and icon themes (gtk_theme, icon_theme), folder color (folder_color), file manager (file_manager), weather location (weather_location) and holidays (holidays). The fonts come from the GTK system font.
+Change it with swaydesk\-theme\-app(1) or swaydesk\-theme(1).
+.TP
+.I ~/.config/sway\-dock/config.toml
+The dock configuration.
+.TP
+.I /usr/libexec/swaydesk/
+The helper scripts and the session (on Arch,
+.IR /usr/lib/swaydesk/ ).
+.SH SEE ALSO
+.BR sway (1),
+.BR sway (5),
+.BR waybar (5)

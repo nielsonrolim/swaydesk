@@ -1,0 +1,24 @@
+.TH SWAYDESK-CLIPBOARD-POPUP 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-clipboard\-popup \- clipboard history popup
+.SH SYNOPSIS
+.B swaydesk\-clipboard\-popup
+.SH DESCRIPTION
+The cliphist history, with search in the full text, image thumbnails, pinned items kept apart from the history, and clearing the history. The keyboard stays in the search field: the arrows or Tab move the selection, and Enter copies the selected item. Waybar and Super+V open it.
+.PP
+Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
+.PP
+The session runs it under the name waybar\-clipboard\-popup (a link in the package's helper directory to /usr/bin/swaydesk\-clipboard\-popup); the process name is waybar\-clipboard\-popup too.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR cliphist (1),
+.BR swaydesk (7),
+.BR swaydesk\-clip\-store (1),
+.BR wl\-copy (1)

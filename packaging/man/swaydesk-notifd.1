@@ -1,0 +1,28 @@
+.TH SWAYDESK-NOTIFD 1 2026-11-14 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-notifd \- notification daemon
+.SH SYNOPSIS
+.B swaydesk\-notifd
+.br
+.B swaydesk\-notifd
+\-\-headless
+.SH DESCRIPTION
+Owns org.freedesktop.Notifications on the session bus: it shows the notification toasts and keeps the list for the notification center and the Waybar icon, which talk to it through a control interface on the same bus name. Nothing is written to disk: the list ends with the process.
+.PP
+The session runs it under the name sway\-notifd (a link in the package's helper directory to /usr/bin/swaydesk\-notifd); the process name is sway\-notifd too.
+.SH OPTIONS
+.TP
+.B \-\-headless
+Run without windows, for the tests.
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/config.toml
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+.SH SEE ALSO
+.BR notify\-send (1),
+.BR swaydesk (7),
+.BR swaydesk\-notifications (1),
+.BR swaydesk\-notifications\-popup (1)

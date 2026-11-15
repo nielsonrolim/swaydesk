@@ -1,0 +1,11 @@
+[package]
+name = "swaydesk-bluez"
+description = "O estado do BlueZ pelo D-Bus (gio), sem GTK: o que o ícone e o popup de Bluetooth leem"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+swaydesk-common.workspace = true
+gio.workspace = true

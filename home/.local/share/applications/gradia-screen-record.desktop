@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=Record Screen
+Name[pt_BR]=Gravar Tela
+GenericName=Screen recording
+GenericName[pt_BR]=Gravação de tela
+Comment=Opens the recording panel; while recording, stops it (same as Super+Shift+R)
+Comment[pt_BR]=Abre o painel de gravação; durante a gravação, para (igual a Super+Shift+R)
+Exec=sway-capture rec
+Icon=media-record
+Terminal=false
+StartupNotify=false
+Categories=AudioVideo;Recorder;
+Keywords=record;screencast;screen;video;
+Keywords[pt_BR]=record;screencast;gravar;gravação;tela;video;
+# Só no Sway e nos compositores do app Tema: o painel e os helpers usam o Sway e o wlroots
+OnlyShowIn=sway;Hyprland;river;niri;

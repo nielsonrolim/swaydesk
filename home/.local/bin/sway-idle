@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Único lugar com os argumentos do swayidle. A Waybar não deixa controlar o idle_inhibitor por
+# script, então a cafeína troca o swayidle em execução.
+# uso: sway-idle
+#   Cafeína desligada: bloqueia em 10 min, apaga a tela em 15 e suspende em 30 (só na bateria).
+#   Cafeína ligada: sem tempos; fechar a tampa continua bloqueando a tela.
+# Trocas ao mesmo tempo passam uma por vez, e cada uma lê o modo só depois de entrar: dois
+# cliques rápidos terminam no estado certo, com um swayidle só.
+set -uo pipefail
+if [[ $# -ne 0 ]]; then
+  echo "usage: sway-idle" >&2
+  exit 2
+fi
+bin=$(dirname "$(readlink -f "$0")")
+# Volta 0 só com a tela bloqueada: com o -w, o before-sleep só deixa suspender depois
+lock="$bin/sway-lock"
+run=${XDG_RUNTIME_DIR:-/tmp}
+
+exec 9>"$run/sway-idle.lock"
+flock 9 || exit 1
+
+if [[ $("$bin/sway-caffeine" status) == off ]]; then
+  args=(
+    # Desligar/religar a tela fica registrado no journal: journalctl -t swayidle-dpms
+    timeout 600 "$lock"
+    timeout 900 'logger -t swayidle-dpms "power off"; swaymsg "output * power off"'
+      resume 'logger -t swayidle-dpms "power on"; swaymsg "output * power on" || logger -t swayidle-dpms "power on failed"'
+    timeout 1800 "$bin/sway-idle-suspend start"
+      resume "$bin/sway-idle-suspend stop"
+    before-sleep "$lock"
+  )
+else
+  args=(before-sleep "$lock")
+fi
+
+pkill -x swayidle 2>/dev/null || true
+for (( i = 0; i < 25; i++ )); do
+  pgrep -x swayidle >/dev/null || break
+  sleep 0.1
+done
+# Com -w, ele só atende ao sinal depois do comando em andamento. Dois juntos fariam a tela
+# bloquear com a cafeína ligada, então o antigo não pode continuar
+if pgrep -x swayidle >/dev/null; then
+  pkill -KILL -x swayidle 2>/dev/null || true
+  for (( i = 0; i < 10; i++ )); do
+    pgrep -x swayidle >/dev/null || break
+    sleep 0.1
+  done
+fi
+"$bin/sway-idle-suspend" stop 2>/dev/null || true
+# Em segundo plano e sem a trava: o script sai e a próxima troca pode entrar
+setsid swayidle -w "${args[@]}" </dev/null 9>&- &
+# Só libera quando ele já pode ser encontrado pela próxima troca
+for (( i = 0; i < 25; i++ )); do
+  pgrep -x swayidle >/dev/null && break
+  sleep 0.1
+done

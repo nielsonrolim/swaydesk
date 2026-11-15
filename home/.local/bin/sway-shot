@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# uso: sway-shot region|full|window [edit]
+# edit: abre a captura no Gradia (flatpak) para anotar
+# O painel de captura (sway-capture shot, Super+Shift+E) chama este script.
+# Roda sem terminal e com a saída descartada: toda falha precisa virar notificação.
+set -euo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+
+notify() { notify-send "$@" 2>/dev/null || true; }
+# Sem -u critical: esse tipo não some sozinho e o sway-notifd não mostra o tempo normal
+fail() { notify -i dialog-error "$(t 'Screenshot failed')" "$1"; exit 1; }
+# Nada deu errado: só não havia o que capturar
+nothing() { notify -i dialog-information "$(t 'Screenshot')" "$1"; exit 0; }
+unexpected() {
+  # shellcheck disable=SC2059  # o formato vem da tradução
+  notify -i dialog-error "$(t 'Screenshot failed')" "$(printf "$(t 'Unexpected error at line %s of sway-shot')" "$1")"
+}
+trap 'unexpected $LINENO' ERR
+
+case ${1:-region} in
+  region|full|window) ;;
+  *) t 'usage: sway-shot region|full|window [edit]' >&2; echo >&2; exit 2 ;;
+esac
+
+dir="$(xdg-user-dir PICTURES 2>/dev/null || echo "$HOME/Pictures")/Screenshots"
+mkdir -p "$dir" || fail "$(printf "$(t 'Could not create %s')" "$dir")"
+# Duas capturas no mesmo segundo não podem sobrescrever uma à outra
+stamp=$(date +%Y%m%d_%H%M%S)
+file="$dir/screenshot_$stamp.png"
+n=2
+while [ -e "$file" ]; do
+  file="$dir/screenshot_${stamp}_$n.png"
+  n=$((n + 1))
+done
+
+case ${1:-region} in
+  region)
+    # O Esc do slurp sai com erro e sem mensagem; uma falha real explica o motivo
+    err=$(mktemp)
+    if ! geom=$(slurp 2>"$err"); then
+      msg=$(head -n 1 "$err")
+      rm -f "$err"
+      case $msg in ''|*[Cc]ancel*) exit 0 ;; esac
+      fail "slurp: $msg"
+    fi
+    rm -f "$err"
+    grim -g "$geom" "$file" || fail "$(t 'grim could not capture the region.')"
+    ;;
+  full)
+    output=$(swaymsg -t get_outputs | jq -r '.[] | select(.focused) | .name') || fail "$(t 'Could not find the focused screen.')"
+    [ -n "$output" ] || fail "$(t 'No screen in focus.')"
+    grim -o "$output" "$file" || fail "$(printf "$(t 'grim could not capture the screen %s.')" "$output")"
+    ;;
+  window)
+    # Só janelas têm pid: num workspace vazio, o foco é o próprio workspace
+    geom=$(swaymsg -t get_tree | jq -r '.. | select(.focused? == true and .pid? != null) | .rect
+           | "\(.x),\(.y) \(.width)x\(.height)"' | head -n 1) || fail "$(t 'Could not find the focused window.')"
+    [ -n "$geom" ] || nothing "$(t 'No window in focus.')"
+    grim -g "$geom" "$file" || fail "$(t 'grim could not capture the window.')"
+    ;;
+esac
+
+# Copiar e avisar são extras: uma falha aqui não pode impedir de abrir o editor
+copied=" · $(t 'copied')"
+wl-copy --type image/png <"$file" 2>/dev/null || copied=" · $(t 'not copied')"
+notify -i "$file" "$(t 'Screenshot')" "${file/#$HOME/\~}$copied"
+
+if [ "${2:-}" = edit ]; then
+  # Gradia em flatpak (sistema ou usuário) ou um gradia no PATH; sem ele, só avisa
+  id=be.alexandervanhee.gradia
+  if { [ -d "/var/lib/flatpak/app/$id" ] || [ -d "$HOME/.local/share/flatpak/app/$id" ]; } && command -v flatpak >/dev/null; then
+    exec flatpak run "$id" "$file" </dev/null >/dev/null 2>&1
+  elif command -v gradia >/dev/null; then
+    exec gradia "$file" </dev/null >/dev/null 2>&1
+  else
+    notify -i dialog-information "$(t 'Gradia not installed')" \
+      "$(printf "$(t 'The screenshot was saved, but did not open in the editor. Install: %s')" "flatpak install flathub $id")"
+  fi
+fi
