@@ -1,0 +1,66 @@
+.TH SWAYDESK-HELP 1 2026-11-15 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-help \- the Swaydesk help window: keyboard shortcuts and desktop apps
+.SH SYNOPSIS
+.B swaydesk\-help
+.SH DESCRIPTION
+A window with two tabs. Super+F1 and Super+/ open it; the same keys close it again. Typing searches both
+tabs, ignoring case and accents. Escape clears the search, and with the search empty it closes the window.
+Ctrl+Tab, Ctrl+Page Up and Ctrl+Page Down switch between the tabs.
+Its menu entry is org.swaydesktop.Help.
+.PP
+.B Shortcuts
+lists the key bindings (bindsym, bindcode and bindgesture) of the Sway configuration in use, read when the
+window opens. The main file comes from the running Sway (the IPC GET_CONFIG request), so it is the one Sway
+loaded: the package's file in the package session, or
+.I ~/.config/sway/config
+otherwise. The include lines are followed on disk as Sway does (~, environment variables, globs and paths
+relative to the including file), so a binding added in
+.I ~/.config/sway/config.d/50\-local.conf
+shows up by itself. A later binding with the same keys replaces the earlier one, as in Sway. Up to 8 levels
+of include, 256 files and 1 MiB per file are read.
+.PP
+A comment right above a binding describes it, and a section comment groups the bindings below it:
+.PP
+.RS 4
+.nf
+### Windows
+## Close the window
+bindsym $mod+q kill
+.fi
+.RE
+.PP
+A description also covers the bindings right after it, up to a blank line or another line that is not a
+comment: Super+1 to Super+9 under one description show as a single row. The descriptions of the shipped
+configuration are translated; your own are shown as written. A binding without a description shows its
+command. Keys show as Super, Ctrl, Alt and Shift; bindings that also work on the lock screen (\-\-locked)
+carry a lock icon.
+.PP
+.B Using Swaydesk
+has a card per part of the desktop (theme, screenshot, screen recording, clipboard, app grid, dock, window
+switcher, notifications, lock screen, night light and, when installed, displays), with its current shortcut,
+found by the command it runs, and a button that opens it. The button runs a fixed program, never a shell.
+.PP
+The session runs it under the name sway\-help (a link in the package's helper directory to
+/usr/bin/swaydesk\-help).
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH ENVIRONMENT
+.TP
+.B SWAYSOCK
+The Sway IPC socket. Without it, or if Sway does not answer, the configuration file is read from disk.
+.TP
+.B SWAYDESK_SESSION
+In the package session (package), the file read from disk is the package's configuration.
+.SH FILES
+.TP
+.I ~/.config/sway/config
+The Sway configuration of the dotfiles session.
+.TP
+.I ~/.config/sway/config.d/
+Your own additions; their bindings appear in the window.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR sway (5)

@@ -7,6 +7,7 @@ sway-clip-store clip-store
 sway-desktop-config desktop-config
 sway-dock dock
 sway-drawer drawer
+sway-help help
 sway-keyring keyring
 sway-lock-blur lock
 sway-notifd notifd

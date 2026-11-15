@@ -1,0 +1,16 @@
+[package]
+name = "swaydesk-help-logic"
+description = "Os atalhos do config do Sway para a janela de ajuda (swaydesk-help), sem GTK"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "swaydesk_help_logic"
+path = "src/lib.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+libc.workspace = true
+serde_json.workspace = true

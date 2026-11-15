@@ -1,0 +1,116 @@
+#!/bin/bash
+# Testa a Ajuda do Swaydesk (swaydesk-help) num Sway headless. Roda dentro do contêiner swaydesk-smoke:debian13,
+# com o repositório em /repo, o binário em /bin e uma pasta gravável em /out (as capturas):
+#
+#   docker run --rm -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro \
+#     -v $PWD:/repo:ro -v $PWD/rust/target/debian13/release/swaydesk-help:/bin/swaydesk-help:ro \
+#     -v /tmp/out:/out swaydesk-smoke:debian13 /repo/rust/scripts/headless-help.sh
+#
+# O Sway do teste usa um config com descrições (## e ###), um include do config.d com um 50-local.conf que
+# troca um atalho, e o $mod+F1 da ajuda. Os casos: o atalho abre a janela com o app_id certo; abrir de novo
+# fecha; digitar busca; o Esc limpa a busca e, com ela vazia, fecha; o Ctrl+Tab abre a aba "Using Swaydesk". Sai com 1
+# se algum caso falhar.
+#
+# Com "repo", usa o config do Sway do repositório (sem as linhas exec, que abririam a sessão inteira) e só tira
+# capturas das duas abas, em pt_BR: confere as descrições, as seções e os chips do config de verdade.
+set -u
+mode=${1:-}
+export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
+mkdir -p "$HOME/.local/bin" "$HOME/.config/sway/config.d" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
+cp /bin/swaydesk-help "$HOME/.local/bin/"
+
+cat > "$HOME/.config/sway/config" <<'EOF'
+output HEADLESS-1 resolution 1280x720
+set $mod Mod4
+set $bin ~/.local/bin
+### Apps
+## Open the terminal
+bindsym Ctrl+Alt+t exec kitty
+## Show the keyboard shortcuts
+bindsym $mod+F1 exec $bin/sway-help
+bindsym $mod+slash exec $bin/sway-help
+### Workspaces
+## Go to workspace
+bindsym $mod+1 workspace number 1
+bindsym $mod+2 workspace number 2
+bindsym $mod+3 workspace number 3
+
+bindsym --locked XF86AudioMute exec true
+bindsym $mod+Shift+e exec $bin/sway-capture shot
+include ~/.config/sway/config.d/*
+EOF
+cat > "$HOME/.config/sway/config.d/50-local.conf" <<'EOF'
+## Open foot instead
+bindsym --no-warn Ctrl+Alt+t exec foot
+EOF
+if [ "$mode" = repo ]; then
+  { echo 'output HEADLESS-1 resolution 1280x2000'; grep -v '^exec' /repo/home/.config/sway/config; } > "$HOME/.config/sway/config"
+  rm "$HOME/.config/sway/config.d/50-local.conf"
+  mkdir -p "$HOME/.config/sway-desktop" && printf 'locale = "pt_BR"\n' > "$HOME/.config/sway-desktop/config.toml"
+  mkdir -p "$HOME/.local/share" && ln -s /repo/home/.local/share/locale "$HOME/.local/share/locale"
+fi
+
+export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8 GTK_A11Y=none
+# O app é único pelo D-Bus da sessão (GtkApplication): o barramento sobe antes do Sway, para o exec do
+# config herdar o endereço; sem ele, cada chamada abriria a sua janela
+eval "$(dbus-daemon --session --fork --print-address=1 | sed 's/^/export DBUS_SESSION_BUS_ADDRESS=/')"
+sway -c "$HOME/.config/sway/config" > /tmp/sway.log 2>&1 &
+for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
+# Sem um teclado vivo, cada wtype cria o seu, e a primeira tecla se perde (o Esc sozinho, o f de "foot")
+wtype -s 3600000 -k F24 & keeper=$!
+trap 'kill $keeper 2>/dev/null' EXIT
+sleep 0.5
+
+failed=0
+ok() { printf 'ok      %s\n' "$1"; }
+fail() { printf 'FALHOU  %s\n' "$1"; failed=1; }
+shot() { grim "/out/help-$1.png" 2>/dev/null; }
+windows() { swaymsg -t get_tree | grep -c '"app_id": "org.swaydesktop.Help"'; }
+wait_windows() {  # quantas janelas esperar
+  for _ in $(seq 100); do [ "$(windows)" = "$1" ] && return 0; sleep 0.1; done
+  return 1
+}
+key() { timeout 5 wtype "$@"; sleep 0.4; }
+export G_DEBUG=fatal-criticals
+
+if [ "$mode" = repo ]; then
+  swaymsg 'exec ~/.local/bin/sway-help >> /tmp/app.log 2>&1' > /dev/null
+  wait_windows 1 || { fail "a janela não abriu"; cat /tmp/app.log; exit 1; }
+  swaymsg '[app_id="org.swaydesktop.Help"] resize set 1200 1900, move position 0 0' > /dev/null
+  sleep 1.5; shot repo-1-atalhos
+  key -M ctrl -k Tab -m ctrl; sleep 1; shot repo-2-cartoes
+  grep -q "CRITICAL\|panicked" /tmp/app.log && { fail "avisos no log"; cat /tmp/app.log; }
+  exit $failed
+fi
+
+# O atalho do config abre (pelo lançador sway-help, como na sessão)
+swaymsg 'exec env G_DEBUG=fatal-criticals ~/.local/bin/sway-help >> /tmp/app.log 2>&1' > /dev/null
+if wait_windows 1; then ok "o lançador abre a janela (app_id org.swaydesktop.Help)"; else fail "a janela não abriu"; cat /tmp/app.log; exit 1; fi
+sleep 1
+shot 1-atalhos
+pid=$(pgrep -n -x swaydesk-help || pgrep -n -x sway-help)
+exe=$(readlink "/proc/$pid/exe")
+case $exe in *swaydesk-help) ok "roda o binário em Rust" ;; *) fail "binário errado: $exe" ;; esac
+
+timeout 10 "$HOME/.local/bin/sway-help" >> /tmp/app.log 2>&1 || fail "abrir de novo não voltou em 10 s"
+wait_windows 0 && ok "abrir de novo fecha" || fail "abrir de novo deixou $(windows) janelas"
+
+"$HOME/.local/bin/sway-help" >> /tmp/app.log 2>&1 &
+wait_windows 1 || fail "não reabriu"
+sleep 1
+key foot
+shot 2-busca-foot
+key -k Escape
+[ "$(windows)" = 1 ] && ok "o Esc com texto só limpa a busca" || fail "o Esc com texto fechou a janela"
+shot 3-busca-limpa
+# A aba "Using Swaydesk" pelo Ctrl+Tab
+key -M ctrl -k Tab -m ctrl
+sleep 0.5
+shot 4-cartoes
+key -k Escape
+wait_windows 0 && ok "o Esc com a busca vazia fecha" || fail "o Esc com a busca vazia não fechou"
+
+grep -q "CRITICAL\|panicked" /tmp/app.log && { fail "avisos no log"; cat /tmp/app.log; }
+exit $failed

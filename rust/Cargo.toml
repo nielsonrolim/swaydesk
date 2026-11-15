@@ -2,10 +2,10 @@
 # As versões dos crates do GTK são as que o Debian 13 empacota (gtk4 0.9, gtk4-layer-shell 0.4).
 [workspace]
 resolver = "2"
-members = ["common", "drawer-logic", "drawer", "ui", "calendar", "vpointer", "notifd-logic", "notifd", "notifications", "notifications-popup", "caffeine-popup", "brightness-popup", "battery-popup", "system-logic", "system", "system-popup", "audio-popup", "nm", "network", "network-popup", "bluez", "bluetooth", "bluetooth-popup", "weather", "weather-popup", "dock-logic", "dock", "clipboard", "media", "media-popup", "clipboard-popup", "keyring", "sessionmgr", "portal", "theme", "desktop-config", "session-menu", "osd-bar", "theme-app", "lock-logic", "lock", "clip-store", "capture", "switcher-logic", "switcher", "greeter-logic", "greeter"]
+members = ["common", "drawer-logic", "drawer", "ui", "calendar", "vpointer", "notifd-logic", "notifd", "notifications", "notifications-popup", "caffeine-popup", "brightness-popup", "battery-popup", "system-logic", "system", "system-popup", "audio-popup", "nm", "network", "network-popup", "bluez", "bluetooth", "bluetooth-popup", "weather", "weather-popup", "dock-logic", "dock", "clipboard", "media", "media-popup", "clipboard-popup", "keyring", "sessionmgr", "portal", "theme", "desktop-config", "session-menu", "osd-bar", "theme-app", "lock-logic", "lock", "clip-store", "capture", "switcher-logic", "switcher", "greeter-logic", "greeter", "help-logic", "help"]
 # O binário GTK precisa do gtk4-layer-shell, que o Mint 22 não tem: `cargo test` aqui roda o resto, e
 # `cargo build -p swaydesk-drawer` compila ele (no Debian 13, no Ubuntu 26.04 ou no contêiner)
-default-members = ["common", "drawer-logic", "notifd-logic", "notifications", "system-logic", "system", "nm", "network", "bluez", "bluetooth", "weather", "dock-logic", "clipboard", "media", "keyring", "sessionmgr", "portal", "theme", "desktop-config", "lock-logic", "clip-store", "switcher-logic", "greeter-logic"]
+default-members = ["common", "drawer-logic", "notifd-logic", "notifications", "system-logic", "system", "nm", "network", "bluez", "bluetooth", "weather", "dock-logic", "clipboard", "media", "keyring", "sessionmgr", "portal", "theme", "desktop-config", "lock-logic", "clip-store", "switcher-logic", "greeter-logic", "help-logic"]
 
 [workspace.package]
 version = "0.1.0"
@@ -30,6 +30,7 @@ swaydesk-nm = { path = "nm" }
 swaydesk-bluez = { path = "bluez" }
 swaydesk-switcher-logic = { path = "switcher-logic" }
 swaydesk-greeter-logic = { path = "greeter-logic" }
+swaydesk-help-logic = { path = "help-logic" }
 gettext = "0.4"
 gio = "0.20"
 gtk4 = { version = "0.9", package = "gtk4", features = ["v4_14"] }

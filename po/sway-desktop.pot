@@ -297,6 +297,14 @@ msgstr ""
 msgid "usage: sway-drawer [start]"
 msgstr ""
 
+#: home/.local/bin/sway-help
+msgid "The help window needs the Rust components (./install.sh --rust)"
+msgstr ""
+
+#: home/.local/bin/sway-help
+msgid "Swaydesk Help"
+msgstr ""
+
 #: home/.local/bin/sway-lock-gtk
 msgid "Password"
 msgstr ""
@@ -2449,6 +2457,273 @@ msgstr ""
 msgid "Keyboard layout"
 msgstr ""
 
+#: rust/help-logic/src/keys.rs
+msgid "Super"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Ctrl"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Shift"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Caps Lock"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Enter"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Space"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Backspace"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Del"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Ins"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "PgUp"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "PgDn"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Print Screen"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Left click"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Middle click"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Right click"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Scroll up"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Scroll down"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Scroll left"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Scroll right"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Back button"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Forward button"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Volume up"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Volume down"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Mute microphone"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Play/Pause"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Stop"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Next track"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Previous track"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Brightness up"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Brightness down"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Swipe"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Pinch"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Hold"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Inward"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Outward"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Clockwise"
+msgstr ""
+
+#: rust/help-logic/src/keys.rs
+msgid "Counterclockwise"
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "The GTK theme, light or dark, and the accent color of the whole desktop: bar, dock, popups and apps."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Capture a region, a window or the whole screen. In the panel, G opens the capture in Gradia to crop and annotate it."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Screen recording"
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Record a region, a window or the whole screen, with the system sound or the microphone. The red dot on the bar stops it."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "What you copied, text and images. Pick an item to copy it again."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "App grid"
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "All the installed apps, with search and favorites. Super alone shows and hides it."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Dock"
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "The favorite and open apps at the bottom of the screen. A click opens or focuses the app."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Window switcher"
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "The windows in the order you used them, from every workspace. Hold Alt and press Tab to move, then release to pick."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "The notifications you missed, kept until you clear them."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Lock now"
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Lock screen"
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Locks the screen with your password. It also locks by itself after some time idle and before suspending."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Makes the screen warmer at night, always or on a schedule. It is in the brightness popup of the bar."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Displays"
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Resolution, scale and position of each monitor."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "No shortcut"
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgctxt "button"
+msgid "Open"
+msgstr ""
+
+#: rust/help/src/main.rs
+msgid "%d finger"
+msgid_plural "%d fingers"
+msgstr[0] ""
+msgstr[1] ""
+
+#: rust/help/src/main.rs
+msgid "or"
+msgstr ""
+
+#: rust/help/src/main.rs
+msgid "Nothing matches the search"
+msgstr ""
+
+#: rust/help/src/main.rs
+msgid "Mode “%s”"
+msgstr ""
+
+#: rust/help/src/main.rs
+msgid "No shortcuts found in the Sway config"
+msgstr ""
+
+#: rust/help/src/main.rs
+msgid "Also works on the lock screen"
+msgstr ""
+
+#: rust/help/src/main.rs
+msgid "Shortcuts"
+msgstr ""
+
+#: rust/help/src/main.rs
+msgid "Using Swaydesk"
+msgstr ""
+
+#: rust/help/src/main.rs
+msgid "Search"
+msgstr ""
+
 #: rust/network-popup/src/agent.rs
 msgid "Password for %s"
 msgstr ""
@@ -2472,4 +2747,288 @@ msgstr ""
 
 #: rust/nm/src/rules.rs rust/nm/src/standalone/tests.rs
 msgid "No network service running"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Session and apps"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Reload the Sway config"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Session menu: lock, log out, restart or shut down"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Lock the screen"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Turn the screens back on"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Close the window"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Open the terminal"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Open the file manager"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Open Yazi, the file manager in the terminal"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Open the launcher"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Show or hide the app grid"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Show the notifications"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Show the clipboard history"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Search the open windows"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Switch the keyboard layout"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Show this help"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Focus"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Focus the window on the left"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Focus the window below"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Focus the window above"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Focus the window on the right"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Switch to the next window, in the order of use"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Switch to the previous window, in the order of use"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Focus the next window on the screen"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Focus the previous window on the screen"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Move and resize"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Move the window left"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Move the window down"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Move the window up"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Move the window right"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Resize the window toward the left"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Resize the window toward the right"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Resize the window downward"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Resize the window upward"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Swap the window with the main one"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Float or tile the window"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Float or tile every window of the workspace"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Fullscreen"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Hide the window in the scratchpad"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Show the hidden windows of the scratchpad"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Keep the window on every workspace"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Layouts"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Next layout: side by side, stacked, tabs"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Side-by-side layout"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Open the next window in the other direction"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Wider gaps between windows"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Narrower gaps between windows"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Gaps between windows on or off"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Workspaces"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Go to workspace"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Move the window to workspace"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Go to the previous workspace"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Go to the next workspace"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Move the window to the previous workspace"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Move the window to the next workspace"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Monitors"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Focus the monitor on the left"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Focus the monitor on the right"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Move the window to the monitor on the left"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Move the window to the monitor on the right"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Screenshots and recording"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Screenshot of a region"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Screenshot of the whole screen"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Screenshot of the window"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Screenshot of a region, opened in Gradia"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Screenshot of the whole screen, opened in Gradia"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Screenshot of the window, opened in Gradia"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Screenshot panel"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Screen recording panel; during a recording, stops it"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Media and brightness"
+msgstr ""
+
+#: home/.config/sway/config
+msgid "Mouse and touchpad"
 msgstr ""

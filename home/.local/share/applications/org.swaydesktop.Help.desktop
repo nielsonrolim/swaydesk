@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Swaydesk Help
+Name[pt_BR]=Ajuda do Swaydesk
+GenericName=Keyboard shortcuts and desktop apps
+GenericName[pt_BR]=Atalhos de teclado e apps do desktop
+Comment=The shortcuts of the Sway config in use, and how to use each part of the desktop
+Comment[pt_BR]=Os atalhos do config do Sway em uso e como usar cada parte do desktop
+Exec=sway-help
+Icon=help-browser
+Terminal=false
+StartupNotify=false
+Categories=GTK;Utility;Documentation;
+OnlyShowIn=sway;
+Keywords=help;shortcuts;keys;keyboard;sway;
+Keywords[pt_BR]=ajuda;help;atalhos;teclas;teclado;sway;

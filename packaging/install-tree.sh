@@ -50,6 +50,7 @@ rust_launchers() {
 # Os arquivos de dados que os pacotes levam de home/ e system/ (os scripts estão nas listas acima)
 CAPTURE_ENTRIES=(gradia-screenshot.desktop gradia-screen-record.desktop)
 THEME_ENTRY=org.swaydesktop.Theme.desktop
+HELP_ENTRY=org.swaydesktop.Help.desktop
 SESSION_CONFIGS=(sway/config waybar/config.jsonc waybar/style.css xdg-desktop-portal/sway-portals.conf)  # de home/.config
 SYSTEM_SCRIPTS=(sway-session sway-gpu)  # de system/usr/local/bin
 
@@ -58,7 +59,7 @@ if [[ ${1:-} == --sources ]]; then
     echo "home/.local/bin/$name"
   done
   (cd "$root" && printf '%s\n' home/.local/share/locale/*/LC_MESSAGES/sway-desktop.mo)
-  for entry in "${CAPTURE_ENTRIES[@]}" "$THEME_ENTRY"; do echo "home/.local/share/applications/$entry"; done
+  for entry in "${CAPTURE_ENTRIES[@]}" "$THEME_ENTRY" "$HELP_ENTRY"; do echo "home/.local/share/applications/$entry"; done
   (cd "$root" && printf '%s\n' home/.local/share/sway-desktop/templates/* home/.local/share/sway-desktop/dconf/*)
   for file in "${SESSION_CONFIGS[@]}"; do echo "home/.config/$file"; done
   (cd "$root" && find home-copy -type f)
@@ -120,6 +121,18 @@ case $pkg in
         exit 1
       }
     done
+    ;;
+  swaydesk-widgets)
+    # A Ajuda do Swaydesk na grade. O nome do arquivo é o app_id do app (a dock acha o ícone por ele), e o
+    # Exec dos dotfiles é o lançador de ~/.local/bin, que o pacote não tem: aqui, o binário em /usr/bin
+    entry=$HELP_ENTRY
+    install -d "$dest/usr/share/applications"
+    sed 's/^Exec=sway-help$/Exec=swaydesk-help/' "$data/applications/$entry" > "$dest/usr/share/applications/$entry"
+    chmod 644 "$dest/usr/share/applications/$entry"
+    grep -qx 'Exec=swaydesk-help' "$dest/usr/share/applications/$entry" || {
+      echo "install-tree: $entry: no Exec=sway-help line to point at the package binary" >&2
+      exit 1
+    }
     ;;
   swaydesk-theme)
     # Os modelos e os perfis do dconf ficam em bin/../share/sway-desktop, onde o share_dir os acha

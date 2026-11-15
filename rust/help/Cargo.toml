@@ -1,0 +1,17 @@
+[package]
+name = "swaydesk-help"
+description = "A janela de ajuda (GTK 4): os atalhos do config do Sway em uso e um cartão por app do desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-help"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-help-logic.workspace = true
+swaydesk-ui.workspace = true
+gtk4.workspace = true

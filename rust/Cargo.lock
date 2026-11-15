@@ -1424,6 +1424,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "swaydesk-help"
+version = "0.1.0"
+dependencies = [
+ "gtk4",
+ "swaydesk-common",
+ "swaydesk-help-logic",
+ "swaydesk-ui",
+]
+
+[[package]]
+name = "swaydesk-help-logic"
+version = "0.1.0"
+dependencies = [
+ "libc",
+ "serde_json",
+ "swaydesk-common",
+]
+
+[[package]]
 name = "swaydesk-keyring"
 version = "0.1.0"
 dependencies = [

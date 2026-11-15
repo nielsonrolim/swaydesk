@@ -41,7 +41,24 @@ trap 'rm -f "$rust_pot"' EXIT
 xgettext "${common[@]}" --language=C --keyword= --keyword=tr --keyword=ntr:1,2 --keyword=ptr:1c,2 \
   -o "$rust_pot" "${rust_files[@]}" 2> >(grep -v 'unterminated' >&2)
 sed -i -e '/^#, c-format$/d' -e 's/^#, c-format, /#, /' "$rust_pot"
-msgcat --use-first --no-wrap --add-location=file -o "$pot" "$pot" "$rust_pot"
+# As descrições (## Texto) e as seções (### Texto) dos atalhos do config do Sway, que a Ajuda do Swaydesk
+# (rust/help) traduz na hora. Outro .pot à parte, escrito aqui: o xgettext não lê o config do Sway
+sway_config=home/.config/sway/config
+sway_pot=$(mktemp --suffix=.pot)
+trap 'rm -f "$rust_pot" "$sway_pot"' EXIT
+{
+  printf 'msgid ""\nmsgstr ""\n"Content-Type: text/plain; charset=UTF-8\\n"\n\n'
+  awk -v file="$sway_config" '
+    { line = $0; sub(/^[ \t]+/, "", line) }
+    line ~ /^##/ {
+      text = line; sub(/^#+[ \t]*/, "", text); sub(/[ \t]+$/, "", text)
+      if (text == "" || text in seen) next
+      seen[text] = 1
+      gsub(/\\/, "\\\\", text); gsub(/"/, "\\\"", text)
+      printf "#: %s\nmsgid \"%s\"\nmsgstr \"\"\n\n", file, text
+    }' "$sway_config"
+} > "$sway_pot"
+msgcat --use-first --no-wrap --add-location=file -o "$pot" "$pot" "$rust_pot" "$sway_pot"
 # O cabeçalho muda a cada execução: sem a data, o .pot só muda quando um texto muda
 sed -i '/^"POT-Creation-Date:/d' "$pot"
 
