@@ -22,7 +22,8 @@ Full documentation, with screenshots and the keyboard shortcuts: **https://swayd
 | Theme | `swaydesk-theme` | The Theme app: accent color, light/dark and icons, applied to GTK, Qt, Sway, Waybar and rofi |
 | Session | `swaydesk-session` | Lock screen, session menu (log out, suspend, restart, shut down), keyring unlock and session services |
 | Login screen | `swaydesk-greeter` | Optional greeter for greetd, in the look of the lock screen |
-| Displays, Help | — | Coming soon |
+| Help | `swaydesk-widgets` | A window with the Sway shortcuts in use and a card per desktop app |
+| Displays | — | Coming soon |
 
 `swaydesk-common` holds the shared data and fonts, and `swaydesk-scripts` the helper scripts.
 
@@ -210,10 +211,10 @@ sudo apt update && sudo apt install swaydesk-archive-keyring swaydesk-desktop
    rm ~/swaydesk.key
    ```
 
-5. Install Swaydesk. The `noto-fonts` and `pipewire-jack` at the end answer, in advance, the two choices pacman would ask about (a font and the JACK provider): Swaydesk already uses Noto, and its audio is PipeWire. If you already have `jack2` and pacman asks whether to remove it, answer y.
+5. Install Swaydesk. If you already have `jack2`, pacman asks whether to replace it with `pipewire-jack`, the JACK of PipeWire, which Swaydesk uses: answer y.
 
    ```bash
-   sudo pacman -Syu swaydesk-desktop noto-fonts pipewire-jack
+   sudo pacman -Syu swaydesk-desktop
    ```
 
 #### All in one command
@@ -226,7 +227,7 @@ key=$(mktemp) && curl -fsSL https://download.opensuse.org/repositories/home:/nie
 sudo pacman-key --add "$key" && rm -f "$key" &&
 sudo pacman-key --lsign-key 71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 &&
 printf '\n[home_nielsonrolim_Arch]\nServer = https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/$arch\n' | sudo tee -a /etc/pacman.conf >/dev/null &&
-sudo pacman -Syu swaydesk-desktop noto-fonts pipewire-jack
+sudo pacman -Syu swaydesk-desktop
 ```
 
 

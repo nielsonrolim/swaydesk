@@ -22,7 +22,8 @@ A documentação completa, com capturas de tela e os atalhos de teclado, está e
 | Tema | `swaydesk-theme` | O app Tema: cor de destaque, claro ou escuro e ícones, aplicados ao GTK, ao Qt, ao Sway, à Waybar e ao rofi |
 | Sessão | `swaydesk-session` | A tela de bloqueio, o menu da sessão (sair, suspender, reiniciar, desligar), o desbloqueio do chaveiro e os serviços da sessão |
 | Tela de login | `swaydesk-greeter` | Uma tela de login opcional para o greetd, no visual da tela de bloqueio |
-| Telas, Ajuda | — | Em breve |
+| Ajuda | `swaydesk-widgets` | Uma janela com os atalhos do Sway em uso e um cartão por app do desktop |
+| Telas | — | Em breve |
 
 O `swaydesk-common` traz os dados e as fontes em comum, e o `swaydesk-scripts` os scripts auxiliares.
 
@@ -210,10 +211,10 @@ sudo apt update && sudo apt install swaydesk-archive-keyring swaydesk-desktop
    rm ~/swaydesk.key
    ```
 
-5. Instale o Swaydesk. O `noto-fonts` e o `pipewire-jack` no fim respondem de antemão às duas escolhas que o pacman perguntaria (uma fonte e o provedor do JACK): o Swaydesk já usa a Noto, e o áudio dele é o PipeWire. Se você já tem o `jack2` e o pacman perguntar se pode removê-lo, responda s.
+5. Instale o Swaydesk. Se você já tem o `jack2`, o pacman pergunta se pode trocá-lo pelo `pipewire-jack`, o JACK do PipeWire, que o Swaydesk usa: responda s.
 
    ```bash
-   sudo pacman -Syu swaydesk-desktop noto-fonts pipewire-jack
+   sudo pacman -Syu swaydesk-desktop
    ```
 
 #### Tudo num comando só
@@ -226,7 +227,7 @@ key=$(mktemp) && curl -fsSL https://download.opensuse.org/repositories/home:/nie
 sudo pacman-key --add "$key" && rm -f "$key" &&
 sudo pacman-key --lsign-key 71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 &&
 printf '\n[home_nielsonrolim_Arch]\nServer = https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/$arch\n' | sudo tee -a /etc/pacman.conf >/dev/null &&
-sudo pacman -Syu swaydesk-desktop noto-fonts pipewire-jack
+sudo pacman -Syu swaydesk-desktop
 ```
 
 
