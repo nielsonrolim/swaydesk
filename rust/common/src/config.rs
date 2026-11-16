@@ -1,6 +1,6 @@
 //! A config do desktop (`~/.config/sway-desktop/config.toml`), as cores e as fontes: o porte do que
 //! os componentes usam de `desktop_config.py`. Um valor ruim vira aviso e não invalida os outros.
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
 pub const DEFAULT_ACCENT: &str = "#199ca8";
@@ -11,7 +11,21 @@ pub const ICON_FONT: &str = "Symbols Nerd Font";
 // As mesmas chaves do Config do desktop_config.py
 const KNOWN: &[&str] = &[
     "locale", "weather_location", "holidays", "accent", "gtk_theme", "icon_theme", "folder_color", "file_manager",
-    "components", "effects",
+    "components", "enabled", "effects",
+];
+/// As chaves do [enabled]: os componentes da sessão que podem ser desligados (o ENABLED_KEYS do Python).
+pub const ENABLED_KEYS: &[&str] = &[
+    "dock", "app_grid", "switcher", "notifications", "osd", "clipboard_history", "nightlight", "bing_wallpaper",
+    "polkit_agent", "update_notifier",
+];
+/// As do [enabled.bar], com o módulo da Waybar de cada uma (o BAR_MODULES do Python). Os workspaces, o
+/// sway/mode e a bandeja ficam sempre.
+pub const BAR_MODULES: &[(&str, &str)] = &[
+    ("weather", "custom/weather"), ("clock", "custom/clock"), ("media", "custom/media"), ("recording", "custom/rec"),
+    ("notifications", "custom/notification"), ("clipboard", "custom/clipboard"), ("language", "sway/language"),
+    ("system", "custom/system"), ("brightness", "custom/brightness"), ("caffeine", "custom/caffeine"),
+    ("bluetooth", "custom/bluetooth"), ("network", "custom/network"), ("volume", "custom/volume"),
+    ("battery", "custom/battery"), ("power", "custom/power"),
 ];
 // As chaves do [effects] (o Effects do desktop_config.py)
 const EFFECT_KEYS: &[&str] = &["corner_radius", "blur", "shadows", "layer_blur", "dim_inactive"];
@@ -52,8 +66,57 @@ pub struct Config {
     pub file_manager: String,
     /// A versão dos componentes: auto (Rust onde houver), python ou rust
     pub components: String,
+    /// Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui
+    /// está ligado: a chave ausente liga, para um config antigo continuar como era
+    pub disabled: BTreeSet<String>,
     /// Os efeitos do SwayFX ([effects]); o Sway puro os ignora
     pub effects: Effects,
+}
+
+impl Config {
+    /// Se o componente está ligado. Um nome desconhecido conta como ligado.
+    pub fn enabled(&self, name: &str) -> bool {
+        !self.disabled.contains(name)
+    }
+}
+
+/// Se o nome é uma das chaves do [enabled] ("dock") ou do [enabled.bar] ("bar.weather").
+pub fn known_component(name: &str) -> bool {
+    ENABLED_KEYS.contains(&name) || name.strip_prefix("bar.").is_some_and(|m| BAR_MODULES.iter().any(|(k, _)| *k == m))
+}
+
+/// Os nomes desligados do [enabled]. Um valor que não é true nem false, ou um nome desconhecido, avisa e
+/// deixa ligado: um erro no arquivo nunca desliga nada. O parse_enabled do Python.
+fn parse_enabled(value: &toml::Value, warnings: &mut Vec<String>) -> BTreeSet<String> {
+    let mut off = BTreeSet::new();
+    let Some(table) = value.as_table() else {
+        warnings.push("config: invalid value in enabled".to_string());
+        return off;
+    };
+    for (key, value) in table {
+        if let (true, Some(bar)) = (key == "bar", value.as_table()) {
+            for (module, on) in bar {
+                if !BAR_MODULES.iter().any(|(k, _)| k == module) {
+                    warnings.push(format!("config: unknown option: enabled.bar.{module}"));
+                } else if let Some(on) = on.as_bool() {
+                    if !on {
+                        off.insert(format!("bar.{module}"));
+                    }
+                } else {
+                    warnings.push(format!("config: invalid value in enabled.bar.{module} (use true or false)"));
+                }
+            }
+        } else if !ENABLED_KEYS.contains(&key.as_str()) {
+            warnings.push(format!("config: unknown option: enabled.{key}"));
+        } else if let Some(on) = value.as_bool() {
+            if !on {
+                off.insert(key.clone());
+            }
+        } else {
+            warnings.push(format!("config: invalid value in enabled.{key} (use true or false)"));
+        }
+    }
+    off
 }
 
 /// Os efeitos do SwayFX, do [effects] da config. Cantos, sombras e o blur das janelas vêm ligados e discretos; o
@@ -125,6 +188,7 @@ impl Default for Config {
             folder_color: String::new(),
             file_manager: String::new(),
             components: "auto".to_string(),
+            disabled: BTreeSet::new(),
             effects: Effects::default(),
         }
     }
@@ -192,6 +256,10 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
     for (key, value) in &table {
         if !KNOWN.contains(&key.as_str()) {
             warnings.push(format!("config: unknown option: {key}"));
+            continue;
+        }
+        if key == "enabled" {
+            config.disabled = parse_enabled(value, &mut warnings);
             continue;
         }
         if key == "effects" {
@@ -415,6 +483,45 @@ pub fn font_css(system: Option<&str>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Os mesmos casos do EnabledTests do tests/test_desktop_config.py (a paridade Rust = Python).
+    const ENABLED_TOML: &str = "accent = \"#199ca8\"\n[enabled]\ndock = false\napp_grid = true\nosd = \"no\"\nfoo = true\n\
+                                [enabled.bar]\nweather = false\nxyz = false\nclock = 1\n";
+
+    #[test]
+    fn enabled_reads_false_and_keeps_the_rest_on() {
+        let (config, mut warnings) = parse_config(ENABLED_TOML);
+        assert_eq!(config.disabled.iter().map(String::as_str).collect::<Vec<_>>(), ["bar.weather", "dock"]);
+        // A tabela do toml vem em ordem alfabética, e a do Python na do arquivo: compara sem a ordem
+        warnings.sort();
+        assert_eq!(
+            warnings,
+            [
+                "config: invalid value in enabled.bar.clock (use true or false)",
+                "config: invalid value in enabled.osd (use true or false)",
+                "config: unknown option: enabled.bar.xyz",
+                "config: unknown option: enabled.foo",
+            ]
+        );
+        assert!(!config.enabled("dock") && !config.enabled("bar.weather"));
+        assert!(config.enabled("app_grid") && config.enabled("osd") && config.enabled("bar.clock"));
+        assert!(config.enabled("no-such-thing"), "um nome desconhecido conta como ligado");
+        assert_eq!(config.accent, "#199ca8", "o [enabled] não atrapalha as outras chaves");
+    }
+
+    #[test]
+    fn enabled_absent_or_not_a_table_is_all_on() {
+        assert!(parse_config("accent = \"#199ca8\"\n").0.disabled.is_empty());
+        let (config, warnings) = parse_config("enabled = false\n");
+        assert!(config.disabled.is_empty());
+        assert_eq!(warnings, ["config: invalid value in enabled"]);
+    }
+
+    #[test]
+    fn known_components() {
+        assert!(known_component("dock") && known_component("bar.recording"));
+        assert!(!known_component("bar.dock") && !known_component("weather") && !known_component("bar."));
+    }
 
     fn env(pairs: &[(&str, &str)]) -> HashMap<String, String> {
         pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()

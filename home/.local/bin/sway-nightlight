@@ -5,7 +5,8 @@
 #   on        sempre mais quente (4500 K)
 #   auto      no horário de ~/.config/gammastep/config.ini
 #   status    off | on | auto | unavailable; "on failed" ou "auto failed" se o gammastep não
-#             estiver rodando
+#             estiver rodando. Com nightlight = false no [enabled], a sessão não liga o modo salvo:
+#             sem o gammastep, é off, e não uma falha
 #   restore   no início da sessão, volta ao último modo
 #   schedule  mostra "INÍCIO FIM", ou grava novos horários (HH:MM); FIM precisa vir antes de
 #             INÍCIO no mesmo dia, como 18:00 e 06:00: o gammastep não aceita outra forma
@@ -33,6 +34,16 @@ saved() {
   local m
   m=$(cat "$mode_file" 2>/dev/null) || m=off
   case $m in on|auto) echo "$m" ;; *) echo off ;; esac
+}
+
+# O [enabled] nightlight = false: o config do Sway não roda o restore, e o modo salvo fica parado. Quem lê é o
+# swaydesk-desktop-config em Rust dos dotfiles (--rust) ou o sway-desktop-config ao lado, sem resolver o link (o
+# lançador do ~/.local/bin; no pacote, o da pasta dos scripts); se nenhum rodar, conta como ligado
+disabled() {
+  local dc=${0%/*}/sway-desktop-config
+  [[ ${SWAYDESK_SESSION-} != package && -x $HOME/.local/bin/swaydesk-desktop-config ]] && dc=$HOME/.local/bin/swaydesk-desktop-config
+  "$dc" enabled nightlight 2>/dev/null
+  (($? == 1))
 }
 
 # O modo salvo é a intenção; o PID diz se o gammastep está mesmo rodando
@@ -257,7 +268,9 @@ case ${1:-} in
       echo unavailable
     else
       mode=$(saved)
-      if [[ $mode == off ]] || running; then echo "$mode"; else echo "$mode failed"; fi
+      if [[ $mode == off ]] || running; then echo "$mode"
+      elif disabled; then echo off
+      else echo "$mode failed"; fi
     fi
     ;;
   restore)

@@ -728,6 +728,23 @@ mod tests {
     use super::*;
 
     #[test]
+    fn config_values_go_before_the_tables() {
+        let dir = std::env::temp_dir().join(format!("swaydesk-setcfg-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("config.toml");
+        std::fs::write(&file, "locale = \"pt_BR\"\naccent = \"#111111\"\n\n[enabled]\ndock = false\naccent = 1\n").unwrap();
+        set_config_values(&file, &[("accent", "#222222".into()), ("gtk_theme", "Novo".into())]).unwrap();
+        let text = std::fs::read_to_string(&file).unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+        let table: toml::Table = text.parse().unwrap();
+        assert_eq!(table["accent"].as_str(), Some("#222222"));
+        assert_eq!(table["gtk_theme"].as_str(), Some("Novo"));
+        // A chave de mesmo nome dentro da tabela não é a solta
+        assert_eq!(table["enabled"]["accent"].as_integer(), Some(1));
+        assert_eq!(table["enabled"]["dock"].as_bool(), Some(false));
+    }
+
+    #[test]
     fn split_tables_like_python() {
         // Os casos do ConfigValuesTests.test_split_tables do tests/test_sway_theme.py
         assert_eq!(split_tables(""), (String::new(), ""));
@@ -752,9 +769,12 @@ mod tests {
         assert!(warnings.is_empty(), "{warnings:?}");
         assert_eq!((config.folder_color.as_str(), config.accent.as_str()), ("teal", "#112233"));
         assert_eq!(config.effects, swaydesk_common::config::Effects::default());
+        assert!(config.disabled.is_empty());
+        // A chave nova fica antes dos comentários da primeira tabela ([enabled]), separada por uma linha em branco
         let (head, tail) = split_tables(&text);
         assert!(head.ends_with("folder_color = \"teal\"\n\n"), "{head}");
-        assert!(tail.starts_with("# Os efeitos do SwayFX"), "{tail}");
+        assert!(tail.starts_with("# Componentes da sessão"), "{tail}");
+        assert!(tail.contains("\n[effects]\n"), "{tail}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 

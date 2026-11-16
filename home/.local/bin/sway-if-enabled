@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# Roda o comando só se o componente estiver ligado no [enabled] do ~/.config/sway-desktop/config.toml (a chave
+# ausente liga). O config do Sway embrulha com ele os exec dos componentes do início da sessão:
+#   exec $bin/sway-if-enabled dock sh -c 'while …; do (a dock); sleep 1; done'
+# O laço fica dentro do comando: desligado, o componente nem entra nele. A leitura é a do sway-desktop-config
+# enabled (o binário em Rust no pacote, o lançador nos dotfiles), na hora: mudar e entrar de novo já vale.
+# Os atalhos não passam por aqui (cada toque custaria a leitura): quem eles chamam confere sozinho.
+# Se o sway-desktop-config não rodar, o comando roda: um erro nunca desliga nada.
+# uso: sway-if-enabled NOME COMANDO [ARG...]
+self=$(readlink -f "$0")
+# O irmão: o de ~/.local/bin (os dotfiles, onde o install.sh liga os binários em Rust) ou, na sessão do pacote,
+# o da pasta deste script
+sibling() {
+  if [[ ${SWAYDESK_SESSION-} != package && -x $HOME/.local/bin/$1 ]]; then
+    printf '%s' "$HOME/.local/bin/$1"
+  else
+    printf '%s' "${self%/*}/$1"
+  fi
+}
+if (($# < 2)); then
+  echo "usage: sway-if-enabled NAME COMMAND [ARG...]" >&2
+  exit 2
+fi
+name=$1
+shift
+"$(sibling sway-desktop-config)" enabled "$name"
+if (($? != 1)); then
+  exec "$@"
+fi
+case $name in
+  notifications) echo "sway-if-enabled: notifications are off in [enabled]: no app can show a notification" >&2 ;;
+  polkit_agent) echo "sway-if-enabled: polkit_agent is off in [enabled]: apps that ask for the admin password will fail" >&2 ;;
+  *) echo "sway-if-enabled: $name is off in [enabled]" >&2 ;;
+esac
+exit 0

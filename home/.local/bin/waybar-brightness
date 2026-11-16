@@ -12,6 +12,20 @@ source "${self%/*}/waybar-icon-lib"
 backlight_root=${BACKLIGHT_DIR:-/sys/class/backlight}
 night_file="${XDG_CACHE_HOME:-$HOME/.cache}/sway-nightlight"
 night_pid="$run/sway-nightlight.pid"
+# O [enabled] nightlight = false, lido uma vez (como a Waybar, vale ao entrar de novo na sessão): a sessão não
+# liga o modo salvo, então ele sem o gammastep não é falha. O laço continua sem abrir processos
+# O irmão: o de ~/.local/bin (os dotfiles, onde o install.sh liga os binários em Rust) ou, na sessão do pacote,
+# o da pasta deste script
+sibling() {
+  if [[ ${SWAYDESK_SESSION-} != package && -x $HOME/.local/bin/$1 ]]; then
+    printf '%s' "$HOME/.local/bin/$1"
+  else
+    printf '%s' "${self%/*}/$1"
+  fi
+}
+night_disabled=0
+"$(sibling sway-desktop-config)" enabled nightlight 2>/dev/null
+(($? == 1)) && night_disabled=1
 # Os bytes em UTF-8: o $'\U…' do bash depende do locale e, no C (um Arch sem locale-gen), sai literal
 SUN_LOW=$'\xf3\xb0\x83\x9f' SUN_MID=$'\xf3\xb0\x83\xa0' SUN_HIGH=$'\xf3\xb0\x83\xa1'  # U+F00DF, U+F00E0, U+F00E1
 
@@ -40,7 +54,7 @@ build() {
   if [[ -r $night_file ]]; then
     v=$(<"$night_file")
     if [[ $v == on || $v == auto ]] && ! night_running; then
-      parts+=("$NIGHT_FAILED")
+      ((night_disabled)) || parts+=("$NIGHT_FAILED")
     elif [[ $v == on ]]; then
       parts+=("$NIGHT_ON")
     elif [[ $v == auto ]]; then

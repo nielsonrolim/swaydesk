@@ -47,6 +47,14 @@ const CSS: &str = r#"
 .help-card-title { font-weight: bold; font-size: larger; }
 .help-dim { opacity: 0.6; }
 .help-empty { opacity: 0.6; margin: 40px; }
+.help-off .help-card-title, .help-off image { opacity: 0.55; }
+.help-badge {
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: smaller;
+  font-weight: bold;
+  background: alpha(currentColor, 0.12);
+}
 "#;
 
 /// O texto de um chip, na língua do desktop.
@@ -243,7 +251,11 @@ fn shortcut_row(entry: &Entry) -> gtk4::ListBoxRow {
     row
 }
 
-fn cards_page(entries: &[Entry], window: &gtk4::ApplicationWindow) -> (gtk4::ScrolledWindow, Page) {
+fn cards_page(
+    entries: &[Entry],
+    window: &gtk4::ApplicationWindow,
+    config: &config::Config,
+) -> (gtk4::ScrolledWindow, Page) {
     let content = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     content.add_css_class("help-page");
     let grid = gtk4::FlowBox::new();
@@ -259,7 +271,7 @@ fn cards_page(entries: &[Entry], window: &gtk4::ApplicationWindow) -> (gtk4::Scr
         if !card.available() {
             continue;
         }
-        let widget = card.widget(entries, window);
+        let widget = card.widget(entries, window, config);
         let child = gtk4::FlowBoxChild::new();
         child.set_focusable(false);
         child.set_child(Some(&widget));
@@ -290,7 +302,7 @@ fn build(app: &gtk4::Application) -> gtk4::ApplicationWindow {
     let stack = gtk4::Stack::new();
     stack.set_transition_type(gtk4::StackTransitionType::Crossfade);
     let (shortcuts, shortcuts_filter) = shortcuts_page(&entries);
-    let (using, using_filter) = cards_page(&entries, &window);
+    let (using, using_filter) = cards_page(&entries, &window, &config::load());
     stack.add_titled(&shortcuts, Some("shortcuts"), &tr("Shortcuts"));
     stack.add_titled(&using, Some("using"), &tr("Using Swaydesk"));
 
@@ -329,11 +341,12 @@ fn build(app: &gtk4::Application) -> gtk4::ApplicationWindow {
         let stack = stack.downgrade();
         move |_, key, _, state| {
             let ctrl = state.contains(gdk::ModifierType::CONTROL_MASK);
-            let switch_tab = ctrl
-                && matches!(key, gdk::Key::Tab | gdk::Key::ISO_Left_Tab | gdk::Key::Page_Up | gdk::Key::Page_Down);
+            let switch_tab =
+                ctrl && matches!(key, gdk::Key::Tab | gdk::Key::ISO_Left_Tab | gdk::Key::Page_Up | gdk::Key::Page_Down);
             if switch_tab {
                 if let Some(stack) = stack.upgrade() {
-                    let next = if stack.visible_child_name().as_deref() == Some("shortcuts") { "using" } else { "shortcuts" };
+                    let next =
+                        if stack.visible_child_name().as_deref() == Some("shortcuts") { "using" } else { "shortcuts" };
                     stack.set_visible_child_name(next);
                 }
                 return glib::Propagation::Stop;

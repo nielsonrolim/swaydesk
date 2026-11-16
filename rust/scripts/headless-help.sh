@@ -12,7 +12,8 @@
 # se algum caso falhar.
 #
 # Com "repo", usa o config do Sway do repositório (sem as linhas exec, que abririam a sessão inteira) e só tira
-# capturas das duas abas, em pt_BR: confere as descrições, as seções e os chips do config de verdade.
+# capturas das duas abas, em pt_BR: confere as descrições, as seções e os chips do config de verdade, e o
+# cartão da dock desligada ([enabled] dock = false).
 set -u
 mode=${1:-}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
@@ -47,7 +48,7 @@ EOF
 if [ "$mode" = repo ]; then
   { echo 'output HEADLESS-1 resolution 1280x2000'; grep -v '^exec' /repo/home/.config/sway/config; } > "$HOME/.config/sway/config"
   rm "$HOME/.config/sway/config.d/50-local.conf"
-  mkdir -p "$HOME/.config/sway-desktop" && printf 'locale = "pt_BR"\n' > "$HOME/.config/sway-desktop/config.toml"
+  mkdir -p "$HOME/.config/sway-desktop" && printf 'locale = "pt_BR"\n[enabled]\ndock = false\n' > "$HOME/.config/sway-desktop/config.toml"
   mkdir -p "$HOME/.local/share" && ln -s /repo/home/.local/share/locale "$HOME/.local/share/locale"
 fi
 

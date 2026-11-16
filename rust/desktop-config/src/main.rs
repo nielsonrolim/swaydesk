@@ -4,9 +4,14 @@
 //!      sway-desktop-config generate      grava os arquivos que dependem da cor
 //!      sway-desktop-config apply         grava os arquivos e recarrega o Sway
 //!      sway-desktop-config css           mostra as cores do destaque em CSS do GTK (@define-color)
+//!      sway-desktop-config enabled <nome> sai com 0 se o componente está ligado no [enabled], 1 se não
+//!      sway-desktop-config waybar [MODELO] grava o config da Waybar sem os módulos desligados e mostra o caminho
 //!      sway-desktop-config setup         (só em Rust) o primeiro login na sessão do pacote swaydesk-desktop:
 //!                                        copia do skel o que falta no ~ e faz o generate
 //! --check: só confere que o binário carrega.
+mod waybar;
+
+use std::path::Path;
 use std::process::ExitCode;
 
 use swaydesk_common::config::{self, css_colors, palette, Config};
@@ -17,7 +22,7 @@ use swaydesk_theme::{desktop as dc, fill_one, setup, themes as st, Error};
 const PROGRAM: &str = "sway-desktop-config";
 
 fn usage() -> String {
-    tr("usage: sway-desktop-config get <key>   shows a value, for the Bash scripts\n       sway-desktop-config generate      writes the files that depend on the color\n       sway-desktop-config apply         writes the files and reloads Sway\n       sway-desktop-config css           shows the accent colors as GTK CSS (@define-color)")
+    tr("usage: sway-desktop-config get <key>   shows a value, for the Bash scripts\n       sway-desktop-config generate      writes the files that depend on the color\n       sway-desktop-config apply         writes the files and reloads Sway\n       sway-desktop-config css           shows the accent colors as GTK CSS (@define-color)\n       sway-desktop-config enabled NAME  exits 0 if the component is on in [enabled], 1 if not\n       sway-desktop-config waybar [FILE] writes the Waybar config without the modules turned off")
 }
 
 fn after_apply() -> String {
@@ -40,6 +45,12 @@ fn write_files(config: &Config, session: bool) -> Option<bool> {
         }
     })
     .and_then(|r| r);
+    // A Waybar sem os módulos desligados. Sem o modelo, ou com ele quebrado, o sway-waybar usa o modelo
+    if result.is_ok() {
+        if let Err(err) = waybar::write(config, None) {
+            eprintln!("{PROGRAM}: waybar config not generated: {err}");
+        }
+    }
     let ok = match result {
         Ok(ok) => ok,
         Err(err) => {
@@ -69,6 +80,23 @@ fn main() -> ExitCode {
             None => {
                 eprintln!("{}", fill_one(&tr("unknown key: %s"), key));
                 ExitCode::from(2)
+            }
+        },
+        // Para o sway-if-enabled: 0 ligado, 1 desligado. Um nome desconhecido avisa e conta como ligado
+        ["enabled", name] => {
+            if !config::known_component(name) {
+                eprintln!("{PROGRAM}: unknown component: {name}");
+            }
+            if config.enabled(name) { ExitCode::SUCCESS } else { ExitCode::from(1) }
+        }
+        ["waybar"] | ["waybar", _] => match waybar::write(&config, args.get(1).map(Path::new)) {
+            Ok(path) => {
+                println!("{}", path.display());
+                ExitCode::SUCCESS
+            }
+            Err(err) => {
+                eprintln!("{PROGRAM}: waybar config not generated: {err}");
+                ExitCode::from(1)
             }
         },
         ["css"] => {

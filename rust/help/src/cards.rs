@@ -4,6 +4,7 @@
 //! cartão mostra a nova; se tirar, mostra "No shortcut". O botão roda um programa fixo, sem shell.
 use gtk4::prelude::*;
 use gtk4::{gdk, gio, pango};
+use swaydesk_common::config::Config;
 use swaydesk_common::i18n::{ptr, tr};
 use swaydesk_common::paths;
 use swaydesk_help_logic::{find_shortcut, Entry};
@@ -32,6 +33,8 @@ pub struct Card {
     pub button: Option<String>,
     /// Só aparece com o app instalado (o Telas, do swaydesk-displays).
     pub needs_desktop: Option<&'static str>,
+    /// A chave do [enabled] do config.toml: desligado, o cartão diz "Off" e como religar, sem o botão.
+    pub component: Option<&'static str>,
 }
 
 pub fn cards() -> Vec<Card> {
@@ -43,6 +46,7 @@ pub fn cards() -> Vec<Card> {
         action,
         button: None,
         needs_desktop: None,
+        component: None,
     };
     vec![
         card(
@@ -66,41 +70,56 @@ pub fn cards() -> Vec<Card> {
             Some("sway-capture rec"),
             Action::Component("sway-capture", "swaydesk-capture", &["rec"]),
         ),
-        card(
+        Card {
+            component: Some("clipboard_history"),
+            ..card(
             tr("Clipboard"),
             tr("What you copied, text and images. Pick an item to copy it again."),
             "edit-paste",
             Some("waybar-clipboard-popup"),
             Action::Component("waybar-clipboard-popup", "swaydesk-clipboard-popup", &[]),
-        ),
-        card(
+        )
+        },
+        Card {
+            component: Some("app_grid"),
+            ..card(
             tr("App grid"),
             tr("All the installed apps, with search and favorites. Super alone shows and hides it."),
             "view-app-grid",
             Some("sway-super"),
             Action::Component("sway-drawer", "swaydesk-drawer", &[]),
-        ),
-        card(
+        )
+        },
+        Card {
+            component: Some("dock"),
+            ..card(
             tr("Dock"),
             tr("The favorite and open apps at the bottom of the screen. A click opens or focuses the app."),
             "user-desktop",
             None,
             Action::None,
-        ),
-        card(
+        )
+        },
+        Card {
+            component: Some("switcher"),
+            ..card(
             tr("Window switcher"),
             tr("The windows in the order you used them, from every workspace. Hold Alt and press Tab to move, then release to pick."),
             "preferences-system-windows",
             Some("sway-switcher next"),
             Action::None,
-        ),
-        card(
+        )
+        },
+        Card {
+            component: Some("notifications"),
+            ..card(
             tr("Notifications"),
             tr("The notifications you missed, kept until you clear them."),
             "preferences-system-notifications",
             Some("waybar-notifications-popup"),
             Action::Component("waybar-notifications-popup", "swaydesk-notifications-popup", &[]),
-        ),
+        )
+        },
         Card {
             button: Some(tr("Lock now")),
             ..card(
@@ -111,13 +130,16 @@ pub fn cards() -> Vec<Card> {
                 Action::Helper("sway-lock", &[]),
             )
         },
-        card(
+        Card {
+            component: Some("nightlight"),
+            ..card(
             tr("Night light"),
             tr("Makes the screen warmer at night, always or on a schedule. It is in the brightness popup of the bar."),
             "weather-clear-night",
             None,
             Action::None,
-        ),
+        )
+        },
         Card {
             needs_desktop: Some("org.swaydesktop.Displays.desktop"),
             ..card(
@@ -136,7 +158,8 @@ impl Card {
         self.needs_desktop.is_none_or(|id| gio::DesktopAppInfo::new(id).is_some())
     }
 
-    pub fn widget(&self, entries: &[Entry], window: &gtk4::ApplicationWindow) -> gtk4::Box {
+    pub fn widget(&self, entries: &[Entry], window: &gtk4::ApplicationWindow, config: &Config) -> gtk4::Box {
+        let off = self.component.filter(|key| !config.enabled(key));
         let card = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
         card.add_css_class("help-card");
         let head = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
@@ -164,6 +187,21 @@ impl Card {
         text.set_max_width_chars(36);
         card.append(&text);
 
+        if let Some(key) = off {
+            card.add_css_class("help-off");
+            // Desligado no [enabled]: o rótulo e como religar, no lugar do atalho e do botão
+            let badge = gtk4::Label::new(Some(&ptr("component", "Off")));
+            badge.add_css_class("help-badge");
+            head.append(&badge);
+            let turn_on = format!("[enabled] {key} = true");
+            let hint = tr("Turned off. To turn it on: %s in ~/.config/sway-desktop/config.toml, then log in again");
+            let hint = gtk4::Label::new(Some(&hint.replace("%s", &turn_on)));
+            hint.add_css_class("help-dim");
+            hint.set_wrap(true);
+            hint.set_xalign(0.0);
+            card.append(&hint);
+            return card;
+        }
         let foot = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
         if let Some(needle) = self.shortcut {
             match find_shortcut(entries, needle) {

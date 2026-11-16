@@ -1347,6 +1347,7 @@ dependencies = [
 name = "swaydesk-desktop-config"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "swaydesk-common",
  "swaydesk-theme",
 ]

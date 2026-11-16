@@ -16,6 +16,13 @@ css
 .br
 .B swaydesk\-desktop\-config
 setup
+.br
+.B swaydesk\-desktop\-config
+enabled NAME
+.br
+.B swaydesk\-desktop\-config
+waybar
+[TEMPLATE]
 .SH DESCRIPTION
 Reads ~/.config/sway\-desktop/config.toml for the shell scripts and writes the files that depend on the accent color.
 .PP
@@ -37,12 +44,33 @@ Print the accent colors as GTK CSS (@define\-color).
 .B setup
 The first login in the packaged session: copy from the skeleton what is missing in the home folder, then generate.
 .TP
+.B enabled NAME
+Exit 0 if the component NAME is on in the [enabled] table of the configuration, 1 if it is off. NAME is a key of
+[enabled], such as dock, or of [enabled.bar] with the bar. prefix, such as bar.weather. A key that is absent is
+on; an unknown NAME prints a warning and counts as on. The session's sway\-if\-enabled helper uses it to skip the
+components that are off.
+.TP
+.B waybar [TEMPLATE]
+Write ~/.config/swaydesk\-desktop/waybar/config.jsonc: the Waybar configuration TEMPLATE (by default the
+package's in the packaged session, ~/.config/waybar/config.jsonc otherwise) without the modules turned off in
+[enabled.bar], and print its path. The session's sway\-waybar runs it before each start and falls back to the
+template when it fails. generate writes it too.
+.TP
 .B \-\-check
 Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
 .SH FILES
 .TP
 .I ~/.config/sway\-desktop/config.toml
 The desktop configuration: language (locale), accent color (accent), GTK and icon themes (gtk_theme, icon_theme), folder color (folder_color), file manager (file_manager), weather location (weather_location) and holidays (holidays). The fonts come from the GTK system font.
+.IP
+The [enabled] table turns session components off with false: dock, app_grid, switcher, notifications, osd,
+clipboard_history, nightlight, bing_wallpaper, polkit_agent and update_notifier. The [enabled.bar] table does
+the same for the Waybar modules: weather, clock, media, recording, notifications, clipboard, language, system,
+brightness, caffeine, bluetooth, network, volume, battery and power. A key that is absent is on. A change takes
+effect at the next login; for the bar, also when Waybar restarts.
+.TP
+.I ~/.config/swaydesk\-desktop/waybar/config.jsonc
+The Waybar configuration without the modules turned off, written by waybar and generate.
 .TP
 .I /usr/share/swaydesk\-desktop/skel/
 The skeleton that setup copies.

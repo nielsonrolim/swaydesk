@@ -31,7 +31,7 @@ MODULES=(waybar_holidays.py sway_i18n.py desktop_config.py sway-i18n.sh)  # o sw
 # O swaydesk-desktop: os scripts que o config do Sway e o da Waybar do pacote chamam, além dos do
 # swaydesk-scripts, e a sessão (o sway-session e o sway-gpu, que no --system vão para /usr/local/bin). O
 # tests/test_packaging.py confere que todo programa que as configs chamam está num pacote
-SESSION_SCRIPTS=(sway-after-env sway-waybar sway-env-cleanup sway-polkit-agent sway-update-notifier
+SESSION_SCRIPTS=(sway-after-env sway-if-enabled sway-waybar sway-env-cleanup sway-polkit-agent sway-update-notifier
                  blueman-agent bing-wallpaper sway-osd sway-super sway-resize sway-master sway-ws waybar-clock
                  waybar-media waybar-volume waybar-battery waybar-brightness waybar-caffeine sway-launcher)
 SESSION_MODULES=(waybar-icon-lib)  # incluído com "." pelos módulos da Waybar

@@ -36,6 +36,8 @@ input type:touchpad {
 }
 
 # --- Autostart ---
+# Os componentes passam pelo sway-if-enabled: com false no [enabled] do ~/.config/sway-desktop/config.toml,
+# não sobem (vale ao entrar de novo). Os atalhos deles não precisam: quem eles chamam confere sozinho
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE MOZ_ENABLE_WAYLAND QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME ELECTRON_OZONE_PLATFORM_HINT _JAVA_AWT_WM_NONREPARENTING DCONF_PROFILE SWAYDESK_SESSION
 # Só onde o sway-session o definiu (Kubuntu): o menu dos apps do KDE abertos pelo D-Bus
 exec sh -c '[ -z "${XDG_MENU_PREFIX:-}" ] || dbus-update-activation-environment --systemd XDG_MENU_PREFIX'
@@ -48,22 +50,22 @@ exec $bin/sway-env-cleanup
 exec $bin/sway-keyring
 # Os apps GTK que pedem o portal esperam o ambiente chegar ao systemd (sway-after-env): antes dele,
 # o portal subia sem o WAYLAND_DISPLAY e travava por 120 s, levando a Waybar junto
-exec $bin/sway-after-env $bin/sway-polkit-agent
+exec $bin/sway-if-enabled polkit_agent $bin/sway-after-env $bin/sway-polkit-agent
 # A Waybar num laço que a abre de novo se ela sair com erro (sway-waybar). O sway-theme e o
 # install.sh a reiniciam com "sway-waybar restart", que encerra esta e abre outra com o laço
 exec $bin/sway-after-env $bin/sway-waybar
 # Notificações e central própria. Sem o daemon nenhum app consegue notificar: o laço o reabre
 # se ele cair, e termina junto com o Sway
-exec $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-notifd; sleep 1; done'
+exec $bin/sway-if-enabled notifications $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-notifd; sleep 1; done'
 # Avisos de atualização da distro (GNOME Software, update-notifier do Ubuntu ou o do Discover no
 # Kubuntu): no GNOME e no KDE sobem pelo autostart; no Sway, só daqui. Sem nenhum, como no Mint, nada
-exec $bin/sway-after-env $bin/sway-update-notifier
+exec $bin/sway-if-enabled update_notifier $bin/sway-after-env $bin/sway-update-notifier
 # O "Reiniciar e atualizar" da GNOME Software pede o reinício ao gerenciador de sessão do GNOME:
 # o sway-sessionmgr responde ao Reboot e ao Shutdown, e sai com o Sway
 exec $bin/sway-sessionmgr
 # Indicador de volume e brilho: o sway-osd muda o nível e avisa o sway-osd-bar, que aparece por 1 s.
 # O laço o reabre se ele cair e depois de uma troca de tema, que o encerra para ele ler as cores novas
-exec $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-osd-bar; sleep 1; done'
+exec $bin/sway-if-enabled osd $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-osd-bar; sleep 1; done'
 # Agente de segredos (janela de senha). Ícone e menu próprios: waybar-network.
 # Sem ícone na bandeja: no Ubuntu e no Debian, em Wayland ele ignora o --no-indicator e se
 # registra nela. Em X11 (Xwayland) ele obedece, e o do Mint, sem appindicator, já roda assim.
@@ -72,23 +74,23 @@ exec sh -c 'busctl --system status org.freedesktop.NetworkManager >/dev/null 2>&
 # blueman-applet sem o ícone da bandeja: agente de pareamento (PIN, confirmação).
 # Ícone e menu próprios: waybar-bluetooth
 exec $bin/sway-after-env $bin/blueman-agent
-exec wl-paste --type text  --watch cliphist store
-exec wl-paste --type image --watch cliphist store
+exec $bin/sway-if-enabled clipboard_history wl-paste --type text  --watch cliphist store
+exec $bin/sway-if-enabled clipboard_history wl-paste --type image --watch cliphist store
 # O resto (um PDF ou arquivo copiado como bytes); texto e imagem ficam com os dois acima
-exec wl-paste --watch $bin/sway-clip-store
+exec $bin/sway-if-enabled clipboard_history wl-paste --watch $bin/sway-clip-store
 # A ordem de uso das janelas para o Alt+Tab (sway-switcher, com o seletor na tela). O laço o reabre se cair
-exec $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-switcher daemon; sleep 1; done'
+exec $bin/sway-if-enabled switcher $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-switcher daemon; sleep 1; done'
 # Grade de apps (sway-drawer) residente e escondida; o Super e o botão da dock só a mostram
-exec $bin/sway-after-env $bin/sway-drawer start
+exec $bin/sway-if-enabled app_grid $bin/sway-after-env $bin/sway-drawer start
 # Dock (config em ~/.config/sway-dock/config.toml). O laço a reabre se cair
 # O laço termina junto com o Sway: sem isso sobreviveria ao logout e abriria um segundo dock
-exec $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-dock; sleep 1; done'
-exec sh -c 'sleep 5; $bin/bing-wallpaper sway'
+exec $bin/sway-if-enabled dock $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-dock; sleep 1; done'
+exec $bin/sway-if-enabled bing_wallpaper sh -c 'sleep 5; $bin/bing-wallpaper sway'
 # Bloqueio, tela e suspensão por inatividade: os tempos estão em sway-idle
 # (a cafeína troca o swayidle em execução; no login ela volta a desligada)
 exec $bin/sway-caffeine login
 # Luz noturna: volta ao último modo (sway-nightlight)
-exec $bin/sway-nightlight restore
+exec $bin/sway-if-enabled nightlight $bin/sway-nightlight restore
 
 # --- Regras de janela ---
 for_window [app_id="^(pavucontrol|blueman-manager|nm-connection-editor|org.gnome.Weather)$"] floating enable

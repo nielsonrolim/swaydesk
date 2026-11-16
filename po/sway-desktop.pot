@@ -144,7 +144,9 @@ msgid ""
 "usage: sway-desktop-config get <key>   shows a value, for the Bash scripts\n"
 "       sway-desktop-config generate      writes the files that depend on the color\n"
 "       sway-desktop-config apply         writes the files and reloads Sway\n"
-"       sway-desktop-config css           shows the accent colors as GTK CSS (@define-color)"
+"       sway-desktop-config css           shows the accent colors as GTK CSS (@define-color)\n"
+"       sway-desktop-config enabled NAME  exits 0 if the component is on in [enabled], 1 if not\n"
+"       sway-desktop-config waybar [FILE] writes the Waybar config without the modules turned off"
 msgstr ""
 
 #: home/.local/bin/sway-desktop-config
@@ -2675,6 +2677,15 @@ msgstr ""
 
 #: rust/help/src/cards.rs
 msgid "Resolution, scale and position of each monitor."
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgctxt "component"
+msgid "Off"
+msgstr ""
+
+#: rust/help/src/cards.rs
+msgid "Turned off. To turn it on: %s in ~/.config/sway-desktop/config.toml, then log in again"
 msgstr ""
 
 #: rust/help/src/cards.rs

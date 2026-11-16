@@ -65,6 +65,11 @@ fn main() -> ExitCode {
     if !start && resident::signal_pid(&pidfile, PROGRAM, libc::SIGUSR1) {
         return ExitCode::SUCCESS;
     }
+    // Com a grade desligada ([enabled] app_grid = false), nem o start nem o Super nem o botão da dock abrem
+    // nada: o residente não sobe, e sem ele o toggle viraria o residente
+    if !config::load().enabled("app_grid") {
+        return ExitCode::SUCCESS;
+    }
     let argv0 = std::env::args_os().next().unwrap_or_default();
     if Path::new(&argv0).file_name() != Some(PROGRAM.as_ref()) {
         reexec_as_program();

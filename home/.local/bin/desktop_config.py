@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+import json
 import tomllib
 from dataclasses import dataclass, fields, replace
 from pathlib import Path
@@ -95,6 +96,9 @@ class Config:
     folder_color: str = ""  # a cor das pastas do Papirus, como "teal"; vazio: a mais perto do destaque
     file_manager: str = ""  # comando, como "thunar"; vazio: o primeiro instalado de FILE_MANAGERS
     components: str = "auto"  # a versão dos componentes: auto (Rust onde houver), python ou rust
+    # Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui está
+    # ligado: a chave ausente liga, para um config antigo continuar como era
+    enabled: frozenset = frozenset()
     effects: Effects = Effects()  # os efeitos do SwayFX ([effects])
 
 
@@ -116,6 +120,52 @@ def path():
 
 
 COMPONENTS = ("auto", "python", "rust")
+# As chaves do [enabled]: os componentes da sessão que podem ser desligados (o enabled() do Rust tem as mesmas)
+ENABLED_KEYS = ("dock", "app_grid", "switcher", "notifications", "osd", "clipboard_history", "nightlight",
+                "bing_wallpaper", "polkit_agent", "update_notifier")
+# As do [enabled.bar], com o módulo da Waybar de cada uma. Os workspaces, o sway/mode e a bandeja ficam sempre
+BAR_MODULES = {
+    "weather": "custom/weather", "clock": "custom/clock", "media": "custom/media", "recording": "custom/rec",
+    "notifications": "custom/notification", "clipboard": "custom/clipboard", "language": "sway/language",
+    "system": "custom/system", "brightness": "custom/brightness", "caffeine": "custom/caffeine",
+    "bluetooth": "custom/bluetooth", "network": "custom/network", "volume": "custom/volume",
+    "battery": "custom/battery", "power": "custom/power",
+}
+
+
+def parse_enabled(table, warnings):
+    """Os nomes desligados do [enabled]. Um valor que não é true nem false, ou um nome desconhecido, avisa
+    e deixa ligado: um erro no arquivo nunca desliga nada."""
+    off = set()
+    if not isinstance(table, dict):
+        warnings.append("config: invalid value in enabled")
+        return frozenset()
+    for key, value in table.items():
+        if key == "bar" and isinstance(value, dict):
+            for module, on in value.items():
+                if module not in BAR_MODULES:
+                    warnings.append(f"config: unknown option: enabled.bar.{module}")
+                elif not isinstance(on, bool):
+                    warnings.append(f"config: invalid value in enabled.bar.{module} (use true or false)")
+                elif not on:
+                    off.add(f"bar.{module}")
+        elif key not in ENABLED_KEYS:
+            warnings.append(f"config: unknown option: enabled.{key}")
+        elif not isinstance(value, bool):
+            warnings.append(f"config: invalid value in enabled.{key} (use true or false)")
+        elif not value:
+            off.add(key)
+    return frozenset(off)
+
+
+def known_component(name):
+    """Se o nome é uma das chaves do [enabled] ("dock") ou do [enabled.bar] ("bar.weather")."""
+    return name in ENABLED_KEYS or (name.startswith("bar.") and name[4:] in BAR_MODULES)
+
+
+def enabled(config, name):
+    """Se o componente está ligado. Um nome desconhecido conta como ligado."""
+    return name not in config.enabled
 
 
 def parse_config(data):
@@ -125,6 +175,8 @@ def parse_config(data):
     for key, value in data.items():
         if key not in known:
             warnings.append(f"config: unknown option: {key}")
+        elif key == "enabled":
+            config = replace(config, enabled=parse_enabled(value, warnings))
         elif key == "effects" and isinstance(value, dict):
             config = replace(config, effects=parse_effects(value, warnings))
         elif key == "effects":
@@ -601,6 +653,61 @@ def mimeapps(config):
             f"[Default Applications]\ninode/directory={desktop}.desktop\n")
 
 
+WAYBAR_GENERATED = "swaydesk-desktop/waybar/config.jsonc"  # na pasta de config, como o style.css do pacote
+
+
+def strip_jsonc(text):
+    """O JSONC da Waybar sem os comentários (// e /* */ fora das strings), para o json.loads."""
+    out, i, n = [], 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == '"':
+            j = i + 1
+            while j < n and text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+            out.append(text[i:j + 1])
+            i = j + 1
+        elif text.startswith("//", i):
+            j = text.find("\n", i)
+            i = n if j < 0 else j
+        elif text.startswith("/*", i):
+            j = text.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+        else:
+            out.append(c)
+            i += 1
+    return "".join(out)
+
+
+def waybar_config(template_text, config):
+    """O config da Waybar sem os módulos desligados no [enabled.bar], em JSON. ValueError se o modelo não
+    for um JSONC válido: quem chama sobe a Waybar com o modelo."""
+    data = json.loads(strip_jsonc(template_text))
+    off = {BAR_MODULES[name[4:]] for name in config.enabled if name.startswith("bar.")}
+    bars = data if isinstance(data, list) else [data]
+    for bar in bars:
+        if not isinstance(bar, dict):
+            raise ValueError("a bar is not an object")
+        for side in ("modules-left", "modules-center", "modules-right"):
+            if isinstance(bar.get(side), list):
+                bar[side] = [m for m in bar[side] if m not in off]
+    return ("// Gerado pelo sway-desktop-config a partir do modelo, sem os módulos desligados no [enabled.bar]\n"
+            + json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+
+
+def waybar_template():
+    """O modelo da Waybar dos dotfiles: o ~/.config/waybar/config.jsonc."""
+    return config_home() / "waybar" / "config.jsonc"
+
+
+def write_waybar(config, template=None):
+    """Grava o config da Waybar filtrado e devolve o caminho. OSError ou ValueError se não deu."""
+    template = Path(template) if template else waybar_template()
+    out = config_home() / WAYBAR_GENERATED
+    write_file(out, waybar_config(template.read_text(encoding="utf-8"), config))
+    return out
+
+
 def write_file(file, content):
     """Troca o caminho de uma vez, sem escrever através de um link para o repositório."""
     file.parent.mkdir(parents=True, exist_ok=True)
@@ -624,6 +731,11 @@ def generate(config):
         write_file(base / name, content)
     # O tema do rofi do sway-launcher (Alt+Espaço)
     write_file(data_home() / ROFI_THEME, render_template("rofi.rasi", colors))
+    # A Waybar sem os módulos desligados. Sem o modelo, ou com ele quebrado, o sway-waybar usa o modelo
+    try:
+        write_waybar(config)
+    except (OSError, ValueError, UnicodeDecodeError) as err:
+        print(f"sway-desktop-config: waybar config not generated: {err}", file=sys.stderr)
     return kept
 
 
