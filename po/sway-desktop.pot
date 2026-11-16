@@ -2789,7 +2789,7 @@ msgstr ""
 msgid "No shortcut"
 msgstr ""
 
-#: rust/help/src/cards.rs
+#: rust/help/src/cards.rs rust/help/src/main.rs
 msgctxt "button"
 msgid "Open"
 msgstr ""
@@ -2841,6 +2841,10 @@ msgid "dwm profile: the modifier is Alt, as in dwm, not Super. Some app shortcut
 msgstr ""
 
 #: rust/help/src/main.rs
+msgid "Switch"
+msgstr ""
+
+#: rust/help/src/main.rs
 msgid "Shortcut profile"
 msgstr ""
 
@@ -2850,10 +2854,6 @@ msgstr ""
 
 #: rust/help/src/main.rs
 msgid "Switch to the %s profile?"
-msgstr ""
-
-#: rust/help/src/main.rs
-msgid "Switch"
 msgstr ""
 
 #: rust/help/src/main.rs

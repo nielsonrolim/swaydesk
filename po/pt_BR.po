@@ -2801,7 +2801,7 @@ msgstr "Desligado. Para ligar: %s no ~/.config/sway-desktop/config.toml, e entre
 msgid "No shortcut"
 msgstr "Sem atalho"
 
-#: rust/help/src/cards.rs
+#: rust/help/src/cards.rs rust/help/src/main.rs
 msgctxt "button"
 msgid "Open"
 msgstr "Abrir"
@@ -2853,6 +2853,10 @@ msgid "dwm profile: the modifier is Alt, as in dwm, not Super. Some app shortcut
 msgstr "Perfil dwm: o Mod é Alt, como no dwm, e não Super. Por isso, alguns atalhos dos apps com Alt (como o Alt+F, que abre o menu Arquivo) deixam de chegar a eles. Dois atalhos mudam só aqui: os cartões de janelas (Alt+Tab e Alt+Shift+Tab nos outros perfis) vão para Super+Tab e Super+Shift+Tab, porque Alt+Tab volta ao último workspace; e o lançador (Alt+Space) vai para Super+Space, porque Alt+Space troca o layout das janelas. As ações do Swaydesk que o dwm não tem (notificações, área de transferência, busca de janelas, captura e gravação) ficam em Super. Janela flutuante com o mouse: Alt+arrastar. O layout do teclado: Super+Ctrl+Space."
 
 #: rust/help/src/main.rs
+msgid "Switch"
+msgstr "Trocar"
+
+#: rust/help/src/main.rs
 msgid "Shortcut profile"
 msgstr "Perfil de atalhos"
 
@@ -2863,10 +2867,6 @@ msgstr "Não foi possível trocar o perfil de atalhos: %s"
 #: rust/help/src/main.rs
 msgid "Switch to the %s profile?"
 msgstr "Trocar para o perfil %s?"
-
-#: rust/help/src/main.rs
-msgid "Switch"
-msgstr "Trocar"
 
 #: rust/help/src/main.rs
 msgid "Search"

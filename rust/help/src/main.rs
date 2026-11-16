@@ -20,7 +20,7 @@ use std::rc::Rc;
 
 use gtk4::prelude::*;
 use gtk4::{gdk, gio, glib, pango};
-use swaydesk_common::i18n::{self, ntr, tr};
+use swaydesk_common::i18n::{self, ntr, ptr, tr};
 use swaydesk_common::{config, text::normalize};
 use swaydesk_help_logic::profiles::{self, Profile};
 use swaydesk_help_logic::{chords, short_command, Chord, Entry, Env, Label};
@@ -52,6 +52,7 @@ const CSS: &str = r#"
 .help-card-title { font-weight: bold; font-size: larger; }
 .help-dim { opacity: 0.6; }
 .help-empty { opacity: 0.6; margin: 40px; }
+.help-notice.help-banner { margin: 0 14px 10px 14px; }
 .help-notice {
   border-radius: 10px;
   border: 1px solid alpha(@accent, 0.5);
@@ -266,18 +267,32 @@ fn local_footer() -> gtk4::Box {
     text.set_wrap_mode(pango::WrapMode::WordChar);
     footer.append(&text);
     if file.is_file() {
-        let open = gtk4::Button::with_label(&tr("Open"));
+        // "Open" de botão (o verbo): o "Open" sem contexto é o adjetivo da rede ("Aberta")
+        let open = gtk4::Button::with_label(&ptr("button", "Open"));
         open.connect_clicked(move |button| {
             let window = button.root().and_downcast::<gtk4::Window>();
-            gtk4::FileLauncher::new(Some(&gio::File::for_path(&file))).launch(
-                window.as_ref(),
-                None::<&gio::Cancellable>,
-                |_| {},
-            );
+            open_text_file(&file, window.as_ref());
         });
         footer.append(&open);
     }
     footer
+}
+
+/// Abre um arquivo de texto no editor padrão do sistema (o app do text/plain), direto, quando ele é gráfico: o
+/// portal perguntaria qual app usar toda vez. Sem um editor gráfico, o portal (o GtkFileLauncher). Lê as
+/// associações do sistema, sem mudar nenhuma.
+fn open_text_file(file: &std::path::Path, window: Option<&gtk4::Window>) {
+    let gfile = gio::File::for_path(file);
+    if let Some(app) = gio::AppInfo::default_for_type("text/plain", false) {
+        let terminal = app.downcast_ref::<gio::DesktopAppInfo>().is_some_and(|d| d.boolean("Terminal"));
+        if !terminal {
+            let context = window.map(|w| gtk4::prelude::WidgetExt::display(w).app_launch_context());
+            if app.launch(&[gfile.clone()], context.as_ref()).is_ok() {
+                return;
+            }
+        }
+    }
+    gtk4::FileLauncher::new(Some(&gfile)).launch(window, None::<&gio::Cancellable>, |_| {});
 }
 
 fn shortcut_row(entry: &Entry) -> gtk4::ListBoxRow {
@@ -396,11 +411,73 @@ fn current_profile() -> String {
     config::load().shortcuts
 }
 
-/// O seletor do perfil: o nome de cada perfil instalado, com o de agora escolhido. Na troca, aplica e, se deu
-/// certo, refaz as abas; senão mostra o erro ao lado. Um perfil com aviso (o dwm) pede confirmação antes,
-/// com o aviso; Cancelar volta o seletor ao perfil em uso.
+/// A faixa sob a barra de cima, dentro da janela: o erro de uma troca ou a confirmação do dwm (o aviso e
+/// Cancelar/Trocar). Dentro da janela, o texto quebra em vez de alargá-la, e o Sway não a põe num canto.
+struct Banner {
+    revealer: gtk4::Revealer,
+    title: gtk4::Label,
+    text: gtk4::Label,
+    buttons: gtk4::Box,
+    cancel: gtk4::Button,
+    confirm: gtk4::Button,
+}
+
+impl Banner {
+    fn new() -> Self {
+        let title = gtk4::Label::new(None);
+        title.add_css_class("help-card-title");
+        title.set_xalign(0.0);
+        let text = gtk4::Label::new(None);
+        text.set_xalign(0.0);
+        text.set_wrap(true);
+        text.set_wrap_mode(pango::WrapMode::WordChar);
+        let words = gtk4::Box::new(gtk4::Orientation::Vertical, 4);
+        words.set_hexpand(true);
+        words.append(&title);
+        words.append(&text);
+        let cancel = gtk4::Button::with_label(&tr("Cancel"));
+        let confirm = gtk4::Button::with_label(&tr("Switch"));
+        confirm.add_css_class("suggested-action");
+        let buttons = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
+        buttons.set_valign(gtk4::Align::End);
+        buttons.append(&cancel);
+        buttons.append(&confirm);
+        let inner = gtk4::Box::new(gtk4::Orientation::Horizontal, 14);
+        inner.add_css_class("help-notice");
+        inner.add_css_class("help-banner");
+        inner.append(&words);
+        inner.append(&buttons);
+        let revealer = gtk4::Revealer::new();
+        revealer.set_child(Some(&inner));
+        Banner { revealer, title, text, buttons, cancel, confirm }
+    }
+
+    fn error(&self, message: &str) {
+        self.title.set_visible(false);
+        self.text.set_label(message);
+        self.buttons.set_visible(false);
+        self.revealer.set_reveal_child(true);
+    }
+
+    fn confirm(&self, title: &str, notice: &str) {
+        self.title.set_label(title);
+        self.title.set_visible(true);
+        self.text.set_label(notice);
+        self.buttons.set_visible(true);
+        self.revealer.set_reveal_child(true);
+        self.confirm.grab_focus();
+    }
+
+    fn hide(&self) {
+        self.revealer.set_reveal_child(false);
+    }
+}
+
+/// O seletor do perfil, com a faixa que vai sob a barra de cima: o nome de cada perfil instalado, com o de agora
+/// escolhido. Na troca, aplica e, se deu certo, refaz as abas; senão mostra o erro na faixa. Um perfil com aviso
+/// (o dwm) pede confirmação antes, na faixa; Cancelar volta o seletor ao perfil em uso.
 fn profile_selector(stack: &gtk4::Stack, window: &gtk4::ApplicationWindow, pages: &Rc<RefCell<[Page; 2]>>,
-                    search: &gtk4::SearchEntry) -> Option<gtk4::Box> {
+                    search: &gtk4::SearchEntry) -> Option<(gtk4::DropDown, gtk4::Revealer)> {
     let installed = installed_profiles();
     if installed.len() < 2 {
         return None;
@@ -411,22 +488,21 @@ fn profile_selector(stack: &gtk4::Stack, window: &gtk4::ApplicationWindow, pages
     dropdown.set_tooltip_text(Some(&tr("Shortcut profile")));
     let at = installed.iter().position(|p| p.id == current).unwrap_or(0);
     dropdown.set_selected(at as u32);
-    let status = gtk4::Label::new(None);
-    status.add_css_class("help-dim");
-    status.set_visible(false);
+    let banner = Rc::new(Banner::new());
     let applied = Rc::new(RefCell::new(installed[at].id.clone()));
+    let ids: Vec<String> = installed.iter().map(|p| p.id.clone()).collect();
 
     // Aplica um perfil (fora da thread da janela) e refaz as abas
     let switch: Rc<dyn Fn(String)> = Rc::new({
         let (dropdown, stack, window) = (dropdown.downgrade(), stack.downgrade(), window.downgrade());
-        let (pages, search, status, applied) = (pages.clone(), search.downgrade(), status.clone(), applied.clone());
-        let ids: Vec<String> = installed.iter().map(|p| p.id.clone()).collect();
+        let (pages, search, banner, applied) = (pages.clone(), search.downgrade(), banner.clone(), applied.clone());
+        let ids = ids.clone();
         move |id: String| {
             let Some(dropdown) = dropdown.upgrade() else { return };
             dropdown.set_sensitive(false);
-            status.set_visible(false);
-            let (stack, window, pages, search, status, applied, ids) =
-                (stack.clone(), window.clone(), pages.clone(), search.clone(), status.clone(), applied.clone(), ids.clone());
+            banner.hide();
+            let (stack, window, pages, search, banner, applied, ids) =
+                (stack.clone(), window.clone(), pages.clone(), search.clone(), banner.clone(), applied.clone(), ids.clone());
             glib::spawn_future_local(async move {
                 let result = gio::spawn_blocking({
                     let id = id.clone();
@@ -448,13 +524,11 @@ fn profile_selector(stack: &gtk4::Stack, window: &gtk4::ApplicationWindow, pages
                         }
                     }
                     Err(err) => {
-                        status.set_label(&tr("Couldn't switch the shortcut profile: %s").replace("%s", &err));
-                        status.set_visible(true);
-                        // O config.toml pode já ter o perfil novo (a falha veio no generate ou no reload): o
-                        // seletor volta a mostrar o que o arquivo diz, e escolher o outro o grava de novo. O
-                        // set_selected não aplica nada: o handler ignora o perfil igual ao aplicado
-                        // Um perfil sem arquivo instalado não está no seletor: o applied fica com ele mesmo
-                        // assim, e qualquer escolha (até a mesma de novo) grava e aplica outra vez
+                        banner.error(&tr("Couldn't switch the shortcut profile: %s").replace("%s", &err));
+                        // O config.toml pode já ter o perfil novo (a falha veio depois de gravá-lo): o seletor
+                        // volta a mostrar o que o arquivo diz. Um perfil sem arquivo instalado não está no
+                        // seletor: o applied fica com ele mesmo assim, e qualquer escolha grava e aplica de novo.
+                        // O set_selected não aplica nada: o handler ignora o perfil igual ao aplicado
                         let now = current_profile();
                         let at = ids.iter().position(|p| *p == now);
                         *applied.borrow_mut() = now;
@@ -467,41 +541,50 @@ fn profile_selector(stack: &gtk4::Stack, window: &gtk4::ApplicationWindow, pages
         }
     });
 
+    // A confirmação pendente: o perfil escolhido e a posição do aplicado, para o Cancelar. Sem posição (um
+    // aplicado sem arquivo instalado, depois de uma falha), o Cancelar só esconde a faixa: voltar o seletor a
+    // outro perfil o aplicaria sem a pessoa pedir
+    let pending: Rc<RefCell<Option<(String, Option<u32>)>>> = Rc::new(RefCell::new(None));
+    banner.cancel.connect_clicked({
+        let (dropdown, banner, pending) = (dropdown.downgrade(), banner.clone(), pending.clone());
+        move |_| {
+            banner.hide();
+            let taken = pending.borrow_mut().take();
+            if let (Some((_, Some(back))), Some(dropdown)) = (taken, dropdown.upgrade()) {
+                dropdown.set_selected(back); // o mesmo que o aplicado: o handler não faz nada
+            }
+        }
+    });
+    banner.confirm.connect_clicked({
+        let (switch, pending) = (switch.clone(), pending.clone());
+        move |_| {
+            let taken = pending.borrow_mut().take();
+            if let Some((id, _)) = taken {
+                switch(id);
+            }
+        }
+    });
+
     dropdown.connect_selected_notify({
-        let window = window.downgrade();
+        let banner = banner.clone();
         move |dropdown| {
             let Some(profile) = installed.get(dropdown.selected() as usize) else { return };
             if *applied.borrow() == profile.id {
+                pending.borrow_mut().take();
                 return; // also the way back after a Cancel
             }
             let id = profile.id.clone();
             let Some(notice) = profile_notice(&id) else {
+                pending.borrow_mut().take();
                 switch(id);
                 return;
             };
-            let back = installed.iter().position(|p| p.id == *applied.borrow()).unwrap_or(0) as u32;
-            let dialog = gtk4::AlertDialog::builder()
-                .message(tr("Switch to the %s profile?").replace("%s", &profile.name))
-                .detail(notice)
-                .buttons([tr("Cancel"), tr("Switch")])
-                .cancel_button(0)
-                .default_button(1)
-                .modal(true)
-                .build();
-            let (dropdown, switch) = (dropdown.clone(), switch.clone());
-            dialog.choose(window.upgrade().as_ref(), None::<&gio::Cancellable>, move |answer| {
-                if matches!(answer, Ok(1)) {
-                    switch(id);
-                } else {
-                    dropdown.set_selected(back);
-                }
-            });
+            let back = ids.iter().position(|p| *p == *applied.borrow()).map(|at| at as u32);
+            *pending.borrow_mut() = Some((id, back));
+            banner.confirm(&tr("Switch to the %s profile?").replace("%s", &profile.name), &notice);
         }
     });
-    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
-    row.append(&status);
-    row.append(&dropdown);
-    Some(row)
+    Some((dropdown, banner.revealer.clone()))
 }
 
 fn build(app: &gtk4::Application) -> gtk4::ApplicationWindow {
@@ -533,8 +616,9 @@ fn build(app: &gtk4::Application) -> gtk4::ApplicationWindow {
     let top = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
     top.add_css_class("help-top");
     top.append(&switcher);
-    if let Some(selector) = profile_selector(&stack, &window, &pages, &search) {
-        top.append(&selector);
+    let selector = profile_selector(&stack, &window, &pages, &search);
+    if let Some((dropdown, _)) = &selector {
+        top.append(dropdown);
     }
     top.append(&search);
 
@@ -583,6 +667,9 @@ fn build(app: &gtk4::Application) -> gtk4::ApplicationWindow {
 
     let body = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     body.append(&top);
+    if let Some((_, banner)) = &selector {
+        body.append(banner);
+    }
     body.append(&gtk4::Separator::new(gtk4::Orientation::Horizontal));
     body.append(&stack);
     window.set_child(Some(&body));
