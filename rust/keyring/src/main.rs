@@ -2,11 +2,13 @@
 //! `sway-keyring` em Python, que explica o problema.
 //!
 //! No primeiro login sem desktop (greetd), o gnome-keyring-daemon cria o chaveiro "login" e não exporta a
-//! coleção nova: ela aparece em Collections e o objeto não existe (o bug do Ubuntu LP 2065296). Um daemon
+//! coleção nova: ela aparece em Collections e o objeto não existe (a issue #137 do gnome-keyring no GNOME GitLab). Um daemon
 //! novo lê o arquivo e a exporta, mas trancada: a senha que o PAM deu ao primeiro se perde. Então, em vez
 //! de esperar o primeiro app pedir, o pedido de senha abre aqui, logo no login: uma vez, e os logins
 //! seguintes destravam sozinhos (o Debian 13, com o gnome-keyring 48, tem o problema; o Ubuntu 26.04 e o
 //! Arch, não). Uma notificação antes do pedido explica por que ele aparece. Sem o problema, não faz nada.
+//! A correção upstream (o MR !99, "Register the login collection on dbus on creation") saiu no gnome-keyring
+//! 51.0: com ele em todas as distros, este programa pode sair.
 //! --check: só confere que o binário carrega.
 use std::process::{Command, ExitCode};
 use std::time::{Duration, Instant};
