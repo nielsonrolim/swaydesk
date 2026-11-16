@@ -308,6 +308,15 @@ msgstr ""
 msgid "Swaydesk Help"
 msgstr ""
 
+#: home/.local/bin/sway-keyring
+msgid "Keyring"
+msgstr ""
+
+#. TRANSLATORS: shown right before the password prompt, only on the first login on Debian 13
+#: home/.local/bin/sway-keyring
+msgid "First login: type your password once to turn on the keyring. From the next login on, it opens by itself."
+msgstr ""
+
 #: home/.local/bin/sway-lock-gtk
 msgid "Password"
 msgstr ""

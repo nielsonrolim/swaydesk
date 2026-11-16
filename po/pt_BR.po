@@ -320,6 +320,15 @@ msgstr "A janela de ajuda precisa dos componentes em Rust (./install.sh --rust)"
 msgid "Swaydesk Help"
 msgstr "Ajuda do Swaydesk"
 
+#: home/.local/bin/sway-keyring
+msgid "Keyring"
+msgstr "Chaveiro"
+
+#. TRANSLATORS: shown right before the password prompt, only on the first login on Debian 13
+#: home/.local/bin/sway-keyring
+msgid "First login: type your password once to turn on the keyring. From the next login on, it opens by itself."
+msgstr "Primeiro login: digite sua senha uma vez para ativar o chaveiro. Nos próximos logins ele abre sozinho."
+
 #: home/.local/bin/sway-lock-gtk
 msgid "Password"
 msgstr "Senha"

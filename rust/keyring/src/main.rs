@@ -5,12 +5,15 @@
 //! coleção nova: ela aparece em Collections e o objeto não existe (o bug do Ubuntu LP 2065296). Um daemon
 //! novo lê o arquivo e a exporta, mas trancada: a senha que o PAM deu ao primeiro se perde. Então, em vez
 //! de esperar o primeiro app pedir, o pedido de senha abre aqui, logo no login: uma vez, e os logins
-//! seguintes destravam sozinhos. Sem o problema, não faz nada. --check: só confere que o binário carrega.
+//! seguintes destravam sozinhos (o Debian 13, com o gnome-keyring 48, tem o problema; o Ubuntu 26.04 e o
+//! Arch, não). Uma notificação antes do pedido explica por que ele aparece. Sem o problema, não faz nada.
+//! --check: só confere que o binário carrega.
 use std::process::{Command, ExitCode};
 use std::time::{Duration, Instant};
 
 use gio::glib;
 use gio::prelude::*;
+use swaydesk_common::i18n::tr;
 use swaydesk_common::resident;
 
 const PROGRAM: &str = "sway-keyring";
@@ -21,6 +24,11 @@ const UNIT: &str = "gnome-keyring-daemon.service";
 const TIMEOUT_MS: i32 = 5000;
 /// Quanto esperar o daemon novo publicar as coleções
 const EXPORT_WAIT: Duration = Duration::from_secs(10);
+const NOTIFICATIONS: &str = "org.freedesktop.Notifications";
+/// Quanto esperar o servidor de notificações aparecer antes do aviso
+const NOTIFY_WAIT: Duration = Duration::from_secs(5);
+/// Quanto o aviso do primeiro login fica na tela: enquanto a pessoa lê o pedido de senha
+const NOTIFY_TIMEOUT_MS: i32 = 30000;
 /// Quanto o pedido de senha fica aberto: sair antes o cancelaria (o daemon cancela o de quem saiu)
 const PROMPT_WAIT: Duration = Duration::from_secs(600);
 
@@ -96,6 +104,7 @@ fn unlock_with_prompt(paths: &[String]) {
         done.quit();
     });
     eprintln!("{PROGRAM}: asking for the password once to unlock the new login keyring");
+    notify_first_login(&bus);
     if let Err(err) = call(&bus, &prompt, "org.freedesktop.Secret.Prompt", "Prompt", Some(&("",).to_variant()), "()") {
         eprintln!("{PROGRAM}: Prompt: {err}");
         return;
@@ -103,6 +112,40 @@ fn unlock_with_prompt(paths: &[String]) {
     let timeout = main_loop.clone();
     glib::timeout_add_local_once(PROMPT_WAIT, move || timeout.quit());
     main_loop.run();
+}
+
+/// O nome tem dono no barramento?
+fn has_owner(bus: &gio::DBusConnection, name: &str) -> bool {
+    bus.call_sync(Some("org.freedesktop.DBus"), "/org/freedesktop/DBus", "org.freedesktop.DBus", "NameHasOwner",
+                  Some(&(name,).to_variant()), Some(glib::VariantTy::new("(b)").expect("reply type")),
+                  gio::DBusCallFlags::NONE, TIMEOUT_MS, gio::Cancellable::NONE)
+        .ok()
+        .and_then(|reply| reply.child_value(0).get::<bool>())
+        .unwrap_or(false)
+}
+
+/// Explica o pedido de senha que vem a seguir (o texto do gcr não diz por que ele aparece). Sem servidor de
+/// notificações, segue sem o aviso.
+fn notify_first_login(bus: &gio::DBusConnection) {
+    // No primeiro login, o servidor de notificações pode ainda estar subindo (ele espera o ambiente da
+    // sessão): sem a espera, o aviso se perderia justo no único caso em que ele importa
+    let start = Instant::now();
+    while !has_owner(bus, NOTIFICATIONS) && start.elapsed() < NOTIFY_WAIT {
+        std::thread::sleep(Duration::from_millis(500));
+    }
+    let summary = tr("Keyring");
+    // TRANSLATORS: shown right before the password prompt, only on the first login on Debian 13
+    let body = tr("First login: type your password once to turn on the keyring. From the next login on, it opens by itself.");
+    let actions: Vec<String> = Vec::new();
+    let hints: std::collections::HashMap<String, glib::Variant> = std::collections::HashMap::new();
+    let params = ("Swaydesk", 0u32, "dialog-password", summary.as_str(), body.as_str(), actions, hints, NOTIFY_TIMEOUT_MS)
+        .to_variant();
+    if let Err(err) = bus.call_sync(Some(NOTIFICATIONS), "/org/freedesktop/Notifications",
+                                    "org.freedesktop.Notifications", "Notify", Some(&params),
+                                    Some(glib::VariantTy::new("(u)").expect("reply type")), gio::DBusCallFlags::NONE,
+                                    TIMEOUT_MS, gio::Cancellable::NONE) {
+        eprintln!("{PROGRAM}: could not show the notification: {err}");
+    }
 }
 
 fn systemctl(args: &[&str]) -> Option<i32> {
