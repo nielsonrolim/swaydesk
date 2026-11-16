@@ -2,6 +2,9 @@
 # Envia ao OBS uma pasta do make-source.sh: cada subpasta (swaydesk, swaydesk-archive-keyring) vira o
 # conteúdo do pacote de mesmo nome no projeto, num commit do osc. Os arquivos que saíram da pasta saem
 # também do pacote. Um pacote cujo .dsc (a mesma versão) já está no OBS fica como está. O osc usa a conta configurada (osc whois); a senha fica no chaveiro.
+# Até a 0.1.0, o projeto recebe snapshots do main (X.Y.Z~git…). Depois dela, só lançamentos: um snapshot
+# não vai para um pacote que já tem um lançamento (versão sem ~git) no OBS, porque quem instalou a versão
+# estável receberia o desenvolvimento no próximo upgrade.
 # uso: packaging/obs/push.sh SAÍDA [PACOTE...]   (padrão: todos os da pasta)
 #      OBS_PROJECT=home:outro packaging/obs/push.sh ...   (padrão: home:nielsonrolim)
 set -euo pipefail
@@ -37,6 +40,10 @@ for pkg in "${packages[@]}"; do
     for old in *.dsc; do
       [[ -e $old ]] || continue
       old_version=$(sed -n 's/^Version: //p' "$old") new_version=$(sed -n 's/^Version: //p' "$src/$dsc")
+      if [[ $pkg == swaydesk && $new_version == *~git* && $old_version != *~git* ]]; then
+        echo "push: $project/$pkg: $old_version is a release; after it, only releases (tags) go to the OBS" >&2
+        exit 1
+      fi
       if dpkg --compare-versions "$new_version" lt "$old_version"; then
         echo "push: $project/$pkg: $new_version is below $old_version, already on the OBS" >&2
         exit 1

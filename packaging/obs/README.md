@@ -32,14 +32,17 @@ O `packaging/version.sh` dá a versão a partir do commit:
 
 A data, e não o número de commits: o squash do GitHub junta os commits de uma branch num só, e o `main` ficaria com menos commits que a branch. O committer de um merge é a hora do merge, sempre depois dos commits da branch.
 
-Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último snapshot para o lançamento.
+Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último snapshot para o lançamento. Uma correção só do empacotamento sai como `X.Y.Z-2`.
+
+**Até a 0.1.0, o OBS recebe snapshots do `main`. Depois dela, só lançamentos:** cada atualização é uma versão nova, com os pacotes e as ISOs. Quem instalou a versão estável não pode receber o desenvolvimento no próximo upgrade, então o `push.sh` recusa um snapshot para um pacote que já tem um lançamento no OBS. Os snapshots seguem existindo para os testes locais nas VMs: depois da 0.1.0, são `0.1.1~git…` e `0.1.1git…`, acima da 0.1.0 e abaixo da 0.1.1 e de uma 0.2.0.
 
 ### Lançar uma versão
 
 1. Feche a entrada de cima do `debian/changelog`: a versão `X.Y.Z-1`, a distribuição `unstable` no lugar de `UNRELEASED`, a data e o resumo das mudanças. Faça o commit no `main`.
-2. `git tag vX.Y.Z` nesse commit e `git push origin vX.Y.Z`.
+2. `git tag -a vX.Y.Z -m "Swaydesk X.Y.Z"` nesse commit e `git push origin vX.Y.Z`.
 3. Gere e envie os pacotes desse commit, como em "Enviar ao OBS" abaixo.
-4. **Logo em seguida**, no próximo commit do `main`, suba a versão:
+4. Publique o espelho com a tag (`packaging/mirror.sh --tag vX.Y.Z`, antes com `--dry-run`) e crie o Release no espelho público com a entrada do `packaging/public/CHANGELOG.md`.
+5. **Logo em seguida**, no próximo commit do `main`, suba a versão:
    - a `workspace.package.version` do `rust/Cargo.toml` (e o `Cargo.lock`);
    - uma entrada `X.Y.(Z+1)-1 UNRELEASED` no `debian/changelog`;
    - o `pkgver` do `packaging/arch/PKGBUILD`;
@@ -49,7 +52,7 @@ Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último sn
 
 ## Enviar ao OBS
 
-**O OBS só recebe snapshots do `main`.** O snapshot de uma branch pode ficar acima do `main` que vem depois dela (um commit da branch feito depois do último merge), e quem o instalasse não receberia as próximas versões até o `main` passar daquela hora. Para testar uma branch, use os pacotes locais nas VMs.
+**Até a 0.1.0, o OBS só recebe snapshots do `main`; depois dela, só lançamentos.** O snapshot de uma branch pode ficar acima do `main` que vem depois dela (um commit da branch feito depois do último merge), e quem o instalasse não receberia as próximas versões até o `main` passar daquela hora. Para testar uma branch, use os pacotes locais nas VMs.
 
 Os builds pesados vão um por vez, sob a trava. O `make-source.sh` precisa do cargo, porque o `cargo vendor` baixa os crates; por isso ele roda num contêiner Debian 13. O contêiner recebe um clone do repositório, com as tags, de onde a versão sai (a tag do lançamento ou a data do commit). Um clone também serve a uma worktree, cujo `.git` aponta para fora dela:
 
@@ -81,7 +84,7 @@ Antes de passar o endereço a alguém:
 - [ ] `osc results home:nielsonrolim` mostra `succeeded` nos 3 alvos do `swaydesk` e nos 2 do keyring (o Arch aparece como `disabled`).
 - [ ] As chaves existem nos endereços da seção abaixo (`Debian_13/Release.key` e `Arch/x86_64/home_nielsonrolim_Arch.key`) e têm a impressão digital da seção "A chave".
 - [ ] Nas VMs, o `apt update` roda sem aviso de assinatura, e o `pacman -Syu` aceita a assinatura.
-- [ ] Um snapshot novo chega como atualização no apt e no pacman.
+- [ ] Uma versão nova chega como atualização no apt e no pacman.
 
 ## Instalar a partir do repositório
 
