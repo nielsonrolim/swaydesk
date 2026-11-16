@@ -156,5 +156,9 @@ package_swaydesk-greeter() {
   # O pacman não liga serviços: o .install mostra o systemctl enable greetd
   install=swaydesk-greeter.install
   depends=(swaydesk-common gtk4 gtk4-layer-shell glib2 greetd sway)
+  # O usuário e o VT do greetd do Arch: greeter e o tty1, não o tty7 do Debian. O greetd.service do Arch tem
+  # Conflicts=getty@tty1.service, e um drop-in não apaga um Conflicts=. Num tty7, o Ctrl+Alt+F1 faria o logind
+  # subir o autovt@tty1 (o mesmo getty@tty1), e o systemd pararia o greetd e a sessão aberta. No tty1, nada do
+  # kernel nem do boot aparece por cima do greeter (VM archlinux, loglevel=3 quiet, 16/11/2026)
   SWAYDESK_GREETER_USER=greeter SWAYDESK_GREETER_VT=1 _install swaydesk-greeter
 }
