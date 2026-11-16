@@ -35,19 +35,70 @@ O `swaydesk-common` traz os dados e as fontes em comum, e o `swaydesk-scripts` o
 
 ## Instalação
 
-Os pacotes vêm do repositório `home:nielsonrolim` no [openSUSE Build Service](https://build.opensuse.org), para x86_64. Mais na [página de instalação](https://swaydesk.nielsonrolim.com/pt-br/install/).
+Os pacotes vêm de um repositório no [Open Build Service](https://build.opensuse.org/), assinado com a chave do projeto. O desktop que você já tem continua na tela de login, e as atualizações chegam com o `apt upgrade` ou o `pacman -Syu` de sempre.
 
-A chave que assina o repositório:
-- impressão digital `71A5 E6CB 39B9 844E 42CE  42D3 5815 F0B6 5BE1 CFB9`;
-- RSA 4096, vence em 23/01/2029.
+Precisa de Debian 13, Ubuntu 26.04, Linux Mint 27 ou Arch Linux, de 64 bits (x86_64), e de uma placa de vídeo Intel, AMD ou NVIDIA com driver para Wayland. Escolha a sua distro e rode um passo por vez:
 
-Os comandos abaixo conferem por você: se a chave baixada não for uma chave só, com essa impressão digital logo abaixo do `pub` e sem subchaves, nada é instalado.
+Os mesmos passos, com um botão de copiar em cada comando, estão na [página de instalação](https://swaydesk.nielsonrolim.com/pt-br/install/).
 
-### Debian 13, Ubuntu 26.04 e Linux Mint 27
+### Debian 13
 
-Precisa do `curl` e do `gpg` (num sistema mínimo: `sudo apt install curl gpg`). No Ubuntu e no Mint, troque `Debian_13` por `xUbuntu_26.04` na primeira linha.
+1. Instale o `curl` e o `gpg`, que baixam e conferem a chave.
 
-```sh
+   ```bash
+   sudo apt install curl gpg
+   ```
+
+2. Baixe a chave do repositório.
+
+   ```bash
+   curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13/Release.key -o ~/swaydesk.key
+   ```
+
+3. Mostre a impressão digital da chave baixada.
+
+   ```bash
+   gpg --show-keys ~/swaydesk.key
+   ```
+
+   Tem de aparecer uma chave só (uma linha pub, nenhuma sub), com esta impressão digital logo abaixo do pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. Se for diferente, pare aqui e não continue. A chave do projeto no OBS: RSA de 4096 bits, válida até 23/01/2029.
+
+4. Instale a chave no lugar que o apt usa. O comando confere a chave de novo e recusa qualquer outra: uma chave só, com essa impressão digital logo abaixo do `pub`, e sem subchaves.
+
+   ```bash
+   [ "$(gpg --show-keys --with-colons ~/swaydesk.key | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
+   sudo install -m644 ~/swaydesk.key /usr/share/keyrings/swaydesk-archive-keyring.asc &&
+   rm ~/swaydesk.key
+   ```
+
+5. Adicione o repositório.
+
+   ```bash
+   sudo tee /etc/apt/sources.list.d/swaydesk.sources <<'EOF'
+   Types: deb
+   URIs: https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13/
+   Suites: ./
+   Signed-By: /usr/share/keyrings/swaydesk-archive-keyring.asc
+   EOF
+   ```
+
+6. Atualize a lista de pacotes.
+
+   ```bash
+   sudo apt update
+   ```
+
+7. Instale o Swaydesk. Daqui em diante, o pacote `swaydesk-archive-keyring` cuida da chave e do repositório.
+
+   ```bash
+   sudo apt install swaydesk-archive-keyring swaydesk-desktop
+   ```
+
+#### Tudo num comando só
+
+Depois do passo 1 (curl e gpg), os outros passos encadeados: se a chave baixada não tiver a impressão digital certa, nada é instalado.
+
+```bash
 repo=https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13
 key=$(mktemp) && curl -fsSL "$repo/Release.key" -o "$key" &&
 [ "$(gpg --show-keys --with-colons "$key" | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
@@ -57,30 +108,127 @@ printf 'Types: deb\nURIs: %s/\nSuites: ./\nSigned-By: /usr/share/keyrings/swayde
 sudo apt update && sudo apt install swaydesk-archive-keyring swaydesk-desktop
 ```
 
-Acrescente `swaydesk-greeter` à última linha se quiser a tela de login do Swaydesk (veja abaixo). Daí em diante, o pacote `swaydesk-archive-keyring` cuida da chave e do repositório e os mantém atualizados.
+### Ubuntu 26.04 / Mint 27
+
+1. Instale o `curl` e o `gpg`, que baixam e conferem a chave.
+
+   ```bash
+   sudo apt install curl gpg
+   ```
+
+2. Baixe a chave do repositório.
+
+   ```bash
+   curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/xUbuntu_26.04/Release.key -o ~/swaydesk.key
+   ```
+
+3. Mostre a impressão digital da chave baixada.
+
+   ```bash
+   gpg --show-keys ~/swaydesk.key
+   ```
+
+   Tem de aparecer uma chave só (uma linha pub, nenhuma sub), com esta impressão digital logo abaixo do pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. Se for diferente, pare aqui e não continue. A chave do projeto no OBS: RSA de 4096 bits, válida até 23/01/2029.
+
+4. Instale a chave no lugar que o apt usa. O comando confere a chave de novo e recusa qualquer outra: uma chave só, com essa impressão digital logo abaixo do `pub`, e sem subchaves.
+
+   ```bash
+   [ "$(gpg --show-keys --with-colons ~/swaydesk.key | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
+   sudo install -m644 ~/swaydesk.key /usr/share/keyrings/swaydesk-archive-keyring.asc &&
+   rm ~/swaydesk.key
+   ```
+
+5. Adicione o repositório.
+
+   ```bash
+   sudo tee /etc/apt/sources.list.d/swaydesk.sources <<'EOF'
+   Types: deb
+   URIs: https://download.opensuse.org/repositories/home:/nielsonrolim/xUbuntu_26.04/
+   Suites: ./
+   Signed-By: /usr/share/keyrings/swaydesk-archive-keyring.asc
+   EOF
+   ```
+
+6. Atualize a lista de pacotes.
+
+   ```bash
+   sudo apt update
+   ```
+
+7. Instale o Swaydesk. Daqui em diante, o pacote `swaydesk-archive-keyring` cuida da chave e do repositório.
+
+   ```bash
+   sudo apt install swaydesk-archive-keyring swaydesk-desktop
+   ```
+
+#### Tudo num comando só
+
+Depois do passo 1 (curl e gpg), os outros passos encadeados: se a chave baixada não tiver a impressão digital certa, nada é instalado.
+
+```bash
+repo=https://download.opensuse.org/repositories/home:/nielsonrolim/xUbuntu_26.04
+key=$(mktemp) && curl -fsSL "$repo/Release.key" -o "$key" &&
+[ "$(gpg --show-keys --with-colons "$key" | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
+sudo install -m644 "$key" /usr/share/keyrings/swaydesk-archive-keyring.asc && rm -f "$key" &&
+printf 'Types: deb\nURIs: %s/\nSuites: ./\nSigned-By: /usr/share/keyrings/swaydesk-archive-keyring.asc\n' "$repo" |
+  sudo tee /etc/apt/sources.list.d/swaydesk.sources >/dev/null &&
+sudo apt update && sudo apt install swaydesk-archive-keyring swaydesk-desktop
+```
 
 ### Arch Linux
 
-No `/etc/pacman.conf`:
+1. Adicione o repositório ao fim do `/etc/pacman.conf` (uma vez só).
 
-```ini
-[home_nielsonrolim_Arch]
-Server = https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/$arch
-```
+   ```bash
+   sudo tee -a /etc/pacman.conf <<'EOF'
 
-Depois confira e importe a chave, e instale. A mesma conferência: se a chave baixada não for uma chave só, com essa impressão digital logo abaixo do `pub` e sem subchaves, nada é importado:
+   [home_nielsonrolim_Arch]
+   Server = https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/$arch
+   EOF
+   ```
 
-```sh
+2. Baixe a chave do repositório.
+
+   ```bash
+   curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/x86_64/home_nielsonrolim_Arch.key -o ~/swaydesk.key
+   ```
+
+3. Mostre a impressão digital da chave baixada.
+
+   ```bash
+   gpg --show-keys ~/swaydesk.key
+   ```
+
+   Tem de aparecer uma chave só (uma linha pub, nenhuma sub), com esta impressão digital logo abaixo do pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. Se for diferente, pare aqui e não continue. A chave do projeto no OBS: RSA de 4096 bits, válida até 23/01/2029.
+
+4. Adicione a chave ao chaveiro do pacman e assine-a localmente, para o pacman confiar nela. Antes, o comando confere a chave de novo e recusa qualquer outra, como no passo 3.
+
+   ```bash
+   [ "$(gpg --show-keys --with-colons ~/swaydesk.key | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
+   sudo pacman-key --add ~/swaydesk.key &&
+   sudo pacman-key --lsign-key 71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 &&
+   rm ~/swaydesk.key
+   ```
+
+5. Instale o Swaydesk. O `noto-fonts` e o `pipewire-jack` no fim respondem de antemão às duas escolhas que o pacman perguntaria (uma fonte e o provedor do JACK): o Swaydesk já usa a Noto, e o áudio dele é o PipeWire. Se você já tem o `jack2` e o pacman perguntar se pode removê-lo, responda s.
+
+   ```bash
+   sudo pacman -Syu swaydesk-desktop noto-fonts pipewire-jack
+   ```
+
+#### Tudo num comando só
+
+Os mesmos passos, encadeados: se a chave baixada não tiver a impressão digital certa, nada é adicionado nem instalado.
+
+```bash
 key=$(mktemp) && curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/x86_64/home_nielsonrolim_Arch.key -o "$key" &&
 [ "$(gpg --show-keys --with-colons "$key" | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
 sudo pacman-key --add "$key" && rm -f "$key" &&
 sudo pacman-key --lsign-key 71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 &&
+printf '\n[home_nielsonrolim_Arch]\nServer = https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/$arch\n' | sudo tee -a /etc/pacman.conf >/dev/null &&
 sudo pacman -Syu swaydesk-desktop noto-fonts pipewire-jack
 ```
 
-O `noto-fonts` e o `pipewire-jack` respondem de antemão duas escolhas que o pacman faria (uma fonte e o provedor do JACK): o Swaydesk já usa a Noto, e o som dele é o PipeWire. Se você já tem o `jack2` e o pacman perguntar se pode removê-lo, responda s.
-
-Acrescente `swaydesk-greeter` à última linha para ter a tela de login do Swaydesk.
 
 #### Opcional: SwayFX
 
@@ -101,7 +249,7 @@ Se você usa o GDM, o SDDM ou o LightDM, não precisa configurar nada: escolha a
 
 ### Opcional: a tela de login do Swaydesk
 
-O `swaydesk-greeter` é uma tela de login opcional para o [greetd](https://sr.ht/~kennylevinsen/greetd/), no visual da tela de bloqueio do Swaydesk. No Debian e no Ubuntu, ele só se ativa sozinho quando não há outro gerenciador de login configurado; no Arch, ative-o com `sudo systemctl enable greetd`. Para trocar do GDM, do SDDM ou do LightDM, desative o atual e rode `sudo systemctl enable greetd`; para voltar, `sudo systemctl disable greetd` e ative o antigo de novo (por exemplo, `sudo systemctl enable gdm`).
+O `swaydesk-greeter` é uma tela de login opcional para o [greetd](https://sr.ht/~kennylevinsen/greetd/), no visual da tela de bloqueio do Swaydesk. Instale com `sudo apt install swaydesk-greeter` (Debian, Ubuntu, Mint) ou `sudo pacman -S swaydesk-greeter` (Arch). No Debian e no Ubuntu, ele só se ativa sozinho quando não há outro gerenciador de login configurado; no Arch, ative-o com `sudo systemctl enable greetd`. Para trocar do GDM, do SDDM ou do LightDM, desative o atual e rode `sudo systemctl enable greetd`; para voltar, `sudo systemctl disable greetd` e ative o antigo de novo (por exemplo, `sudo systemctl enable gdm`).
 
 ## Compilar a partir do código
 
