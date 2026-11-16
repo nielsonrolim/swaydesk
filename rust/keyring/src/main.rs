@@ -29,6 +29,8 @@ const EXPORT_WAIT: Duration = Duration::from_secs(10);
 const NOTIFICATIONS: &str = "org.freedesktop.Notifications";
 /// Quanto esperar o servidor de notificações aparecer antes do aviso
 const NOTIFY_WAIT: Duration = Duration::from_secs(5);
+/// Quanto esperar a resposta do servidor de notificações (só para o log: o pedido de senha não espera)
+const NOTIFY_REPLY_MS: i32 = 60_000;
 /// Quanto o aviso do primeiro login fica na tela: enquanto a pessoa lê o pedido de senha
 const NOTIFY_TIMEOUT_MS: i32 = 30000;
 /// Quanto o pedido de senha fica aberto: sair antes o cancelaria (o daemon cancela o de quem saiu)
@@ -142,12 +144,16 @@ fn notify_first_login(bus: &gio::DBusConnection) {
     let hints: std::collections::HashMap<String, glib::Variant> = std::collections::HashMap::new();
     let params = ("Swaydesk", 0u32, "dialog-password", summary.as_str(), body.as_str(), actions, hints, NOTIFY_TIMEOUT_MS)
         .to_variant();
-    if let Err(err) = bus.call_sync(Some(NOTIFICATIONS), "/org/freedesktop/Notifications",
-                                    "org.freedesktop.Notifications", "Notify", Some(&params),
-                                    Some(glib::VariantTy::new("(u)").expect("reply type")), gio::DBusCallFlags::NONE,
-                                    TIMEOUT_MS, gio::Cancellable::NONE) {
-        eprintln!("{PROGRAM}: could not show the notification: {err}");
-    }
+    // Sem esperar a resposta: o pedido de senha abre em seguida, e a resposta chega no laço dele. Num host
+    // carregado, o servidor mostra o aviso e só responde segundos depois: com a chamada síncrona de 5 s, o log
+    // dizia que o aviso falhou, e ele tinha aparecido
+    bus.call(Some(NOTIFICATIONS), "/org/freedesktop/Notifications", "org.freedesktop.Notifications", "Notify",
+             Some(&params), Some(glib::VariantTy::new("(u)").expect("reply type")), gio::DBusCallFlags::NONE,
+             NOTIFY_REPLY_MS, gio::Cancellable::NONE, |reply| {
+                 if let Err(err) = reply {
+                     eprintln!("{PROGRAM}: the notification server did not take the notice: {err}");
+                 }
+             });
 }
 
 fn systemctl(args: &[&str]) -> Option<i32> {

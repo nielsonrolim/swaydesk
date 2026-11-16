@@ -1,0 +1,12 @@
+#%PAM-1.0
+# O login pela tela do Sway Desktop (swaydesk-greeter) no Arch: o /etc/pam.d/greetd do pacote greetd, mais
+# o gnome-keyring, que cria e destrava o chaveiro "login" com a senha da pessoa. O greetd.toml do
+# swaydesk-greeter usa este serviço só nas sessões das pessoas; a do próprio greeter (o usuário greeter, sem
+# chaveiro) fica com o serviço greetd. Sem o pacote, nada mais aponta para cá.
+auth       required     pam_securetty.so
+auth       requisite    pam_nologin.so
+auth       include      system-local-login
+-auth      optional     pam_gnome_keyring.so
+account    include      system-local-login
+session    include      system-local-login
+-session   optional     pam_gnome_keyring.so auto_start
