@@ -1,0 +1,15 @@
+#!/bin/sh
+# swaydesk-greeter: no purge, o estado sai junto. O /var/lib/swaydesk-greeter (a última conta e a sessão de
+# cada uma) é criado pelo tmpfiles.d do pacote, e o dpkg não o conhece. Só no purge: o remove e o upgrade o
+# mantêm.
+set -e
+
+case "$1" in
+  purge)
+    rm -rf /var/lib/swaydesk-greeter
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0
