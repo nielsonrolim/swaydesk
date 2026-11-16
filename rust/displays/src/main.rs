@@ -65,7 +65,7 @@ fn main() -> ExitCode {
     app.connect_activate(move |app| {
         let existing = window.borrow().clone();
         match existing {
-            Some(w) => w.window.present(),
+            Some(w) => w.reopen(),
             None => *window.borrow_mut() = Some(window::Window::new(app)),
         }
     });

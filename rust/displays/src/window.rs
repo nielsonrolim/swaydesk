@@ -18,9 +18,16 @@ use crate::{identify, sway, take_preview_lock, warn};
 
 /// Quanto tempo a prévia espera antes de voltar sozinha
 const CONFIRM_SECONDS: u32 = 15;
+/// O aviso por cima do mapa: escuro e translúcido, legível no tema claro e no escuro
+const CSS: &str = ".displays-info { background-color: rgba(0, 0, 0, 0.75); color: white; border-radius: 8px; padding: 6px 12px; }";
 /// A margem do mapa e a distância de encaixe, em pixels da tela do app
 const MAP_MARGIN: f64 = 24.0;
 const SNAP_PIXELS: f64 = 12.0;
+
+/// A área de trabalho guardada no Aplicar (lida uma vez: o Desfazer a usa e a esquece)
+fn w_home(me: &Weak<Window>) -> Option<(String, String)> {
+    me.upgrade().and_then(|w| w.home.borrow_mut().take())
+}
 
 /// Cada saída ligada ou desligada, para conferir depois de aplicar
 fn switches(configs: &[(String, OutputConfig)]) -> Vec<(String, bool)> {
@@ -123,11 +130,19 @@ pub struct Window {
     view: Cell<Option<View>>,
     /// A trava da prévia, enquanto o "Manter ou desfazer" está aberto
     preview: RefCell<Option<File>>,
+    /// A área de trabalho do app e a tela dela antes do Aplicar: o Desfazer a leva de volta
+    home: RefCell<Option<(String, String)>>,
     accent: String,
 }
 
 impl Window {
+    #[allow(deprecated)]
     pub fn new(app: &gtk4::Application) -> Rc<Window> {
+        let provider = gtk4::CssProvider::new();
+        provider.load_from_string(CSS);
+        if let Some(display) = gdk::Display::default() {
+            gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
+        }
         let window = gtk4::ApplicationWindow::new(app);
         window.set_title(Some(&tr("Displays")));
         window.set_default_size(780, 600);
@@ -178,10 +193,22 @@ impl Window {
         }
         grid.attach(&scale_info, 2, 2, 1, 1);
 
+        // O aviso fica por cima do mapa, embaixo: aparecer e sumir não empurra os controles (um clique já mirado
+        // não cai no lugar errado)
         let info = gtk4::Label::new(None);
         info.set_wrap(true);
-        info.set_xalign(0.0);
+        info.set_justify(gtk4::Justification::Center);
         info.set_visible(false);
+        info.add_css_class("displays-info");
+        info.set_halign(gtk4::Align::Center);
+        info.set_valign(gtk4::Align::End);
+        info.set_margin_bottom(10);
+        info.set_margin_start(16);
+        info.set_margin_end(16);
+        info.set_can_target(false);
+        let map = gtk4::Overlay::new();
+        map.set_child(Some(&frame));
+        map.add_overlay(&info);
 
         let identify_button = gtk4::Button::with_label(&tr("Identify"));
         identify_button.set_tooltip_text(Some(&tr("Show the name of each screen on it")));
@@ -210,10 +237,9 @@ impl Window {
         hint.set_xalign(0.0);
         hint.add_css_class("dim-label");
         content.append(&hint);
-        content.append(&frame);
+        content.append(&map);
         content.append(&top);
         content.append(&grid);
-        content.append(&info);
         content.append(&actions);
         // Numa tela pequena (ou com escala alta) a janela não cabe: o conteúdo rola, sem cortar os botões
         let scroller = gtk4::ScrolledWindow::new();
@@ -243,6 +269,7 @@ impl Window {
             drag: RefCell::new(None),
             view: Cell::new(None),
             preview: RefCell::new(None),
+            home: RefCell::new(None),
             accent,
         });
         me.connect(&identify_button);
@@ -252,6 +279,22 @@ impl Window {
         // O foco começa na lista das telas: o Tab segue para os ajustes da escolhida
         me.screens.grab_focus();
         me
+    }
+
+    /// Abrir de novo (a janela já estava aberta): traz a janela e escolhe a tela com o foco, se não houver
+    /// mudança por aplicar nem uma prévia na tela
+    pub fn reopen(&self) {
+        if self.preview.borrow().is_none() && self.drag.borrow().is_none() && !self.dirty() {
+            if let Some(list) = sway::get_outputs() {
+                let focused = list.iter().position(|o| o.focused);
+                if list.iter().map(|o| &o.name).eq(self.outputs.borrow().iter().map(|o| &o.name)) {
+                    if let Some(index) = focused {
+                        self.select(index);
+                    }
+                }
+            }
+        }
+        self.window.present();
     }
 
     fn with<A>(&self, f: impl Fn(&Rc<Window>, A) + 'static) -> impl Fn(A) + 'static {
@@ -360,7 +403,11 @@ impl Window {
         };
         let name = self.outputs.borrow().get(self.selected.get()).map(|o| o.name.clone());
         *self.edits.borrow_mut() = list.iter().map(Output::config).collect();
-        let selected = name.and_then(|n| list.iter().position(|o| o.name == n)).unwrap_or(0);
+        // A mesma tela de antes; na primeira leitura, a que tem o foco (onde a pessoa está)
+        let selected = name
+            .and_then(|n| list.iter().position(|o| o.name == n))
+            .or_else(|| list.iter().position(|o| o.focused))
+            .unwrap_or(0);
         *self.outputs.borrow_mut() = list;
         self.selected.set(selected);
         self.fill_screens();
@@ -702,7 +749,15 @@ impl Window {
         glib::MainContext::default().spawn_local(async move {
             let text = commands(&wanted);
             let states = switches(&wanted);
-            let result = gio::spawn_blocking(move || sway::run_checked(&text, &states)).await.unwrap_or_else(|_| Err("?".into()));
+            let result = gio::spawn_blocking(move || (sway::focused_workspace(), sway::run_checked(&text, &states)))
+                .await
+                .map(|(home, result)| {
+                    if let Some(w) = me.upgrade() {
+                        *w.home.borrow_mut() = home;
+                    }
+                    result
+                })
+                .unwrap_or_else(|_| Err("?".into()));
             let Some(w) = me.upgrade() else { return };
             match result {
                 Ok(()) => w.confirm(previous),
@@ -720,12 +775,15 @@ impl Window {
         glib::MainContext::default().spawn_local(async move {
             let text = commands(&previous);
             let states = switches(&previous);
+            let home = w_home(&me);
             // Se nem a volta pegou, a rede de segurança do serviço: o serviço ignora os eventos durante a
             // prévia, e nenhum outro evento viria para acioná-la
             let result = gio::spawn_blocking(move || {
                 let result = sway::run_checked(&text, &states);
-                if result.is_err() {
-                    crate::daemon::rescue_screens("undo");
+                match (&result, home) {
+                    (Err(_), _) => crate::daemon::rescue_screens("undo"),
+                    (Ok(()), Some((name, output))) => sway::return_workspace(&name, &output),
+                    _ => {}
                 }
                 result
             })
@@ -756,6 +814,7 @@ impl Window {
     /// Guarda o perfil do conjunto e o arquivo do Sway
     fn keep(self: &Rc<Self>) {
         self.preview.borrow_mut().take();
+        self.home.borrow_mut().take();
         let mut message = tr("Saved. This layout comes back whenever these screens are connected.");
         let outputs = self.outputs.borrow().clone();
         let edits = self.edits.borrow().clone();

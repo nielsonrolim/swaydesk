@@ -48,6 +48,8 @@ pub struct Output {
     pub adaptive_sync: bool,
     /// O tamanho físico em mm, para o modo preferido no rótulo
     pub physical: (i32, i32),
+    /// A saída com o foco do Sway (onde a pessoa está)
+    pub focused: bool,
 }
 
 /// As telas de notebook: a interna some com a tampa fechada
@@ -124,6 +126,7 @@ pub fn parse(outputs: &Value) -> Vec<Output> {
             transform: Transform::parse(&text(item, "transform")),
             adaptive_sync: text(item, "adaptive_sync_status") == "enabled",
             physical: (number(item, "width"), number(item, "height")),
+            focused: item.get("focused").and_then(Value::as_bool).unwrap_or(false),
         })
     }
     list
@@ -151,7 +154,7 @@ mod tests {
 
     fn sample() -> Value {
         serde_json::json!([
-            {"name": "eDP-1", "make": "BOE", "model": "0x0BCA", "serial": "Unknown", "active": true,
+            {"name": "eDP-1", "make": "BOE", "model": "0x0BCA", "serial": "Unknown", "active": true, "focused": true,
              "rect": {"x": 0, "y": 0, "width": 1536, "height": 864}, "scale": 1.25, "transform": "normal",
              "adaptive_sync_status": "disabled", "max_render_time": "off",
              "current_mode": {"width": 1920, "height": 1080, "refresh": 60008},
@@ -175,8 +178,10 @@ mod tests {
         assert_eq!(edp.current, Some(Mode { width: 1920, height: 1080, refresh: 60008 }));
         assert_eq!(edp.scale, 1.25);
         assert!(is_internal(&edp.name));
+        assert!(edp.focused);
         let dell = &list[1];
         assert!(!dell.active);
+        assert!(!dell.focused);
         assert_eq!(dell.current, None);
         assert_eq!(dell.scale, 1.0);
         assert_eq!(dell.modes[0], Mode { width: 3840, height: 2160, refresh: 60000 });

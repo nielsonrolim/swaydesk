@@ -98,6 +98,56 @@ pub fn run_checked(commands: &str, wanted: &[(String, bool)]) -> Result<(), Stri
     Ok(())
 }
 
+/// As áreas de trabalho: (nome, saída, com o foco)
+fn workspaces() -> Option<Vec<(String, String, bool)>> {
+    let out = child_env(&mut Command::new("timeout"))
+        .args(["-k", "1", "3", "swaymsg", "-r", "-t", "get_workspaces"])
+        .stdin(Stdio::null())
+        .stderr(Stdio::null())
+        .output()
+        .ok()?;
+    let value: Value = serde_json::from_slice(&out.stdout).ok()?;
+    Some(
+        value
+            .as_array()?
+            .iter()
+            .filter_map(|w| {
+                let name = w.get("name")?.as_str()?.to_string();
+                let output = w.get("output")?.as_str()?.to_string();
+                Some((name, output, w.get("focused").and_then(Value::as_bool).unwrap_or(false)))
+            })
+            .collect(),
+    )
+}
+
+/// A área de trabalho com o foco e a saída dela (onde a janela do app está), para voltar depois
+pub fn focused_workspace() -> Option<(String, String)> {
+    workspaces()?.into_iter().find(|(_, _, focused)| *focused).map(|(name, output, _)| (name, output))
+}
+
+/// O comando que leva a área de trabalho de volta à saída, ou None se não precisa (ou se o nome não cabe
+/// num comando entre aspas)
+pub fn return_command(name: &str, home: &str, now: &[(String, String, bool)]) -> Option<String> {
+    // Os mesmos caracteres que o quotable() do conf.rs recusa: as aspas, o escape, os separadores de
+    // comando e o $ (o Sway troca as variáveis nos comandos)
+    let quotable = !name.contains(['"', '\\', ';', ',', '$']) && !name.chars().any(char::is_control);
+    if !swaydesk_displays_logic::config::safe_name(home) || !quotable {
+        return None;
+    }
+    let (_, output, _) = now.iter().find(|(n, _, _)| n == name)?;
+    (output != home).then(|| format!("workspace \"{name}\"; move workspace to output {home}"))
+}
+
+/// Desligar uma tela leva as áreas de trabalho dela para outra, e religar não as traz de volta: a do app
+/// (e a janela, que a pessoa estava usando) volta à tela de onde saiu
+pub fn return_workspace(name: &str, home: &str) {
+    let Some(now) = workspaces() else { return };
+    let home_on = get_outputs().is_some_and(|list| list.iter().any(|o| o.name == home && o.active));
+    if let Some(command) = return_command(name, home, &now).filter(|_| home_on) {
+        let _ = run(&command);
+    }
+}
+
 /// O tipo de evento que interessa
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Event {
@@ -153,5 +203,19 @@ mod tests {
         assert_eq!(event(r#"{"change": "focus", "current": {}, "old": {}}"#), None);
         assert_eq!(event(r#"{"success": true}"#), None);
         assert_eq!(event("garbage"), None);
+    }
+
+    #[test]
+    fn returns_the_workspace() {
+        let now = vec![("1".to_string(), "HDMI-A-1".to_string(), true), ("2".to_string(), "HDMI-A-1".to_string(), false)];
+        assert_eq!(return_command("1", "eDP-2", &now).as_deref(), Some("workspace \"1\"; move workspace to output eDP-2"));
+        assert_eq!(return_command("1", "HDMI-A-1", &now), None); // já está lá
+        assert_eq!(return_command("9", "eDP-2", &now), None); // sumiu
+        let odd = vec![("a\"b".to_string(), "HDMI-A-1".to_string(), true)];
+        assert_eq!(return_command("a\"b", "eDP-2", &odd), None);
+        assert_eq!(return_command("1", "eDP 2", &now), None);
+        // O Sway troca as variáveis ($mod) nos comandos: o alvo seria outro
+        let var = vec![("$mod".to_string(), "HDMI-A-1".to_string(), true)];
+        assert_eq!(return_command("$mod", "eDP-2", &var), None);
     }
 }
