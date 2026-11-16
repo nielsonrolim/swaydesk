@@ -116,9 +116,11 @@ A chave e a instalação, com a mesma conferência do Debian antes do `pacman-ke
 key=$(mktemp) && curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Arch/x86_64/home_nielsonrolim_Arch.key -o "$key" &&
 [ "$(gpg --show-keys --with-colons "$key" | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
 sudo pacman-key --add "$key" && rm -f "$key" &&
-sudo pacman-key --lsign-key 71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9
+sudo pacman-key --lsign-key 71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 &&
 sudo pacman -Syu swaydesk-desktop
 ```
+
+O `pacman` não pergunta nada: o `swaydesk-common` e o `swaydesk-desktop` já pedem a fonte (`noto-fonts`) e o JACK do PipeWire (`pipewire-jack`) antes do que dependeria deles. Se você já tem o `jack2`, o `pacman` pergunta se pode trocá-lo pelo `pipewire-jack`: responda que sim.
 
 ## A chave
 

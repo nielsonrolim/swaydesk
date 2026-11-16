@@ -53,7 +53,10 @@ package_swaydesk-common() {
   pkgdesc="Sway desktop components - shared data (translations)"
   arch=(any)
   license=(MIT)
-  depends=(ttf-nerd-fonts-symbols)  # os ícones; no Debian, a fonte vai dentro do pacote
+  # A noto-fonts em primeiro: o pacman resolve as dependências em ordem, e o sway (da dock e do greeter) pede um
+  # ttf-font. Com a noto-fonts já na transação, ele não pergunta o provedor (o padrão seria o gnu-free-fonts)
+  # A ttf-nerd-fonts-symbols são os ícones; no Debian, a fonte vai dentro do pacote
+  depends=(noto-fonts ttf-nerd-fonts-symbols)
   SWAYDESK_BUNDLED_FONT=0 _install swaydesk-common
 }
 
@@ -135,7 +138,9 @@ package_swaydesk-desktop() {
   license=(MIT)
   install=swaydesk-desktop.install
   # libqalculate: o qalc da calculadora da grade de apps
-  depends=(swaydesk-common swaydesk-scripts swaydesk-notifd swaydesk-dock swaydesk-drawer swaydesk-widgets
+  # O pipewire-jack em primeiro: a waybar e o ffmpeg (do wf-recorder) pedem um jack, e o pacman, que resolve em
+  # ordem, perguntaria o provedor com o jack2 de padrão. O áudio da sessão é o PipeWire
+  depends=(pipewire-jack swaydesk-common swaydesk-scripts swaydesk-notifd swaydesk-dock swaydesk-drawer swaydesk-widgets
            swaydesk-capture swaydesk-theme swaydesk-session sway swaybg swayidle swaylock waybar kitty rofi libqalculate jq curl
            wl-clipboard cliphist xdg-desktop-portal-wlr xdg-desktop-portal-gtk dconf glib2 noto-fonts noto-fonts-emoji gnome-themes-extra systemd
            mate-polkit xorg-xwayland thunar blueman papirus-icon-theme grim slurp wf-recorder brightnessctl
