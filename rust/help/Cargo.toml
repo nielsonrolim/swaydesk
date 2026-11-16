@@ -13,5 +13,7 @@ path = "src/main.rs"
 [dependencies]
 swaydesk-common.workspace = true
 swaydesk-help-logic.workspace = true
+# Grava o perfil no config.toml e gera o 00-keys.conf, como o sway-desktop-config (sem GTK)
+swaydesk-theme.workspace = true
 swaydesk-ui.workspace = true
 gtk4.workspace = true

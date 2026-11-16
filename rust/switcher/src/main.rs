@@ -183,8 +183,18 @@ struct Switcher {
     css: RefCell<String>,
 }
 
+/// A tecla do modificador segurado: o Alt, ou o Super no perfil de atalhos dwm (lá os cartões ficam no Super+Tab).
 fn is_alt(key: gdk::Key) -> bool {
-    matches!(key, gdk::Key::Alt_L | gdk::Key::Alt_R | gdk::Key::Meta_L | gdk::Key::Meta_R | gdk::Key::ISO_Level3_Shift)
+    matches!(
+        key,
+        gdk::Key::Alt_L | gdk::Key::Alt_R | gdk::Key::Meta_L | gdk::Key::Meta_R | gdk::Key::ISO_Level3_Shift
+            | gdk::Key::Super_L | gdk::Key::Super_R
+    )
+}
+
+/// Os modificadores que seguram o cartão aberto: o Alt e o Super (o dwm).
+fn held(state: gdk::ModifierType) -> bool {
+    state.intersects(gdk::ModifierType::ALT_MASK | gdk::ModifierType::SUPER_MASK)
 }
 
 /// As teclas que andam com o cartão aberto. O Tab com o Alt segurado nem chega aqui: o bindsym Alt+Tab do
@@ -268,7 +278,7 @@ impl Switcher {
             let weak = Rc::downgrade(&me);
             keyboard.connect_modifier_state_notify(move |keyboard| {
                 if let Some(me) = weak.upgrade() {
-                    if me.active.get() && !keyboard.modifier_state().contains(gdk::ModifierType::ALT_MASK) {
+                    if me.active.get() && !held(keyboard.modifier_state()) {
                         me.commit();
                     }
                 }
@@ -279,7 +289,7 @@ impl Switcher {
 
     fn alt_down(&self) -> bool {
         let keyboard = gdk::Display::default().and_then(|d| d.default_seat()).and_then(|s| s.keyboard());
-        keyboard.is_some_and(|k| k.modifier_state().contains(gdk::ModifierType::ALT_MASK))
+        keyboard.is_some_and(|k| held(k.modifier_state()))
     }
 
     fn on_event(&self, event: &Value) {

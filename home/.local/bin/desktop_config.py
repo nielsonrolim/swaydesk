@@ -96,6 +96,7 @@ class Config:
     folder_color: str = ""  # a cor das pastas do Papirus, como "teal"; vazio: a mais perto do destaque
     file_manager: str = ""  # comando, como "thunar"; vazio: o primeiro instalado de FILE_MANAGERS
     components: str = "auto"  # a versão dos componentes: auto (Rust onde houver), python ou rust
+    shortcuts: str = "swaydesk"  # o perfil de atalhos, um dos SHORTCUT_PROFILES
     # Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui está
     # ligado: a chave ausente liga, para um config antigo continuar como era
     enabled: frozenset = frozenset()
@@ -120,6 +121,9 @@ def path():
 
 
 COMPONENTS = ("auto", "python", "rust")
+# Os perfis de atalhos do shortcuts (o SHORTCUT_PROFILES do swaydesk_common::config): o nome no config e o
+# mostrado, o da marca. Cada um é um sway/keys/<nome>.conf, incluído depois do keys/base.conf
+SHORTCUT_PROFILES = {"swaydesk": "Swaydesk", "i3": "i3", "hyprland": "Hyprland", "niri": "niri", "dwm": "dwm"}
 # As chaves do [enabled]: os componentes da sessão que podem ser desligados (o enabled() do Rust tem as mesmas)
 ENABLED_KEYS = ("dock", "app_grid", "switcher", "notifications", "osd", "clipboard_history", "nightlight",
                 "bing_wallpaper", "polkit_agent", "update_notifier", "displays")
@@ -197,6 +201,8 @@ def parse_config(data):
             warnings.append(f"config: invalid folder color: {value} (use one of sway-theme colors, or empty)")
         elif key == "components" and value not in COMPONENTS:
             warnings.append(f"config: invalid components: {value} (use auto, python or rust)")
+        elif key == "shortcuts" and value not in SHORTCUT_PROFILES:
+            warnings.append(f"config: invalid shortcuts: {value} (use swaydesk, i3, hyprland, niri or dwm)")
         elif key == "file_manager" and value and not COMMAND_NAME.fullmatch(value):
             warnings.append(f"config: invalid file manager: {value} (use the command name, like thunar)")
         else:
@@ -278,7 +284,8 @@ def get(config, key, env=os.environ):
     if key == "file_manager_desktop":  # o .desktop, para fixar na dock
         name = file_manager(config)
         return FILE_MANAGERS.get(name, name)
-    if key in ("weather_location", "holidays", "accent", "gtk_theme", "icon_theme", "folder_color", "components"):
+    if key in ("weather_location", "holidays", "accent", "gtk_theme", "icon_theme", "folder_color", "components",
+               "shortcuts"):
         return getattr(config, key)
     return None
 
@@ -535,6 +542,36 @@ def is_swayfx():
     return out.startswith("swayfx")
 
 
+PACKAGE_KEYS_DIR = Path("/usr/share/swaydesk-desktop/sway/keys")
+
+
+def keys_dir(env=os.environ):
+    """A pasta dos perfis de atalhos desta sessão (o keys_dir do swaydesk_common::config). Na sessão do pacote, a
+    do pacote. Nos dotfiles, a pasta keys ao lado do config do Sway de verdade (o link ~/.config/sway/config
+    resolvido, no repositório): vale mesmo sem os links do install.sh, depois de um git pull. Sem ela, a de
+    ~/.config/sway/keys ou a do pacote, a primeira que tiver o base.conf."""
+    if env.get("SWAYDESK_SESSION") == "package":
+        return PACKAGE_KEYS_DIR
+    sway = Path(env.get("XDG_CONFIG_HOME") or Path(env.get("HOME", "/")) / ".config") / "sway"
+    candidates = []
+    try:
+        candidates.append((sway / "config").resolve().parent / "keys")
+    except (OSError, RuntimeError):
+        pass
+    candidates += [sway / "keys", PACKAGE_KEYS_DIR]
+    return next((d for d in candidates if (d / "base.conf").is_file()), candidates[0])
+
+
+def sway_keys(config, keys=None):
+    """O config.d/00-keys.conf: os atalhos de todos os perfis (base.conf) e os do perfil do shortcuts, com o caminho
+    inteiro da pasta desta sessão (keys_dir). O sway-keys o regrava a cada início e reload da sessão."""
+    keys = keys or keys_dir()
+    return f'{KEYS_HEAD}\ninclude "{keys}/base.conf"\ninclude "{keys}/{config.shortcuts}.conf"\n'
+
+
+KEYS_HEAD = "# Gerado pelo sway-desktop-config: os atalhos do perfil; mude o shortcuts em ~/.config/sway-desktop/config.toml"
+
+
 def sway_effects(effects, swayfx):
     """O config.d/10-effects.conf: no SwayFX, os efeitos do [effects]; no Sway puro, só um comentário (as
     diretivas do SwayFX dariam erro de config)."""
@@ -619,6 +656,7 @@ def generated_files(colors, config=None, fonts=None):
         "sway/config.d/00-accent.conf": sway,
         "sway/config.d/00-font.conf": sway_font(fonts),
         "sway/config.d/00-cursor.conf": sway_cursor(cursor_theme()),
+        "sway/config.d/00-keys.conf": sway_keys(config),
         "sway/config.d/10-effects.conf": sway_effects(config.effects, is_swayfx()),
         "waybar/fonts.css": fonts_css,
         "swaylock/config": render_template("swaylock.conf", colors),

@@ -7,6 +7,10 @@
 //!
 //! Digitar busca nas duas abas. Esc limpa a busca e, com ela vazia, fecha. Abrir de novo fecha a janela
 //! aberta (o mesmo atalho abre e fecha).
+//!
+//! Com mais de um perfil de atalhos instalado (i3, Hyprland...), um seletor no alto troca o perfil: grava
+//! `shortcuts` no config.toml, gera o config.d/00-keys.conf (como o sway-desktop-config generate), recarrega
+//! o Sway e lê de novo os atalhos, que já são os do perfil novo.
 mod cards;
 
 use std::cell::RefCell;
@@ -18,6 +22,7 @@ use gtk4::prelude::*;
 use gtk4::{gdk, gio, glib, pango};
 use swaydesk_common::i18n::{self, ntr, tr};
 use swaydesk_common::{config, text::normalize};
+use swaydesk_help_logic::profiles::{self, Profile};
 use swaydesk_help_logic::{chords, short_command, Chord, Entry, Env, Label};
 
 const APP_ID: &str = "org.swaydesktop.Help"; // igual ao nome do .desktop: é como a dock acha o ícone
@@ -47,6 +52,13 @@ const CSS: &str = r#"
 .help-card-title { font-weight: bold; font-size: larger; }
 .help-dim { opacity: 0.6; }
 .help-empty { opacity: 0.6; margin: 40px; }
+.help-notice {
+  border-radius: 10px;
+  border: 1px solid alpha(@accent, 0.5);
+  background: alpha(@accent, 0.1);
+  padding: 10px 12px;
+  margin: 12px 0 4px 0;
+}
 .help-off .help-card-title, .help-off image { opacity: 0.55; }
 .help-badge {
   border-radius: 999px;
@@ -173,9 +185,18 @@ fn section_of(entry: &Entry) -> Option<String> {
     entry.section.as_deref().map(tr).or_else(|| entry.mode.as_ref().map(|m| tr("Mode “%s”").replace("%s", m)))
 }
 
-fn shortcuts_page(entries: &[Entry]) -> (gtk4::ScrolledWindow, Page) {
+fn shortcuts_page(entries: &[Entry], notice: Option<String>) -> (gtk4::ScrolledWindow, Page) {
     let content = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
     content.add_css_class("help-page");
+    // O aviso do perfil em uso (o dwm: o Mod é Alt), antes dos atalhos
+    if let Some(notice) = notice {
+        let label = gtk4::Label::new(Some(&notice));
+        label.add_css_class("help-notice");
+        label.set_xalign(0.0);
+        label.set_wrap(true);
+        label.set_wrap_mode(pango::WrapMode::WordChar);
+        content.append(&label);
+    }
     // A ordem das seções é a do config; as linhas sem seção ficam no fim
     let mut order: Vec<Option<String>> = Vec::new();
     let mut by_section: HashMap<Option<String>, Vec<&Entry>> = HashMap::new();
@@ -220,7 +241,43 @@ fn shortcuts_page(entries: &[Entry]) -> (gtk4::ScrolledWindow, Page) {
         empty.set_visible(true);
     }
     content.append(&empty);
+    content.append(&local_footer());
     (scrolled(&content), Page { rows, groups, empty })
+}
+
+/// O fim da aba Atalhos: onde mudar um atalho (o 50-local.conf, que vale depois do perfil e aparece aqui) e um
+/// botão que o abre no editor padrão. Sem o arquivo, só o texto.
+fn local_footer() -> gtk4::Box {
+    let file = swaydesk_help_logic::profiles::local_shortcuts_file(&Env::from_process());
+    let shown = file
+        .strip_prefix(swaydesk_common::config::home())
+        .map(|rel| format!("~/{}", rel.display()))
+        .unwrap_or_else(|_| file.display().to_string());
+    let footer = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
+    footer.set_margin_top(18);
+    let text = gtk4::Label::new(Some(
+        &tr("To change a shortcut, edit %s: it's read after the profile, and its shortcuts show up here.")
+            .replace("%s", &shown),
+    ));
+    text.add_css_class("help-dim");
+    text.set_xalign(0.0);
+    text.set_hexpand(true);
+    text.set_wrap(true);
+    text.set_wrap_mode(pango::WrapMode::WordChar);
+    footer.append(&text);
+    if file.is_file() {
+        let open = gtk4::Button::with_label(&tr("Open"));
+        open.connect_clicked(move |button| {
+            let window = button.root().and_downcast::<gtk4::Window>();
+            gtk4::FileLauncher::new(Some(&gio::File::for_path(&file))).launch(
+                window.as_ref(),
+                None::<&gio::Cancellable>,
+                |_| {},
+            );
+        });
+        footer.append(&open);
+    }
+    footer
 }
 
 fn shortcut_row(entry: &Entry) -> gtk4::ListBoxRow {
@@ -285,6 +342,168 @@ fn cards_page(
     (scrolled(&content), Page { rows, groups: vec![Group { widgets: vec![grid.upcast()] }], empty })
 }
 
+/// As duas abas, com os atalhos lidos agora. Na troca de perfil, as abas velhas saem e estas entram no lugar,
+/// na mesma aba que estava à vista.
+fn fill(stack: &gtk4::Stack, window: &gtk4::ApplicationWindow) -> [Page; 2] {
+    let visible = stack.visible_child_name();
+    for name in ["shortcuts", "using"] {
+        if let Some(child) = stack.child_by_name(name) {
+            stack.remove(&child);
+        }
+    }
+    let entries = swaydesk_help_logic::load(&Env::from_process());
+    let (shortcuts, shortcuts_filter) = shortcuts_page(&entries, profile_notice(&current_profile()));
+    let (using, using_filter) = cards_page(&entries, window, &config::load());
+    stack.add_titled(&shortcuts, Some("shortcuts"), &tr("Shortcuts"));
+    stack.add_titled(&using, Some("using"), &tr("Using Swaydesk"));
+    if let Some(name) = visible {
+        stack.set_visible_child_name(&name);
+    }
+    [shortcuts_filter, using_filter]
+}
+
+/// Os perfis instalados, para o seletor. Vazio ou um só: sem seletor.
+fn installed_profiles() -> Vec<Profile> {
+    profiles::available(config::SHORTCUT_PROFILES, |id| config::shortcut_keys_file(id).is_some())
+}
+
+/// Troca o perfil: o config.toml (só a linha `shortcuts`), o config.d/00-keys.conf (o mesmo que o
+/// `sway-desktop-config keys` grava, sem o resto do tema) e o reload do Sway. Fora da thread da janela: o
+/// reload pode levar uns segundos.
+fn apply_profile(id: &str) -> Result<(), String> {
+    use swaydesk_theme::desktop;
+    swaydesk_theme::themes::set_config_values(&config::path(), &[("shortcuts", id.to_string())])
+        .map_err(|e| e.to_string())?;
+    let keys = desktop::sway_keys(&config::load(), &config::keys_dir());
+    desktop::write_file(&desktop::config_home().join("sway/config.d/00-keys.conf"), &keys).map_err(|e| e.to_string())?;
+    if !swaydesk_theme::desktop::reload_sway() {
+        return Err(tr("Sway didn't reload"));
+    }
+    Ok(())
+}
+
+/// O aviso de um perfil que muda mais que as teclas: o dwm usa Alt como Mod (decisão do usuário), e alguns
+/// atalhos dos apps com Alt deixam de chegar a eles. O mesmo texto abre o keys/dwm.conf (builder5).
+fn profile_notice(id: &str) -> Option<String> {
+    match id {
+        "dwm" => Some(tr("dwm profile: the modifier is Alt, as in dwm, not Super. Some app shortcuts with Alt (like Alt+F, which opens the File menu) no longer reach the apps. Two shortcuts change only here: the window cards (Alt+Tab and Alt+Shift+Tab in the other profiles) move to Super+Tab and Super+Shift+Tab, because Alt+Tab goes back to the last workspace; and the launcher (Alt+Space) moves to Super+Space, because Alt+Space switches the window layout. The Swaydesk actions that dwm doesn't have (notifications, clipboard, window search, capture and recording) stay on Super. Floating windows with the mouse: Alt+drag. The keyboard layout: Super+Ctrl+Space.")),
+        _ => None,
+    }
+}
+
+/// O perfil em uso, pelo config.toml de agora (o swaydesk se faltar ou for inválido).
+fn current_profile() -> String {
+    config::load().shortcuts
+}
+
+/// O seletor do perfil: o nome de cada perfil instalado, com o de agora escolhido. Na troca, aplica e, se deu
+/// certo, refaz as abas; senão mostra o erro ao lado. Um perfil com aviso (o dwm) pede confirmação antes,
+/// com o aviso; Cancelar volta o seletor ao perfil em uso.
+fn profile_selector(stack: &gtk4::Stack, window: &gtk4::ApplicationWindow, pages: &Rc<RefCell<[Page; 2]>>,
+                    search: &gtk4::SearchEntry) -> Option<gtk4::Box> {
+    let installed = installed_profiles();
+    if installed.len() < 2 {
+        return None;
+    }
+    let current = current_profile();
+    let names: Vec<&str> = installed.iter().map(|p| p.name.as_str()).collect();
+    let dropdown = gtk4::DropDown::from_strings(&names);
+    dropdown.set_tooltip_text(Some(&tr("Shortcut profile")));
+    let at = installed.iter().position(|p| p.id == current).unwrap_or(0);
+    dropdown.set_selected(at as u32);
+    let status = gtk4::Label::new(None);
+    status.add_css_class("help-dim");
+    status.set_visible(false);
+    let applied = Rc::new(RefCell::new(installed[at].id.clone()));
+
+    // Aplica um perfil (fora da thread da janela) e refaz as abas
+    let switch: Rc<dyn Fn(String)> = Rc::new({
+        let (dropdown, stack, window) = (dropdown.downgrade(), stack.downgrade(), window.downgrade());
+        let (pages, search, status, applied) = (pages.clone(), search.downgrade(), status.clone(), applied.clone());
+        let ids: Vec<String> = installed.iter().map(|p| p.id.clone()).collect();
+        move |id: String| {
+            let Some(dropdown) = dropdown.upgrade() else { return };
+            dropdown.set_sensitive(false);
+            status.set_visible(false);
+            let (stack, window, pages, search, status, applied, ids) =
+                (stack.clone(), window.clone(), pages.clone(), search.clone(), status.clone(), applied.clone(), ids.clone());
+            glib::spawn_future_local(async move {
+                let result = gio::spawn_blocking({
+                    let id = id.clone();
+                    move || apply_profile(&id)
+                })
+                .await
+                .unwrap_or_else(|_| Err(tr("Sway didn't reload")));
+                dropdown.set_sensitive(true);
+                match result {
+                    Ok(()) => {
+                        *applied.borrow_mut() = id;
+                        if let (Some(stack), Some(window)) = (stack.upgrade(), window.upgrade()) {
+                            *pages.borrow_mut() = fill(&stack, &window);
+                            if let Some(search) = search.upgrade() {
+                                for page in pages.borrow().iter() {
+                                    page.filter(&search.text());
+                                }
+                            }
+                        }
+                    }
+                    Err(err) => {
+                        status.set_label(&tr("Couldn't switch the shortcut profile: %s").replace("%s", &err));
+                        status.set_visible(true);
+                        // O config.toml pode já ter o perfil novo (a falha veio no generate ou no reload): o
+                        // seletor volta a mostrar o que o arquivo diz, e escolher o outro o grava de novo. O
+                        // set_selected não aplica nada: o handler ignora o perfil igual ao aplicado
+                        // Um perfil sem arquivo instalado não está no seletor: o applied fica com ele mesmo
+                        // assim, e qualquer escolha (até a mesma de novo) grava e aplica outra vez
+                        let now = current_profile();
+                        let at = ids.iter().position(|p| *p == now);
+                        *applied.borrow_mut() = now;
+                        if let Some(at) = at {
+                            dropdown.set_selected(at as u32);
+                        }
+                    }
+                }
+            });
+        }
+    });
+
+    dropdown.connect_selected_notify({
+        let window = window.downgrade();
+        move |dropdown| {
+            let Some(profile) = installed.get(dropdown.selected() as usize) else { return };
+            if *applied.borrow() == profile.id {
+                return; // also the way back after a Cancel
+            }
+            let id = profile.id.clone();
+            let Some(notice) = profile_notice(&id) else {
+                switch(id);
+                return;
+            };
+            let back = installed.iter().position(|p| p.id == *applied.borrow()).unwrap_or(0) as u32;
+            let dialog = gtk4::AlertDialog::builder()
+                .message(tr("Switch to the %s profile?").replace("%s", &profile.name))
+                .detail(notice)
+                .buttons([tr("Cancel"), tr("Switch")])
+                .cancel_button(0)
+                .default_button(1)
+                .modal(true)
+                .build();
+            let (dropdown, switch) = (dropdown.clone(), switch.clone());
+            dialog.choose(window.upgrade().as_ref(), None::<&gio::Cancellable>, move |answer| {
+                if matches!(answer, Ok(1)) {
+                    switch(id);
+                } else {
+                    dropdown.set_selected(back);
+                }
+            });
+        }
+    });
+    let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
+    row.append(&status);
+    row.append(&dropdown);
+    Some(row)
+}
+
 fn build(app: &gtk4::Application) -> gtk4::ApplicationWindow {
     let window = gtk4::ApplicationWindow::new(app);
     window.set_title(Some(&tr("Swaydesk Help")));
@@ -298,13 +517,9 @@ fn build(app: &gtk4::Application) -> gtk4::ApplicationWindow {
         gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
     }
 
-    let entries = swaydesk_help_logic::load(&Env::from_process());
     let stack = gtk4::Stack::new();
     stack.set_transition_type(gtk4::StackTransitionType::Crossfade);
-    let (shortcuts, shortcuts_filter) = shortcuts_page(&entries);
-    let (using, using_filter) = cards_page(&entries, &window, &config::load());
-    stack.add_titled(&shortcuts, Some("shortcuts"), &tr("Shortcuts"));
-    stack.add_titled(&using, Some("using"), &tr("Using Swaydesk"));
+    let pages = Rc::new(RefCell::new(fill(&stack, &window)));
 
     let switcher = gtk4::StackSwitcher::new();
     switcher.set_stack(Some(&stack));
@@ -318,13 +533,15 @@ fn build(app: &gtk4::Application) -> gtk4::ApplicationWindow {
     let top = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
     top.add_css_class("help-top");
     top.append(&switcher);
+    if let Some(selector) = profile_selector(&stack, &window, &pages, &search) {
+        top.append(&selector);
+    }
     top.append(&search);
 
-    let pages = Rc::new([shortcuts_filter, using_filter]);
     search.connect_search_changed({
         let pages = pages.clone();
         move |entry| {
-            for page in pages.iter() {
+            for page in pages.borrow().iter() {
                 page.filter(&entry.text());
             }
         }

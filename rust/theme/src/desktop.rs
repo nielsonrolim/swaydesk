@@ -140,6 +140,7 @@ pub fn get(config: &Config, key: &str) -> Option<String> {
         "icon_theme" => config.icon_theme.clone(),
         "folder_color" => config.folder_color.clone(),
         "components" => config.components.clone(),
+        "shortcuts" => config.shortcuts.clone(),
         _ => return None,
     })
 }
@@ -331,6 +332,18 @@ fn program_is_swayfx(program: impl AsRef<std::ffi::OsStr>) -> bool {
         .is_some_and(|(_, out)| out.lines().next().is_some_and(|line| line.starts_with("swayfx")))
 }
 
+/// O config.d/00-keys.conf: os atalhos de todos os perfis (base.conf) e os do perfil do shortcuts, com o caminho
+/// inteiro da pasta desta sessão (config::keys_dir). Lido antes do 50-local.conf, que vale mais. O sway-keys o
+/// regrava a cada início e reload da sessão.
+pub fn sway_keys(config: &Config, keys: &Path) -> String {
+    let keys = keys.display();
+    format!(
+        "# Gerado pelo sway-desktop-config: os atalhos do perfil; mude o shortcuts em ~/.config/sway-desktop/config.toml\n\
+         include \"{keys}/base.conf\"\ninclude \"{keys}/{}.conf\"\n",
+        config.shortcuts
+    )
+}
+
 /// O config.d/10-effects.conf. No SwayFX, os efeitos do [effects]; no Sway puro, só um comentário: as diretivas
 /// do SwayFX dariam erro de config. O generate roda a cada sessão, então trocar um pelo outro (pacman) vale no
 /// próximo login.
@@ -447,6 +460,7 @@ pub fn generated_files(colors: &Palette, config: &Config, fonts: &Fonts) -> std:
         ("sway/config.d/00-accent.conf", sway),
         ("sway/config.d/00-font.conf", sway_font(fonts)),
         ("sway/config.d/00-cursor.conf", sway_cursor(cursor_theme())),
+        ("sway/config.d/00-keys.conf", sway_keys(config, &swaydesk_common::config::keys_dir())),
         ("sway/config.d/10-effects.conf", sway_effects(&config.effects, is_swayfx())),
         ("waybar/fonts.css", fonts_css),
         ("swaylock/config", render_template("swaylock.conf", colors)?),
@@ -530,6 +544,18 @@ pub fn reload_sway() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sway_keys_like_python() {
+        // O mesmo texto do ShortcutsTests do tests/test_desktop_config.py
+        let config = Config { shortcuts: "dwm".into(), ..Config::default() };
+        assert_eq!(
+            sway_keys(&config, Path::new("/k")),
+            "# Gerado pelo sway-desktop-config: os atalhos do perfil; mude o shortcuts em ~/.config/sway-desktop/config.toml\n\
+             include \"/k/base.conf\"\ninclude \"/k/dwm.conf\"\n"
+        );
+        assert!(sway_keys(&Config::default(), Path::new("/k")).ends_with("include \"/k/swaydesk.conf\"\n"));
+    }
 
     #[test]
     fn sway_effects_like_python() {

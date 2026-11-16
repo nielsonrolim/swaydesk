@@ -17,6 +17,7 @@ pub mod glob;
 pub mod ipc;
 pub mod keys;
 pub mod parse;
+pub mod profiles;
 
 use std::path::{Path, PathBuf};
 

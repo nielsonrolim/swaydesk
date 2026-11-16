@@ -43,20 +43,23 @@ xgettext "${common[@]}" --language=C --keyword= --keyword=tr --keyword=ntr:1,2 -
 sed -i -e '/^#, c-format$/d' -e 's/^#, c-format, /#, /' "$rust_pot"
 # As descrições (## Texto) e as seções (### Texto) dos atalhos do config do Sway, que a Ajuda do Swaydesk
 # (rust/help) traduz na hora. Outro .pot à parte, escrito aqui: o xgettext não lê o config do Sway
-sway_config=home/.config/sway/config
+# O config e os perfis de atalhos (keys/base.conf e um por perfil), cada texto uma vez, com o primeiro arquivo
+sway_configs=(home/.config/sway/config home/.config/sway/keys/base.conf home/.config/sway/keys/swaydesk.conf
+              home/.config/sway/keys/i3.conf home/.config/sway/keys/hyprland.conf home/.config/sway/keys/niri.conf
+              home/.config/sway/keys/dwm.conf)
 sway_pot=$(mktemp --suffix=.pot)
 trap 'rm -f "$rust_pot" "$sway_pot"' EXIT
 {
   printf 'msgid ""\nmsgstr ""\n"Content-Type: text/plain; charset=UTF-8\\n"\n\n'
-  awk -v file="$sway_config" '
+  awk '
     { line = $0; sub(/^[ \t]+/, "", line) }
     line ~ /^##/ {
       text = line; sub(/^#+[ \t]*/, "", text); sub(/[ \t]+$/, "", text)
       if (text == "" || text in seen) next
       seen[text] = 1
       gsub(/\\/, "\\\\", text); gsub(/"/, "\\\"", text)
-      printf "#: %s\nmsgid \"%s\"\nmsgstr \"\"\n\n", file, text
-    }' "$sway_config"
+      printf "#: %s\nmsgid \"%s\"\nmsgstr \"\"\n\n", FILENAME, text
+    }' "${sway_configs[@]}"
 } > "$sway_pot"
 msgcat --use-first --no-wrap --add-location=file -o "$pot" "$pot" "$rust_pot" "$sway_pot"
 # O cabeçalho muda a cada execução: sem a data, o .pot só muda quando um texto muda

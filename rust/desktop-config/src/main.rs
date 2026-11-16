@@ -22,7 +22,7 @@ use swaydesk_theme::{desktop as dc, fill_one, setup, themes as st, Error};
 const PROGRAM: &str = "sway-desktop-config";
 
 fn usage() -> String {
-    tr("usage: sway-desktop-config get <key>   shows a value, for the Bash scripts\n       sway-desktop-config generate      writes the files that depend on the color\n       sway-desktop-config apply         writes the files and reloads Sway\n       sway-desktop-config css           shows the accent colors as GTK CSS (@define-color)\n       sway-desktop-config enabled NAME  exits 0 if the component is on in [enabled], 1 if not\n       sway-desktop-config waybar [FILE] writes the Waybar config without the modules turned off")
+    tr("usage: sway-desktop-config get <key>   shows a value, for the Bash scripts\n       sway-desktop-config generate      writes the files that depend on the color\n       sway-desktop-config apply         writes the files and reloads Sway\n       sway-desktop-config css           shows the accent colors as GTK CSS (@define-color)\n       sway-desktop-config enabled NAME  exits 0 if the component is on in [enabled], 1 if not\n       sway-desktop-config waybar [FILE] writes the Waybar config without the modules turned off\n       sway-desktop-config keys          writes config.d/00-keys.conf, the includes of the shortcut profile")
 }
 
 fn after_apply() -> String {
@@ -99,6 +99,17 @@ fn main() -> ExitCode {
                 ExitCode::from(1)
             }
         },
+        // Só o config.d/00-keys.conf, para o sway-keys do início da sessão: rápido, sem o tema
+        ["keys"] => {
+            let file = dc::config_home().join("sway/config.d/00-keys.conf");
+            match dc::write_file(&file, &dc::sway_keys(&config, &config::keys_dir())) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(err) => {
+                    eprintln!("{}", fill_one(&tr("could not write: %s"), &err.to_string()));
+                    ExitCode::from(1)
+                }
+            }
+        }
         ["css"] => {
             print!("{}", css_colors(&palette(&config)));
             ExitCode::SUCCESS

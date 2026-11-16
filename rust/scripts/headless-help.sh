@@ -14,6 +14,11 @@
 # Com "repo", usa o config do Sway do repositório (sem as linhas exec, que abririam a sessão inteira) e só tira
 # capturas das duas abas, em pt_BR: confere as descrições, as seções e os chips do config de verdade, e o
 # cartão da dock desligada ([enabled] dock = false).
+#
+# Com "profiles", os perfis de atalhos: três arquivos em ~/.config/sway/keys (swaydesk, i3, dwm) e o config.toml
+# no dwm e depois no i3: a abertura com o seletor e, no dwm, o aviso (sem ponteiro, a troca fica para a VM). Por
+# fim, como nos dotfiles: o ~/.config/sway/config é um link, e os perfis só existem ao lado do arquivo de verdade
+# (keys_dir segue o link): o seletor aparece do mesmo jeito.
 set -u
 mode=${1:-}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
@@ -45,6 +50,11 @@ cat > "$HOME/.config/sway/config.d/50-local.conf" <<'EOF'
 ## Open foot instead
 bindsym --no-warn Ctrl+Alt+t exec foot
 EOF
+if [ "$mode" = profiles ]; then
+  mkdir -p "$HOME/.config/sway/keys" "$HOME/.config/sway-desktop"
+  for p in swaydesk i3 dwm; do printf '### Windows\n## Close the window\nbindsym $mod+q kill\n' > "$HOME/.config/sway/keys/$p.conf"; done
+  printf 'accent = "#199ca8"\nshortcuts = "dwm"\n' > "$HOME/.config/sway-desktop/config.toml"
+fi
 if [ "$mode" = repo ]; then
   { echo 'output HEADLESS-1 resolution 1280x2000'; grep -v '^exec' /repo/home/.config/sway/config; } > "$HOME/.config/sway/config"
   rm "$HOME/.config/sway/config.d/50-local.conf"
@@ -82,6 +92,30 @@ if [ "$mode" = repo ]; then
   swaymsg '[app_id="org.swaydesktop.Help"] resize set 1200 1900, move position 0 0' > /dev/null
   sleep 1.5; shot repo-1-atalhos
   key -M ctrl -k Tab -m ctrl; sleep 1; shot repo-2-cartoes
+  grep -q "CRITICAL\|panicked" /tmp/app.log && { fail "avisos no log"; cat /tmp/app.log; }
+  exit $failed
+fi
+
+if [ "$mode" = profiles ]; then
+  # Sem ponteiro no headless, o seletor não é clicado aqui (a troca, a confirmação do dwm e o Cancelar são
+  # da VM): só a abertura com cada perfil em uso. O nome no seletor e o aviso do dwm vêm do config.toml
+  conf=$HOME/.config/sway-desktop/config.toml
+  for profile in dwm i3; do
+    printf 'accent = "#199ca8"\nshortcuts = "%s"\n' "$profile" > "$conf"
+    swaymsg 'exec ~/.local/bin/sway-help >> /tmp/app.log 2>&1' > /dev/null
+    wait_windows 1 || { fail "a janela não abriu ($profile)"; cat /tmp/app.log; exit 1; }
+    sleep 1.5; shot "profiles-$profile"
+    ok "abre com o perfil $profile (captura help-profiles-$profile.png)"
+    key -k Escape; wait_windows 0 || fail "não fechou"
+  done
+  # Os dotfiles: o config de verdade e os keys/ num "repositório", o ~/.config/sway/config um link para ele
+  mkdir -p /tmp/repo-dots/sway && mv "$HOME/.config/sway/keys" /tmp/repo-dots/sway/keys
+  cp "$HOME/.config/sway/config" /tmp/repo-dots/sway/config && ln -sf /tmp/repo-dots/sway/config "$HOME/.config/sway/config"
+  swaymsg 'exec ~/.local/bin/sway-help >> /tmp/app.log 2>&1' > /dev/null
+  wait_windows 1 || { fail "a janela não abriu (dotfiles)"; cat /tmp/app.log; exit 1; }
+  sleep 1.5; shot profiles-dotfiles
+  ok "abre com o config como link (captura help-profiles-dotfiles.png: o seletor deve aparecer)"
+  key -k Escape; wait_windows 0 || fail "não fechou"
   grep -q "CRITICAL\|panicked" /tmp/app.log && { fail "avisos no log"; cat /tmp/app.log; }
   exit $failed
 fi

@@ -1451,6 +1451,7 @@ dependencies = [
  "gtk4",
  "swaydesk-common",
  "swaydesk-help-logic",
+ "swaydesk-theme",
  "swaydesk-ui",
 ]
 

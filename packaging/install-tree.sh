@@ -53,6 +53,8 @@ THEME_ENTRY=org.swaydesktop.Theme.desktop
 DISPLAYS_ENTRY=org.swaydesktop.Displays.desktop
 HELP_ENTRY=org.swaydesktop.Help.desktop
 SESSION_CONFIGS=(sway/config waybar/config.jsonc waybar/style.css xdg-desktop-portal/sway-portals.conf)  # de home/.config
+# Os atalhos: o base.conf e um arquivo por perfil do shortcuts (sway/keys, ao lado do sway/config)
+KEY_PROFILES=(base swaydesk i3 hyprland niri dwm)
 SYSTEM_SCRIPTS=(sway-session sway-gpu)  # de system/usr/local/bin
 
 if [[ ${1:-} == --sources ]]; then
@@ -63,6 +65,7 @@ if [[ ${1:-} == --sources ]]; then
   for entry in "${CAPTURE_ENTRIES[@]}" "$THEME_ENTRY" "$HELP_ENTRY" "$DISPLAYS_ENTRY"; do echo "home/.local/share/applications/$entry"; done
   (cd "$root" && printf '%s\n' home/.local/share/sway-desktop/templates/* home/.local/share/sway-desktop/dconf/*)
   for file in "${SESSION_CONFIGS[@]}"; do echo "home/.config/$file"; done
+  for name in "${KEY_PROFILES[@]}"; do echo "home/.config/sway/keys/$name.conf"; done
   (cd "$root" && find home-copy -type f)
   for name in "${SYSTEM_SCRIPTS[@]}"; do echo "system/usr/local/bin/$name"; done
   exit 0
@@ -182,6 +185,11 @@ case $pkg in
     done
     mkdir -p "$dest$share/sway" "$dest$share/waybar"
     package_paths "$root/home/.config/sway/config" > "$dest$share/sway/config"
+    mkdir -p "$dest$share/sway/keys"
+    for name in "${KEY_PROFILES[@]}"; do
+      package_paths "$root/home/.config/sway/keys/$name.conf" > "$dest$share/sway/keys/$name.conf"
+      chmod 644 "$dest$share/sway/keys/$name.conf"
+    done
     package_paths "$root/home/.config/waybar/config.jsonc" > "$dest$share/waybar/config.jsonc"
     # As cores e as fontes vêm do embrulho por usuário que o generate escreve; aqui, só as regras
     grep -v '^@import' "$root/home/.config/waybar/style.css" > "$dest$share/waybar/style.css"

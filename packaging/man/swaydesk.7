@@ -47,7 +47,9 @@ swaydesk\-displays(1)
 .B Services
 swaydesk\-clip\-store(1), swaydesk\-keyring(1), swaydesk\-sessionmgr(1)
 .SH KEYS
-In the Sway Desktop session (Super is the logo key):
+In the Sway Desktop session with the default swaydesk shortcut profile (Super is the logo key). The
+shortcuts key of config.toml picks another profile: i3, hyprland, niri or dwm (see swaydesk\-desktop\-config(1));
+Super+F1 shows the keys of the profile in use.
 .TP
 .B Super
 Show or hide the application grid.
@@ -68,7 +70,8 @@ The session menu.
 .I ~/.config/sway\-desktop/config.toml
 The desktop configuration: language (locale), accent color (accent), GTK and icon themes (gtk_theme, icon_theme), folder color (folder_color), file manager (file_manager), weather location (weather_location) and holidays (holidays). The fonts come from the GTK system font.
 Change it with swaydesk\-theme\-app(1) or swaydesk\-theme(1). Its [enabled] and [enabled.bar] tables turn
-session components and bar modules off (see swaydesk\-desktop\-config(1)).
+session components and bar modules off, and its shortcuts key picks the shortcut profile (see
+swaydesk\-desktop\-config(1)).
 .TP
 .I ~/.config/sway\-dock/config.toml
 The dock configuration.

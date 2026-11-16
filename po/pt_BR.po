@@ -146,14 +146,16 @@ msgid ""
 "       sway-desktop-config apply         writes the files and reloads Sway\n"
 "       sway-desktop-config css           shows the accent colors as GTK CSS (@define-color)\n"
 "       sway-desktop-config enabled NAME  exits 0 if the component is on in [enabled], 1 if not\n"
-"       sway-desktop-config waybar [FILE] writes the Waybar config without the modules turned off"
+"       sway-desktop-config waybar [FILE] writes the Waybar config without the modules turned off\n"
+"       sway-desktop-config keys          writes config.d/00-keys.conf, the includes of the shortcut profile"
 msgstr ""
 "uso: sway-desktop-config get <chave>   mostra um valor, para os scripts em Bash\n"
 "     sway-desktop-config generate      grava os arquivos que dependem da cor\n"
 "     sway-desktop-config apply         grava os arquivos e recarrega o Sway\n"
 "     sway-desktop-config css           mostra as cores do destaque em CSS do GTK (@define-color)\n"
 "     sway-desktop-config enabled NOME  sai com 0 se o componente está ligado no [enabled], 1 se não\n"
-"     sway-desktop-config waybar [ARQ]  grava o config da Waybar sem os módulos desligados"
+"     sway-desktop-config waybar [ARQ]  grava o config da Waybar sem os módulos desligados\n"
+"     sway-desktop-config keys          grava o config.d/00-keys.conf, os include do perfil de atalhos"
 
 #: home/.local/bin/sway-desktop-config
 msgid ""
@@ -2827,6 +2829,10 @@ msgid "No shortcuts found in the Sway config"
 msgstr "Nenhum atalho no config do Sway"
 
 #: rust/help/src/main.rs
+msgid "To change a shortcut, edit %s: it's read after the profile, and its shortcuts show up here."
+msgstr "Para mudar um atalho, edite o %s: ele vale depois do perfil, e os atalhos dele aparecem aqui."
+
+#: rust/help/src/main.rs
 msgid "Also works on the lock screen"
 msgstr "Funciona também com a tela bloqueada"
 
@@ -2837,6 +2843,30 @@ msgstr "Atalhos"
 #: rust/help/src/main.rs
 msgid "Using Swaydesk"
 msgstr "Usando o Swaydesk"
+
+#: rust/help/src/main.rs
+msgid "Sway didn't reload"
+msgstr "O Sway não recarregou"
+
+#: rust/help/src/main.rs
+msgid "dwm profile: the modifier is Alt, as in dwm, not Super. Some app shortcuts with Alt (like Alt+F, which opens the File menu) no longer reach the apps. Two shortcuts change only here: the window cards (Alt+Tab and Alt+Shift+Tab in the other profiles) move to Super+Tab and Super+Shift+Tab, because Alt+Tab goes back to the last workspace; and the launcher (Alt+Space) moves to Super+Space, because Alt+Space switches the window layout. The Swaydesk actions that dwm doesn't have (notifications, clipboard, window search, capture and recording) stay on Super. Floating windows with the mouse: Alt+drag. The keyboard layout: Super+Ctrl+Space."
+msgstr "Perfil dwm: o Mod é Alt, como no dwm, e não Super. Por isso, alguns atalhos dos apps com Alt (como o Alt+F, que abre o menu Arquivo) deixam de chegar a eles. Dois atalhos mudam só aqui: os cartões de janelas (Alt+Tab e Alt+Shift+Tab nos outros perfis) vão para Super+Tab e Super+Shift+Tab, porque Alt+Tab volta ao último workspace; e o lançador (Alt+Space) vai para Super+Space, porque Alt+Space troca o layout das janelas. As ações do Swaydesk que o dwm não tem (notificações, área de transferência, busca de janelas, captura e gravação) ficam em Super. Janela flutuante com o mouse: Alt+arrastar. O layout do teclado: Super+Ctrl+Space."
+
+#: rust/help/src/main.rs
+msgid "Shortcut profile"
+msgstr "Perfil de atalhos"
+
+#: rust/help/src/main.rs
+msgid "Couldn't switch the shortcut profile: %s"
+msgstr "Não foi possível trocar o perfil de atalhos: %s"
+
+#: rust/help/src/main.rs
+msgid "Switch to the %s profile?"
+msgstr "Trocar para o perfil %s?"
+
+#: rust/help/src/main.rs
+msgid "Switch"
+msgstr "Trocar"
 
 #: rust/help/src/main.rs
 msgid "Search"
@@ -2867,286 +2897,366 @@ msgstr "Outro agente de senhas está ativo"
 msgid "No network service running"
 msgstr "Nenhum serviço de rede ativo"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Session and apps"
 msgstr "Sessão e apps"
 
-#: home/.config/sway/config
-msgid "Reload the Sway config"
-msgstr "Recarregar o config do Sway"
-
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Session menu: lock, log out, restart or shut down"
 msgstr "Menu da sessão: bloquear, sair, reiniciar ou desligar"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Lock the screen"
 msgstr "Bloquear a tela"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Turn the screens back on"
 msgstr "Religar as telas"
 
-#: home/.config/sway/config
-msgid "Close the window"
-msgstr "Fechar a janela"
-
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Open the terminal"
 msgstr "Abrir o terminal"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Open the file manager"
 msgstr "Abrir o gerenciador de arquivos"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Open Yazi, the file manager in the terminal"
 msgstr "Abrir o Yazi, o gerenciador de arquivos no terminal"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Open the launcher"
 msgstr "Abrir o lançador"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Show or hide the app grid"
 msgstr "Mostrar ou esconder a grade de apps"
 
-#: home/.config/sway/config
-msgid "Show the notifications"
-msgstr "Mostrar as notificações"
-
-#: home/.config/sway/config
-msgid "Show the clipboard history"
-msgstr "Mostrar o histórico da área de transferência"
-
-#: home/.config/sway/config
-msgid "Search the open windows"
-msgstr "Buscar nas janelas abertas"
-
-#: home/.config/sway/config
-msgid "Switch the keyboard layout"
-msgstr "Trocar o layout do teclado"
-
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Show this help"
 msgstr "Mostrar esta ajuda"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Focus"
 msgstr "Foco"
 
-#: home/.config/sway/config
-msgid "Focus the window on the left"
-msgstr "Focar a janela à esquerda"
-
-#: home/.config/sway/config
-msgid "Focus the window below"
-msgstr "Focar a janela abaixo"
-
-#: home/.config/sway/config
-msgid "Focus the window above"
-msgstr "Focar a janela acima"
-
-#: home/.config/sway/config
-msgid "Focus the window on the right"
-msgstr "Focar a janela à direita"
-
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Switch to the next window, in the order of use"
 msgstr "Ir para a próxima janela, na ordem de uso"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Switch to the previous window, in the order of use"
 msgstr "Ir para a janela anterior, na ordem de uso"
 
-#: home/.config/sway/config
-msgid "Focus the next window on the screen"
-msgstr "Focar a próxima janela da tela"
-
-#: home/.config/sway/config
-msgid "Focus the previous window on the screen"
-msgstr "Focar a janela anterior da tela"
-
-#: home/.config/sway/config
-msgid "Move and resize"
-msgstr "Mover e redimensionar"
-
-#: home/.config/sway/config
-msgid "Move the window left"
-msgstr "Mover a janela para a esquerda"
-
-#: home/.config/sway/config
-msgid "Move the window down"
-msgstr "Mover a janela para baixo"
-
-#: home/.config/sway/config
-msgid "Move the window up"
-msgstr "Mover a janela para cima"
-
-#: home/.config/sway/config
-msgid "Move the window right"
-msgstr "Mover a janela para a direita"
-
-#: home/.config/sway/config
-msgid "Resize the window toward the left"
-msgstr "Redimensionar a janela para a esquerda"
-
-#: home/.config/sway/config
-msgid "Resize the window toward the right"
-msgstr "Redimensionar a janela para a direita"
-
-#: home/.config/sway/config
-msgid "Resize the window downward"
-msgstr "Redimensionar a janela para baixo"
-
-#: home/.config/sway/config
-msgid "Resize the window upward"
-msgstr "Redimensionar a janela para cima"
-
-#: home/.config/sway/config
-msgid "Swap the window with the main one"
-msgstr "Trocar a janela com a principal"
-
-#: home/.config/sway/config
-msgid "Float or tile the window"
-msgstr "Janela flutuante ou lado a lado"
-
-#: home/.config/sway/config
-msgid "Float or tile every window of the workspace"
-msgstr "Todas as janelas do workspace flutuantes ou lado a lado"
-
-#: home/.config/sway/config
-msgid "Fullscreen"
-msgstr "Tela inteira"
-
-#: home/.config/sway/config
-msgid "Hide the window in the scratchpad"
-msgstr "Esconder a janela no scratchpad"
-
-#: home/.config/sway/config
-msgid "Show the hidden windows of the scratchpad"
-msgstr "Mostrar as janelas escondidas no scratchpad"
-
-#: home/.config/sway/config
-msgid "Keep the window on every workspace"
-msgstr "Manter a janela em todos os workspaces"
-
-#: home/.config/sway/config
-msgid "Layouts"
-msgstr "Layouts"
-
-#: home/.config/sway/config
-msgid "Next layout: side by side, stacked, tabs"
-msgstr "Próximo layout: lado a lado, empilhado, abas"
-
-#: home/.config/sway/config
-msgid "Side-by-side layout"
-msgstr "Layout lado a lado"
-
-#: home/.config/sway/config
-msgid "Open the next window in the other direction"
-msgstr "Abrir a próxima janela na outra direção"
-
-#: home/.config/sway/config
-msgid "Wider gaps between windows"
-msgstr "Aumentar o espaço entre as janelas"
-
-#: home/.config/sway/config
-msgid "Narrower gaps between windows"
-msgstr "Diminuir o espaço entre as janelas"
-
-#: home/.config/sway/config
-msgid "Gaps between windows on or off"
-msgstr "Ligar ou desligar o espaço entre as janelas"
-
-#: home/.config/sway/config
-msgid "Workspaces"
-msgstr "Workspaces"
-
-#: home/.config/sway/config
-msgid "Go to workspace"
-msgstr "Ir para o workspace"
-
-#: home/.config/sway/config
-msgid "Move the window to workspace"
-msgstr "Mover a janela para o workspace"
-
-#: home/.config/sway/config
-msgid "Go to the previous workspace"
-msgstr "Ir para o workspace anterior"
-
-#: home/.config/sway/config
-msgid "Go to the next workspace"
-msgstr "Ir para o próximo workspace"
-
-#: home/.config/sway/config
-msgid "Move the window to the previous workspace"
-msgstr "Mover a janela para o workspace anterior"
-
-#: home/.config/sway/config
-msgid "Move the window to the next workspace"
-msgstr "Mover a janela para o próximo workspace"
-
-#: home/.config/sway/config
-msgid "Monitors"
-msgstr "Monitores"
-
-#: home/.config/sway/config
-msgid "Focus the monitor on the left"
-msgstr "Focar o monitor à esquerda"
-
-#: home/.config/sway/config
-msgid "Focus the monitor on the right"
-msgstr "Focar o monitor à direita"
-
-#: home/.config/sway/config
-msgid "Move the window to the monitor on the left"
-msgstr "Mover a janela para o monitor à esquerda"
-
-#: home/.config/sway/config
-msgid "Move the window to the monitor on the right"
-msgstr "Mover a janela para o monitor à direita"
-
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Screenshots and recording"
 msgstr "Capturas e gravação"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Screenshot of a region"
 msgstr "Captura de uma região"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Screenshot of the whole screen"
 msgstr "Captura da tela inteira"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Screenshot of the window"
 msgstr "Captura da janela"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Screenshot of a region, opened in Gradia"
 msgstr "Captura de uma região, aberta no Gradia"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Screenshot of the whole screen, opened in Gradia"
 msgstr "Captura da tela inteira, aberta no Gradia"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Screenshot of the window, opened in Gradia"
 msgstr "Captura da janela, aberta no Gradia"
 
-#: home/.config/sway/config
-msgid "Screenshot panel"
-msgstr "Painel de captura"
-
-#: home/.config/sway/config
-msgid "Screen recording panel; during a recording, stops it"
-msgstr "Painel de gravação; durante uma gravação, a encerra"
-
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Media and brightness"
 msgstr "Mídia e brilho"
 
-#: home/.config/sway/config
+#: home/.config/sway/keys/base.conf
 msgid "Mouse and touchpad"
 msgstr "Mouse e touchpad"
+
+#: home/.config/sway/keys/base.conf
+msgid "Go to the previous workspace"
+msgstr "Ir para o workspace anterior"
+
+#: home/.config/sway/keys/base.conf
+msgid "Go to the next workspace"
+msgstr "Ir para o próximo workspace"
+
+#: home/.config/sway/keys/base.conf
+msgid "Focus the window on the left"
+msgstr "Focar a janela à esquerda"
+
+#: home/.config/sway/keys/base.conf
+msgid "Focus the window on the right"
+msgstr "Focar a janela à direita"
+
+#: home/.config/sway/keys/base.conf
+msgid "Focus the window above"
+msgstr "Focar a janela acima"
+
+#: home/.config/sway/keys/base.conf
+msgid "Focus the window below"
+msgstr "Focar a janela abaixo"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Reload the Sway config"
+msgstr "Recarregar o config do Sway"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Close the window"
+msgstr "Fechar a janela"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Show the notifications"
+msgstr "Mostrar as notificações"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Show the clipboard history"
+msgstr "Mostrar o histórico da área de transferência"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Search the open windows"
+msgstr "Buscar nas janelas abertas"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Switch the keyboard layout"
+msgstr "Trocar o layout do teclado"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Focus the next window on the screen"
+msgstr "Focar a próxima janela da tela"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Focus the previous window on the screen"
+msgstr "Focar a janela anterior da tela"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Move and resize"
+msgstr "Mover e redimensionar"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Move the window left"
+msgstr "Mover a janela para a esquerda"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Move the window down"
+msgstr "Mover a janela para baixo"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Move the window up"
+msgstr "Mover a janela para cima"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Move the window right"
+msgstr "Mover a janela para a direita"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Resize the window toward the left"
+msgstr "Redimensionar a janela para a esquerda"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Resize the window toward the right"
+msgstr "Redimensionar a janela para a direita"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Resize the window downward"
+msgstr "Redimensionar a janela para baixo"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Resize the window upward"
+msgstr "Redimensionar a janela para cima"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Swap the window with the main one"
+msgstr "Trocar a janela com a principal"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Float or tile the window"
+msgstr "Janela flutuante ou lado a lado"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Float or tile every window of the workspace"
+msgstr "Todas as janelas do workspace flutuantes ou lado a lado"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Fullscreen"
+msgstr "Tela inteira"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Hide the window in the scratchpad"
+msgstr "Esconder a janela no scratchpad"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Show the hidden windows of the scratchpad"
+msgstr "Mostrar as janelas escondidas no scratchpad"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Keep the window on every workspace"
+msgstr "Manter a janela em todos os workspaces"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Layouts"
+msgstr "Layouts"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Next layout: side by side, stacked, tabs"
+msgstr "Próximo layout: lado a lado, empilhado, abas"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Side-by-side layout"
+msgstr "Layout lado a lado"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Open the next window in the other direction"
+msgstr "Abrir a próxima janela na outra direção"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Wider gaps between windows"
+msgstr "Aumentar o espaço entre as janelas"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Narrower gaps between windows"
+msgstr "Diminuir o espaço entre as janelas"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Gaps between windows on or off"
+msgstr "Ligar ou desligar o espaço entre as janelas"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Workspaces"
+msgstr "Workspaces"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Go to workspace"
+msgstr "Ir para o workspace"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Move the window to workspace"
+msgstr "Mover a janela para o workspace"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Move the window to the previous workspace"
+msgstr "Mover a janela para o workspace anterior"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Move the window to the next workspace"
+msgstr "Mover a janela para o próximo workspace"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Monitors"
+msgstr "Monitores"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Focus the monitor on the left"
+msgstr "Focar o monitor à esquerda"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Focus the monitor on the right"
+msgstr "Focar o monitor à direita"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Move the window to the monitor on the left"
+msgstr "Mover a janela para o monitor à esquerda"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Move the window to the monitor on the right"
+msgstr "Mover a janela para o monitor à direita"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Screenshot panel"
+msgstr "Painel de captura"
+
+#: home/.config/sway/keys/swaydesk.conf
+msgid "Screen recording panel; during a recording, stops it"
+msgstr "Painel de gravação; durante uma gravação, a encerra"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Log out: the session menu"
+msgstr "Sair: o menu da sessão"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Switch the focus between floating and tiled windows"
+msgstr "Alternar o foco entre as janelas flutuantes e as lado a lado"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Focus the parent container"
+msgstr "Focar o contêiner pai"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Resize mode: J/K/L/; or the arrows, Enter or Esc to leave"
+msgstr "Modo de redimensionar: J/K/L/; ou as setas, Enter ou Esc para sair"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Narrower"
+msgstr "Mais estreita"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Taller"
+msgstr "Mais alta"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Shorter"
+msgstr "Mais baixa"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Wider"
+msgstr "Mais larga"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Leave the resize mode"
+msgstr "Sair do modo de redimensionar"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Stacked layout"
+msgstr "Layout empilhado"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Tabbed layout"
+msgstr "Layout em abas"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Switch the split: side by side or one above the other"
+msgstr "Trocar a divisão: lado a lado ou uma sobre a outra"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Open the next window beside this one"
+msgstr "Abrir a próxima janela ao lado desta"
+
+#: home/.config/sway/keys/i3.conf
+msgid "Open the next window below this one"
+msgstr "Abrir a próxima janela abaixo desta"
+
+#: home/.config/sway/keys/niri.conf
+msgid "Turn the screens off"
+msgstr "Desligar as telas"
+
+#: home/.config/sway/keys/niri.conf
+msgid "Tabs on or off"
+msgstr "Abas ligadas ou desligadas"
+
+#: home/.config/sway/keys/dwm.conf
+msgid "Show or hide the bar"
+msgstr "Mostrar ou esconder a barra"
+
+#: home/.config/sway/keys/dwm.conf
+msgid "Move the window down the stack"
+msgstr "Descer a janela na pilha"
+
+#: home/.config/sway/keys/dwm.conf
+msgid "Move the window up the stack"
+msgstr "Subir a janela na pilha"
+
+#: home/.config/sway/keys/dwm.conf
+msgid "Go back to the last workspace"
+msgstr "Voltar ao último workspace"

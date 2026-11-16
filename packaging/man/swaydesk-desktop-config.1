@@ -69,6 +69,16 @@ screen profiles and the rescue that turns the screens on when none is on; the Di
 the same for the Waybar modules: weather, clock, media, recording, notifications, clipboard, language, system,
 brightness, caffeine, bluetooth, network, volume, battery and power. A key that is absent is on. A change takes
 effect at the next login; for the bar, also when Waybar restarts.
+.IP
+The shortcuts key picks the keyboard shortcut profile: swaydesk (the default), i3, hyprland, niri or dwm. generate
+writes ~/.config/sway/config.d/00-keys.conf, which includes the keys of every profile (keys/base.conf) and then the
+profile's own file (keys/<profile>.conf, in /usr/share/swaydesk\-desktop/sway/keys for the package session).
+Run swaymsg reload after generate, or change the profile in the help window (Super+F1). The dwm profile uses Alt
+as the modifier, as dwm does. The user's ~/.config/sway/config.d/50-local.conf is read after any profile and
+wins over it.
+.TP
+.I ~/.config/sway/config.d/00\-keys.conf
+The includes of the shortcut profile, written by generate.
 .TP
 .I ~/.config/swaydesk\-desktop/waybar/config.jsonc
 The Waybar configuration without the modules turned off, written by waybar and generate.

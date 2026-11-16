@@ -11,7 +11,7 @@ pub const ICON_FONT: &str = "Symbols Nerd Font";
 // As mesmas chaves do Config do desktop_config.py
 const KNOWN: &[&str] = &[
     "locale", "weather_location", "holidays", "accent", "gtk_theme", "icon_theme", "folder_color", "file_manager",
-    "components", "enabled", "effects",
+    "components", "enabled", "effects", "shortcuts",
 ];
 /// As chaves do [enabled]: os componentes da sessão que podem ser desligados (o ENABLED_KEYS do Python).
 pub const ENABLED_KEYS: &[&str] = &[
@@ -42,6 +42,12 @@ pub const PAPIRUS_COLORS: &[(&str, &str)] = &[
     ("teal", "#16a085"), ("violet", "#7e57c2"), ("white", "#e4e4e4"), ("yaru", "#e95420"), ("yellow", "#f9bd30"),
 ];
 pub const COMPONENTS: &[&str] = &["auto", "python", "rust"];
+/// Os perfis de atalhos do shortcuts (o SHORTCUT_PROFILES do Python): o nome no config e o nome mostrado, o da
+/// marca, sem tradução. Cada um é um sway/keys/<nome>.conf, incluído depois do keys/base.conf.
+pub const SHORTCUT_PROFILES: &[(&str, &str)] =
+    &[("swaydesk", "Swaydesk"), ("i3", "i3"), ("hyprland", "Hyprland"), ("niri", "niri"), ("dwm", "dwm")];
+/// A pasta dos perfis no pacote swaydesk-desktop (a do config do Sway da sessão do pacote)
+pub const PACKAGE_KEYS_DIR: &str = "/usr/share/swaydesk-desktop/sway/keys";
 
 /// O hex de uma cor do Papirus.
 pub fn papirus_color(name: &str) -> Option<&'static str> {
@@ -66,6 +72,8 @@ pub struct Config {
     pub file_manager: String,
     /// A versão dos componentes: auto (Rust onde houver), python ou rust
     pub components: String,
+    /// O perfil de atalhos, um dos SHORTCUT_PROFILES; "swaydesk" sem a chave ou com um nome inválido
+    pub shortcuts: String,
     /// Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui
     /// está ligado: a chave ausente liga, para um config antigo continuar como era
     pub disabled: BTreeSet<String>,
@@ -188,6 +196,7 @@ impl Default for Config {
             folder_color: String::new(),
             file_manager: String::new(),
             components: "auto".to_string(),
+            shortcuts: "swaydesk".to_string(),
             disabled: BTreeSet::new(),
             effects: Effects::default(),
         }
@@ -221,6 +230,34 @@ fn env_dir(name: &str, fallback: &str) -> PathBuf {
 
 pub fn home() -> PathBuf {
     std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"))
+}
+
+/// A pasta dos perfis de atalhos desta sessão (o keys_dir do Python). Na sessão do pacote, a do pacote. Nos
+/// dotfiles, a pasta keys ao lado do config do Sway de verdade (o link ~/.config/sway/config resolvido, no
+/// repositório): vale mesmo sem os links do install.sh, depois de um git pull. Sem ela, a de ~/.config/sway/keys
+/// ou a do pacote, a primeira que tiver o base.conf.
+pub fn keys_dir() -> PathBuf {
+    if crate::paths::package_session() {
+        return PathBuf::from(PACKAGE_KEYS_DIR);
+    }
+    let sway = env_dir("XDG_CONFIG_HOME", ".config").join("sway");
+    let mut candidates = Vec::new();
+    if let Some(real) = std::fs::canonicalize(sway.join("config")).ok().and_then(|p| p.parent().map(|d| d.join("keys"))) {
+        candidates.push(real);
+    }
+    candidates.push(sway.join("keys"));
+    candidates.push(PathBuf::from(PACKAGE_KEYS_DIR));
+    let first = candidates[0].clone();
+    candidates.into_iter().find(|d| d.join("base.conf").is_file()).unwrap_or(first)
+}
+
+/// O arquivo de atalhos de um perfil (`<keys_dir>/<perfil>.conf`), se existir. Um nome que não é dos
+/// SHORTCUT_PROFILES dá None.
+pub fn shortcut_keys_file(profile: &str) -> Option<PathBuf> {
+    if !SHORTCUT_PROFILES.iter().any(|(id, _)| *id == profile) {
+        return None;
+    }
+    Some(keys_dir().join(format!("{profile}.conf"))).filter(|p| p.is_file())
 }
 
 pub fn path() -> PathBuf {
@@ -303,6 +340,10 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
                 warnings.push(format!("config: invalid components: {value} (use auto, python or rust)"))
             }
             "components" => config.components = value.to_string(),
+            "shortcuts" if !SHORTCUT_PROFILES.iter().any(|(id, _)| *id == value) => warnings.push(format!(
+                "config: invalid shortcuts: {value} (use swaydesk, i3, hyprland, niri or dwm)"
+            )),
+            "shortcuts" => config.shortcuts = value.to_string(),
             "file_manager" if !value.is_empty() && !is_name(value, false) => {
                 warnings.push(format!("config: invalid file manager: {value} (use the command name, like thunar)"))
             }
@@ -645,5 +686,18 @@ mod tests {
         let (config, warnings) = parse_config("holidays = \"br\"");
         assert_eq!((config.holidays.as_str(), warnings.len()), ("", 1));
         assert_eq!(parse_config("holidays = \"\"").1.len(), 0);
+    }
+
+    #[test]
+    fn shortcuts_profile() {
+        // Os mesmos casos do ShortcutsTests do tests/test_desktop_config.py
+        assert_eq!(parse_config("").0.shortcuts, "swaydesk");
+        let (config, warnings) = parse_config("shortcuts = \"niri\"");
+        assert_eq!((config.shortcuts.as_str(), warnings.len()), ("niri", 0));
+        let (config, warnings) = parse_config("shortcuts = \"sway\"");
+        assert_eq!(config.shortcuts, "swaydesk");
+        assert_eq!(warnings, ["config: invalid shortcuts: sway (use swaydesk, i3, hyprland, niri or dwm)"]);
+        assert_eq!(parse_config("shortcuts = 1").1, ["config: invalid value in shortcuts"]);
+        assert!(shortcut_keys_file("../etc/passwd").is_none());
     }
 }

@@ -308,3 +308,48 @@ fn doubling_variables_are_capped() {
     assert!(entries[0].binds[0].command.len() <= MAX_VALUE + 64);
     assert_eq!(entries[1].binds[0].command.len(), "exec ".len() + (16 << 10));
 }
+
+/// Os perfis de verdade do repositório (home/.config/sway/keys), pelo $keys do config e o 00-keys.conf que o
+/// generate grava: cada um mostra a Ajuda e o seletor de layout do teclado, e o dwm troca as teclas da base.
+#[test]
+fn shortcut_profiles_from_the_repository() {
+    let profiles: [(&str, &str); 5] = [
+        ("swaydesk", include_str!("../../../home/.config/sway/keys/swaydesk.conf")),
+        ("i3", include_str!("../../../home/.config/sway/keys/i3.conf")),
+        ("hyprland", include_str!("../../../home/.config/sway/keys/hyprland.conf")),
+        ("niri", include_str!("../../../home/.config/sway/keys/niri.conf")),
+        ("dwm", include_str!("../../../home/.config/sway/keys/dwm.conf")),
+    ];
+    for (name, text) in profiles {
+        let tmp = Tmp::new();
+        tmp.write(".config/sway/keys/base.conf", include_str!("../../../home/.config/sway/keys/base.conf"));
+        tmp.write(&format!(".config/sway/keys/{name}.conf"), text);
+        // Como o generate grava: o caminho inteiro da pasta keys, entre aspas
+        let keys = tmp.0.join(".config/sway/keys");
+        let keys = keys.display();
+        tmp.write(
+            ".config/sway/config.d/00-keys.conf",
+            &format!("include \"{keys}/base.conf\"\ninclude \"{keys}/{name}.conf\"\n"),
+        );
+        let main_text = "set $mod Mod4\nset $bin ~/.local/bin\ninclude ~/.config/sway/config.d/*\n";
+        let main = tmp.write(".config/sway/config", main_text);
+        let entries = parse(main_text, &main, &tmp.env());
+        let described = |desc: &str| entries.iter().find(|e| e.description.as_deref() == Some(desc));
+        assert!(entries.len() > 40, "{name}: {}", entries.len());
+        assert!(described("Show this help").is_some(), "{name}");
+        assert!(described("Switch the keyboard layout").is_some(), "{name}");
+        let keys_of = |desc: &str| -> Vec<String> {
+            described(desc).map(|e| e.binds.iter().map(|b| b.keys.clone()).collect()).unwrap_or_default()
+        };
+        if name == "dwm" {
+            // O Alt+Tab volta ao último workspace; os cartões foram para o Super+Tab, e o Alt+Shift+Tab saiu
+            assert_eq!(keys_of("Go back to the last workspace"), ["Mod1+Tab"]);
+            assert_eq!(keys_of("Switch to the next window, in the order of use"), ["Mod4+Tab"]);
+            assert!(keys_of("Switch to the previous window, in the order of use") == ["Mod4+Shift+Tab"]);
+            assert!(!entries.iter().flat_map(|e| &e.binds).any(|b| b.keys == "Alt+Shift+Tab"));
+            assert_eq!(keys_of("Open the launcher"), ["Mod1+p", "Mod4+space"]);
+        } else {
+            assert_eq!(keys_of("Switch to the next window, in the order of use"), ["Alt+Tab"], "{name}");
+        }
+    }
+}
