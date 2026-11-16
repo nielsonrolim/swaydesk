@@ -279,8 +279,9 @@ fn local_footer() -> gtk4::Box {
 }
 
 /// Abre um arquivo de texto no editor padrão do sistema (o app do text/plain), direto, quando ele é gráfico: o
-/// portal perguntaria qual app usar toda vez. Sem um editor gráfico, o portal (o GtkFileLauncher). Lê as
-/// associações do sistema, sem mudar nenhuma.
+/// portal perguntaria qual app usar toda vez. Sem um editor gráfico (decisão do usuário), num editor do terminal:
+/// o terminal do Swaydesk com o $VISUAL, o $EDITOR, o nano, o vim ou o vi. Só se o terminal não abrir, o portal
+/// (o GtkFileLauncher). Lê as associações do sistema, sem mudar nenhuma.
 fn open_text_file(file: &std::path::Path, window: Option<&gtk4::Window>) {
     let gfile = gio::File::for_path(file);
     if let Some(app) = gio::AppInfo::default_for_type("text/plain", false) {
@@ -292,7 +293,14 @@ fn open_text_file(file: &std::path::Path, window: Option<&gtk4::Window>) {
             }
         }
     }
-    gtk4::FileLauncher::new(Some(&gfile)).launch(window, None::<&gio::Cancellable>, |_| {});
+    let command = swaydesk_help_logic::profiles::terminal_editor_command(
+        file,
+        &tr("No text editor found: install gnome-text-editor or nano. Press Enter to close."),
+    );
+    // Desligado da Ajuda (swaydesk_ui::cmd): fechar a Ajuda não fecha o editor, e não fica processo zumbi
+    if swaydesk_ui::cmd::spawn_detached(&command[0], &command[1..]).is_err() {
+        gtk4::FileLauncher::new(Some(&gfile)).launch(window, None::<&gio::Cancellable>, |_| {});
+    }
 }
 
 fn shortcut_row(entry: &Entry) -> gtk4::ListBoxRow {

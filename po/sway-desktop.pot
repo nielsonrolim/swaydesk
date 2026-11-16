@@ -2821,6 +2821,10 @@ msgid "To change a shortcut, edit %s: it's read after the profile, and its short
 msgstr ""
 
 #: rust/help/src/main.rs
+msgid "No text editor found: install gnome-text-editor or nano. Press Enter to close."
+msgstr ""
+
+#: rust/help/src/main.rs
 msgid "Also works on the lock screen"
 msgstr ""
 

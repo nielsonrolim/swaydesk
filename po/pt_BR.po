@@ -2833,6 +2833,10 @@ msgid "To change a shortcut, edit %s: it's read after the profile, and its short
 msgstr "Para mudar um atalho, edite o %s: ele vale depois do perfil, e os atalhos dele aparecem aqui."
 
 #: rust/help/src/main.rs
+msgid "No text editor found: install gnome-text-editor or nano. Press Enter to close."
+msgstr "Nenhum editor de texto encontrado: instale o gnome-text-editor ou o nano. Tecle Enter para fechar."
+
+#: rust/help/src/main.rs
 msgid "Also works on the lock screen"
 msgstr "Funciona também com a tela bloqueada"
 

@@ -134,7 +134,9 @@ package_swaydesk-desktop() {
   # serviços que o pacman não liga (Bluetooth, NetworkManager, perfis de energia) ficam no aviso do .install.
   # O power-profiles-daemon também é satisfeito pelo tlp-pd (provides), o caminho de quem usa o TLP. O
   # gnome-keyring guarda as senhas dos apps (navegador, git, NetworkManager); no Debian, ele e o PAM vêm com o
-  # desktop ou pelo Recommends do swaydesk-greeter. O PAM de quem entra pelo greetd está no .install do greeter
+  # desktop ou pelo Recommends do swaydesk-greeter. O PAM de quem entra pelo greetd está no .install do greeter.
+  # A exceção, por decisão do usuário: o editor de texto do botão Abrir da Ajuda (o 50-local.conf) fica nos
+  # optdepends, porque sem ele a Ajuda abre o arquivo num editor do terminal (o $EDITOR, o nano ou o vi)
   arch=(any)
   license=(MIT)
   install=swaydesk-desktop.install
@@ -148,6 +150,8 @@ package_swaydesk-desktop() {
            playerctl pavucontrol wireplumber libpulse networkmanager network-manager-applet bluez upower gammastep
            libnotify power-profiles-daemon xdg-user-dirs qt5ct qt6ct capitaine-cursors
            gnome-keyring)
+  optdepends=("gnome-text-editor: the Help's Open button, for 50-local.conf"
+              'nano: the same in the terminal, without a graphical editor')
   SWAYDESK_LIBEXEC=/usr/lib _install swaydesk-desktop
 }
 
