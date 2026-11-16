@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Publica no espelho público (github.com/nielsonrolim/swaydesk) a árvore filtrada do commit atual da main:
 # rust/, packaging/, debian/, po/, o LICENSE e os arquivos que o packaging/install-tree.sh lê (--sources), o
-# mesmo filtro do tarball do OBS (make-orig.sh). Os READMEs do espelho são os de packaging/public, na raiz.
+# mesmo filtro do tarball do OBS (make-orig.sh). Os documentos do espelho (READMEs, CHANGELOG) são os .md de
+# packaging/public, na raiz.
 # Os dotfiles, o install.sh, os componentes em Python, a documentação interna e os testes ficam de fora.
 #
 # Roda quem fez o merge, com a main local igual à origin/main. Cada envio é um commit novo por cima do
@@ -11,6 +12,10 @@
 #
 # uso: packaging/mirror.sh [--dry-run]    com --dry-run, monta, confere e faz o commit numa pasta
 #                                         temporária, mostra o resumo e não envia (a pasta fica)
+#      packaging/mirror.sh [--dry-run] --tag vX.Y.Z
+#                                         o lançamento: a tag precisa estar no HEAD (= origin/main) e na
+#                                         origin do privado; publica como sempre e põe no commit novo do
+#                                         espelho (ou no atual, sem mudança) a tag anotada "Swaydesk X.Y.Z"
 #      packaging/mirror.sh --check-identity CLONE
 #                                         só confere os commits do CLONE que a origin/main ainda não tem
 # MIRROR_URL troca o destino (padrão: git@github.com:nielsonrolim/swaydesk.git)
@@ -39,13 +44,20 @@ check_identity() {
   fi
 }
 
-dry=0
-case ${1:-} in
-  --dry-run) dry=1 ;;
-  --check-identity) check_identity "${2:?CLONE}"; exit ;;
-  '') ;;
-  *) echo "uso: packaging/mirror.sh [--dry-run]" >&2; exit 2 ;;
-esac
+dry=0 tag=
+while (($#)); do
+  case $1 in
+    --dry-run) dry=1 ;;
+    --tag) tag=${2:?--tag vX.Y.Z}; shift ;;
+    --check-identity) check_identity "${2:?CLONE}"; exit ;;
+    *) echo "uso: packaging/mirror.sh [--dry-run] [--tag vX.Y.Z]" >&2; exit 2 ;;
+  esac
+  shift
+done
+if [[ -n $tag && ! $tag =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "mirror: the tag must be vX.Y.Z, not $tag" >&2
+  exit 2
+fi
 
 git -C "$root" fetch -q origin main
 head=$(git -C "$root" rev-parse HEAD)
@@ -55,6 +67,21 @@ if [[ $head != "$(git -C "$root" rev-parse origin/main)" ]]; then
     exit 1
   fi
   echo "mirror: HEAD is not origin/main (dry run, going on)"
+fi
+# A release: the tag is on what's published, here and in the private origin
+if [[ -n $tag ]]; then
+  local_tag=$(git -C "$root" rev-parse -q --verify "refs/tags/$tag^{commit}" || true)
+  # The commit the origin's tag points at: the peeled line (^{}) of an annotated tag, or the tag's own line
+  remote_tag=$(git -C "$root" ls-remote origin "refs/tags/$tag" "refs/tags/$tag^{}" |
+               awk '$2 ~ /\^\{\}$/ { peeled = $1 } { first = first ? first : $1 } END { print peeled ? peeled : first }')
+  if [[ $local_tag != "$head" ]]; then
+    echo "mirror: $tag isn't on HEAD; tag the merged commit first" >&2
+    exit 1
+  fi
+  if [[ $remote_tag != "$head" ]]; then
+    echo "mirror: $tag isn't in the private origin on this commit; push the tag first" >&2
+    exit 1
+  fi
 fi
 
 work=$(mktemp -d)
@@ -67,7 +94,9 @@ git -C "$root" archive --format=tar --prefix=full/ "$head" | tar -x -C "$work"
 mkdir "$work/tree"
 tar -C "$work/full" -c --verbatim-files-from -T "$work/list" | tar -x -C "$work/tree"
 rm -rf "$work/tree/packaging/public" "$work/tree/rust/vendor" "$work/tree/rust/target"
-cp "$work/full/packaging/public/README.md" "$work/full/packaging/public/README.pt-BR.md" "$work/tree/"
+# Todos os .md de packaging/public (os READMEs, o CHANGELOG.md): um documento novo ali entra sozinho
+# (e fica público: packaging/public é só para documentos públicos)
+cp "$work/full/packaging/public/"*.md "$work/tree/"
 printf '%s\n' '# Compilação do Cargo' 'rust/target/' > "$work/tree/.gitignore"
 rm -rf "${work:?}/full"
 
@@ -93,8 +122,29 @@ git -C "$work/mirror" rev-parse -q --verify HEAD >/dev/null || { first=1; git -C
 find "$work/mirror" -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
 cp -a "$work/tree/." "$work/mirror/"
 git -C "$work/mirror" add -A
+# The release tag on the mirror: never one it already has (nothing is ever forced)
+if [[ -n $tag ]] && [[ -n $(git -C "$work/mirror" ls-remote origin "refs/tags/$tag") ]]; then
+  echo "mirror: the mirror already has $tag; nothing sent" >&2
+  exit 1
+fi
+publish_tag() {
+  GIT_COMMITTER_NAME=$name GIT_COMMITTER_EMAIL=$email \
+    git -C "$work/mirror" -c tag.gpgsign=false tag -a "$tag" -m "Swaydesk ${tag#v}" HEAD
+  if [[ $(git -C "$work/mirror" for-each-ref "refs/tags/$tag" --format='%(taggername) %(taggeremail)') != "$name <$email>" ]]; then
+    echo "mirror: the tag has another tagger; nothing sent" >&2
+    exit 1
+  fi
+  echo "tag: $tag on $(git -C "$work/mirror" rev-parse --short HEAD), tagger $email"
+  if ((dry)); then
+    echo "mirror: dry run, tag not pushed"
+    return
+  fi
+  git -C "$work/mirror" push -q origin "refs/tags/$tag"
+  echo "mirror: tagged $tag"
+}
 if git -C "$work/mirror" diff --cached --quiet; then
   echo "mirror: nothing changed since the last publication"
+  [[ -z $tag ]] || publish_tag
   exit 0
 fi
 if ((first)); then
@@ -108,7 +158,9 @@ check_identity "$work/mirror"
 echo "commit identity: only $email"
 if ((dry)); then
   echo "mirror: dry run, not pushed"
+  [[ -z $tag ]] || publish_tag
   exit 0
 fi
 git -C "$work/mirror" push -q origin HEAD:main
 echo "mirror: published $(git -C "$work/mirror" rev-parse --short HEAD) from $(git -C "$root" rev-parse --short "$head")"
+[[ -z $tag ]] || publish_tag
