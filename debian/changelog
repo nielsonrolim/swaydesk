@@ -1,5 +1,9 @@
-swaydesk (0.1.0-1) UNRELEASED; urgency=medium
+swaydesk (0.1.0-1) unstable; urgency=medium
 
-  * First packaging of the Rust + GTK 4 components (not published).
+  * First release: a desktop session for Sway, with the components in Rust
+    and GTK 4 (bar popups, dock, app grid, notifications, screenshot and
+    recording, theme, session, help, displays and login screen), shortcut
+    profiles, [enabled] and the 50-local.conf for local shortcuts. The
+    release notes are in the CHANGELOG.md of the public repository.
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Thu, 12 Nov 2026 18:00:00 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Mon, 16 Nov 2026 12:00:00 -0300
