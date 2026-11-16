@@ -4,12 +4,15 @@ make-orig.sh (o mesmo .orig.tar.xz do Debian, com os crates em rust/vendor: o OB
 Troca só as linhas de versão e de fonte, e falha se alguma delas mudou de forma no PKGBUILD.
 uso: pkgbuild.py PKGBUILD VERSÃO_ARCH TARBALL > PKGBUILD_DO_OBS"""
 import hashlib
+import re
 import sys
 from pathlib import Path
 
-# As linhas do packaging/arch/PKGBUILD que mudam, como estão lá
+# As linhas do packaging/arch/PKGBUILD que mudam, como estão lá. O pkgver é o da próxima versão, que sobe a
+# cada lançamento: vale qualquer X.Y.Z, e só ele
+PKGVER = re.compile(r"pkgver=[0-9]+\.[0-9]+\.[0-9]+")
 LINES = {
-    "pkgver": "pkgver=0.1.0",
+    "pkgver": PKGVER,
     "pkgrel": "pkgrel=1",
     "source": 'source=("$pkgbase-$pkgver.tar.gz::https://github.com/nielsonrolim/sway-desktop/archive/refs/tags/v$pkgver.tar.gz")',
     "sha256sums": "sha256sums=('SKIP')  # na publicação: o sha256 do tarball da tag",
@@ -36,9 +39,11 @@ def render(pkgbuild, version, tarball):
     }
     lines = pkgbuild.split("\n")
     for key, old in LINES.items():
-        found = [i for i, line in enumerate(lines) if line == old]
+        found = [i for i, line in enumerate(lines)
+                 if (old.fullmatch(line) if isinstance(old, re.Pattern) else line == old)]
         if len(found) != 1:
-            raise ValueError(f"PKGBUILD: expected the line {old!r} once, found {len(found)}")
+            shown = old.pattern if isinstance(old, re.Pattern) else old
+            raise ValueError(f"PKGBUILD: expected the line {shown!r} once, found {len(found)}")
         lines[found[0]] = new[key]
     return "\n".join(lines)
 

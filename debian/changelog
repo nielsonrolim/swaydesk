@@ -1,3 +1,9 @@
+swaydesk (0.1.1-1) UNRELEASED; urgency=medium
+
+  * Development after 0.1.0.
+
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Mon, 16 Nov 2026 18:00:00 -0300
+
 swaydesk (0.1.0-1) unstable; urgency=medium
 
   * First release: a desktop session for Sway, with the components in Rust
