@@ -122,7 +122,7 @@ def path():
 COMPONENTS = ("auto", "python", "rust")
 # As chaves do [enabled]: os componentes da sessão que podem ser desligados (o enabled() do Rust tem as mesmas)
 ENABLED_KEYS = ("dock", "app_grid", "switcher", "notifications", "osd", "clipboard_history", "nightlight",
-                "bing_wallpaper", "polkit_agent", "update_notifier")
+                "bing_wallpaper", "polkit_agent", "update_notifier", "displays")
 # As do [enabled.bar], com o módulo da Waybar de cada uma. Os workspaces, o sway/mode e a bandeja ficam sempre
 BAR_MODULES = {
     "weather": "custom/weather", "clock": "custom/clock", "media": "custom/media", "recording": "custom/rec",

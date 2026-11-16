@@ -1,0 +1,17 @@
+[Desktop Entry]
+Type=Application
+Name=Displays
+Name[pt_BR]=Telas
+GenericName=Arrange screens, resolution and scale
+GenericName[pt_BR]=Posição, resolução e escala das telas
+Comment=Arranges the screens and remembers the layout of each set of monitors
+Comment[pt_BR]=Posiciona as telas e lembra o layout de cada conjunto de monitores
+Exec=sway-displays
+TryExec=swaydesk-displays
+Icon=preferences-desktop-display
+Terminal=false
+StartupNotify=false
+Categories=GTK;Settings;HardwareSettings;
+OnlyShowIn=sway;
+Keywords=display;monitor;screen;resolution;scale;rotation;
+Keywords[pt_BR]=tela;telas;monitor;display;resolução;escala;rotação;

@@ -6,7 +6,7 @@ swaydesk-dock: dock
 swaydesk-drawer: drawer
 swaydesk-widgets: calendar caffeine-popup brightness-popup battery-popup system system-popup audio-popup network network-popup bluetooth bluetooth-popup weather weather-popup media-popup clipboard-popup osd-bar clip-store switcher help
 swaydesk-capture: capture
-swaydesk-theme: theme desktop-config portal theme-app
+swaydesk-theme: theme desktop-config portal theme-app displays
 # Os scripts auxiliares que os binários chamam (paths::helper), sem binário em Rust
 swaydesk-scripts:
 swaydesk-session: session-menu keyring sessionmgr lock

@@ -1,0 +1,54 @@
+.TH SWAYDESK-DISPLAYS 1 2026-11-15 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-displays \- Displays application and screen profile service
+.SH SYNOPSIS
+.B swaydesk\-displays
+.br
+.B swaydesk\-displays daemon
+.br
+.B swaydesk\-displays apply
+.SH DESCRIPTION
+Without arguments, a window to arrange the screens of the Sway session: drag them on the map (their edges
+snap to each other), and choose, for each one, whether it is on, its resolution, refresh rate, scale
+(fractional scales included) and rotation. Identify shows the name of each screen on it. Apply changes the
+screens at once and asks whether to keep the change; with no answer in 15 seconds, the previous settings come
+back. Keep saves the layout as the profile of the connected set of monitors and writes the Sway file read at
+login. Opening it again raises the open window. Its menu entry is org.swaydesktop.Displays.
+.PP
+Each set of monitors is identified by the make, model and serial number of each one (as in Sway's
+\fBoutput "<make> <model> <serial>"\fR), not by the port name. Two identical monitors without a serial number
+are told apart by the port.
+.PP
+With \fBdaemon\fR, the profile service the Sway configuration starts (as sway\-displays daemon, a link in the
+package's helper directory): whenever the set of connected monitors changes, or the configuration is
+reloaded, it applies the saved profile of the set, if there is one; without one, the screens stay as Sway
+chose them. A change made by hand with the same set of monitors is kept until the configuration is
+reloaded (swaymsg reload, which the Desktop Theme app also does): then the profile applies again, so a
+mode set by hand and not kept in the window is lost. Keep it in the window to make it last. With the laptop lid closed and an
+external screen on in the profile, the internal screen stays off. A profile that would turn every screen off
+is not applied, and if no screen is on after a change of monitors or a reload, the service turns them all on.
+.PP
+With \fBapply\fR, it applies the profile of the connected set at once: the Sway configuration runs it when the
+laptop lid closes or opens (bindswitch), so closing the lid with an external screen on in the profile turns the
+internal screen off, and opening it turns it back on. While the window waits for Keep or Undo, the service does not apply profiles.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH EXIT STATUS
+The service exits 1 when Sway's event stream ends; the Sway configuration then starts it again while Sway is running.
+.SH FILES
+.TP
+.I ~/.config/sway\-desktop/displays.json
+The profiles: one layout for each set of monitors.
+.TP
+.I ~/.config/sway/config.d/90\-displays.conf
+The layout last kept, only the screens that are on, read by Sway at login and on reload (turning a screen
+off is left to the service, which knows the set). It comes after 50\-local.conf, so it wins over an output
+line there. Written by the window; edits by hand are replaced at the next Keep.
+.TP
+.I ~/.config/sway/outputs
+The file of nwg\-displays, still read before config.d, so a layout from it lasts until the first Keep.
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR sway\-output (5)

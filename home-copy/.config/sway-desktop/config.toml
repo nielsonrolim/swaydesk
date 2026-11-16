@@ -48,6 +48,8 @@ nightlight = true          # a luz noturna volta ao último modo no login
 bing_wallpaper = true      # o wallpaper do dia do Bing
 polkit_agent = true        # a janela da senha de administrador: desligada, quem pede a senha falha
 update_notifier = true     # o aviso de atualizações da distro
+displays = true            # os perfis de telas ao plugar um monitor e na tampa, e o resgate quando
+                           # nenhuma tela fica ligada (o app Telas continua)
 
 # Os módulos da barra (os workspaces e a bandeja ficam sempre)
 [enabled.bar]

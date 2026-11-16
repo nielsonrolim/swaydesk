@@ -1,0 +1,14 @@
+[package]
+name = "swaydesk-displays-logic"
+description = "A lógica do app Telas (swaydesk-displays), sem GTK: as saídas do Sway, os perfis por conjunto de monitores, a geometria e o arquivo do Sway"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "swaydesk_displays_logic"
+path = "src/lib.rs"
+
+[dependencies]
+serde_json.workspace = true

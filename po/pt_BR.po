@@ -2438,6 +2438,106 @@ msgstr "indicador de volume e brilho: sway-osd-bar no lugar do wob"
 msgid "volume and brightness indicator: log in to Sway again to open the sway-osd-bar"
 msgstr "indicador de volume e brilho: entre de novo no Sway para abrir o sway-osd-bar"
 
+#: rust/displays/src/window.rs
+msgid "Normal"
+msgstr "Normal"
+
+#: rust/displays/src/window.rs
+msgid "Flipped"
+msgstr "Espelhada"
+
+#: rust/displays/src/window.rs rust/help/src/cards.rs
+msgid "Displays"
+msgstr "Telas"
+
+#: rust/displays/src/window.rs
+msgid "On"
+msgstr "Ligada"
+
+#: rust/displays/src/window.rs
+msgid "Resolution"
+msgstr "Resolução"
+
+#: rust/displays/src/window.rs
+msgid "Refresh rate"
+msgstr "Taxa de atualização"
+
+#: rust/displays/src/window.rs
+msgid "Scale"
+msgstr "Escala"
+
+#: rust/displays/src/window.rs
+msgid "Rotation"
+msgstr "Rotação"
+
+#: rust/displays/src/window.rs
+msgid "Identify"
+msgstr "Identificar"
+
+#: rust/displays/src/window.rs
+msgid "Show the name of each screen on it"
+msgstr "Mostra o nome de cada tela nela mesma"
+
+#: rust/displays/src/window.rs
+msgid "Undo changes"
+msgstr "Desfazer mudanças"
+
+#: rust/displays/src/window.rs
+msgid "Drag the screens to arrange them. Each set of monitors remembers its own layout."
+msgstr "Arraste as telas para posicioná-las. Cada conjunto de monitores lembra o seu layout."
+
+#: rust/displays/src/window.rs
+msgid "Could not read the screens from Sway. This app works only in a Sway session."
+msgstr "Não foi possível ler as telas do Sway. Este app só funciona numa sessão do Sway."
+
+#: rust/displays/src/window.rs
+msgid "Effective size: %s"
+msgstr "Tamanho efetivo: %s"
+
+#: rust/displays/src/window.rs
+msgid "At least one screen must stay on."
+msgstr "Pelo menos uma tela precisa ficar ligada."
+
+#: rust/displays/src/window.rs
+msgid "Another Displays window is waiting for a confirmation."
+msgstr "Outra janela do Telas está esperando uma confirmação."
+
+#: rust/displays/src/window.rs
+msgid "Applying…"
+msgstr "Aplicando…"
+
+#: rust/displays/src/window.rs
+msgid "Sway did not accept the change"
+msgstr "O Sway não aceitou a mudança"
+
+#: rust/displays/src/window.rs
+msgid "Saved. This layout comes back whenever these screens are connected."
+msgstr "Salvo. Este layout volta sempre que estas telas forem conectadas."
+
+#: rust/displays/src/window.rs
+msgid "Could not save the layout"
+msgstr "Não foi possível gravar o layout"
+
+#: rust/displays/src/window.rs
+msgid "Keep these display settings?"
+msgstr "Manter estas configurações das telas?"
+
+#: rust/displays/src/window.rs
+msgid "Undo"
+msgstr "Desfazer"
+
+#: rust/displays/src/window.rs
+msgid "Keep"
+msgstr "Manter"
+
+#: rust/displays/src/window.rs
+msgid "The previous settings are back."
+msgstr "As configurações anteriores voltaram."
+
+#: rust/displays/src/window.rs
+msgid "Going back to the previous settings in %d s"
+msgstr "Voltando às configurações anteriores em %d s"
+
 #: rust/greeter/src/main.rs
 msgid "Type a valid user name"
 msgstr "Digite um nome de usuário válido"
@@ -2681,10 +2781,6 @@ msgstr "Bloqueia a tela com a sua senha. Ela também bloqueia sozinha depois de 
 #: rust/help/src/cards.rs
 msgid "Makes the screen warmer at night, always or on a schedule. It is in the brightness popup of the bar."
 msgstr "Deixa a tela mais quente à noite, sempre ou em horários. Fica no popup do brilho, na barra."
-
-#: rust/help/src/cards.rs
-msgid "Displays"
-msgstr "Telas"
 
 #: rust/help/src/cards.rs
 msgid "Resolution, scale and position of each monitor."

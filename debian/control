@@ -78,12 +78,16 @@ Package: swaydesk-theme
 Architecture: any
 Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, libglib2.0-bin
 Recommends: papirus-icon-theme, dconf-cli, gnome-themes-extra
-Description: Sway desktop components - theme tools and accent portal
+Description: Sway desktop components - theme tools, accent portal and Displays
  sway-theme and sway-desktop-config: the GTK theme, icons and accent
  color across the desktop, with the Papirus folder colors, and an
  org.freedesktop.impl.portal.Settings backend that gives the accent color
  to libadwaita apps. The Desktop Theme app picks the theme family, light or
  dark style and color with a live preview.
+ .
+ The Displays app arranges the screens (position, resolution, refresh
+ rate, scale and rotation), and its service applies the layout saved for
+ each set of monitors when they are plugged in or out.
 
 Package: swaydesk-session
 Architecture: any
@@ -102,7 +106,7 @@ Description: Sway desktop components - session menu, lock screen and services
 Package: swaydesk-desktop
 Architecture: all
 Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), swaydesk-notifd (>= ${source:Version}), swaydesk-notifd (<< ${source:Version}.1~), swaydesk-dock (>= ${source:Version}), swaydesk-dock (<< ${source:Version}.1~), swaydesk-drawer (>= ${source:Version}), swaydesk-drawer (<< ${source:Version}.1~), swaydesk-widgets (>= ${source:Version}), swaydesk-widgets (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-theme (>= ${source:Version}), swaydesk-theme (<< ${source:Version}.1~), swaydesk-session (>= ${source:Version}), swaydesk-session (<< ${source:Version}.1~), ${misc:Depends}, sway, swaybg, swayidle, swaylock, waybar, kitty, rofi, qalc, jq, curl, wl-clipboard, cliphist, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, dconf-cli, libglib2.0-bin, fonts-noto-core, fonts-noto-color-emoji, gnome-themes-extra, systemd
-Recommends: papirus-icon-theme, thunar | file-manager, grim, slurp, wf-recorder, brightnessctl, playerctl, pavucontrol, gammastep, blueman, network-manager-applet | network-manager-gnome, mate-polkit | lxpolkit, libnotify-bin, power-profiles-daemon, xwayland, qt5ct, qt6ct, nwg-displays
+Recommends: papirus-icon-theme, thunar | file-manager, grim, slurp, wf-recorder, brightnessctl, playerctl, pavucontrol, gammastep, blueman, network-manager-applet | network-manager-gnome, mate-polkit | lxpolkit, libnotify-bin, power-profiles-daemon, xwayland, qt5ct, qt6ct
 Description: Sway desktop - the full session
  The "Sway Desktop" session for the display manager: the Sway and Waybar
  configuration, the session scripts and the first-login setup, using

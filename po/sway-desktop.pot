@@ -2427,6 +2427,106 @@ msgstr ""
 msgid "volume and brightness indicator: log in to Sway again to open the sway-osd-bar"
 msgstr ""
 
+#: rust/displays/src/window.rs
+msgid "Normal"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Flipped"
+msgstr ""
+
+#: rust/displays/src/window.rs rust/help/src/cards.rs
+msgid "Displays"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "On"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Resolution"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Refresh rate"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Scale"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Rotation"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Identify"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Show the name of each screen on it"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Undo changes"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Drag the screens to arrange them. Each set of monitors remembers its own layout."
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Could not read the screens from Sway. This app works only in a Sway session."
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Effective size: %s"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "At least one screen must stay on."
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Another Displays window is waiting for a confirmation."
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Applying…"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Sway did not accept the change"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Saved. This layout comes back whenever these screens are connected."
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Could not save the layout"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Keep these display settings?"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Undo"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Keep"
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "The previous settings are back."
+msgstr ""
+
+#: rust/displays/src/window.rs
+msgid "Going back to the previous settings in %d s"
+msgstr ""
+
 #: rust/greeter/src/main.rs
 msgid "Type a valid user name"
 msgstr ""
@@ -2669,10 +2769,6 @@ msgstr ""
 
 #: rust/help/src/cards.rs
 msgid "Makes the screen warmer at night, always or on a schedule. It is in the brightness popup of the bar."
-msgstr ""
-
-#: rust/help/src/cards.rs
-msgid "Displays"
 msgstr ""
 
 #: rust/help/src/cards.rs

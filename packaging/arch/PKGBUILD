@@ -111,8 +111,9 @@ package_swaydesk-capture() {
 }
 
 package_swaydesk-theme() {
-  pkgdesc="Sway desktop components - theme tools, Desktop Theme app and accent color portal"
-  depends=(swaydesk-common glib2 gtk4)  # o gtk4 é do app Tema do Desktop (traz o pango e o cairo)
+  pkgdesc="Sway desktop components - theme tools, Desktop Theme and Displays apps, accent color portal"
+  # O gtk4 é dos apps Tema do Desktop e Telas (traz o pango e o cairo); o gtk4-layer-shell, do Identificar
+  depends=(swaydesk-common glib2 gtk4 gtk4-layer-shell)
   optdepends=('papirus-icon-theme: folder colors' 'dconf: the Sway dconf profile' 'gnome-themes-extra: Adwaita-dark for GTK 3')
   _install swaydesk-theme
 }
@@ -145,7 +146,7 @@ package_swaydesk-desktop() {
            wl-clipboard cliphist xdg-desktop-portal-wlr xdg-desktop-portal-gtk dconf glib2 noto-fonts noto-fonts-emoji gnome-themes-extra systemd
            mate-polkit xorg-xwayland thunar blueman papirus-icon-theme grim slurp wf-recorder brightnessctl
            playerctl pavucontrol wireplumber libpulse networkmanager network-manager-applet bluez upower gammastep
-           libnotify power-profiles-daemon xdg-user-dirs qt5ct qt6ct nwg-displays capitaine-cursors
+           libnotify power-profiles-daemon xdg-user-dirs qt5ct qt6ct capitaine-cursors
            gnome-keyring)
   SWAYDESK_LIBEXEC=/usr/lib _install swaydesk-desktop
 }

@@ -50,6 +50,7 @@ rust_launchers() {
 # Os arquivos de dados que os pacotes levam de home/ e system/ (os scripts estão nas listas acima)
 CAPTURE_ENTRIES=(gradia-screenshot.desktop gradia-screen-record.desktop)
 THEME_ENTRY=org.swaydesktop.Theme.desktop
+DISPLAYS_ENTRY=org.swaydesktop.Displays.desktop
 HELP_ENTRY=org.swaydesktop.Help.desktop
 SESSION_CONFIGS=(sway/config waybar/config.jsonc waybar/style.css xdg-desktop-portal/sway-portals.conf)  # de home/.config
 SYSTEM_SCRIPTS=(sway-session sway-gpu)  # de system/usr/local/bin
@@ -59,7 +60,7 @@ if [[ ${1:-} == --sources ]]; then
     echo "home/.local/bin/$name"
   done
   (cd "$root" && printf '%s\n' home/.local/share/locale/*/LC_MESSAGES/sway-desktop.mo)
-  for entry in "${CAPTURE_ENTRIES[@]}" "$THEME_ENTRY" "$HELP_ENTRY"; do echo "home/.local/share/applications/$entry"; done
+  for entry in "${CAPTURE_ENTRIES[@]}" "$THEME_ENTRY" "$HELP_ENTRY" "$DISPLAYS_ENTRY"; do echo "home/.local/share/applications/$entry"; done
   (cd "$root" && printf '%s\n' home/.local/share/sway-desktop/templates/* home/.local/share/sway-desktop/dconf/*)
   for file in "${SESSION_CONFIGS[@]}"; do echo "home/.config/$file"; done
   (cd "$root" && find home-copy -type f)
@@ -150,6 +151,14 @@ case $pkg in
     chmod 644 "$dest/usr/share/applications/$entry"
     grep -qx 'Exec=swaydesk-theme-app' "$dest/usr/share/applications/$entry" || {
       echo "install-tree: $entry: no Exec=sway-theme-app line to point at the package binary" >&2
+      exit 1
+    }
+    # O app Telas, do mesmo jeito (o nome do arquivo é o app_id, e o swaydesk-help o abre por ele)
+    entry=$DISPLAYS_ENTRY
+    sed 's/^Exec=sway-displays$/Exec=swaydesk-displays/' "$data/applications/$entry" > "$dest/usr/share/applications/$entry"
+    chmod 644 "$dest/usr/share/applications/$entry"
+    grep -qx 'Exec=swaydesk-displays' "$dest/usr/share/applications/$entry" || {
+      echo "install-tree: $entry: no Exec=sway-displays line to point at the package binary" >&2
       exit 1
     }
     ;;

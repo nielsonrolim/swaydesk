@@ -1,0 +1,112 @@
+//! O arquivo que o Sway lê no login, `~/.config/sway/config.d/90-displays.conf`: o layout do conjunto que
+//! foi mantido por último, só as telas ligadas, cada monitor pela identidade ("Fabricante Modelo Serial"). Vem depois do
+//! 50-local.conf, então vale mais que ele. O serviço de perfis cuida dos outros conjuntos.
+use std::path::{Path, PathBuf};
+
+use crate::config::OutputConfig;
+
+pub const FILE_NAME: &str = "90-displays.conf";
+
+pub fn path() -> PathBuf {
+    let base = std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| "/".into())).join(".config"));
+    base.join("sway").join("config.d").join(FILE_NAME)
+}
+
+/// A identidade cabe entre aspas no config do Sway? Aspas, barra invertida, "$" (variável), ";" e ","
+/// (separam comandos) e caracteres de controle não cabem.
+fn quotable(identity: &str) -> bool {
+    !identity.is_empty() && !identity.chars().any(|c| c.is_control() || matches!(c, '"' | '\\' | '$' | ';' | ','))
+}
+
+/// O texto do arquivo. Cada item: (porta, chave do perfil, configuração). A chave com "#porta" (dois
+/// monitores iguais) ou que não cabe entre aspas vai pelo nome da porta.
+pub fn render(items: &[(String, String, OutputConfig)]) -> String {
+    let mut text = String::from(
+        "# Gerado pelo app Telas (swaydesk-displays): mude pelo app, não à mão, ou a próxima gravação\n\
+         # desfaz. Os outros conjuntos de monitores ficam em ~/.config/sway-desktop/displays.json.\n",
+    );
+    // Só as ligadas: o arquivo vale no login para qualquer conjunto, e um "disable" da tela do notebook
+    // apagaria a única tela de quem liga sem o monitor externo. Desligar é do serviço, que sabe o conjunto
+    for (name, key, config) in items.iter().filter(|(_, _, config)| config.enabled) {
+        let target = if !key.contains('#') && quotable(key) {
+            format!("\"{key}\"")
+        } else if crate::config::safe_name(name) {
+            name.clone()
+        } else {
+            continue;
+        };
+        text.push_str(&format!("output {target} {}\n", config.sway_args()));
+    }
+    text
+}
+
+/// Grava num temporário e troca de nome. O Sway lê no próximo login ou reload; o app já aplicou pelo IPC.
+pub fn save(file: &Path, text: &str) -> std::io::Result<()> {
+    if let Some(dir) = file.parent() {
+        std::fs::create_dir_all(dir)?;
+    }
+    let tmp = file.with_extension(format!("conf.{}.tmp", std::process::id()));
+    let result = (|| {
+        let mut out = std::fs::File::create(&tmp)?;
+        std::io::Write::write_all(&mut out, text.as_bytes())?;
+        out.sync_all()?;
+        std::fs::rename(&tmp, file)
+    })();
+    if result.is_err() {
+        let _ = std::fs::remove_file(&tmp);
+    }
+    result
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::config::Transform;
+    use crate::outputs::Mode;
+
+    fn config(enabled: bool, x: i32) -> OutputConfig {
+        OutputConfig {
+            enabled,
+            mode: Some(Mode { width: 1920, height: 1080, refresh: 60000 }),
+            x,
+            y: 0,
+            scale: 1.0,
+            transform: Transform::Normal,
+            adaptive_sync: false,
+        }
+    }
+
+    #[test]
+    fn renders_by_identity() {
+        let text = render(&[
+            ("eDP-2".into(), "BOE X Unknown".into(), config(false, 0)),
+            ("HDMI-A-2".into(), "Dell U 7".into(), config(true, 3840)),
+            ("DP-1".into(), "AOC 24 Unknown#DP-1".into(), config(true, 0)),
+            ("DP-2".into(), "Evil \"$x; exec\" 1".into(), config(true, 1920)),
+            ("bad;name".into(), "Bad, Inc 1".into(), config(true, 3840)),
+        ]);
+        let lines: Vec<&str> = text.lines().filter(|l| !l.starts_with('#')).collect();
+        assert_eq!(
+            lines,
+            vec![
+                "output \"Dell U 7\" enable mode 1920x1080@60.000Hz pos 3840 0 scale 1 transform normal adaptive_sync off",
+                "output DP-1 enable mode 1920x1080@60.000Hz pos 0 0 scale 1 transform normal adaptive_sync off",
+                "output DP-2 enable mode 1920x1080@60.000Hz pos 1920 0 scale 1 transform normal adaptive_sync off",
+            ]
+        );
+    }
+
+    #[test]
+    fn saves_atomically() {
+        let dir = std::env::temp_dir().join(format!("swaydesk-displays-conf-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let file = dir.join("config.d").join(FILE_NAME);
+        save(&file, "output x disable\n").unwrap();
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "output x disable\n");
+        assert_eq!(std::fs::read_dir(file.parent().unwrap()).unwrap().count(), 1);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

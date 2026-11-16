@@ -5,6 +5,7 @@ session-menu session-menu
 sway-capture capture
 sway-clip-store clip-store
 sway-desktop-config desktop-config
+sway-displays displays
 sway-dock dock
 sway-drawer drawer
 sway-help help

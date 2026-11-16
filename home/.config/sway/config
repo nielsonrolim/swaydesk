@@ -80,6 +80,14 @@ exec $bin/sway-if-enabled clipboard_history wl-paste --type image --watch cliphi
 exec $bin/sway-if-enabled clipboard_history wl-paste --watch $bin/sway-clip-store
 # A ordem de uso das janelas para o Alt+Tab (sway-switcher, com o seletor na tela). O laço o reabre se cair
 exec $bin/sway-if-enabled switcher $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-switcher daemon; sleep 1; done'
+# O layout de cada conjunto de monitores (o app Telas) ao plugar e desplugar. O laço o reabre se cair; o
+# código 3 (sem o swaydesk-displays, como nos dotfiles sem --rust) o encerra. Com displays = false no
+# [enabled], só os perfis automáticos (o serviço, a tampa e o resgate com todas as telas desligadas) param:
+# o app Telas continua
+exec $bin/sway-if-enabled displays $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-displays daemon; [ $? -eq 3 ] && break; sleep 1; done'
+# A tampa: fechada com uma tela externa ligada no perfil, a do notebook desliga; aberta, volta como o perfil diz
+bindswitch --reload --locked lid:on exec $bin/sway-if-enabled displays $bin/sway-displays apply
+bindswitch --reload --locked lid:off exec $bin/sway-if-enabled displays $bin/sway-displays apply
 # Grade de apps (sway-drawer) residente e escondida; o Super e o botão da dock só a mostram
 exec $bin/sway-if-enabled app_grid $bin/sway-after-env $bin/sway-drawer start
 # Dock (config em ~/.config/sway-dock/config.toml). O laço a reabre se cair
@@ -340,12 +348,15 @@ bindgesture swipe:3:up    focus up
 ## Focus the window below
 bindgesture swipe:3:down  focus down
 
+# --- Telas ---
+# As do nwg-displays (sem os componentes em Rust), antes do config.d: o 90-displays.conf do app Telas,
+# quando existe, vale mais. Enquanto o arquivo não existe, o Sway só ignora a linha
+include ~/.config/sway/outputs
+
 # --- Ajustes desta máquina: monitor, teclado, mouse, apps nos workspaces ---
-# Fora do Git, para valer mais que o resto (menos as telas, abaixo). Exemplos em config.d/50-local.conf
+# Fora do Git, para valer mais que o resto. Exemplos em config.d/50-local.conf. As telas do app Telas
+# ficam no config.d/90-displays.conf, depois do 50-local.conf
 include ~/.config/sway/config.d/*
 
-# As telas e os workspaces de cada tela, gravados pelo nwg-displays (na gaveta de apps). Depois dos
-# ajustes desta máquina: o que se escolhe na janela vale mais que um output do 50-local.conf.
-# Enquanto o arquivo não existe, o Sway só ignora a linha
-include ~/.config/sway/outputs
+# Os workspaces de cada tela, gravados pelo nwg-displays
 include ~/.config/sway/workspaces
