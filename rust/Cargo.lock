@@ -1309,6 +1309,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "swaydesk-click-catcher"
+version = "0.1.0"
+dependencies = [
+ "gtk4",
+ "libc",
+ "swaydesk-ui",
+]
+
+[[package]]
 name = "swaydesk-clip-store"
 version = "0.1.0"
 

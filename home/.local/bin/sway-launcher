@@ -280,10 +280,12 @@ rofi_open() {
   local placeholder=$1 show=$2 modes
   shift 2
   modes=$(IFS=,; printf '%s' "$*")
-  # O Tab troca de modo (o padrão do rofi só desce uma linha); Shift+Tab volta
+  # O Tab troca de modo (o padrão do rofi só desce uma linha); Shift+Tab volta. Um clique abre o item, como na
+  # grade e na dock (decisão do usuário): o padrão do rofi só o seleciona, e o duplo clique abriria
   local args=(-show-icons -drun-display-format '{name}' -display-drun "$(mode_name "$(t 'Apps')" Apps)"
               -kb-row-tab '' -kb-element-next '' -kb-element-prev ''
               -kb-mode-next 'Tab,Control+Tab' -kb-mode-previous 'ISO_Left_Tab,Control+ISO_Left_Tab'
+              -me-select-entry '' -me-accept-entry MousePrimary
               -theme-str "entry { placeholder: \"$(printf '%s' "$placeholder" | sed 's/["\\]/\\&/g')\"; }")
   [[ -r $theme ]] && args+=(-theme "$theme")
   # O rofi 1.7 (Debian 13) é do X: sem o Xwayland, que o pacote só recomenda, ele não abriria, sem aviso.
@@ -295,7 +297,17 @@ rofi_open() {
       "$(t 'This rofi runs through Xwayland. Install the xwayland package.')" 2>/dev/null
     exit 1
   fi
-  exec rofi "${args[@]}" -modes "$modes" -show "$show"
+  # O clique fora fecha, como o Esc: o rofi 1.7 (Xwayland) e o 2.0 não veem um clique fora do menu, e o
+  # swaydesk-click-catcher (no swaydesk-widgets) os fecha por ele, até o rofi terminar. O 2.1 trata o clique fora
+  # na própria camada, mas ela não cobre a Waybar, e sem um movimento do mouse o clique não chega a ela: o catcher
+  # cobre a barra e faz o Sway reavaliar o ponteiro. Sem o catcher (os dotfiles sem o Rust), como antes. O código
+  # de saída é o do rofi
+  rofi "${args[@]}" -modes "$modes" -show "$show" &
+  local rofi_pid=$!
+  if command -v swaydesk-click-catcher >/dev/null; then
+    swaydesk-click-catcher --pid "$rofi_pid" &
+  fi
+  wait "$rofi_pid"
 }
 
 case ${1:-} in

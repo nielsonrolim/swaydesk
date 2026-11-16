@@ -1,0 +1,24 @@
+.TH SWAYDESK-CLICK-CATCHER 1 2026-11-16 "swaydesk 0.1.0" "Sway desktop components"
+.SH NAME
+swaydesk\-click\-catcher \- close the launcher with a click outside it
+.SH SYNOPSIS
+.B swaydesk\-click\-catcher
+.B \-\-pid
+.I PID
+.SH DESCRIPTION
+While the process
+.I PID
+runs, covers every monitor with an almost transparent layer, under the launcher and above the windows. A click on it ends the process (SIGTERM), as Esc closes the launcher, and the end of the process ends this one.
+.PP
+sway\-launcher starts it next to rofi (Alt+Space and the window search). rofi 1.7 runs through Xwayland and never sees a click on a Wayland window, and rofi 2.0 only sees clicks on its menu; rofi 2.1 handles the click outside by itself, and its own layer then covers this one.
+.PP
+The process is followed through a pidfd, so a reused process number never gets the signal. It takes no keyboard input.
+.SH OPTIONS
+.TP
+.BI \-\-pid " PID"
+The process to close on a click, and to wait for.
+.SH EXIT STATUS
+0 when the process ends (or had already ended), 1 if the display can't be opened, 2 on a usage error.
+.SH SEE ALSO
+.BR rofi (1),
+.BR swaydesk (7)

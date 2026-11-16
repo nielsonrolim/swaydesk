@@ -1,0 +1,16 @@
+[package]
+name = "swaydesk-click-catcher"
+description = "O clique fora que fecha o lançador (rofi): camadas transparentes até o processo terminar"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-click-catcher"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-ui.workspace = true
+gtk4.workspace = true
+libc.workspace = true

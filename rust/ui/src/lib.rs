@@ -427,6 +427,22 @@ pub fn focused_window(tree: &serde_json::Value) -> Option<i64> {
 /// Camada transparente sob o popup, uma por monitor: um clique fora dele fecha, mesmo na janela que já
 /// tinha o foco. A zona exclusiva da barra fica de fora: os ícones continuam clicáveis.
 fn click_catchers(popup: &Rc<PopupWindow>) -> Vec<gtk4::Window> {
+    let weak = Rc::downgrade(popup);
+    // A barra fica de fora: um clique nela (outro ícone) vai à Waybar, que troca de popup
+    catcher_windows("popup-click-catcher", false, Rc::new(move || {
+        if let Some(p) = weak.upgrade() {
+            p.close("clique fora");
+        }
+    }))
+}
+
+/// As camadas que pegam o clique fora: uma por monitor, na camada de cima (acima das janelas, abaixo do overlay
+/// e das janelas override-redirect do Xwayland), presa às quatro bordas, sem teclado, quase transparente (a
+/// classe `catcher` do BASE_CSS). Um clique em qualquer uma chama `on_click`. O namespace "popup-click-catcher"
+/// fica fora do blur do SwayFX (desktop::BLUR_LAYERS): borraria a tela toda. Com `cover_bars`, a camada cobre
+/// também a área que a Waybar reserva (exclusive zone -1): um clique na barra a fecha; sem, ela termina na borda
+/// da barra, e o clique vai à Waybar.
+pub fn catcher_windows(namespace: &str, cover_bars: bool, on_click: Rc<dyn Fn()>) -> Vec<gtk4::Window> {
     let mut windows = Vec::new();
     let Some(display) = gdk::Display::default() else { return windows };
     let monitors = display.monitors();
@@ -441,7 +457,10 @@ fn click_catchers(popup: &Rc<PopupWindow>) -> Vec<gtk4::Window> {
             catcher.set_anchor(edge, true);
         }
         catcher.set_keyboard_mode(KeyboardMode::None);
-        catcher.set_namespace("popup-click-catcher");
+        if cover_bars {
+            catcher.set_exclusive_zone(-1);
+        }
+        catcher.set_namespace(namespace);
         // Um filho que a preenche: a área do clique é a janela inteira
         let area = gtk4::Box::new(gtk4::Orientation::Vertical, 0);
         area.set_hexpand(true);
@@ -449,12 +468,10 @@ fn click_catchers(popup: &Rc<PopupWindow>) -> Vec<gtk4::Window> {
         catcher.set_child(Some(&area));
         let click = gtk4::GestureClick::new();
         click.set_button(0);
-        let weak = Rc::downgrade(popup);
+        let on_click = on_click.clone();
         click.connect_pressed(move |gesture, _, _, _| {
             gesture.set_state(gtk4::EventSequenceState::Claimed);
-            if let Some(p) = weak.upgrade() {
-                p.close("clique fora");
-            }
+            on_click();
         });
         catcher.add_controller(click);
         catcher.set_visible(true);
