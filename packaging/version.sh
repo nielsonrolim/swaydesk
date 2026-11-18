@@ -13,7 +13,11 @@
 #     antigos, 0.1.0~git<N> com N de três dígitos, ficam abaixo de qualquer data.
 #   Depois de lançar, o Cargo sobe para a próxima versão no commit logo após a tag: um snapshot da 0.1.0
 #   depois da v0.1.0 ficaria abaixo dela, e o apt e o pacman não o instalariam. O script recusa esse caso.
-# uso: packaging/version.sh [upstream|deb|arch]   (padrão: upstream, a versão do Debian sem a revisão)
+#   Uma revisão só do empacotamento é a tag v<versão>-N, num commit de uma branch de manutenção a partir da
+#   tag do lançamento (release/X.Y): o .deb sai <versão>-N e o pacote do Arch, pkgver <versão> e pkgrel N.
+#   Os nomes de arquivo mudam, o que importa no OBS: um CDN que guardou o -1 não serve o -2 velho.
+# uso: packaging/version.sh [upstream|deb|arch|revision]   (padrão: upstream, a versão do Debian sem a
+#                                                  revisão; revision: o N do .deb e o pkgrel do Arch)
 #      packaging/version.sh changelog ARQUIVO      põe a entrada do snapshot no topo de um debian/changelog
 #                                                  (uma cópia: o do repositório fica com a próxima versão)
 set -euo pipefail
@@ -22,8 +26,14 @@ release=$(awk -F'"' '/^\[workspace.package\]/ { found = 1 } found && /^version/ 
 [[ $release =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version: unexpected Cargo version: $release" >&2; exit 1; }
 revision=1
 
-if git -C "$root" tag --points-at HEAD | grep -qx "v$release"; then
+# A tag do lançamento no HEAD: v<versão> (a revisão 1) ou v<versão>-N (a revisão N, N >= 2)
+tag=$(git -C "$root" tag --points-at HEAD | grep -xE "v${release//./\\.}(-[0-9]+)?" | sort -V | tail -n1 || true)
+if [[ -n $tag ]]; then
   upstream=$release arch=$release
+  if [[ $tag == *-* ]]; then
+    revision=${tag##*-}
+    [[ $revision =~ ^[1-9][0-9]*$ && $revision -ge 2 ]] || { echo "version: unexpected revision tag: $tag" >&2; exit 1; }
+  fi
 elif git -C "$root" tag --merged HEAD | grep -qx "v$release"; then
   echo "version: HEAD is past the tag v$release, but rust/Cargo.toml is still $release: bump it first" >&2
   exit 1
@@ -37,12 +47,15 @@ case ${1:-upstream} in
   upstream) echo "$upstream" ;;
   deb) echo "$upstream-$revision" ;;
   arch) echo "$arch" ;;
+  revision) echo "$revision" ;;
   changelog)
     file=${2:?uso: version.sh changelog ARQUIVO}
     top=$(head -n1 "$file")
     [[ $top == "swaydesk ($release-"* ]] || { echo "version: $file does not start at $release: $top" >&2; exit 1; }
     if [[ $upstream == "$release" ]]; then  # o lançamento usa a entrada que está no arquivo, já fechada
       [[ $top != *UNRELEASED* ]] || { echo "version: the v$release tag, but $file is still UNRELEASED" >&2; exit 1; }
+      [[ $top == "swaydesk ($release-$revision) "* ]] || {
+        echo "version: the tag is $release-$revision, but $file starts at: $top" >&2; exit 1; }
       exit 0
     fi
     # O mantenedor da entrada de cima (o e-mail público do changelog) e a data do commit: a mesma fonte
@@ -56,5 +69,5 @@ case ${1:-upstream} in
     cat "$file" >> "$tmp"
     mv "$tmp" "$file"
     ;;
-  *) echo "uso: version.sh [upstream|deb|arch] | changelog ARQUIVO" >&2; exit 2 ;;
+  *) echo "uso: version.sh [upstream|deb|arch|revision] | changelog ARQUIVO" >&2; exit 2 ;;
 esac

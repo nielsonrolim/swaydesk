@@ -54,6 +54,41 @@ Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último sn
 
    Sem esse passo, um snapshot de depois da tag sairia `X.Y.Z~git…`, abaixo da versão publicada, e ninguém o receberia. O `version.sh` recusa esse caso, e o `tests/test_packaging.py` confere que as versões batem.
 
+### Uma revisão só do empacotamento (X.Y.Z-N)
+
+Quando os pacotes de um lançamento precisam sair de novo sem mudar o código (um rebuild, um conserto do
+empacotamento), a versão é a mesma com a revisão seguinte: `X.Y.Z-2` no Debian e `pkgver=X.Y.Z`, `pkgrel=2` no
+Arch. Os nomes de arquivo mudam, e o CDN do OBS não serve um binário velho guardado com o mesmo nome.
+
+1. Uma branch de manutenção `release/X.Y`, a partir da tag `vX.Y.Z` (o `main` já está na versão seguinte).
+   **Numa revisão, só vale o que fica fora do orig:** o `debian/` e o `packaging/arch/` (o `PKGBUILD` e os
+   `.install`). O resto (o `install-tree.sh`, o `packaging/files`, as man pages, o código) vem do orig da
+   `-1`, que não muda (passo 4): um cherry-pick nesses arquivos passaria na branch e sumiria do pacote, sem
+   erro. Uma correção ali pede um patch (`debian/patches` com o quilt e um patch no `prepare()` do
+   `PKGBUILD`) ou uma versão nova, `X.Y.(Z+1)`. As ferramentas do OBS (`version.sh`, `make-source.sh`,
+   `pkgbuild.py`) rodam do commit, fora do pacote, e podem vir do `main` por cherry-pick.
+2. Nela, a entrada `swaydesk (X.Y.Z-N) unstable` no topo do `debian/changelog`, num PR para a `release/X.Y`.
+3. A tag `git tag -a vX.Y.Z-N -m "Swaydesk X.Y.Z-N"` nesse commit; o `version.sh` dá então `deb` X.Y.Z-N,
+   `arch` X.Y.Z e `revision` N, e o `make-source.sh` passa o N ao `pkgbuild.py` como `pkgrel`.
+4. O orig não muda: a mesma versão upstream tem o mesmo `.orig.tar.xz`, byte a byte (regra do Debian; e um
+   CDN que guardou o orig antigo não serviria outro com o mesmo nome). Baixe o que está no OBS e passe-o ao
+   `make-source.sh`, que o exige numa revisão:
+
+   ```sh
+   osc checkout --output-dir /tmp/obs-swaydesk home:nielsonrolim swaydesk
+   SWAYDESK_ORIG=/tmp/obs-swaydesk/swaydesk_X.Y.Z.orig.tar.xz packaging/obs/make-source.sh SAÍDA
+   ```
+   (no contêiner, monte o arquivo e passe o `-e SWAYDESK_ORIG=…`).
+5. O resto como num lançamento: `push.sh`, os 3 alvos verdes, o tamanho de cada pacote no índice do repositório
+   (o `%CSIZE%` do `.db` do Arch, o `Size:` do `Packages`) igual ao que o download entrega, VMs (`apt upgrade` e
+   `pacman -Syu` a partir do `-N-1`) e uma nota no Release `vX.Y.Z` do espelho.
+
+O OBS não recompila sozinho: os repositórios têm `rebuild="local"` (`meta/repositories.xml`), e só uma
+mudança da nossa fonte gera pacotes. Se uma atualização da distro quebrar uma ABI (no Arch, um soname novo),
+a saída é uma revisão `-N`. **Nunca dispare um rebuild (ou um wipe) de um lançamento** no OBS, nem à mão: o
+binário novo sai com o mesmo nome do publicado. Sempre uma revisão `-N`. Ao mudar o meta do projeto, confira
+com `osc results` que nenhum build começou; se começou, a revisão `-N` vai logo em seguida.
+
 ## Enviar ao OBS
 
 **Até a 0.1.0, o OBS só recebe snapshots do `main`; depois dela, só lançamentos.** O snapshot de uma branch pode ficar acima do `main` que vem depois dela (um commit da branch feito depois do último merge), e quem o instalasse não receberia as próximas versões até o `main` passar daquela hora. Para testar uma branch, use os pacotes locais nas VMs.

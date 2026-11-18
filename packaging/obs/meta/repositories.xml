@@ -1,14 +1,18 @@
-<!-- Os alvos do projeto do OBS (os <repository> do meta do projeto; o meta.py troca só estes) -->
+<!-- Os alvos do projeto do OBS (os <repository> do meta do projeto; o meta.py troca só estes). O rebuild="local":
+     o OBS só recompila quando a nossa fonte muda, nunca porque uma dependência da distro mudou. Um rebuild
+     sozinho saía com o MESMO nome de arquivo, e o CDN do OBS seguia servindo o binário antigo (no Arch, o
+     pacman recusou com "Maximum file size exceeded", 16/11/2026). Uma ABI que quebre pede uma revisão nossa,
+     a vX.Y.Z-N, com nomes novos -->
 <repositories>
-  <repository name="Debian_13">
+  <repository name="Debian_13" rebuild="local">
     <path project="Debian:13" repository="standard"/>
     <arch>x86_64</arch>
   </repository>
-  <repository name="xUbuntu_26.04">
+  <repository name="xUbuntu_26.04" rebuild="local">
     <path project="Ubuntu:26.04" repository="universe"/>
     <arch>x86_64</arch>
   </repository>
-  <repository name="Arch">
+  <repository name="Arch" rebuild="local">
     <path project="Arch:Extra" repository="standard"/>
     <arch>x86_64</arch>
   </repository>

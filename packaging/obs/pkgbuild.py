@@ -2,7 +2,7 @@
 """O PKGBUILD do OBS: o packaging/arch/PKGBUILD com a versão do snapshot e a fonte no tarball do
 make-orig.sh (o mesmo .orig.tar.xz do Debian, com os crates em rust/vendor: o OBS compila sem rede).
 Troca só as linhas de versão e de fonte, e falha se alguma delas mudou de forma no PKGBUILD.
-uso: pkgbuild.py PKGBUILD VERSÃO_ARCH TARBALL > PKGBUILD_DO_OBS"""
+uso: pkgbuild.py PKGBUILD VERSÃO_ARCH TARBALL [PKGREL] > PKGBUILD_DO_OBS   (PKGREL: a revisão, padrão 1)"""
 import hashlib
 import re
 import sys
@@ -20,8 +20,9 @@ LINES = {
 }
 
 
-def render(pkgbuild, version, tarball):
-    """O texto do PKGBUILD do OBS. tarball: o .orig.tar.xz, com a pasta swaydesk-<versão upstream>/."""
+def render(pkgbuild, version, tarball, pkgrel="1"):
+    """O texto do PKGBUILD do OBS. tarball: o .orig.tar.xz, com a pasta swaydesk-<versão upstream>/. pkgrel: a
+    revisão do empacotamento (o N da tag vX.Y.Z-N; 1 no lançamento e nos snapshots)."""
     name = Path(tarball).name
     if not (name.startswith("swaydesk_") and name.endswith(".orig.tar.xz")):
         raise ValueError(f"not a make-orig tarball: {name}")
@@ -29,10 +30,12 @@ def render(pkgbuild, version, tarball):
     for char in "'\"$`\\ ":
         if char in version or char in upstream:
             raise ValueError(f"unexpected character in the version: {version!r} {upstream!r}")
+    if not re.fullmatch(r"[1-9][0-9]*", str(pkgrel)):
+        raise ValueError(f"unexpected pkgrel: {pkgrel!r}")
     sha256 = hashlib.sha256(Path(tarball).read_bytes()).hexdigest()
     new = {
         "pkgver": f"pkgver={version}",
-        "pkgrel": "pkgrel=1",
+        "pkgrel": f"pkgrel={pkgrel}",
         "source": f"source=('{name}')",
         "sha256sums": f"sha256sums=('{sha256}')",
         "_src": f"_src=swaydesk-{upstream}",
@@ -49,10 +52,10 @@ def render(pkgbuild, version, tarball):
 
 
 def main(argv):
-    if len(argv) != 4:
+    if len(argv) not in (4, 5):
         sys.exit(__doc__.strip().splitlines()[-1])
     try:
-        sys.stdout.write(render(Path(argv[1]).read_text(encoding="utf-8"), argv[2], argv[3]))
+        sys.stdout.write(render(Path(argv[1]).read_text(encoding="utf-8"), argv[2], argv[3], *argv[4:]))
     except ValueError as error:
         sys.exit(f"pkgbuild.py: {error}")
 
