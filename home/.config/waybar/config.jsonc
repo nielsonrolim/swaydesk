@@ -64,8 +64,12 @@
     "on-click": "~/.local/bin/waybar-clipboard-popup"
   },
 
+  // O layout do teclado: só com dois ou mais. Com um só, o módulo some (sem ele, a "casa" de 16px ficava vazia
+  // entre a área de transferência e o sistema). O hide-single-layout é da Waybar 0.10+ (Debian 13: 0.12; Ubuntu
+  // 26.04: 0.15; Arch: 0.16); numa mais velha, a chave é ignorada e o módulo fica como antes
   "sway/language": {
     "format": "{short}",
+    "hide-single-layout": true,
     "on-click": "swaymsg input type:keyboard xkb_switch_layout next"
   },
 
