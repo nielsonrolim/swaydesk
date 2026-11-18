@@ -1,0 +1,19 @@
+#!/bin/sh
+# Sai com 0 se o ambiente aponta para uma tela viva: o socket do Wayland, ou o do X local. Um DISPLAY
+# remoto (host:0) não dá para conferir, e vale. Usado pelo sway-portal-gtk.
+if [ -n "${WAYLAND_DISPLAY:-}" ]; then
+  case $WAYLAND_DISPLAY in
+    /*) socket=$WAYLAND_DISPLAY ;;
+    *)  socket="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/$WAYLAND_DISPLAY" ;;
+  esac
+  [ -S "$socket" ] && exit 0
+fi
+if [ -n "${DISPLAY:-}" ]; then
+  case $DISPLAY in
+    :*) number=${DISPLAY#:}; number=${number%%.*}
+        [ -S "${SWAY_DESKTOP_X11_DIR:-/tmp/.X11-unix}/X$number" ] && exit 0 ;;
+    *)  exit 0 ;;
+  esac
+fi
+echo "sway-has-display: no display (WAYLAND_DISPLAY=${WAYLAND_DISPLAY:-} DISPLAY=${DISPLAY:-})" >&2
+exit 1

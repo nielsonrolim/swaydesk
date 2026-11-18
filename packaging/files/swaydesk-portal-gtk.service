@@ -1,0 +1,9 @@
+# O portal do gtk pela ativação direta (o .service do pacote xdg-desktop-portal-gtk usa o SystemdService).
+# O sway-portal-gtk confere a tela e, sem ela, sai com erro, e o dbus-daemon desiste na hora. Pelo systemd,
+# ele esperava os 120 s do service_start_timeout mesmo com a unit falhando: ao sair do Sway, o portal era
+# reativado sem tela, e o login seguinte ficava sem portal (os apps libadwaita sem o tema escuro). Este
+# diretório vem antes do /usr/share no XDG_DATA_DIRS do systemd do usuário (o environment.d do pacote), e
+# vale em toda sessão: com tela, o sway-portal-gtk só abre o portal do pacote
+[D-BUS Service]
+Name=org.freedesktop.impl.portal.desktop.gtk
+Exec=@LIBEXEC@/sway-portal-gtk

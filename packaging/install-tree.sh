@@ -33,7 +33,8 @@ MODULES=(waybar_holidays.py sway_i18n.py desktop_config.py sway-i18n.sh)  # o sw
 # tests/test_packaging.py confere que todo programa que as configs chamam está num pacote
 SESSION_SCRIPTS=(sway-after-env sway-if-enabled sway-waybar sway-env-cleanup sway-polkit-agent sway-update-notifier
                  blueman-agent bing-wallpaper sway-osd sway-super sway-resize sway-master sway-ws waybar-clock
-                 waybar-media waybar-volume waybar-battery waybar-brightness waybar-caffeine sway-launcher)
+                 waybar-media waybar-volume waybar-battery waybar-brightness waybar-caffeine sway-launcher
+                 sway-portal-gtk sway-has-display)
 SESSION_MODULES=(waybar-icon-lib)  # incluído com "." pelos módulos da Waybar
 share=/usr/share/swaydesk-desktop
 
@@ -210,6 +211,17 @@ case $pkg in
     install -Dm644 "$root/packaging/files/waybar-only-on-wlroots.conf" "$dest/usr/lib/systemd/user/waybar.service.d/swaydesk.conf"
     # Os backends dos portais numa sessão sway (o dos dotfiles fica no ~/.config e vale mais)
     install -Dm644 "$root/home/.config/xdg-desktop-portal/sway-portals.conf" "$dest/etc/xdg/xdg-desktop-portal/sway-portals.conf"
+    # O portal do gtk pela ativação direta, como o .service dos dotfiles em ~/.local/share/dbus-1/services: o
+    # .service num diretório do pacote, que o environment.d põe na frente do XDG_DATA_DIRS do systemd do
+    # usuário. O arquivo do pacote xdg-desktop-portal-gtk fica intocado
+    dbusdir=$share/dbus
+    install -d "$dest$dbusdir/dbus-1/services" "$dest/usr/lib/environment.d"
+    sed "s|@LIBEXEC@|$libexec|" "$root/packaging/files/swaydesk-portal-gtk.service" \
+      > "$dest$dbusdir/dbus-1/services/org.freedesktop.impl.portal.desktop.gtk.service"
+    sed "s|@DIR@|$dbusdir|" "$root/packaging/files/swaydesk-portal-gtk.environment.conf" \
+      > "$dest/usr/lib/environment.d/90-swaydesk-portal-gtk.conf"
+    chmod 644 "$dest$dbusdir/dbus-1/services/org.freedesktop.impl.portal.desktop.gtk.service" \
+      "$dest/usr/lib/environment.d/90-swaydesk-portal-gtk.conf"
     ;;
   swaydesk-greeter)
     # O greetd abre o Sway da tela pelo drop-in, com o greetd.toml do pacote: o /etc/greetd/config.toml da

@@ -1,0 +1,12 @@
+#!/bin/sh
+# O xdg-desktop-portal-gtk só com uma tela viva. Ao sair do Sway, o xdg-desktop-portal o reativava sem
+# tela, com o ambiente velho; ele morria, e a ativação presa por 120 s travava os portais do login
+# seguinte (visto no Ubuntu Server 26.04). Ativado direto pelo D-Bus (o .service em
+# ~/.local/share/dbus-1/services), uma saída com erro aqui encerra a ativação na hora.
+here=$(dirname "$(readlink -f "$0")")
+"$here/sway-has-display" || exit 1
+for portal in ${SWAY_DESKTOP_PORTAL_GTK:-/usr/libexec/xdg-desktop-portal-gtk /usr/lib/xdg-desktop-portal-gtk}; do
+  [ -x "$portal" ] && exec "$portal" "$@"
+done
+echo "sway-portal-gtk: xdg-desktop-portal-gtk not found" >&2
+exit 1
