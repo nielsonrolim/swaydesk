@@ -38,7 +38,11 @@ Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último sn
 
 ### Lançar uma versão
 
-1. Feche a entrada de cima do `debian/changelog`: a versão `X.Y.Z-1`, a distribuição `unstable` no lugar de `UNRELEASED`, a data e o resumo das mudanças. Faça o commit no `main`.
+1. O commit de lançamento, num PR que só é mesclado com o ok do usuário (o `mirror.sh` publica o `packaging/public` no espelho):
+   - feche a entrada de cima do `debian/changelog`: a versão `X.Y.Z-1`, a distribuição `unstable` no lugar de `UNRELEASED`, a data e o resumo das mudanças;
+   - a entrada `## X.Y.Z — AAAA-MM-DD` no topo do `packaging/public/CHANGELOG.md`, que é a nota do Release;
+   - a linha "Current release" / "Versão atual" do `packaging/public/README.md` e do `README.pt-BR.md`. O `tests/test_mirror.py` confere que ela é a versão de cima do `CHANGELOG.md`;
+   - o rodapé do site, com o builder3, junto com a publicação.
 2. `git tag -a vX.Y.Z -m "Swaydesk X.Y.Z"` nesse commit e `git push origin vX.Y.Z`.
 3. Gere e envie os pacotes desse commit, como em "Enviar ao OBS" abaixo.
 4. Publique o espelho com a tag (`packaging/mirror.sh --tag vX.Y.Z`, antes com `--dry-run`) e crie o Release no espelho público com a entrada do `packaging/public/CHANGELOG.md`.
