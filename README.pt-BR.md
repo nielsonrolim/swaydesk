@@ -25,7 +25,7 @@ A documentação completa, com capturas de tela e os atalhos de teclado, está e
 | Sessão | `swaydesk-session` | A tela de bloqueio, o menu da sessão (sair, suspender, reiniciar, desligar), o desbloqueio do chaveiro e os serviços da sessão |
 | Tela de login | `swaydesk-greeter` | Uma tela de login opcional para o greetd, no visual da tela de bloqueio |
 | Ajuda | `swaydesk-widgets` | Uma janela com os atalhos do Sway em uso e um cartão por app do desktop |
-| Telas | — | Em breve |
+| Telas | `swaydesk-theme` | O app Telas: arruma as telas num mapa, com resolução, taxa de atualização, escala e rotação, e um perfil por conjunto de monitores, aplicado ao conectá-los ou ao fechar a tampa |
 
 O `swaydesk-common` traz os dados e as fontes em comum, e o `swaydesk-scripts` os scripts auxiliares.
 

@@ -25,7 +25,7 @@ Full documentation, with screenshots and the keyboard shortcuts: **https://swayd
 | Session | `swaydesk-session` | Lock screen, session menu (log out, suspend, restart, shut down), keyring unlock and session services |
 | Login screen | `swaydesk-greeter` | Optional greeter for greetd, in the look of the lock screen |
 | Help | `swaydesk-widgets` | A window with the Sway shortcuts in use and a card per desktop app |
-| Displays | — | Coming soon |
+| Displays | `swaydesk-theme` | The Displays app: arrange the screens on a map, with resolution, refresh rate, scale and rotation, and a profile per set of monitors, applied when they're plugged in or the lid closes |
 
 `swaydesk-common` holds the shared data and fonts, and `swaydesk-scripts` the helper scripts.
 
