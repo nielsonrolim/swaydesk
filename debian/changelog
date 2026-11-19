@@ -1,3 +1,9 @@
+swaydesk (0.1.3-1) UNRELEASED; urgency=medium
+
+  * Development after 0.1.2.
+
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Thu, 19 Nov 2026 15:58:09 -0300
+
 swaydesk (0.1.2-1) unstable; urgency=medium
 
   * swaydesk-desktop depends on a polkit agent (mate-polkit | lxpolkit)
