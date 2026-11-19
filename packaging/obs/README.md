@@ -55,6 +55,18 @@ Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último sn
 
    Sem esse passo, um snapshot de depois da tag sairia `X.Y.Z~git…`, abaixo da versão publicada, e ninguém o receberia. O `version.sh` recusa esse caso, e o `tests/test_packaging.py` confere que as versões batem.
 
+7. As ISOs, quando as três versões finais estiverem prontas e testadas (pode ser dias depois, com o `main`
+   já adiante: o script não depende do commit): `packaging/release-isos.sh vX.Y.Z PASTA
+   debian13=… ubuntu2604=… arch=…` (antes com `--dry-run`). Ele as anexa ao Release do espelho com os nomes
+   `swaydesk-X.Y.Z-debian13-amd64.iso`, `swaydesk-X.Y.Z-ubuntu26.04-amd64.iso` e `swaydesk-X.Y.Z-arch-x86_64.iso`
+   e um `SHA256SUMS` (só SHA-256, sem GPG), baixa de volta e confere, e põe uma seção "ISOs" no fim do texto do
+   Release. Uma ISO com mais de 2 GiB (o limite de um arquivo de Release no GitHub) **não é publicada**, nem no
+   Release nem na página de download do site: o script avisa qual ficou de fora, com o tamanho, e segue com as
+   outras. A `PASTA` recebe gigabytes: fica no volume de build, fora do `/tmp`. O `SHA256SUMS` no mesmo Release protege contra
+   um download corrompido ou cortado, não contra quem controla o Release: não é uma assinatura. Se algo falhar
+   depois do início do envio, o script lista os `gh release delete-asset` para tirar o que subiu; rode-os e
+   repita com a `PASTA` vazia.
+
 ### Uma revisão só do empacotamento (X.Y.Z-N)
 
 Quando os pacotes de um lançamento precisam sair de novo sem mudar o código (um rebuild, um conserto do
