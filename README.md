@@ -70,19 +70,19 @@ The same steps, with a copy button on each command, are on the [install page](ht
    sudo dpkg -i ~/swaydesk-archive-keyring_2026.11.15_all.deb && rm ~/swaydesk-archive-keyring_2026.11.15_all.deb
    ```
 
-5. Update the package list and install Swaydesk.
-
-   ```bash
-   sudo apt update && sudo apt install swaydesk-desktop
-   ```
-
-Optional: see the key's fingerprint (needs `gpg`: `sudo apt install gpg`).
+Optional, before step 5: see the installed key's fingerprint (needs `gpg`: `sudo apt install gpg`).
 
 ```bash
 gpg --show-keys /usr/share/keyrings/swaydesk-archive-keyring.asc
 ```
 
-Exactly one key must show up (one pub line, no sub line), with this fingerprint right under pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. The project's key on OBS: RSA, 4096 bits, valid until 2029-01-23.
+Exactly one key must show up (one pub line, no sub line), with this fingerprint right under pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. The project's key on OBS: RSA, 4096 bits, valid until 2029-01-23. If it's different, stop here and remove the repository and its key: `sudo apt purge swaydesk-archive-keyring`.
+
+5. Update the package list and install Swaydesk.
+
+   ```bash
+   sudo apt update && sudo apt install swaydesk-desktop
+   ```
 
 #### All in one command
 
@@ -121,19 +121,19 @@ sudo apt update && sudo apt install swaydesk-desktop
    sudo dpkg -i ~/swaydesk-archive-keyring_2026.11.15_all.deb && rm ~/swaydesk-archive-keyring_2026.11.15_all.deb
    ```
 
-5. Update the package list and install Swaydesk.
-
-   ```bash
-   sudo apt update && sudo apt install swaydesk-desktop
-   ```
-
-Optional: see the key's fingerprint (needs `gpg`: `sudo apt install gpg`).
+Optional, before step 5: see the installed key's fingerprint (needs `gpg`: `sudo apt install gpg`).
 
 ```bash
 gpg --show-keys /usr/share/keyrings/swaydesk-archive-keyring.asc
 ```
 
-Exactly one key must show up (one pub line, no sub line), with this fingerprint right under pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. The project's key on OBS: RSA, 4096 bits, valid until 2029-01-23.
+Exactly one key must show up (one pub line, no sub line), with this fingerprint right under pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. The project's key on OBS: RSA, 4096 bits, valid until 2029-01-23. If it's different, stop here and remove the repository and its key: `sudo apt purge swaydesk-archive-keyring`.
+
+5. Update the package list and install Swaydesk.
+
+   ```bash
+   sudo apt update && sudo apt install swaydesk-desktop
+   ```
 
 #### All in one command
 

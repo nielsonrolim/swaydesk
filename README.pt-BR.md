@@ -70,19 +70,19 @@ Os mesmos passos, com um botão de copiar em cada comando, estão na [página de
    sudo dpkg -i ~/swaydesk-archive-keyring_2026.11.15_all.deb && rm ~/swaydesk-archive-keyring_2026.11.15_all.deb
    ```
 
-5. Atualize a lista de pacotes e instale o Swaydesk.
-
-   ```bash
-   sudo apt update && sudo apt install swaydesk-desktop
-   ```
-
-Opcional: veja a impressão digital da chave (precisa do `gpg`: `sudo apt install gpg`).
+Opcional, antes do passo 5: veja a impressão digital da chave instalada (precisa do `gpg`: `sudo apt install gpg`).
 
 ```bash
 gpg --show-keys /usr/share/keyrings/swaydesk-archive-keyring.asc
 ```
 
-Tem de aparecer uma chave só (uma linha pub, nenhuma sub), com esta impressão digital logo abaixo do pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. A chave do projeto no OBS: RSA de 4096 bits, válida até 23/01/2029.
+Tem de aparecer uma chave só (uma linha pub, nenhuma sub), com esta impressão digital logo abaixo do pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. A chave do projeto no OBS: RSA de 4096 bits, válida até 23/01/2029. Se for diferente, pare aqui e remova o repositório e a chave: `sudo apt purge swaydesk-archive-keyring`.
+
+5. Atualize a lista de pacotes e instale o Swaydesk.
+
+   ```bash
+   sudo apt update && sudo apt install swaydesk-desktop
+   ```
 
 #### Tudo num comando só
 
@@ -121,19 +121,19 @@ sudo apt update && sudo apt install swaydesk-desktop
    sudo dpkg -i ~/swaydesk-archive-keyring_2026.11.15_all.deb && rm ~/swaydesk-archive-keyring_2026.11.15_all.deb
    ```
 
-5. Atualize a lista de pacotes e instale o Swaydesk.
-
-   ```bash
-   sudo apt update && sudo apt install swaydesk-desktop
-   ```
-
-Opcional: veja a impressão digital da chave (precisa do `gpg`: `sudo apt install gpg`).
+Opcional, antes do passo 5: veja a impressão digital da chave instalada (precisa do `gpg`: `sudo apt install gpg`).
 
 ```bash
 gpg --show-keys /usr/share/keyrings/swaydesk-archive-keyring.asc
 ```
 
-Tem de aparecer uma chave só (uma linha pub, nenhuma sub), com esta impressão digital logo abaixo do pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. A chave do projeto no OBS: RSA de 4096 bits, válida até 23/01/2029.
+Tem de aparecer uma chave só (uma linha pub, nenhuma sub), com esta impressão digital logo abaixo do pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. A chave do projeto no OBS: RSA de 4096 bits, válida até 23/01/2029. Se for diferente, pare aqui e remova o repositório e a chave: `sudo apt purge swaydesk-archive-keyring`.
+
+5. Atualize a lista de pacotes e instale o Swaydesk.
+
+   ```bash
+   sudo apt update && sudo apt install swaydesk-desktop
+   ```
 
 #### Tudo num comando só
 
