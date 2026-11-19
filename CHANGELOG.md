@@ -10,7 +10,7 @@ A bug-fix release.
 
 - After logging out and in again, apps no longer wait 120 s for the gtk portal, and libadwaita apps keep the dark style. `swaydesk-desktop` now starts the gtk portal directly. It takes effect after a full logout or a reboot following the upgrade. It applies to every session on the machine, and in other desktops it starts the same portal they already use.
 - The login screen no longer starts the desktop portals for its own user, which logged "Failed to start xdg-desktop-portal-gtk.service" in the journal.
-- With a single keyboard layout, the bar no longer leaves an empty gap where the layout indicator was. With two or more layouts, the indicator shows up. If you add a layout while logged in, it appears after the next layout switch or login.
+- With a single keyboard layout, the bar no longer leaves an empty gap where the layout indicator was. With two or more layouts, the indicator shows up. If you add a layout while logged in, it appears after a layout switch (on Debian and Ubuntu, sometimes only after the second) or at the next login.
 
 ## 0.1.0 — 2026-11-16
 
