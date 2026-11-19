@@ -13,17 +13,37 @@
 # o que foi conferido aqui. Um Release que já tem um desses arquivos não é sobrescrito (nada de --clobber).
 #
 # uso: packaging/release-isos.sh [--dry-run] vX.Y.Z PASTA debian13=ISO ubuntu2604=ISO arch=ISO
+#      packaging/release-isos.sh [--dry-run] --add vX.Y.Z PASTA arch=ISO
 #      PASTA recebe os nomes finais (links físicos ou cópias), o SHA256SUMS e a conferência do download: fica
 #      fora do /tmp, porque são gigabytes. Com --dry-run, monta e confere a PASTA e mostra o que enviaria.
+#
+# Com --add, uma ISO que ficou pronta depois entra num Release que já tem as outras: o Release tem de ter o
+# SHA256SUMS e a seção "ISOs", e não a ISO nova. As linhas do SHA256SUMS de lá ficam byte a byte, e a nova vai
+# no fim. O SHA256SUMS novo sobe como SHA256SUMS.new e troca de lugar com o antigo por dois renomes da API
+# (o antigo vira SHA256SUMS.old, o novo vira SHA256SUMS, e o .old sai): sem o --clobber, que apagaria o
+# arquivo antes de subir o outro. Entre os dois renomes (uma fração de segundo), um download do SHA256SUMS dá
+# 404; o GitHub não troca dois arquivos de uma vez. Antes da troca, baixa e confere a ISO nova; depois dela,
+# baixa TODAS as ISOs do SHA256SUMS e confere.
 # GH troca o comando gh (testes); ISO_REPO troca o espelho; ISO_LIMIT troca o limite em bytes (testes).
 set -euo pipefail
 gh=${GH:-gh}
 repo=${ISO_REPO:-nielsonrolim/swaydesk}
 limit=${ISO_LIMIT:-2147483648}  # 2 GiB: o GitHub só aceita um arquivo de Release abaixo disso
 
-dry=0
-[[ ${1:-} == --dry-run ]] && { dry=1; shift; }
-usage() { echo "uso: packaging/release-isos.sh [--dry-run] vX.Y.Z PASTA debian13=ISO ubuntu2604=ISO arch=ISO" >&2; exit 2; }
+dry=0 add=0
+while [[ ${1:-} == --* ]]; do
+  case $1 in
+    --dry-run) dry=1 ;;
+    --add) add=1 ;;
+    *) echo "release-isos: unknown option: $1" >&2; exit 2 ;;
+  esac
+  shift
+done
+usage() {
+  echo "uso: packaging/release-isos.sh [--dry-run] vX.Y.Z PASTA debian13=ISO ubuntu2604=ISO arch=ISO" >&2
+  echo "     packaging/release-isos.sh [--dry-run] --add vX.Y.Z PASTA DISTRO=ISO" >&2
+  exit 2
+}
 (($# >= 3)) || usage
 tag=$1 out=$2
 shift 2
@@ -47,15 +67,146 @@ assets=$("$gh" release view "$tag" -R "$repo" --json assets -q '.assets[].name')
 mkdir -p "$out"
 [[ -z $(ls -A "$out") ]] || { echo "release-isos: $out is not empty" >&2; exit 1; }
 
-for name in "${suffix[@]}"; do
-  name=swaydesk-$version-$name.iso
-  if grep -qxF "$name" <<<"$assets"; then
-    echo "release-isos: $tag already has $name; nothing sent" >&2; exit 1
+if ((add)); then
+  # Só as ISOs dadas não podem estar lá; o SHA256SUMS tem de estar, e nenhuma sobra de um --add que parou
+  for key in "${!source[@]}"; do
+    name=swaydesk-$version-${suffix[$key]}.iso
+    if grep -qxF "$name" <<<"$assets"; then
+      echo "release-isos: $tag already has $name; nothing sent" >&2; exit 1
+    fi
+  done
+  grep -qxF SHA256SUMS <<<"$assets" || { echo "release-isos: --add: $tag has no SHA256SUMS; run without --add" >&2; exit 1; }
+  for name in SHA256SUMS.new SHA256SUMS.old; do
+    if grep -qxF "$name" <<<"$assets"; then
+      echo "release-isos: $tag has a $name left over from a stopped --add; remove it first" >&2; exit 1
+    fi
+  done
+else
+  for name in "${suffix[@]}"; do
+    name=swaydesk-$version-$name.iso
+    if grep -qxF "$name" <<<"$assets"; then
+      echo "release-isos: $tag already has $name; nothing sent" >&2; exit 1
+    fi
+  done
+  if grep -qxF SHA256SUMS <<<"$assets"; then
+    echo "release-isos: $tag already has SHA256SUMS; nothing sent" >&2; exit 1
   fi
-done
-if grep -qxF SHA256SUMS <<<"$assets"; then
-  echo "release-isos: $tag already has SHA256SUMS; nothing sent" >&2; exit 1
 fi
+
+# --add: o SHA256SUMS de lá + as linhas novas, a linha nova na seção "ISOs", o envio, a troca e a conferência
+add_mode() {
+  mkdir "$out/current"
+  "$gh" release download "$tag" -R "$repo" -D "$out/current" -p SHA256SUMS
+  local old=$out/current/SHA256SUMS line name
+  [[ -s $old && -z $(tail -c 1 "$old") ]] \
+    || { echo "release-isos: --add: $tag's SHA256SUMS is empty or doesn't end in a newline" >&2; exit 1; }
+  while IFS= read -r line; do
+    [[ $line =~ ^[0-9a-f]{64}\ \ (swaydesk-$version-[a-z0-9.-]+\.iso)$ ]] \
+      || { echo "release-isos: --add: unexpected line in $tag's SHA256SUMS: $line" >&2; exit 1; }
+    name=${BASH_REMATCH[1]}
+    for f in "${files[@]}"; do
+      [[ $f != "$name" ]] || { echo "release-isos: --add: $tag's SHA256SUMS already lists $name" >&2; exit 1; }
+    done
+  done < "$old"
+  { cat "$old"; (cd "$out" && sha256sum -- "${files[@]}"); } > "$out/SHA256SUMS.new"
+  (cd "$out" && sha256sum -c --quiet --ignore-missing SHA256SUMS.new)
+  cmp -s -n "$(stat -c %s "$old")" "$old" "$out/SHA256SUMS.new" \
+    || { echo "release-isos: --add: the old lines changed" >&2; exit 1; }
+  echo "== SHA256SUMS (new)"; cat "$out/SHA256SUMS.new"
+
+  # A seção "ISOs" do texto ganha as linhas novas depois da última linha de ISO, na ordem das distros
+  local body
+  body=$("$gh" release view "$tag" -R "$repo" --json body -q .body)
+  grep -qxF '### ISOs' <<<"$body" || { echo "release-isos: --add: $tag's text has no ISOs section" >&2; exit 1; }
+  local entries=() key
+  for key in "${order[@]}"; do
+    name=swaydesk-$version-${suffix[$key]}.iso
+    for f in "${files[@]}"; do if [[ $f == "$name" ]]; then entries+=("- \`$name\`: ${label[$key]}"); fi; done
+  done
+  printf '%s\n' "$body" | awk -v new="$(printf '%s\n' "${entries[@]}")" -v pat="^- \`swaydesk-$version-" '
+    { lines[NR] = $0 } $0 ~ pat { last = NR }
+    END { if (!last) exit 1
+          for (i = 1; i <= NR; i++) { print lines[i]; if (i == last) print new } }' > "$out/release-body.md" \
+    || { echo "release-isos: --add: no ISO line in $tag's ISOs section" >&2; exit 1; }
+  echo "== Release text (new)"; cat "$out/release-body.md"
+
+  if ((dry)); then
+    echo "release-isos: dry run; would upload to $repo $tag: ${files[*]}, and swap in the new SHA256SUMS"
+    return 0
+  fi
+
+  add_recovery() {
+    echo "release-isos: FAILED during --add. Remove what this run added and run again with an empty folder:" >&2
+    for name in "${files[@]}" SHA256SUMS.new; do echo "  $gh release delete-asset $tag $name -R $repo -y" >&2; done
+  }
+  trap add_recovery ERR
+  (cd "$out" && "$gh" release upload "$tag" -R "$repo" -- "${files[@]}" SHA256SUMS.new)
+  # Antes da troca, o que subiu agora confere com o SHA256SUMS.new: uma ISO estragada não chega a ser listada
+  mkdir "$out/uploaded"
+  local patterns=(-p SHA256SUMS.new)
+  for name in "${files[@]}"; do patterns+=(-p "$name"); done
+  "$gh" release download "$tag" -R "$repo" -D "$out/uploaded" "${patterns[@]}"
+  cmp -s "$out/SHA256SUMS.new" "$out/uploaded/SHA256SUMS.new"
+  (cd "$out/uploaded" && sha256sum -c --ignore-missing SHA256SUMS.new)
+
+  # A troca: dois renomes pela API. Se o segundo falhar, o antigo volta ao nome
+  local ids old_id new_id
+  ids=$("$gh" api "repos/$repo/releases/tags/$tag" --jq '.assets[] | "\(.id) \(.name)"')
+  old_id=$(awk '$2 == "SHA256SUMS" { print $1 }' <<<"$ids")
+  new_id=$(awk '$2 == "SHA256SUMS.new" { print $1 }' <<<"$ids")
+  [[ -n $old_id && -n $new_id ]] || { echo "release-isos: --add: can't find the SHA256SUMS assets" >&2; add_recovery; exit 1; }
+  trap - ERR
+  # Devolve o nome ao antigo, se ele estiver como SHA256SUMS.old (um erro pode vir depois de o GitHub ter
+  # aplicado o renome, num timeout): o Release nunca fica sem SHA256SUMS sem que o script diga
+  name_of() {  # o nome atual do asset $1, ou nada
+    "$gh" api "repos/$repo/releases/tags/$tag" --jq '.assets[] | "\(.id) \(.name)"' 2>/dev/null \
+      | awk -v id="$1" '$1 == id { print $2 }' || true
+  }
+  put_back() {
+    local now
+    now=$(name_of "$old_id")
+    [[ $now == SHA256SUMS ]] && return 0
+    if [[ $now == SHA256SUMS.old ]] \
+       && "$gh" api -X PATCH "repos/$repo/releases/assets/$old_id" -f name=SHA256SUMS >/dev/null; then
+      echo "release-isos: the old SHA256SUMS has its name back" >&2; return 0
+    fi
+    echo "release-isos: PUT IT BACK BY HAND: $gh api -X PATCH repos/$repo/releases/assets/$old_id -f name=SHA256SUMS" >&2
+  }
+  if ! "$gh" api -X PATCH "repos/$repo/releases/assets/$old_id" -f name=SHA256SUMS.old >/dev/null; then
+    echo "release-isos: --add: renaming the old SHA256SUMS failed" >&2; put_back; add_recovery; exit 1
+  fi
+  if ! "$gh" api -X PATCH "repos/$repo/releases/assets/$new_id" -f name=SHA256SUMS >/dev/null; then
+    # Um erro com o renome aplicado (um timeout) é uma troca que deu certo: o novo já foi conferido, segue
+    if [[ $(name_of "$new_id") == SHA256SUMS ]]; then
+      echo "release-isos: --add: the rename of SHA256SUMS.new reported an error but was applied; going on" >&2
+    else
+      echo "release-isos: --add: renaming SHA256SUMS.new failed; putting the old one back" >&2
+      put_back; add_recovery; exit 1
+    fi
+  fi
+
+  # O novo está no lugar: daqui em diante não se apaga nada que esteja publicado
+  add_check_failed() {
+    echo "release-isos: the new SHA256SUMS is in place, but a later step failed. Check by hand:" >&2
+    echo "  $gh release delete-asset $tag SHA256SUMS.old -R $repo -y   (if it is still there)" >&2
+    echo "  $gh release download $tag -R $repo -D DIR; (cd DIR && sha256sum -c SHA256SUMS)" >&2
+    echo "  $gh release edit $tag -R $repo --notes-file $out/release-body.md   (the text)" >&2
+  }
+  trap add_check_failed ERR
+  "$gh" release delete-asset "$tag" SHA256SUMS.old -R "$repo" -y
+  mkdir "$out/download"
+  patterns=(-p SHA256SUMS)
+  while IFS= read -r line; do patterns+=(-p "${line#*  }"); done < "$out/SHA256SUMS.new"
+  "$gh" release download "$tag" -R "$repo" -D "$out/download" "${patterns[@]}"
+  if ! cmp -s "$out/SHA256SUMS.new" "$out/download/SHA256SUMS"; then
+    echo "release-isos: the downloaded SHA256SUMS differs" >&2; add_check_failed; exit 1
+  fi
+  (cd "$out/download" && sha256sum -c SHA256SUMS)
+  "$gh" release edit "$tag" -R "$repo" --notes-file "$out/release-body.md" >/dev/null
+  trap - ERR
+  echo "release-isos: $tag now has ${files[*]}; SHA256SUMS lists all its ISOs and they all check"
+  for item in "${left[@]}"; do echo "release-isos: LEFT OUT: $item" >&2; done
+}
 
 files=() left=()
 for key in "${order[@]}"; do
@@ -71,6 +222,11 @@ for key in "${order[@]}"; do
 done
 for item in "${left[@]}"; do echo "release-isos: LEFT OUT: $item" >&2; done
 ((${#files[@]})) || { echo "release-isos: no ISO under the limit; nothing sent" >&2; exit 1; }
+
+if ((add)); then
+  add_mode
+  exit 0
+fi
 
 (cd "$out" && sha256sum -- "${files[@]}" > SHA256SUMS && sha256sum -c --quiet SHA256SUMS)
 echo "== SHA256SUMS"; cat "$out/SHA256SUMS"

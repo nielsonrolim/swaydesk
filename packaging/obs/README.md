@@ -67,6 +67,19 @@ Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último sn
    depois do início do envio, o script lista os `gh release delete-asset` para tirar o que subiu; rode-os e
    repita com a `PASTA` vazia.
 
+   Uma ISO que fica pronta depois das outras entra com `packaging/release-isos.sh --add vX.Y.Z PASTA arch=…`
+   (antes com `--dry-run`), numa `PASTA` nova e vazia. O Release precisa já ter o `SHA256SUMS` e a seção "ISOs",
+   e não pode ter essa ISO. As linhas do `SHA256SUMS` publicado ficam byte a byte, e a nova vai no fim. O
+   script envia a ISO e um `SHA256SUMS.new`, baixa os dois e confere antes de mexer no `SHA256SUMS`: uma ISO
+   estragada no envio nunca chega a ser listada. A troca não usa o `--clobber`, que apagaria o `SHA256SUMS`
+   antes de subir o novo. São dois renomes pela API: o antigo vira `SHA256SUMS.old`, o `.new` vira
+   `SHA256SUMS`, e o `.old` sai. **Entre os dois renomes (uma fração de segundo), quem baixar o `SHA256SUMS`
+   recebe um 404**: o GitHub não troca dois arquivos de uma vez, e esse intervalo foi aceito. Depois da troca,
+   o script baixa todas as ISOs listadas e confere todas, e só então acrescenta a linha da ISO na seção do
+   texto. Se o segundo renome falhar, o antigo volta ao nome. Uma sobra (`SHA256SUMS.new` ou `.old`) de uma
+   execução interrompida faz o `--add` recusar até ser tirada. A conferência final baixa todas as ISOs do Release: a `PASTA` precisa de
+   espaço para todas (uns 6 GB com três).
+
 ### Uma revisão só do empacotamento (X.Y.Z-N)
 
 Quando os pacotes de um lançamento precisam sair de novo sem mudar o código (um rebuild, um conserto do
