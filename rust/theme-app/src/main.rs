@@ -215,7 +215,7 @@ impl Window {
         let window = gtk4::ApplicationWindow::new(app);
         window.set_title(Some(&tr("Desktop Theme")));
         window.set_default_size(860, 600);
-        window.set_icon_name(Some("preferences-desktop-theme"));
+        window.set_icon_name(Some("org.swaydesktop.Theme"));
         let header = gtk4::HeaderBar::new();
         window.set_titlebar(Some(&header));
         let apply_button = gtk4::Button::with_label(&tr("Apply"));

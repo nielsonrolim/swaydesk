@@ -25,7 +25,10 @@ pub enum Action {
 pub struct Card {
     pub name: String,
     pub text: String,
-    pub icon: &'static str,
+    /// Os nomes do ícone, do preferido ao reserva: nem todo tema tem todos (o Adwaita não tem o
+    /// preferences-system-windows, o Papirus e o Breeze não têm o preferences-system-notifications), e o GTK
+    /// usa o primeiro que o tema tiver.
+    pub icons: &'static [&'static str],
     /// As palavras do comando do atalho ("sway-capture shot"); None: o cartão não mostra atalho.
     pub shortcut: Option<&'static str>,
     pub action: Action,
@@ -38,10 +41,10 @@ pub struct Card {
 }
 
 pub fn cards() -> Vec<Card> {
-    let card = |name: String, text: String, icon, shortcut, action| Card {
+    let card = |name: String, text: String, icons, shortcut, action| Card {
         name,
         text,
-        icon,
+        icons,
         shortcut,
         action,
         button: None,
@@ -52,21 +55,21 @@ pub fn cards() -> Vec<Card> {
         card(
             tr("Desktop Theme"),
             tr("The GTK theme, light or dark, and the accent color of the whole desktop: bar, dock, popups and apps."),
-            "preferences-desktop-theme",
+            &["org.swaydesktop.Theme"],
             None,
             Action::Desktop("org.swaydesktop.Theme.desktop"),
         ),
         card(
             tr("Screenshot"),
             tr("Capture a region, a window or the whole screen. In the panel, G opens the capture in Gradia to crop and annotate it."),
-            "swaydesk-screenshot",
+            &["swaydesk-screenshot"],
             Some("sway-capture shot"),
             Action::Component("sway-capture", "swaydesk-capture", &["shot"]),
         ),
         card(
             tr("Screen recording"),
             tr("Record a region, a window or the whole screen, with the system sound or the microphone. The red dot on the bar stops it."),
-            "swaydesk-screen-record",
+            &["swaydesk-screen-record"],
             Some("sway-capture rec"),
             Action::Component("sway-capture", "swaydesk-capture", &["rec"]),
         ),
@@ -75,7 +78,7 @@ pub fn cards() -> Vec<Card> {
             ..card(
             tr("Clipboard"),
             tr("What you copied, text and images. Pick an item to copy it again."),
-            "edit-paste",
+            &["edit-paste"],
             Some("waybar-clipboard-popup"),
             Action::Component("waybar-clipboard-popup", "swaydesk-clipboard-popup", &[]),
         )
@@ -85,7 +88,7 @@ pub fn cards() -> Vec<Card> {
             ..card(
             tr("App grid"),
             tr("All the installed apps, with search and favorites. Super alone shows and hides it."),
-            "view-app-grid",
+            &["view-app-grid"],
             Some("sway-super"),
             Action::Component("sway-drawer", "swaydesk-drawer", &[]),
         )
@@ -95,7 +98,7 @@ pub fn cards() -> Vec<Card> {
             ..card(
             tr("Dock"),
             tr("The favorite and open apps at the bottom of the screen. A click opens or focuses the app."),
-            "user-desktop",
+            &["user-desktop"],
             None,
             Action::None,
         )
@@ -105,7 +108,7 @@ pub fn cards() -> Vec<Card> {
             ..card(
             tr("Window switcher"),
             tr("The windows in the order you used them, from every workspace. Hold Alt and press Tab to move, then release to pick."),
-            "preferences-system-windows",
+            &["preferences-system-windows", "focus-windows", "view-dual"],
             Some("sway-switcher next"),
             Action::None,
         )
@@ -115,7 +118,7 @@ pub fn cards() -> Vec<Card> {
             ..card(
             tr("Notifications"),
             tr("The notifications you missed, kept until you clear them."),
-            "preferences-system-notifications",
+            &["preferences-system-notifications", "preferences-desktop-notification", "dialog-information"],
             Some("waybar-notifications-popup"),
             Action::Component("waybar-notifications-popup", "swaydesk-notifications-popup", &[]),
         )
@@ -125,7 +128,7 @@ pub fn cards() -> Vec<Card> {
             ..card(
                 tr("Lock screen"),
                 tr("Locks the screen with your password. It also locks by itself after some time idle and before suspending."),
-                "system-lock-screen",
+                &["system-lock-screen"],
                 Some("sway-lock"),
                 Action::Helper("sway-lock", &[]),
             )
@@ -135,7 +138,7 @@ pub fn cards() -> Vec<Card> {
             ..card(
             tr("Night light"),
             tr("Makes the screen warmer at night, always or on a schedule. It is in the brightness popup of the bar."),
-            "weather-clear-night",
+            &["weather-clear-night"],
             None,
             Action::None,
         )
@@ -145,7 +148,7 @@ pub fn cards() -> Vec<Card> {
             ..card(
                 tr("Displays"),
                 tr("Resolution, scale and position of each monitor."),
-                "preferences-desktop-display",
+                &["preferences-desktop-display"],
                 None,
                 Action::Desktop("org.swaydesktop.Displays.desktop"),
             )
@@ -163,13 +166,12 @@ impl Card {
         let card = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
         card.add_css_class("help-card");
         let head = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
-        let icon = match self.action {
-            Action::Desktop(id) => gio::DesktopAppInfo::new(id)
-                .and_then(|info| info.icon())
-                .map(|gicon| gtk4::Image::from_gicon(&gicon))
-                .unwrap_or_else(|| gtk4::Image::from_icon_name(self.icon)),
-            _ => gtk4::Image::from_icon_name(self.icon),
+        let fallback = gio::ThemedIcon::from_names(self.icons).upcast::<gio::Icon>();
+        let gicon = match self.action {
+            Action::Desktop(id) => gio::DesktopAppInfo::new(id).and_then(|info| info.icon()).unwrap_or(fallback),
+            _ => fallback,
         };
+        let icon = gtk4::Image::from_gicon(&gicon);
         icon.set_pixel_size(32);
         head.append(&icon);
         let name = gtk4::Label::new(Some(&self.name));
