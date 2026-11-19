@@ -1,13 +1,19 @@
-swaydesk (0.1.2-1) UNRELEASED; urgency=medium
+swaydesk (0.1.2-1) unstable; urgency=medium
 
-  * Development after 0.1.1.
   * swaydesk-desktop depends on a polkit agent (mate-polkit | lxpolkit)
     instead of recommending it. On Ubuntu 26.04, network-manager-applet
     depends on "gnome-shell | policykit-1-gnome | polkit-1-auth-agent", and
     apt 3's solver picked gnome-shell: a minimal install pulled the whole
     GNOME desktop and gdm3.
+  * Waybar's keyboard layout module is swaydesk-language (custom/language):
+    with a single layout it stays hidden after a reload, a theme change or
+    a virtual keyboard.
+  * swaydesk-common ships Papirus' screen recorder and snapshot icons in
+    hicolor (GPL-3), used by Record Screen, Screenshot and the Help cards.
+  * The dock hides pins of apps that aren't installed; the first-login
+    setup replaces a "nemo" pin with the file manager when Nemo is missing.
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Wed, 18 Nov 2026 20:17:03 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Thu, 19 Nov 2026 12:00:00 -0300
 
 swaydesk (0.1.1-1) unstable; urgency=medium
 

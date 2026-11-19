@@ -2,6 +2,25 @@
 
 Each release is published as packages and, shortly after, as install images. Updates arrive through `apt upgrade` or `pacman -Syu`.
 
+## 0.1.2 — 2026-11-19
+
+A bug-fix release.
+
+### Fixed
+
+- On a minimal or server install of Ubuntu 26.04, `apt install swaydesk-desktop` no longer pulls in the whole GNOME desktop and gdm3. `swaydesk-desktop` now depends on a polkit agent (mate-polkit or lxpolkit), which the session needs anyway. It's installed even if you use another agent or turn it off with `polkit_agent = false` in `[enabled]`.
+- On such a minimal or server install, if an earlier `apt install` already brought in GNOME and gdm3, upgrading doesn't remove them. To remove them and log in through the Swaydesk login screen (`swaydesk-greeter`), run this as one line from a text console (Ctrl+Alt+F3, then log in) or over SSH, not from a terminal in the graphical session, since removing gdm3 ends that session: `sudo apt purge gdm3 gnome-shell && sudo apt autoremove && sudo systemctl enable greetd`. Review the list apt shows before confirming each step, then reboot. greetd can only be enabled once gdm3 is gone, and until then no login screen starts.
+- With a single keyboard layout, the layout indicator now stays hidden after a Sway reload, a theme change or a virtual keyboard. Before, it came back showing the layout, or as an empty gap.
+- Record Screen and Screenshot have their own icons, which show with any icon theme. Record Screen was a plain dot in Papirus.
+- The dock no longer shows a pinned app that isn't installed, since clicking it opened nothing. The pin stays in your list and comes back when the app is installed.
+- If your dock still pins Nemo and Nemo isn't installed, the next login pins your file manager in its place.
+
+### Install images
+
+- The live session's dock pins the file manager (it pinned Nemo, which the images don't have), Desktop Theme, Displays and Help, then the installer.
+- On the installer's keyboard page, the test field now types with the layout you pick.
+- After `sudo swaydesk-extras` installs everything, the codecs notice closes by itself.
+
 ## 0.1.1 — 2026-11-18
 
 A bug-fix release.

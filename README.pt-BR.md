@@ -6,7 +6,7 @@ O Swaydesk é uma sessão de desktop sobre o [Sway](https://swaywm.org), o compo
 
 A documentação completa, com capturas de tela e os atalhos de teclado, está em **https://swaydesk.nielsonrolim.com** ([Português](https://swaydesk.nielsonrolim.com/pt-br/) · [English](https://swaydesk.nielsonrolim.com/en-us/)).
 
-**Versão atual: 0.1.1.** O que muda em cada versão está no [CHANGELOG.md](CHANGELOG.md) (em inglês) e na [página de lançamentos](https://github.com/nielsonrolim/swaydesk/releases). Depois de instalado, as atualizações chegam com o `apt upgrade` ou o `pacman -Syu` de sempre.
+**Versão atual: 0.1.2.** O que muda em cada versão está no [CHANGELOG.md](CHANGELOG.md) (em inglês) e na [página de lançamentos](https://github.com/nielsonrolim/swaydesk/releases). Depois de instalado, as atualizações chegam com o `apt upgrade` ou o `pacman -Syu` de sempre.
 
 > **Este repositório é um espelho somente leitura.** O desenvolvimento acontece num repositório privado, e cada mudança mesclada lá é publicada aqui como um commit. Issues e pull requests ainda não estão abertos.
 
