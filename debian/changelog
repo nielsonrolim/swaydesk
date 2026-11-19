@@ -1,3 +1,9 @@
+swaydesk (0.1.2-1) UNRELEASED; urgency=medium
+
+  * Development after 0.1.1.
+
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Wed, 18 Nov 2026 20:17:03 -0300
+
 swaydesk (0.1.1-1) unstable; urgency=medium
 
   * The gtk portal is activated directly: after logging out and in again it
