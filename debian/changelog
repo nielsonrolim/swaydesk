@@ -1,8 +1,19 @@
-swaydesk (0.1.1-1) UNRELEASED; urgency=medium
+swaydesk (0.1.1-1) unstable; urgency=medium
 
-  * Development after 0.1.0.
+  * The gtk portal is activated directly: after logging out and in again it
+    no longer hangs for 120 s, and libadwaita apps keep the dark style. The
+    greeter no longer starts the portals.
+  * Waybar hides the keyboard layout module when only one layout is set.
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Mon, 16 Nov 2026 18:00:00 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Wed, 18 Nov 2026 20:09:08 -0300
+
+swaydesk (0.1.0-2) unstable; urgency=medium
+
+  * Rebuild of 0.1.0 with new file names: the OBS rebuilt the 0.1.0-1 Arch
+    packages under the same names, and its CDN kept serving the old files
+    (pacman: "Maximum file size exceeded"). No code changes.
+
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Wed, 18 Nov 2026 18:36:43 -0300
 
 swaydesk (0.1.0-1) unstable; urgency=medium
 
