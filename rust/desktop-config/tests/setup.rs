@@ -16,12 +16,16 @@ fn tempdir() -> PathBuf {
 }
 
 fn setup(home: &Path, keyboard: &Path) -> std::process::Output {
+    setup_with_path(home, keyboard, "/usr/bin:/bin")
+}
+
+fn setup_with_path(home: &Path, keyboard: &Path, path: &str) -> std::process::Output {
     let repo = repo();
     Command::new(env!("CARGO_BIN_EXE_swaydesk-desktop-config"))
         .arg("setup")
         .env_clear()
         .env("HOME", home)
-        .env("PATH", "/usr/bin:/bin")
+        .env("PATH", path)
         .env("SWAYDESK_SKEL", repo.join("home-copy"))
         .env("SWAY_DESKTOP_SHARE", repo.join("home/.local/share/sway-desktop"))
         .env("SWAY_DESKTOP_KEYBOARD", keyboard)
@@ -73,5 +77,58 @@ fn first_login_copies_the_skel_and_generates() {
     assert_eq!(std::fs::read_to_string(home.join(".config/sway-desktop/config.toml")).unwrap(), "accent = \"#7c3aed\"\n");
     assert!(home.join(".config/gammastep/config.ini").is_file(), "o que falta volta");
     assert!(std::fs::read_to_string(home.join(".config/waybar/accent.css")).unwrap().contains("7c3aed"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Uma pasta com um executável falso de cada nome, para o PATH do setup.
+fn fake_bin(dir: &Path, names: &[&str]) -> PathBuf {
+    use std::os::unix::fs::PermissionsExt;
+    let bin = dir.join("bin");
+    std::fs::create_dir_all(&bin).unwrap();
+    for name in names {
+        std::fs::write(bin.join(name), "#!/bin/sh\n").unwrap();
+        std::fs::set_permissions(bin.join(name), std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    bin
+}
+
+#[test]
+fn the_first_pin_is_the_installed_file_manager_not_nemo() {
+    for (installed, expected) in [("thunar", "thunar"), ("nautilus", "org.gnome.Nautilus")] {
+        // Uma pasta própria: o tempdir() é o mesmo do outro teste, que roda em paralelo e a apagaria
+        let dir = std::env::temp_dir().join(format!("swaydesk-setup-pin-{}-{installed}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let home = dir.join("home");
+        std::fs::create_dir_all(&home).unwrap();
+        let bin = fake_bin(&dir, &[installed]);
+        let out = setup_with_path(&home, &dir.join("sem-teclado"), &format!("{}:/usr/bin:/bin", bin.display()));
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        let pinned = std::fs::read_to_string(home.join(".local/share/sway-dock/pinned")).unwrap();
+        assert_eq!(pinned.lines().next(), Some(expected), "{installed}: {pinned}");
+        assert!(!pinned.lines().any(|l| l == "nemo"), "{installed}: {pinned}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[test]
+fn an_old_pinned_file_with_nemo_not_installed_is_migrated_once() {
+    let dir = std::env::temp_dir().join(format!("swaydesk-setup-migrate-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let home = dir.join("home");
+    let pinned = home.join(".local/share/sway-dock/pinned");
+    std::fs::create_dir_all(pinned.parent().unwrap()).unwrap();
+    // O que a ISO 0.1.x deixava: o modelo cru e o instalador
+    std::fs::write(&pinned, "nemo\nkitty\nswaydesk-install\n").unwrap();
+    let bin = fake_bin(&dir, &["thunar"]);
+    let path = format!("{}:/usr/bin:/bin", bin.display());
+    let out = setup_with_path(&home, &dir.join("sem-teclado"), &path);
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert_eq!(std::fs::read_to_string(&pinned).unwrap(), "thunar\nkitty\nswaydesk-install\n");
+    // Com o Nemo instalado, o "nemo" é do usuário e fica
+    std::fs::write(&pinned, "nemo\nkitty\n").unwrap();
+    let bin = fake_bin(&dir, &["thunar", "nemo"]);
+    let out = setup_with_path(&home, &dir.join("sem-teclado"), &format!("{}:/usr/bin:/bin", bin.display()));
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert_eq!(std::fs::read_to_string(&pinned).unwrap(), "nemo\nkitty\n");
     let _ = std::fs::remove_dir_all(&dir);
 }

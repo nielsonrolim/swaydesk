@@ -217,6 +217,21 @@ fn items_pinned_first_then_open_in_order() {
 }
 
 #[test]
+fn a_pin_without_an_installed_app_is_hidden() {
+    // "thunar" não tem .desktop nas entradas: o fixado some, e os outros ficam na ordem
+    let e = entries();
+    let resolve = |id: &str| match_app(id, &e);
+    let items = build_items(&s(&["thunar", "firefox", "code"]), &[], &resolve, &[]);
+    let keys: Vec<&str> = items.iter().map(|i| i.key.as_str()).collect();
+    assert_eq!(keys, vec!["org.mozilla.firefox", "code"]);
+    // Com uma janela aberta daquele app_id (um app sem .desktop), ele aparece fixado, com a janela
+    let windows = windows_from_tree(&tree());
+    let items = build_items(&s(&["kitty", "firefox"]), &windows, &resolve, &[]);
+    assert_eq!(items[0].key, "kitty");
+    assert!(items[0].pinned && items[0].windows.len() == 1);
+}
+
+#[test]
 fn pins_load_save_and_set_aside() {
     let dir = tmpdir("pins");
     let file = dir.join("sway-dock/pinned");

@@ -4,7 +4,9 @@
 //! - o `50-local.conf` ganha o teclado do sistema (`/etc/default/keyboard`), como o `keyboard_block`; sem esse
 //!   arquivo (Arch), o do systemd: o layout X11 do localectl, senão o mapa do console traduzido pelo
 //!   kbd-model-map;
-//! - os fixados da dock trocam o Nemo do modelo pelo gerenciador de arquivos da config.
+//! - os fixados da dock trocam o Nemo do modelo pelo gerenciador de arquivos da config;
+//! - quem já tinha os fixados com o Nemo do modelo sem o Nemo instalado (a 0.1.0 e a 0.1.1 na ISO, onde o
+//!   swaydesk-pin-installer copiava o modelo cru) ganha a mesma troca, uma vez: depois dela não há mais "nemo".
 use std::path::{Path, PathBuf};
 
 use swaydesk_common::config;
@@ -58,6 +60,32 @@ fn pinned_with(text: &str, file_manager: &str) -> String {
     text.lines().map(|line| if line == "nemo" { file_manager } else { line }).map(|line| format!("{line}\n")).collect()
 }
 
+/// A migração dos fixados de quem já tinha o arquivo: a linha "nemo" com o Nemo fora do sistema vira o
+/// gerenciador resolvido (ou some, se ele já estiver fixado). None: nada a mudar. Um "nemo" com o Nemo
+/// instalado é uma escolha do usuário e fica; um gerenciador resolvido que também é o Nemo, ou um nome
+/// estranho, não muda nada.
+fn migrated_pins(text: &str, nemo_installed: bool, file_manager: &str) -> Option<String> {
+    if nemo_installed || file_manager == "nemo" || !text.lines().any(|l| l.trim() == "nemo") {
+        return None;
+    }
+    if file_manager.is_empty() || !file_manager.chars().all(|c| c.is_ascii_alphanumeric() || "._+-".contains(c)) {
+        return None;
+    }
+    let already = text.lines().any(|l| l.trim() == file_manager);
+    let mut swapped = already;
+    let lines = text.lines().filter_map(|line| {
+        if line.trim() != "nemo" {
+            return Some(line);
+        }
+        if swapped {
+            return None; // o gerenciador já está fixado, ou o Nemo aparecia duas vezes
+        }
+        swapped = true;
+        Some(file_manager)
+    });
+    Some(lines.map(|line| format!("{line}\n")).collect())
+}
+
 /// A config.toml do skel com um tema GTK que exista: o padrão é o Mint-Y-Dark-Teal, que só o Mint tem. No
 /// Debian, no Ubuntu e no Arch, fica o tema de reserva (o Adwaita-dark), em vez de o app Tema avisar que o
 /// tema da config não está instalado. No Mint, nada muda.
@@ -76,7 +104,11 @@ pub fn setup(skel: &Path, home: &Path, keyboard: &Path) -> std::io::Result<Vec<P
     for rel in skel_files(skel) {
         let target = home.join(&rel);
         // symlink_metadata: um link quebrado também é do usuário
-        if target.symlink_metadata().is_ok() {
+        if let Ok(meta) = target.symlink_metadata() {
+            // Os fixados de antes: só um arquivo comum (um link é do usuário)
+            if rel == Path::new(PINNED) && meta.file_type().is_file() {
+                migrate_pins(&target)?;
+            }
             continue;
         }
         if let Some(parent) = target.parent() {
@@ -106,6 +138,16 @@ pub fn setup(skel: &Path, home: &Path, keyboard: &Path) -> std::io::Result<Vec<P
     Ok(copied)
 }
 
+/// Aplica a migração no arquivo de fixados do usuário, se houver o que mudar.
+fn migrate_pins(path: &Path) -> std::io::Result<()> {
+    let Ok(text) = std::fs::read_to_string(path) else { return Ok(()) }; // ilegível: a dock cuida dele
+    let manager = desktop::get(&config::load(), "file_manager_desktop").unwrap_or_default();
+    if let Some(new) = migrated_pins(&text, crate::which("nemo"), &manager) {
+        swaydesk_common::text::atomic_write(path, new.as_bytes(), 0o600)?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -122,6 +164,24 @@ mod tests {
         assert_eq!(pinned_with("firefox\nnemo\nkitty\n", "thunar"), "firefox\nthunar\nkitty\n");
         assert_eq!(pinned_with("nemo\n", "a b"), "nemo\n");
         assert_eq!(pinned_with("nemo\n", ""), "nemo\n");
+    }
+
+    #[test]
+    fn old_pins_with_nemo_not_installed_get_the_file_manager() {
+        // A 0.1.x na ISO: o modelo cru, sem o Nemo
+        assert_eq!(migrated_pins("nemo\nkitty\nswaydesk-install\n", false, "thunar").as_deref(),
+                   Some("thunar\nkitty\nswaydesk-install\n"));
+        // Já com o gerenciador fixado: o "nemo" só some
+        assert_eq!(migrated_pins("thunar\nnemo\nkitty\n", false, "thunar").as_deref(), Some("thunar\nkitty\n"));
+        // O Nemo instalado: a escolha fica
+        assert_eq!(migrated_pins("nemo\nkitty\n", true, "thunar"), None);
+        // Sem a linha (o usuário a tirou), ou já migrado: nada
+        assert_eq!(migrated_pins("kitty\n", false, "thunar"), None);
+        assert_eq!(migrated_pins("thunar\nkitty\n", false, "thunar"), None);
+        // A config pede o Nemo, ou um nome estranho: nada
+        assert_eq!(migrated_pins("nemo\n", false, "nemo"), None);
+        assert_eq!(migrated_pins("nemo\n", false, "a b"), None);
+        assert_eq!(migrated_pins("nemo\n", false, ""), None);
     }
 
     #[test]

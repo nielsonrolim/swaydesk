@@ -363,13 +363,20 @@ impl Item {
     }
 }
 
-/// Fixados na ordem salva, depois os abertos não fixados, na ordem em que abriram.
+/// Fixados na ordem salva, depois os abertos não fixados, na ordem em que abriram. Um fixado sem app
+/// instalado (sem .desktop, ou com um TryExec que falha, que o GLib descarta) não aparece: o clique não abriria
+/// nada. Ele fica no arquivo e volta sozinho quando o app for instalado (a dock reindexa os apps). Com uma
+/// janela aberta do mesmo app_id, ele aparece, como antes.
 pub fn build_items(pins: &[String], windows: &[Window], resolve: &dyn Fn(&str) -> Option<String>, ignore: &[String]) -> Vec<Item> {
     let ignored: HashSet<String> = ignore.iter().map(|n| n.to_lowercase()).collect();
     let mut items: Vec<Item> = Vec::new();
     let mut index: HashMap<String, usize> = HashMap::new();
     for pin in pins {
-        let key = resolve(pin).unwrap_or_else(|| pin.clone());
+        let key = match resolve(pin) {
+            Some(key) => key,
+            None if windows.iter().any(|w| resolve(&w.app_id).is_none() && w.app_id == *pin) => pin.clone(),
+            None => continue,
+        };
         if !ignored.contains(&key.to_lowercase()) && !ignored.contains(&pin.to_lowercase()) && !index.contains_key(&key) {
             index.insert(key.clone(), items.len());
             items.push(Item { key, pinned: true, windows: vec![] });
