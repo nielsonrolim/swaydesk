@@ -220,17 +220,34 @@ case $pkg in
     install -Dm644 "$root/packaging/files/waybar-only-on-wlroots.conf" "$dest/usr/lib/systemd/user/waybar.service.d/swaydesk.conf"
     # Os backends dos portais numa sessão sway (o dos dotfiles fica no ~/.config e vale mais)
     install -Dm644 "$root/home/.config/xdg-desktop-portal/sway-portals.conf" "$dest/etc/xdg/xdg-desktop-portal/sway-portals.conf"
-    # O portal do gtk pela ativação direta, como o .service dos dotfiles em ~/.local/share/dbus-1/services: o
-    # .service num diretório do pacote, que o environment.d põe na frente do XDG_DATA_DIRS do systemd do
-    # usuário. O arquivo do pacote xdg-desktop-portal-gtk fica intocado
-    dbusdir=$share/dbus
-    install -d "$dest$dbusdir/dbus-1/services" "$dest/usr/lib/environment.d"
-    sed "s|@LIBEXEC@|$libexec|" "$root/packaging/files/swaydesk-portal-gtk.service" \
-      > "$dest$dbusdir/dbus-1/services/org.freedesktop.impl.portal.desktop.gtk.service"
-    sed "s|@DIR@|$dbusdir|" "$root/packaging/files/swaydesk-portal-gtk.environment.conf" \
-      > "$dest/usr/lib/environment.d/90-swaydesk-portal-gtk.conf"
-    chmod 644 "$dest$dbusdir/dbus-1/services/org.freedesktop.impl.portal.desktop.gtk.service" \
-      "$dest/usr/lib/environment.d/90-swaydesk-portal-gtk.conf"
+    # O portal do gtk pelo sway-portal-gtk, que só o abre com uma tela viva. Os arquivos dos pacotes do portal
+    # ficam intocados
+    case ${SWAYDESK_PORTAL_GTK:-dbus} in
+      dbus)
+        # Debian e Ubuntu (dbus-daemon): a ativação direta, como o .service dos dotfiles em
+        # ~/.local/share/dbus-1/services. O .service num diretório do pacote, que o environment.d põe na frente
+        # do XDG_DATA_DIRS do systemd do usuário
+        dbusdir=$share/dbus
+        install -d "$dest$dbusdir/dbus-1/services" "$dest/usr/lib/environment.d"
+        sed "s|@LIBEXEC@|$libexec|" "$root/packaging/files/swaydesk-portal-gtk.service" \
+          > "$dest$dbusdir/dbus-1/services/org.freedesktop.impl.portal.desktop.gtk.service"
+        sed "s|@DIR@|$dbusdir|" "$root/packaging/files/swaydesk-portal-gtk.environment.conf" \
+          > "$dest/usr/lib/environment.d/90-swaydesk-portal-gtk.conf"
+        chmod 644 "$dest$dbusdir/dbus-1/services/org.freedesktop.impl.portal.desktop.gtk.service" \
+          "$dest/usr/lib/environment.d/90-swaydesk-portal-gtk.conf"
+        ;;
+      systemd)
+        # Arch (dbus-broker): um drop-in na unit do portal, sem um segundo .service com o mesmo nome
+        install -d "$dest/usr/lib/systemd/user/xdg-desktop-portal-gtk.service.d"
+        sed "s|@LIBEXEC@|$libexec|" "$root/packaging/files/swaydesk-portal-gtk.dropin.conf" \
+          > "$dest/usr/lib/systemd/user/xdg-desktop-portal-gtk.service.d/swaydesk.conf"
+        chmod 644 "$dest/usr/lib/systemd/user/xdg-desktop-portal-gtk.service.d/swaydesk.conf"
+        ;;
+      *)
+        echo "install-tree: SWAYDESK_PORTAL_GTK must be dbus or systemd" >&2
+        exit 2
+        ;;
+    esac
     ;;
   swaydesk-greeter)
     # O greetd abre o Sway da tela pelo drop-in, com o greetd.toml do pacote: o /etc/greetd/config.toml da
