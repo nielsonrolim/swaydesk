@@ -59,6 +59,10 @@ for pkg in "${packages[@]}"; do
     else
       osc status
       osc commit --message "${dsc%.dsc}"
+      if [[ $pkg == swaydesk-archive-keyring ]]; then
+        echo "push: the keyring .deb gets a new sha256 when the OBS builds it: update keyring/published.sha256," >&2
+        echo "push: the public READMEs and the site, then run packaging/obs/check-keyring.sh" >&2
+      fi
     fi
   )
 done

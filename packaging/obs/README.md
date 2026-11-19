@@ -45,8 +45,9 @@ Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último sn
    - o rodapé do site, com o builder3, junto com a publicação.
 2. `git tag -a vX.Y.Z -m "Swaydesk X.Y.Z"` nesse commit e `git push origin vX.Y.Z`.
 3. Gere e envie os pacotes desse commit, como em "Enviar ao OBS" abaixo.
-4. Publique o espelho com a tag (`packaging/mirror.sh --tag vX.Y.Z`, antes com `--dry-run`) e crie o Release no espelho público com a entrada do `packaging/public/CHANGELOG.md`.
-5. **Logo em seguida**, no próximo commit do `main`, suba a versão:
+4. Rode o `packaging/obs/check-keyring.sh`: o `.deb` do keyring publicado ainda tem o hash dos READMEs.
+5. Publique o espelho com a tag (`packaging/mirror.sh --tag vX.Y.Z`, antes com `--dry-run`) e crie o Release no espelho público com a entrada do `packaging/public/CHANGELOG.md`.
+6. **Logo em seguida**, no próximo commit do `main`, suba a versão:
    - a `workspace.package.version` do `rust/Cargo.toml` (e o `Cargo.lock`);
    - uma entrada `X.Y.(Z+1)-1 UNRELEASED` no `debian/changelog`;
    - o `pkgver` do `packaging/arch/PKGBUILD`;
@@ -129,19 +130,35 @@ Antes de passar o endereço a alguém:
 
 ### Debian, Ubuntu e Mint
 
-Precisa do `curl` e do `gpg` (num Debian mínimo: `sudo apt install curl gpg`). Na primeira vez, a chave e o `.sources` entram à mão. Use a pasta da distro: `Debian_13` ou `xUbuntu_26.04`, que também serve ao Mint 27. Os comandos vão em cadeia: se a chave baixada não for exatamente uma chave primária, sem subchaves, com a impressão digital da seção "A chave", nada é instalado. Só conferir a impressão digital não basta: no OpenPGP v4, uma subchave tem o mesmo tipo de impressão digital, e uma chave de outra pessoa que trouxesse a nossa como subchave passaria. São os mesmos blocos da página de instalação do site e do README do espelho público.
+A instalação começa pelo `.deb` do `swaydesk-archive-keyring`, baixado direto do repositório da distro
+(`Debian_13` ou `xUbuntu_26.04`, que também serve ao Mint 27) e conferido pelo sha256 antes do `dpkg -i`. O
+pacote põe a chave e o `.sources`, e daí em diante os atualiza pelo próprio apt. São os mesmos blocos dos READMEs
+públicos (`packaging/public/README.md` e `README.pt-BR.md`) e da página de instalação do site:
 
 ```sh
-repo=https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13
-key=$(mktemp) && curl -fsSL "$repo/Release.key" -o "$key" &&
-[ "$(gpg --show-keys --with-colons "$key" | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
-sudo install -m644 "$key" /usr/share/keyrings/swaydesk-archive-keyring.asc && rm -f "$key" &&
-printf 'Types: deb\nURIs: %s/\nSuites: ./\nSigned-By: /usr/share/keyrings/swaydesk-archive-keyring.asc\n' "$repo" |
-  sudo tee /etc/apt/sources.list.d/swaydesk.sources >/dev/null &&
-sudo apt update && sudo apt install swaydesk-archive-keyring swaydesk-desktop
+deb=swaydesk-archive-keyring_2026.11.15_all.deb
+dir=$(mktemp -d) && curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13/all/$deb -o "$dir/$deb" &&
+echo "5b8a2cb8af4a051bf5d3decdcf66fb0f4fcbb66d2728656969e1d673e4c00821  $dir/$deb" | sha256sum -c && sudo dpkg -i "$dir/$deb" && rm -r "$dir" &&
+sudo apt update && sudo apt install swaydesk-desktop
 ```
 
-Daí em diante, os dois arquivos ficam por conta do `swaydesk-archive-keyring`, que os atualiza quando a chave mudar.
+O link leva a versão do keyring (a data da chave), não a do Swaydesk: um lançamento não o muda. Os hashes ficam
+em `keyring/published.sha256`; o `tests/test_mirror.py` confere que os READMEs usam essa versão e esses hashes.
+
+#### O hash do keyring quebra com qualquer rebuild
+
+O sha256 é o do `.deb` que o OBS publicou. **Qualquer** rebuild do `swaydesk-archive-keyring` gera um `.deb`
+novo, com outro hash, e a conferência do README passa a falhar para todo mundo: um envio do pacote, um rebuild
+manual (`osc rebuild`), uma mudança no `prjconf` ou no meta do projeto que o faça recompilar. O
+`rebuild="local"` dos alvos evita os rebuilds automáticos, mas não esses. Quem mexer no keyring atualiza, na
+mesma mudança:
+1. o `keyring/published.sha256` (o nome do arquivo, se a versão mudou, e o hash);
+2. os blocos do Debian e do Ubuntu nos dois READMEs públicos (o `test_mirror` aponta o que ficou para trás);
+3. a página de instalação do site, com o builder3.
+
+Depois de publicado, o `packaging/obs/check-keyring.sh` baixa os `.deb` do OBS e compara com o
+`published.sha256`; rode-o depois de qualquer envio e antes de passar os READMEs adiante. O `push.sh` lembra
+disso quando envia o keyring.
 
 ### Arch
 
@@ -176,3 +193,5 @@ O OBS a renova perto do vencimento (`osc signkey --extend`). Depois de uma renov
 2. Ponha uma entrada com a data no `keyring/debian/changelog`.
 3. Envie o pacote. Quem tem o `swaydesk-archive-keyring` recebe a chave nova pelo próprio apt.
 4. No Arch, refaça o `pacman-key --add`.
+5. A versão do keyring mudou, então o link e o hash do `.deb` também: siga "O hash do keyring quebra com
+   qualquer rebuild" acima (o `published.sha256`, os READMEs, o site e o `check-keyring.sh`).

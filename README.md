@@ -46,136 +46,104 @@ The same steps, with a copy button on each command, are on the [install page](ht
 
 ### Debian 13
 
-1. Install `curl` and `gpg`, which download and check the key.
+1. Install `curl`, which downloads the repository package.
 
    ```bash
-   sudo apt install curl gpg
+   sudo apt install curl
    ```
 
-2. Download the repository key.
+2. Download the `swaydesk-archive-keyring` package: it adds the repository and the project's key.
 
    ```bash
-   curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13/Release.key -o ~/swaydesk.key
+   curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13/all/swaydesk-archive-keyring_2026.11.15_all.deb -o ~/swaydesk-archive-keyring_2026.11.15_all.deb
    ```
 
-3. Show the downloaded key's fingerprint.
+3. Check the downloaded file. The command must print `OK`; if it doesn't, stop here, delete the file and don't go on.
 
    ```bash
-   gpg --show-keys ~/swaydesk.key
+   echo "5b8a2cb8af4a051bf5d3decdcf66fb0f4fcbb66d2728656969e1d673e4c00821  $HOME/swaydesk-archive-keyring_2026.11.15_all.deb" | sha256sum -c
    ```
 
-   Exactly one key must show up (one pub line, no sub line), with this fingerprint right under pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. If it's different, stop here and don't go on. The project's key on OBS: RSA, 4096 bits, valid until 2029-01-23.
-
-4. Install the key where apt looks for it. The command checks the key again and refuses any other: exactly one key, with that fingerprint right under `pub`, and no subkeys.
+4. Install it. It puts the key in `/usr/share/keyrings/` and the repository in `/etc/apt/sources.list.d/swaydesk.sources`, and from then on keeps both up to date.
 
    ```bash
-   [ "$(gpg --show-keys --with-colons ~/swaydesk.key | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
-   sudo install -m644 ~/swaydesk.key /usr/share/keyrings/swaydesk-archive-keyring.asc &&
-   rm ~/swaydesk.key
+   sudo dpkg -i ~/swaydesk-archive-keyring_2026.11.15_all.deb && rm ~/swaydesk-archive-keyring_2026.11.15_all.deb
    ```
 
-5. Add the repository.
+5. Update the package list and install Swaydesk.
 
    ```bash
-   sudo tee /etc/apt/sources.list.d/swaydesk.sources <<'EOF'
-   Types: deb
-   URIs: https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13/
-   Suites: ./
-   Signed-By: /usr/share/keyrings/swaydesk-archive-keyring.asc
-   EOF
+   sudo apt update && sudo apt install swaydesk-desktop
    ```
 
-6. Update the package list.
+Optional: see the key's fingerprint (needs `gpg`: `sudo apt install gpg`).
 
-   ```bash
-   sudo apt update
-   ```
+```bash
+gpg --show-keys /usr/share/keyrings/swaydesk-archive-keyring.asc
+```
 
-7. Install Swaydesk. From then on, the `swaydesk-archive-keyring` package takes care of the key and the repository.
-
-   ```bash
-   sudo apt install swaydesk-archive-keyring swaydesk-desktop
-   ```
+Exactly one key must show up (one pub line, no sub line), with this fingerprint right under pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. The project's key on OBS: RSA, 4096 bits, valid until 2029-01-23.
 
 #### All in one command
 
-After step 1 (curl and gpg), the other steps chained: if the downloaded key doesn't have the right fingerprint, nothing gets installed.
+After step 1 (curl), the other steps chained: if the downloaded file isn't the expected one, nothing gets installed.
 
 ```bash
-repo=https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13
-key=$(mktemp) && curl -fsSL "$repo/Release.key" -o "$key" &&
-[ "$(gpg --show-keys --with-colons "$key" | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
-sudo install -m644 "$key" /usr/share/keyrings/swaydesk-archive-keyring.asc && rm -f "$key" &&
-printf 'Types: deb\nURIs: %s/\nSuites: ./\nSigned-By: /usr/share/keyrings/swaydesk-archive-keyring.asc\n' "$repo" |
-  sudo tee /etc/apt/sources.list.d/swaydesk.sources >/dev/null &&
-sudo apt update && sudo apt install swaydesk-archive-keyring swaydesk-desktop
+deb=swaydesk-archive-keyring_2026.11.15_all.deb
+dir=$(mktemp -d) && curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13/all/$deb -o "$dir/$deb" &&
+echo "5b8a2cb8af4a051bf5d3decdcf66fb0f4fcbb66d2728656969e1d673e4c00821  $dir/$deb" | sha256sum -c && sudo dpkg -i "$dir/$deb" && rm -r "$dir" &&
+sudo apt update && sudo apt install swaydesk-desktop
 ```
 
 ### Ubuntu 26.04 / Mint 27
 
-1. Install `curl` and `gpg`, which download and check the key.
+1. Install `curl`, which downloads the repository package.
 
    ```bash
-   sudo apt install curl gpg
+   sudo apt install curl
    ```
 
-2. Download the repository key.
+2. Download the `swaydesk-archive-keyring` package: it adds the repository and the project's key.
 
    ```bash
-   curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/xUbuntu_26.04/Release.key -o ~/swaydesk.key
+   curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/xUbuntu_26.04/all/swaydesk-archive-keyring_2026.11.15_all.deb -o ~/swaydesk-archive-keyring_2026.11.15_all.deb
    ```
 
-3. Show the downloaded key's fingerprint.
+3. Check the downloaded file. The command must print `OK`; if it doesn't, stop here, delete the file and don't go on.
 
    ```bash
-   gpg --show-keys ~/swaydesk.key
+   echo "b22f785fbd083685c60bdc90ffb2e1d0e91c93db8513c3fc850e62ab36044767  $HOME/swaydesk-archive-keyring_2026.11.15_all.deb" | sha256sum -c
    ```
 
-   Exactly one key must show up (one pub line, no sub line), with this fingerprint right under pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. If it's different, stop here and don't go on. The project's key on OBS: RSA, 4096 bits, valid until 2029-01-23.
-
-4. Install the key where apt looks for it. The command checks the key again and refuses any other: exactly one key, with that fingerprint right under `pub`, and no subkeys.
+4. Install it. It puts the key in `/usr/share/keyrings/` and the repository in `/etc/apt/sources.list.d/swaydesk.sources`, and from then on keeps both up to date.
 
    ```bash
-   [ "$(gpg --show-keys --with-colons ~/swaydesk.key | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
-   sudo install -m644 ~/swaydesk.key /usr/share/keyrings/swaydesk-archive-keyring.asc &&
-   rm ~/swaydesk.key
+   sudo dpkg -i ~/swaydesk-archive-keyring_2026.11.15_all.deb && rm ~/swaydesk-archive-keyring_2026.11.15_all.deb
    ```
 
-5. Add the repository.
+5. Update the package list and install Swaydesk.
 
    ```bash
-   sudo tee /etc/apt/sources.list.d/swaydesk.sources <<'EOF'
-   Types: deb
-   URIs: https://download.opensuse.org/repositories/home:/nielsonrolim/xUbuntu_26.04/
-   Suites: ./
-   Signed-By: /usr/share/keyrings/swaydesk-archive-keyring.asc
-   EOF
+   sudo apt update && sudo apt install swaydesk-desktop
    ```
 
-6. Update the package list.
+Optional: see the key's fingerprint (needs `gpg`: `sudo apt install gpg`).
 
-   ```bash
-   sudo apt update
-   ```
+```bash
+gpg --show-keys /usr/share/keyrings/swaydesk-archive-keyring.asc
+```
 
-7. Install Swaydesk. From then on, the `swaydesk-archive-keyring` package takes care of the key and the repository.
-
-   ```bash
-   sudo apt install swaydesk-archive-keyring swaydesk-desktop
-   ```
+Exactly one key must show up (one pub line, no sub line), with this fingerprint right under pub: `71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9`. The project's key on OBS: RSA, 4096 bits, valid until 2029-01-23.
 
 #### All in one command
 
-After step 1 (curl and gpg), the other steps chained: if the downloaded key doesn't have the right fingerprint, nothing gets installed.
+After step 1 (curl), the other steps chained: if the downloaded file isn't the expected one, nothing gets installed.
 
 ```bash
-repo=https://download.opensuse.org/repositories/home:/nielsonrolim/xUbuntu_26.04
-key=$(mktemp) && curl -fsSL "$repo/Release.key" -o "$key" &&
-[ "$(gpg --show-keys --with-colons "$key" | grep -E '^(pub|sub|fpr):' | cut -d: -f1,10 | tr '\n' ' ')" = 'pub: fpr:71A5E6CB39B9844E42CE42D35815F0B65BE1CFB9 ' ] &&
-sudo install -m644 "$key" /usr/share/keyrings/swaydesk-archive-keyring.asc && rm -f "$key" &&
-printf 'Types: deb\nURIs: %s/\nSuites: ./\nSigned-By: /usr/share/keyrings/swaydesk-archive-keyring.asc\n' "$repo" |
-  sudo tee /etc/apt/sources.list.d/swaydesk.sources >/dev/null &&
-sudo apt update && sudo apt install swaydesk-archive-keyring swaydesk-desktop
+deb=swaydesk-archive-keyring_2026.11.15_all.deb
+dir=$(mktemp -d) && curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/xUbuntu_26.04/all/$deb -o "$dir/$deb" &&
+echo "b22f785fbd083685c60bdc90ffb2e1d0e91c93db8513c3fc850e62ab36044767  $dir/$deb" | sha256sum -c && sudo dpkg -i "$dir/$deb" && rm -r "$dir" &&
+sudo apt update && sudo apt install swaydesk-desktop
 ```
 
 ### Arch Linux
