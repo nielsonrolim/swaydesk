@@ -22,7 +22,7 @@ pub const ENABLED_KEYS: &[&str] = &[
 /// sway/mode e a bandeja ficam sempre.
 pub const BAR_MODULES: &[(&str, &str)] = &[
     ("weather", "custom/weather"), ("clock", "custom/clock"), ("media", "custom/media"), ("recording", "custom/rec"),
-    ("notifications", "custom/notification"), ("clipboard", "custom/clipboard"), ("language", "sway/language"),
+    ("notifications", "custom/notification"), ("clipboard", "custom/clipboard"), ("language", "custom/language"),
     ("system", "custom/system"), ("brightness", "custom/brightness"), ("caffeine", "custom/caffeine"),
     ("bluetooth", "custom/bluetooth"), ("network", "custom/network"), ("volume", "custom/volume"),
     ("battery", "custom/battery"), ("power", "custom/power"),

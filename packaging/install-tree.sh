@@ -53,6 +53,9 @@ CAPTURE_ENTRIES=(gradia-screenshot.desktop gradia-screen-record.desktop)
 THEME_ENTRY=org.swaydesktop.Theme.desktop
 DISPLAYS_ENTRY=org.swaydesktop.Displays.desktop
 HELP_ENTRY=org.swaydesktop.Help.desktop
+# Os ícones de Captura de Tela e Gravar Tela: cópias de ícones do Papirus (GPL-3, ver o debian/copyright), no
+# hicolor para aparecerem com qualquer tema de ícones, porque o papirus-icon-theme é só recomendado
+CAPTURE_ICONS=(swaydesk-screenshot.svg swaydesk-screen-record.svg)
 SESSION_CONFIGS=(sway/config waybar/config.jsonc waybar/style.css xdg-desktop-portal/sway-portals.conf)  # de home/.config
 # Os atalhos: o base.conf e um arquivo por perfil do shortcuts (sway/keys, ao lado do sway/config)
 KEY_PROFILES=(base swaydesk i3 hyprland niri dwm)
@@ -64,6 +67,7 @@ if [[ ${1:-} == --sources ]]; then
   done
   (cd "$root" && printf '%s\n' home/.local/share/locale/*/LC_MESSAGES/sway-desktop.mo)
   for entry in "${CAPTURE_ENTRIES[@]}" "$THEME_ENTRY" "$HELP_ENTRY" "$DISPLAYS_ENTRY"; do echo "home/.local/share/applications/$entry"; done
+  for icon in "${CAPTURE_ICONS[@]}"; do echo "home/.local/share/icons/hicolor/scalable/apps/$icon"; done
   (cd "$root" && printf '%s\n' home/.local/share/sway-desktop/templates/* home/.local/share/sway-desktop/dconf/*)
   for file in "${SESSION_CONFIGS[@]}"; do echo "home/.config/$file"; done
   for name in "${KEY_PROFILES[@]}"; do echo "home/.config/sway/keys/$name.conf"; done
@@ -97,6 +101,10 @@ case $pkg in
       install -Dm644 "$root/packaging/fonts/SymbolsNerdFont-Regular.ttf" \
         "$dest/usr/share/fonts/truetype/swaydesk/SymbolsNerdFont-Regular.ttf"
     fi
+    # Os ícones de Captura de Tela e Gravar Tela, aqui porque a Ajuda (swaydesk-widgets) também os mostra
+    for icon in "${CAPTURE_ICONS[@]}"; do
+      install -Dm644 "$data/icons/hicolor/scalable/apps/$icon" "$dest/usr/share/icons/hicolor/scalable/apps/$icon"
+    done
     # A visão geral, swaydesk(7): o pacote de que todos os outros dependem
     install -Dm644 "$man/swaydesk.7" "$dest/usr/share/man/man7/swaydesk.7"
     # As traduções: os binários procuram em bin/../share/locale, que aqui é /usr/share/locale

@@ -26,6 +26,7 @@ waybar-brightness-popup brightness-popup
 waybar-caffeine-popup caffeine-popup
 waybar-calendar calendar
 waybar-clipboard-popup clipboard-popup
+waybar-language language
 waybar-media-popup media-popup
 waybar-network network
 waybar-network-popup network-popup

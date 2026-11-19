@@ -103,7 +103,7 @@ mod tests {
   // comentário com "aspas"
   "modules-left": ["sway/workspaces"], /* em bloco */
   "modules-center": ["custom/weather", "custom/clock"],
-  "modules-right": ["tray", "custom/rec", "sway/language", "custom/power"],
+  "modules-right": ["tray", "custom/rec", "custom/language", "custom/power"],
   "custom/clock": { "format": "{:%H:%M} // não é comentário", "exec": "a\"b" }
 }"#;
 
@@ -115,7 +115,7 @@ mod tests {
         assert!(out.starts_with("// Gerado"));
         let data: Value = serde_json::from_str(&strip_jsonc(&out)).unwrap();
         assert_eq!(data["modules-center"], serde_json::json!(["custom/clock"]));
-        assert_eq!(data["modules-right"], serde_json::json!(["tray", "sway/language", "custom/power"]));
+        assert_eq!(data["modules-right"], serde_json::json!(["tray", "custom/language", "custom/power"]));
         assert_eq!(data["custom/clock"]["format"], "{:%H:%M} // não é comentário");
         assert_eq!(data["custom/clock"]["exec"], "a\"b");
     }

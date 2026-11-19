@@ -130,7 +130,7 @@ ENABLED_KEYS = ("dock", "app_grid", "switcher", "notifications", "osd", "clipboa
 # As do [enabled.bar], com o módulo da Waybar de cada uma. Os workspaces, o sway/mode e a bandeja ficam sempre
 BAR_MODULES = {
     "weather": "custom/weather", "clock": "custom/clock", "media": "custom/media", "recording": "custom/rec",
-    "notifications": "custom/notification", "clipboard": "custom/clipboard", "language": "sway/language",
+    "notifications": "custom/notification", "clipboard": "custom/clipboard", "language": "custom/language",
     "system": "custom/system", "brightness": "custom/brightness", "caffeine": "custom/caffeine",
     "bluetooth": "custom/bluetooth", "network": "custom/network", "volume": "custom/volume",
     "battery": "custom/battery", "power": "custom/power",

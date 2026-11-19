@@ -5,7 +5,7 @@
   "spacing": 0,
   "modules-left":   ["sway/workspaces"],
   "modules-center": ["custom/weather", "custom/clock"],
-  "modules-right":  ["sway/mode", "custom/rec", "custom/media", "custom/notification", "tray", "custom/clipboard", "sway/language", "custom/system", "custom/brightness", "custom/caffeine",
+  "modules-right":  ["sway/mode", "custom/rec", "custom/media", "custom/notification", "tray", "custom/clipboard", "custom/language", "custom/system", "custom/brightness", "custom/caffeine",
                      "custom/bluetooth", "custom/network", "custom/volume", "custom/battery", "custom/power"],
 
   // 9 workspaces sempre visíveis; os vazios ganham a classe .persistent
@@ -64,12 +64,13 @@
     "on-click": "~/.local/bin/waybar-clipboard-popup"
   },
 
-  // O layout do teclado: só com dois ou mais. Com um só, o módulo some (sem ele, a "casa" de 16px ficava vazia
-  // entre a área de transferência e o sistema). O hide-single-layout é da Waybar 0.10+ (Debian 13: 0.12; Ubuntu
-  // 26.04: 0.15; Arch: 0.16); numa mais velha, a chave é ignorada e o módulo fica como antes
-  "sway/language": {
-    "format": "{short}",
-    "hide-single-layout": true,
+  // O layout do teclado: só com dois ou mais teclados de verdade; com um só, o texto vem vazio e o módulo some.
+  // O waybar-language faz o papel do sway/language, cujo hide-single-layout se perdia depois de um reload (o "br"
+  // voltava) e com um teclado virtual (a casa vazia de 16px). Clique troca para o próximo layout
+  "custom/language": {
+    "exec": "exec ~/.local/bin/waybar-language",
+    "return-type": "json",
+    "restart-interval": 5,
     "on-click": "swaymsg input type:keyboard xkb_switch_layout next"
   },
 

@@ -44,14 +44,14 @@ button {
 
 /* Ícones da direita em "casas" de mesma largura (16px + 5px de cada lado),
    centralizados, no mesmo passo de 26px dos ícones da bandeja (16px + spacing 10) */
-#custom-media, #custom-clipboard, #language, #custom-system, #custom-brightness, #custom-caffeine, #custom-notification,
+#custom-media, #custom-clipboard, #custom-language, #custom-system, #custom-brightness, #custom-caffeine, #custom-notification,
 #custom-bluetooth, #custom-network, #custom-volume, #custom-battery, #custom-power {
   min-width: 16px;
   padding: 0 5px;
 }
 /* Tamanho de cada ícone, escolhido pelo usuário. Cada glifo da Nerd Font ocupa uma parte diferente do
    tamanho da fonte (a bateria deitada, 58%; o sino, 94%): por isso os tamanhos variam de um para outro */
-#custom-clipboard, #custom-notification, #custom-brightness, #language { font-size: 14px; }
+#custom-clipboard, #custom-notification, #custom-brightness, #custom-language { font-size: 14px; }
 #custom-power, #custom-volume, #custom-network, #custom-caffeine { font-size: 14px; }
 #custom-bluetooth, #custom-media, #custom-battery { font-size: 16px; }
 #custom-system { font-size: 18px; }
@@ -64,7 +64,7 @@ button {
 #tray { padding: 0 5px; }
 #custom-power { padding-right: 10px; }
 
-#language { font-weight: bold; }
+#custom-language { font-weight: bold; }
 
 #custom-battery.warning     { color: #f27835; }
 #custom-battery.critical    { color: #fc4138; }

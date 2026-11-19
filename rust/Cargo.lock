@@ -1482,6 +1482,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "swaydesk-language"
+version = "0.1.2"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "swaydesk-lock"
 version = "0.1.2"
 dependencies = [

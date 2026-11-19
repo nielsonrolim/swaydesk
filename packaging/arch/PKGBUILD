@@ -13,8 +13,8 @@ arch=(x86_64 aarch64)
 url="https://swaydesk.nielsonrolim.com"
 # Os binários ligam os crates de terceiros: as licenças deles (as do debian/copyright, que o
 # tests/test_packaging.py confere). Os pacotes sem binário (arch=any) ficam só com a MIT
-license=(MIT Apache-2.0 'Apache-2.0 WITH LLVM-exception' BSD-3-Clause CC0-1.0 CDLA-Permissive-2.0 ISC Unicode-3.0
-         Unlicense Zlib)
+license=(MIT Apache-2.0 'Apache-2.0 WITH LLVM-exception' BSD-3-Clause CC0-1.0 CDLA-Permissive-2.0 GPL-3.0-only ISC
+         Unicode-3.0 Unlicense Zlib)
 makedepends=(cargo gtk4 gtk4-layer-shell pkgconf python)
 # O LTO do makepkg compila o C do ring (o TLS do tempo e das capas) com -flto, e o linker do Rust não junta
 # esses objetos: undefined symbol ring_core_*. O workspace já usa o LTO do próprio Rust (profile.release)
@@ -52,7 +52,8 @@ _install() {
 package_swaydesk-common() {
   pkgdesc="Sway desktop components - shared data (translations)"
   arch=(any)
-  license=(MIT)
+  # GPL-3.0-only: os ícones de Captura de Tela e Gravar Tela, cópias do Papirus (ver o debian/copyright)
+  license=(MIT GPL-3.0-only)
   # A noto-fonts em primeiro: o pacman resolve as dependências em ordem, e o sway (da dock e do greeter) pede um
   # ttf-font. Com a noto-fonts já na transação, ele não pergunta o provedor (o padrão seria o gnu-free-fonts)
   # A ttf-nerd-fonts-symbols são os ícones; no Debian, a fonte vai dentro do pacote

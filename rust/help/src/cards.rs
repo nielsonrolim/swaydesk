@@ -59,14 +59,14 @@ pub fn cards() -> Vec<Card> {
         card(
             tr("Screenshot"),
             tr("Capture a region, a window or the whole screen. In the panel, G opens the capture in Gradia to crop and annotate it."),
-            "applets-screenshooter",
+            "swaydesk-screenshot",
             Some("sway-capture shot"),
             Action::Component("sway-capture", "swaydesk-capture", &["shot"]),
         ),
         card(
             tr("Screen recording"),
             tr("Record a region, a window or the whole screen, with the system sound or the microphone. The red dot on the bar stops it."),
-            "media-record",
+            "swaydesk-screen-record",
             Some("sway-capture rec"),
             Action::Component("sway-capture", "swaydesk-capture", &["rec"]),
         ),

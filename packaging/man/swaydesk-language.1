@@ -1,0 +1,27 @@
+.TH SWAYDESK-LANGUAGE 1 2026-11-19 "swaydesk 0.1.2" "Sway desktop components"
+.SH NAME
+swaydesk\-language \- keyboard layout for Waybar
+.SH SYNOPSIS
+.B swaydesk\-language
+.SH DESCRIPTION
+Prints one Waybar line (JSON) with the active keyboard layout's short name, such as br or us, and a new line each time the layout or the keyboards change. It follows Sway's input events over the IPC socket (SWAYSOCK) and runs until Sway exits.
+.PP
+Only real keyboards count: virtual keyboards (wtype, on\-screen keyboards, remote access: the ones wlroots creates, with vendor and product 0:0) are ignored. With fewer than two layouts, the line's text is empty and Waybar hides the module. The short names come from the xkb registry (/usr/share/X11/xkb/rules/evdev.xml); two layouts with the same short name are numbered, such as us1 and us2.
+.PP
+The session runs it under the name waybar\-language (a link in the package's helper directory to /usr/bin/swaydesk\-language), as Waybar's custom/language module; a click switches to the next layout with swaymsg.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
+.SH ENVIRONMENT
+.TP
+.B SWAYSOCK
+Sway's IPC socket. Without it, the module prints an empty line and exits with 1.
+.SH FILES
+.TP
+.I /usr/share/X11/xkb/rules/evdev.xml
+The xkb registry, for the layouts' short names (and evdev.extras.xml, when present).
+.SH SEE ALSO
+.BR swaydesk (7),
+.BR sway\-input (5),
+.BR waybar (5)

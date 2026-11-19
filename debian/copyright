@@ -18,6 +18,18 @@ Comment: SymbolsNerdFont-Regular.ttf from NerdFontsSymbolsOnly v3.4.0
  (sha256 of the release tarball 7f8c090d…716a), with its LICENSE as
  LICENSE-NerdFonts.
 
+Files: home/.local/share/icons/hicolor/scalable/apps/swaydesk-*.svg
+Copyright: 2016-2022 Alexey Varfolomeev <varlesh@gmail.com>
+           2016-2023 Serhii Yeremenko <finalitik@gmail.com>
+           2016-2023 Papirus Development Team
+License: GPL-3
+Comment: Unmodified copies of icons from papirus-icon-theme 20260801
+ (https://github.com/PapirusDevelopmentTeam/papirus-icon-theme),
+ Papirus/64x64/apps: swaydesk-screen-record.svg is
+ com.github.mohelm97.screenrecorder.svg and swaydesk-screenshot.svg is
+ mx-snapshot.svg. Renamed and shipped in hicolor so that the Screenshot and
+ Record Screen entries keep their icons under any icon theme.
+
 Files: rust/vendor/aho-corasick-1.1.5/*
 Copyright: Andrew Gallant <jamslam@gmail.com>
 License: Unlicense or MIT
@@ -1032,3 +1044,16 @@ License: CDLA-Permissive-2.0
  5.4. "Results" means any outcome obtained by computational analysis
  of Data, including for example machine learning models and models'
  insights.
+
+License: GPL-3
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, version 3.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ On Debian systems, the full text of the GNU General Public License
+ version 3 can be found in /usr/share/common-licenses/GPL-3.
