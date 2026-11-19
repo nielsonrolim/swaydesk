@@ -155,7 +155,9 @@ sudo apt update && sudo apt install swaydesk-desktop
 ```
 
 O link leva a versão do keyring (a data da chave), não a do Swaydesk: um lançamento não o muda. Os hashes ficam
-em `keyring/published.sha256`; o `tests/test_mirror.py` confere que os READMEs usam essa versão e esses hashes.
+em `keyring-published.sha256`; o `tests/test_mirror.py` confere que os READMEs usam essa versão e esses hashes.
+Esse arquivo fica fora da pasta `keyring/`: ela inteira é o fonte do pacote, e um arquivo novo nela muda o
+conteúdo sem mudar a versão (o `push.sh` recusa, e o `test_obs` aponta antes).
 
 #### O hash do keyring quebra com qualquer rebuild
 
@@ -164,12 +166,12 @@ novo, com outro hash, e a conferência do README passa a falhar para todo mundo:
 manual (`osc rebuild`), uma mudança no `prjconf` ou no meta do projeto que o faça recompilar. O
 `rebuild="local"` dos alvos evita os rebuilds automáticos, mas não esses. Quem mexer no keyring atualiza, na
 mesma mudança:
-1. o `keyring/published.sha256` (o nome do arquivo, se a versão mudou, e o hash);
+1. o `keyring-published.sha256` (o nome do arquivo, se a versão mudou, e o hash);
 2. os blocos do Debian e do Ubuntu nos dois READMEs públicos (o `test_mirror` aponta o que ficou para trás);
 3. a página de instalação do site, com o builder3.
 
 Depois de publicado, o `packaging/obs/check-keyring.sh` baixa os `.deb` do OBS e compara com o
-`published.sha256`; rode-o depois de qualquer envio e antes de passar os READMEs adiante. O `push.sh` lembra
+`keyring-published.sha256`; rode-o depois de qualquer envio e antes de passar os READMEs adiante. O `push.sh` lembra
 disso quando envia o keyring.
 
 ### Arch
@@ -206,4 +208,4 @@ O OBS a renova perto do vencimento (`osc signkey --extend`). Depois de uma renov
 3. Envie o pacote. Quem tem o `swaydesk-archive-keyring` recebe a chave nova pelo próprio apt.
 4. No Arch, refaça o `pacman-key --add`.
 5. A versão do keyring mudou, então o link e o hash do `.deb` também: siga "O hash do keyring quebra com
-   qualquer rebuild" acima (o `published.sha256`, os READMEs, o site e o `check-keyring.sh`).
+   qualquer rebuild" acima (o `keyring-published.sha256`, os READMEs, o site e o `check-keyring.sh`).
