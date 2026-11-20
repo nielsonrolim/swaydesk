@@ -795,8 +795,36 @@ def ours(file):
             and {line.partition("=")[0] for line in lines[1:]} <= OLD_SETTINGS_KEYS)
 
 
+# O papel de parede que o config do Sway lê (output * bg). Sem ele, o reload abre o swaynag: "unable to access
+# background file". O install.sh copia a imagem lisa do home-copy; o bing-wallpaper troca o link pela do dia
+WALLPAPER = Path("~/.local/share/wallpaper/current.jpg")
+# A imagem lisa: a do home-copy, no repositório (os dotfiles); ou a do skel do pacote, que o install-tree.sh
+# instala a partir do mesmo home-copy (este módulo também vai no pacote, em /usr/libexec/swaydesk)
+WALLPAPER_SEEDS = (Path(__file__).resolve().parents[3] / "home-copy/.local/share/wallpaper/current.jpg",
+                   Path("/usr/share/swaydesk-desktop/skel/.local/share/wallpaper/current.jpg"))
+
+
+def ensure_wallpaper(seeds=WALLPAPER_SEEDS):
+    """Põe a imagem lisa no lugar de um papel de parede que sumiu (ou de um link quebrado), como o install.sh no
+    primeiro uso. Devolve se repôs."""
+    target = WALLPAPER.expanduser()
+    seed = next((path for path in seeds if path.is_file()), None)
+    if target.exists() or seed is None:
+        return False
+    try:
+        if target.is_symlink():
+            target.unlink()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(seed, target)
+    except OSError:
+        return False
+    return True
+
+
 def reload_sway():
-    """Devolve se o Sway recarregou. Sem sessão do Sway, não há o que recarregar."""
+    """Devolve se o Sway recarregou. Sem sessão do Sway, não há o que recarregar. Antes, o papel de parede que o
+    config lê: sem ele, o Sway abriria o swaynag."""
+    ensure_wallpaper()
     try:
         return subprocess.run(["swaymsg", "reload"], capture_output=True, timeout=5, check=False).returncode == 0
     except (OSError, subprocess.SubprocessError):
