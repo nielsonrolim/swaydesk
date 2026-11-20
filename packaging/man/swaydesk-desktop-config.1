@@ -66,7 +66,9 @@ The desktop configuration: language (locale), accent color (accent), GTK and ico
 .IP
 The [enabled] table turns session components off with false: dock, app_grid, switcher, notifications, osd,
 clipboard_history, nightlight, bing_wallpaper, polkit_agent, update_notifier (on Arch, also the background check for
-pacman updates and its notification) and displays (the automatic
+official, AUR, Flatpak and firmware updates, its notification and its bar icon; with it off, GNOME Software gets its
+updates page back, which the Arch package turns off by default with allow\-updates=false, and "gsettings set
+org.gnome.software allow\-updates true" does the same by hand) and displays (the automatic
 screen profiles and the rescue that turns the screens on when none is on; the Displays app stays). The [enabled.bar] table does
 the same for the Waybar modules: weather, clock, media, recording, notifications, clipboard, language, system,
 brightness, caffeine, bluetooth, network, volume, battery, power and updates (the Arch updates icon). A key that is absent is on. A change takes

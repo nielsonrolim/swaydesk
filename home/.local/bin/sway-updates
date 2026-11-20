@@ -1,17 +1,18 @@
 #!/usr/bin/env bash
-# As atualizações do sistema no Arch. Lá a GNOME Software não tem backend do pacman e só avisa das do Flatpak.
-# Este confere os repositórios oficiais com o checkupdates do pacman-contrib, que sincroniza uma cópia
-# temporária dos bancos e não mexe nos do sistema. Nunca atualiza sozinho e não guarda senha.
+# As atualizações do sistema no Arch. Lá a GNOME Software não tem backend do pacman, e o pacote do Arch tira a
+# parte de atualizações dela (allow-updates=false): o aviso é este, com os repositórios oficiais (o checkupdates
+# do pacman-contrib, que sincroniza uma cópia temporária dos bancos e não mexe nos do sistema), o AUR (pelo paru
+# ou o yay já instalados), o Flatpak e o firmware (fwupd). Nunca atualiza sozinho e não guarda senha.
 # uso: sway-updates loop     a verificação em segundo plano: 5 minutos depois do login e depois a cada 6 horas.
 #                            O sway-update-notifier o abre (com update_notifier = false no [enabled], não abre),
 #                            e ele termina com a sessão. Não roda na ISO live
 #      sway-updates check    confere agora: a lista vai para o cache que o ícone da Waybar (waybar-updates) lê,
 #                            e uma notificação vem quando a lista tem algo novo
-#      sway-updates upgrade  abre o kitty com sudo pacman -Syu e, no fim, confere de novo. Com um já aberto,
-#                            traz esse para a frente
+#      sway-updates upgrade  abre o kitty com o paru -Syu, o yay -Syu ou o sudo pacman -Syu, o flatpak update e
+#                            o fwupdmgr update e, no fim, confere de novo. Com um já aberto, traz esse para a frente
 #
-# O cache, em ~/.cache/swaydesk: updates (as linhas do checkupdates, "nome antiga -> nova") e updates.notified
-# (as linhas "nome nova" da última notificação). Sem o checkupdates, nada acontece: no Debian e no Ubuntu a loja
+# O cache, em ~/.cache/swaydesk: updates (as linhas do checkupdates, "nome antiga -> nova"), updates.aur,
+# updates.flatpak, updates.firmware e updates.notified (as linhas "fonte nome nova" da última notificação). Sem o checkupdates, nada acontece: no Debian e no Ubuntu a loja
 # avisa do apt.
 set -uo pipefail
 if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }
@@ -33,6 +34,9 @@ retry=${SWAY_UPDATES_RETRY:-900}       # sem rede: 15 minutos
 busy_retry=${SWAY_UPDATES_BUSY:-600}   # com o pacman rodando: 10 minutos
 nap=${SWAY_UPDATES_NAP:-900}           # o sono mais longo: quem decide é o relógio, porque o sleep para na suspensão
 wait_limit=${SWAY_UPDATES_WAIT:-$every}  # quanto a notificação espera um clique
+fetch_limit=${SWAY_UPDATES_FETCH_LIMIT:-600}  # o máximo de cada consulta: numa rede que engole os pacotes, o
+                                             # pacman -Sy do checkupdates tenta cada espelho e passa de 15 min
+kill_after=${SWAY_UPDATES_KILL_AFTER:-30}     # quem ignora o SIGINT leva SIGKILL depois disso
 
 log() { echo "sway-updates: $*" >&2; }
 
@@ -118,44 +122,195 @@ notify() {
   setsid -f "$self" notify-wait "$1" "$2" </dev/null >/dev/null 2>&1
 }
 
-# A lista nova, as linhas "nome nova" dela e a notificação quando há algo que não foi visto
-check() {
-  local out err rc lines=() line names=() seen new=0 body= extra
-  if busy; then log "pacman is busy: skipped"; return 3; fi
-  err=$(mktemp) || return 1
-  out=$(checkupdates 2>"$err"); rc=$?
-  # A última linha do erro vai para o log: sem rede, um repositório fora do ar, ou o fakeroot faltando
-  line=$(grep -v '^[[:space:]]*$' "$err" | tail -n 1); rm -f "$err"
+# As fontes, cada uma com o seu arquivo no cache: os repositórios oficiais (checkupdates), o AUR (pelo ajudante já
+# instalado, paru ou yay; nenhum vem com o Swaydesk), o Flatpak e o firmware (fwupd). Cada uma falha sozinha: sem
+# rede, um repositório fora do ar ou o RPC do AUR caído, o arquivo dela fica como estava. As linhas são "nome
+# antiga -> nova" (pacman, AUR e firmware, com _ no lugar dos espaços do nome do dispositivo) ou "app ramo"
+# (Flatpak), só com letras, números e . : _ + ~ @ -: elas vão como estão para o JSON da barra
+SOURCES=(repo aur flatpak firmware)
+PKG_LINE='^[A-Za-z0-9@._+-]+ [A-Za-z0-9.:_+~-]+ -> [A-Za-z0-9.:_+~-]+$'
+FLATPAK_LINE='^[A-Za-z0-9._-]+ [A-Za-z0-9._-]+$'
+
+source_file() { if [[ $1 == repo ]]; then printf '%s' "$list"; else printf '%s' "$list.$1"; fi; }
+
+# O ajudante do AUR, na ordem de preferência. Só os dois: o -Qua do pikaur não diz se há atualizações (sai
+# com 0 sempre) e não tem uma saída para ler, e o trizen está parado
+aur_helper() {
+  local helper
+  for helper in paru yay; do
+    command -v "$helper" >/dev/null 2>&1 && { printf '%s' "$helper"; return 0; }
+  done
+  return 1
+}
+
+# Roda o comando com o stderr num arquivo: $out, $rc e $err (a última linha do erro, para o log)
+timed_out() { ((rc == 124 || rc == 137)); }
+
+capture() {
+  local file
+  file=$(mktemp) || { rc=1 err="mktemp failed" errs= out=; return; }
+  # Com SIGINT, que o pacman trata soltando a trava; quem não sair em 30 s leva SIGKILL (aí o timeout sai com 137)
+  out=$(timeout -s INT -k "$kill_after" "$fetch_limit" "$@" 2>"$file"); rc=$?
+  errs=$(grep -v '^[[:space:]]*$' "$file"); rm -f "$file"
+  err=${errs##*$'\n'}  # a última linha com texto, a que diz o motivo
+  err=${err#"${err%%[![:space:]]*}"}
+  timed_out && err="timed out after ${fetch_limit}s"
+  return 0
+}
+
+# Cada fetch_* põe as linhas em $found; 1 é falha (o cache dela fica)
+# O checkupdates sincroniza uma cópia dos bancos numa pasta dele, com a trava dela: interrompido no meio, ela
+# pode ficar, e todas as rodadas seguintes falhariam
+checkupdates_unlock() {
+  local db=${CHECKUPDATES_DB:-${TMPDIR:-/tmp}/checkup-db-${UID}}
+  pgrep -u "$UID" -x pacman >/dev/null 2>&1 && return
+  [[ -e $db/db.lck ]] && rm -f "$db/db.lck" && log "removed the stale lock $db/db.lck"
+}
+
+fetch_repo() {
+  local line
+  capture checkupdates
   case $rc in
     0) ;;
     2) out= ;;  # nenhuma atualização
-    *) log "checkupdates failed ($rc): ${line:-no network or a repository down}"; return 1 ;;
+    124|137) checkupdates_unlock; log "checkupdates failed ($rc): $err"; return 1 ;;
+    *) log "checkupdates failed ($rc): ${err:-no network or a repository down}"; return 1 ;;
   esac
-  # Só as linhas bem formadas: elas vão como estão para o JSON da barra
-  while IFS= read -r line; do
-    [[ $line =~ ^[A-Za-z0-9@._+-]+\ [A-Za-z0-9.:_+~-]+\ -\>\ [A-Za-z0-9.:_+~-]+$ ]] && lines+=("$line")
+  while IFS= read -r line; do [[ $line =~ $PKG_LINE ]] && found+=("$line"); done <<<"$out"
+  return 0
+}
+
+fetch_aur() {
+  local helper name old arrow new rest
+  helper=$(aur_helper) || return 0  # sem ajudante: o AUR fica de fora, em silêncio
+  # Os dois só consultam o RPC do AUR, sem sincronizar os bancos e sem sudo. Saem com 1 tanto sem nenhuma
+  # atualização quanto sem rede: a diferença é o erro no stderr, em inglês com o LC_ALL=C (os dois são
+  # traduzidos: em pt_BR, o erro sairia "erro:"). O "error" pode estar em qualquer linha: o yay diz
+  # " -> 1 error occurred:" e o motivo vem embaixo
+  capture env LANGUAGE= LC_ALL=C "$helper" -Qua --color never
+  if timed_out || { ((rc != 0)) && [[ ${errs,,} == *error* ]]; }; then
+    log "$helper -Qua failed ($rc): $err"
+    return 1
+  fi
+  # "nome antiga -> nova", e o yay 13 acrescenta a idade (" [2d]"). Um pacote no IgnorePkg ("[ignored]") não
+  # conta: o -Syu também o pula
+  while read -r name old arrow new rest; do
+    [[ $arrow == '->' && $rest != *'[ignored]'* ]] || continue
+    [[ "$name $old -> $new" =~ $PKG_LINE ]] && found+=("$name $old -> $new")
   done <<<"$out"
+  return 0
+}
+
+fetch_flatpak() {
+  local app branch
+  command -v flatpak >/dev/null 2>&1 || return 0
+  # O do sistema e o do usuário, com os runtimes (o flatpak update também os atualiza). Precisa de rede: um
+  # remoto que falha faz o comando todo falhar
+  capture flatpak remote-ls --updates --columns=application,branch
+  if ((rc != 0)); then
+    log "flatpak remote-ls failed ($rc): ${err:-no network}"
+    return 1
+  fi
+  while IFS=$'\t' read -r app branch; do
+    [[ "$app $branch" =~ $FLATPAK_LINE ]] && found+=("$app $branch")
+  done <<<"$out"
+  return 0
+}
+
+# Com --json, o erro vem no stdout, num JSON de várias linhas: só a mensagem, numa linha
+fwupd_reason() {
+  local message
+  message=$(jq -r '.Error.Message? // empty' <<<"$out" 2>/dev/null | tr -s '\n' ' ')
+  message=${message% }
+  timed_out && message=$err
+  [[ -n $message ]] || message=${err:-$(tr -s '\n' ' ' <<<"${out:0:200}")}
+  printf '%s' "$message"
+}
+
+fetch_firmware() {
+  local name old new safe
+  command -v fwupdmgr >/dev/null 2>&1 || return 0
+  # Os metadados do LVFS: o fwupd-refresh.timer vem desligado no Arch, e a loja não os baixa mais (sem a página
+  # Atualizações). O polkit deixa quem está na sessão (refresh-remote), e o fwupd pula o que tem menos de 24 h
+  # (sai com 2); sem rede, sai com 1 e o motivo no JSON. Uma falha aqui só vai para o log: as atualizações saem dos metadados que há
+  capture fwupdmgr refresh --json
+  case $rc in 0|2) ;; *) log "fwupdmgr refresh failed ($rc): $(fwupd_reason)" ;; esac
+  # Com --json, sai com 0 também sem nenhuma atualização e sem dispositivos (numa VM: {"Devices": []}), e não
+  # pergunta nada; um erro (o daemon fora do ar) sai com 1
+  capture fwupdmgr get-updates --json
+  if ((rc != 0)); then
+    log "fwupdmgr get-updates failed ($rc): $(fwupd_reason)"
+    return 1
+  fi
+  while IFS=$'\t' read -r name old new; do
+    # O nome com _ no lugar do que não é letra, número ou . _ + - (espaços, parênteses, aspas), um só por vez
+    name=${name//[^A-Za-z0-9._+-]/_}
+    while [[ $name == *__* ]]; do name=${name//__/_}; done
+    name=${name#_} name=${name%_}
+    safe="$name ${old//[^A-Za-z0-9.:_+~-]/_} -> ${new//[^A-Za-z0-9.:_+~-]/_}"
+    [[ -n $name && $safe =~ $PKG_LINE ]] && found+=("$safe")
+  done < <(jq -r '.Devices[]? | select((.Releases // []) | length > 0)
+                  | [.Name, .Version, .Releases[0].Version] | map(tostring) | @tsv' <<<"$out" 2>/dev/null)
+  return 0
+}
+
+# Confere todas as fontes, grava o cache de cada uma e notifica quando há algo que a última notificação não tinha.
+# 0: tudo certo; 1: os repositórios oficiais falharam (as outras fontes valem); 3: o pacman está ocupado. Só a
+# falha dos oficiais encurta a próxima rodada: um remoto do Flatpak quebrado ou o daemon do fwupd parado ficariam
+# fazendo tudo rodar a cada 15 minutos; essas só vão para o log
+check() {
+  local source file failed=0 line keys=() seen new=0 total=0 counts=() names=() body= extra n
+  found=()
+  local -A count=()
+  if busy; then log "pacman is busy: skipped"; return 3; fi
   mkdir -p "$cache" || return 1
-  # Um arquivo temporário por processo: a verificação do laço e a do fim da atualização podem rodar juntas
-  { if ((${#lines[@]})); then printf '%s\n' "${lines[@]}"; fi; } >"$list.tmp.$$" && mv -f "$list.tmp.$$" "$list"
+  for source in "${SOURCES[@]}"; do
+    found=()
+    file=$(source_file "$source")
+    if "fetch_$source"; then
+      # Um arquivo temporário por processo: a verificação do laço e a do fim da atualização podem rodar juntas
+      { if ((${#found[@]})); then printf '%s\n' "${found[@]}"; fi; } >"$file.tmp.$$" && mv -f "$file.tmp.$$" "$file"
+    elif [[ $source == repo ]]; then
+      failed=1
+    fi
+    # O que vale para a notificação é o cache, novo ou o da rodada anterior
+    found=()
+    [[ -r $file ]] && mapfile -t found <"$file"
+    count[$source]=${#found[@]}
+    total=$((total + ${#found[@]}))
+    # A chave na última notificação: "fonte nome nova" (a versão nova, ou o ramo do Flatpak)
+    for line in "${found[@]}"; do
+      keys+=("$source ${line%% *} ${line##* }")
+      if [[ $source == firmware ]]; then names+=("$(t 'Firmware'): ${line%% *}"); else names+=("${line%% *}"); fi
+    done
+  done
   refresh_icons
-  if ((${#lines[@]} == 0)); then
+  if ((total == 0)); then
     : >"$notified"
     close_notification
-    return 0
+    return "$failed"
   fi
-  for line in "${lines[@]}"; do names+=("${line%% *} ${line##* }"); done
   seen=$(cat "$notified" 2>/dev/null)
-  for line in "${names[@]}"; do
+  for line in "${keys[@]}"; do
     grep -qxF -- "$line" <<<"$seen" || { new=1; break; }
   done
-  printf '%s\n' "${names[@]}" >"$notified"
-  ((new)) || return 0
-  for line in "${lines[@]:0:5}"; do body+="${line%% *}"$'\n'; done
-  extra=$((${#lines[@]} - 5))
+  printf '%s\n' "${keys[@]}" >"$notified"
+  ((new)) || return "$failed"
+  # "Oficiais: 3 · AUR: 1 · Flatpak: 2" (só as que têm), depois os 5 primeiros nomes
+  ((count[repo])) && counts+=("$(printf "$(t 'Official: %d')" "${count[repo]}")")
+  ((count[aur])) && counts+=("$(printf "$(t 'AUR: %d')" "${count[aur]}")")
+  ((count[flatpak])) && counts+=("$(printf "$(t 'Flatpak: %d')" "${count[flatpak]}")")
+  ((count[firmware])) && counts+=("$(printf "$(t 'Firmware: %d')" "${count[firmware]}")")
+  # Com uma fonte só, o título já diz tudo
+  if ((${#counts[@]} > 1)); then
+    for n in "${counts[@]}"; do body+="${body:+ · }$n"; done
+    body+=$'\n'
+  fi
+  for line in "${names[@]:0:5}"; do body+="$line"$'\n'; done
+  extra=$((total - 5))
   ((extra > 0)) && body+=$(printf "$(tn 'and %d more' 'and %d more' "$extra")" "$extra")
-  notify "${#lines[@]}" "${body%$'\n'}"
-  return 0
+  notify "$total" "${body%$'\n'}"
+  return "$failed"
 }
 
 loop() {
@@ -192,13 +347,71 @@ loop() {
   close_notification 8>&-
 }
 
+# A parte de atualizações da GNOME Software, que o pacote do Arch desliga (allow-updates=false no override): com o
+# nosso aviso desligado (update_notifier = false), ela volta, para a pessoa não ficar sem nada. O valor vai para o
+# dconf do usuário, que vale mais que o override, com um marcador; com o aviso ligado de novo, a chave volta ao
+# padrão, mas só se fomos nós que a gravamos e ela ainda está como a deixamos: uma escolha à mão fica
+store_marker=${XDG_STATE_HOME:-$HOME/.local/state}/swaydesk/store-updates-given
+STORE_KEY=/org/gnome/software/allow-updates
+
+notifier_enabled() {
+  local config
+  # O sway-desktop-config dos dotfiles ou o do pacote, como o sway-if-enabled. 1 é desligado; um erro conta
+  # como ligado (um erro no config.toml nunca desliga nada)
+  if [[ ${SWAYDESK_SESSION-} != package && -x $HOME/.local/bin/sway-desktop-config ]]; then
+    config=$HOME/.local/bin/sway-desktop-config
+  else
+    config=${self%/*}/sway-desktop-config
+  fi
+  "$config" enabled update_notifier >/dev/null 2>&1
+  (($? != 1))
+}
+
+store() {
+  local value
+  command -v checkupdates >/dev/null 2>&1 || exit 0  # só no Arch
+  command -v dconf >/dev/null 2>&1 || exit 0
+  [[ -e $live_mark ]] && exit 0
+  value=$(dconf read "$STORE_KEY" 2>/dev/null)
+  if notifier_enabled; then
+    [[ -e $store_marker ]] || exit 0
+    [[ $value == true ]] && dconf reset "$STORE_KEY" 2>/dev/null
+    rm -f "$store_marker"
+  else
+    # Uma escolha do usuário (true ou false) fica como está
+    [[ -z $value ]] || exit 0
+    mkdir -p "${store_marker%/*}" && dconf write "$STORE_KEY" true 2>/dev/null && : >"$store_marker"
+  fi
+  exit 0
+}
+
 # Dentro do kitty: a atualização, uma verificação nova e uma tecla para fechar
 run_upgrade() {
   exec 9>"$upgrade_lock"
   flock -n 9 || exit 0
-  printf '%s\n\n' "$(t 'Updating the system with sudo pacman -Syu. sudo asks for your password.')"
-  sudo pacman -Syu
+  local helper
+  # O ajudante do AUR atualiza também os repositórios oficiais, e chama o sudo sozinho: roda como o usuário
+  if helper=$(aur_helper); then
+    printf '%s\n\n' "$(printf "$(t 'Updating the system and the AUR with %s -Syu. sudo asks for your password.')" "$helper")"
+    "$helper" -Syu
+  else
+    printf '%s\n\n' "$(t 'Updating the system with sudo pacman -Syu. sudo asks for your password.')"
+    sudo pacman -Syu
+  fi
   echo
+  # Os apps Flatpak, do sistema e do usuário: o polkit libera os do sistema para quem está na sessão
+  if command -v flatpak >/dev/null 2>&1; then
+    printf '%s\n\n' "$(t 'Updating the Flatpak apps with flatpak update.')"
+    flatpak update
+    echo
+  fi
+  # O firmware por último, só com uma atualização na lista: numa máquina sem nada a atualizar, o fwupdmgr só
+  # diria que não há o que fazer. Ele pede a senha pelo polkit e, se precisar, o reinício
+  if command -v fwupdmgr >/dev/null 2>&1 && [[ -s $(source_file firmware) ]]; then
+    printf '%s\n\n' "$(t 'Updating the firmware with fwupdmgr update.')"
+    fwupdmgr update
+    echo
+  fi
   exec 9>&-
   printf '%s\n' "$(t 'Checking for updates again...')"
   check >/dev/null 2>&1
@@ -221,5 +434,6 @@ case ${1:-} in
   upgrade) upgrade ;;
   run-upgrade) run_upgrade ;;
   notify-wait) notify_wait "${2:-0}" "${3:-}" ;;
+  store) store ;;
   *) echo "usage: sway-updates loop|check|upgrade" >&2; exit 2 ;;
 esac

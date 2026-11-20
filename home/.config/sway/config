@@ -60,6 +60,9 @@ exec $bin/sway-if-enabled notifications $bin/sway-after-env sh -c 'while swaymsg
 # Avisos de atualização da distro (GNOME Software, update-notifier do Ubuntu ou o do Discover no
 # Kubuntu): no GNOME e no KDE sobem pelo autostart; no Sway, só daqui. Sem nenhum, como no Mint, nada
 exec $bin/sway-if-enabled update_notifier $bin/sway-after-env $bin/sway-update-notifier
+# No Arch, a parte de atualizações da GNOME Software vem desligada (o sway-updates cuida delas); com o
+# update_notifier = false, ela volta para a loja. Fora do Arch, não faz nada
+exec $bin/sway-updates store
 # O "Reiniciar e atualizar" da GNOME Software pede o reinício ao gerenciador de sessão do GNOME:
 # o sway-sessionmgr responde ao Reboot e ao Shutdown, e sai com o Sway
 exec $bin/sway-sessionmgr

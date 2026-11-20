@@ -52,7 +52,8 @@ pub fn filtered(template: &str, config: &Config, checkupdates: bool) -> Result<S
         .filter(|(key, _)| !config.enabled(&format!("bar.{key}")))
         .map(|(_, module)| *module)
         .collect();
-    if !checkupdates {
+    // Com o update_notifier = false, o ícone some junto com a verificação: sem ela, o cache ficaria velho
+    if !checkupdates || !config.enabled("update_notifier") {
         off.push(UPDATES_MODULE);
     }
     let bars: Vec<&mut Value> = match &mut data {
@@ -147,6 +148,7 @@ mod tests {
         assert_eq!(right(true, ""), serde_json::json!(["custom/media", "custom/updates", "custom/power"]));
         assert_eq!(right(false, ""), serde_json::json!(["custom/media", "custom/power"]));
         assert_eq!(right(true, "[enabled.bar]\nupdates = false\n"), serde_json::json!(["custom/media", "custom/power"]));
+        assert_eq!(right(true, "[enabled]\nupdate_notifier = false\n"), serde_json::json!(["custom/media", "custom/power"]));
     }
 
     #[test]

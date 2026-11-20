@@ -105,7 +105,7 @@
   },
 
   // Atualizações do sistema, só no Arch (sway-updates): a quantidade, e some sem nenhuma; a dica lista as
-  // primeiras. Clique abre o kitty com sudo pacman -Syu. Fora do Arch (sem o checkupdates), o
+  // primeiras, por fonte (oficiais, AUR, Flatpak, firmware). Clique atualiza num kitty. Fora do Arch (sem o checkupdates), o
   // sway-desktop-config waybar tira o módulo do config
   "custom/updates": {
     "exec": "exec ~/.local/bin/waybar-updates",

@@ -158,6 +158,9 @@ package_swaydesk-desktop() {
               'nano: the same in the terminal, without a graphical editor')
   # O portal do gtk por um drop-in na unit: o dbus-broker avisa de um segundo .service com o mesmo nome
   SWAYDESK_LIBEXEC=/usr/lib SWAYDESK_PORTAL_GTK=systemd _install swaydesk-desktop
+  # A GNOME Software sem a parte de atualizações: o sway-updates avisa de tudo no Arch. O hook do glib2 compila
+  install -Dm644 packaging/files/90_swaydesk-desktop.gschema.override \
+    "$pkgdir/usr/share/glib-2.0/schemas/90_swaydesk-desktop.gschema.override"
 }
 
 package_swaydesk-greeter() {

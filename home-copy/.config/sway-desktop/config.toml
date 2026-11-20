@@ -57,7 +57,8 @@ clipboard_history = true   # o histórico da área de transferência (o cliphist
 nightlight = true          # a luz noturna volta ao último modo no login
 bing_wallpaper = true      # o wallpaper do dia do Bing
 polkit_agent = true        # a janela da senha de administrador: desligada, quem pede a senha falha
-update_notifier = true     # o aviso de atualizações da distro (no Arch, a verificação do pacman e a notificação)
+update_notifier = true     # o aviso de atualizações da distro. No Arch, o do Swaydesk (oficiais, AUR, Flatpak,
+                           # firmware): desligado, a loja volta a cuidar das atualizações
 displays = true            # os perfis de telas ao plugar um monitor e na tampa, e o resgate quando
                            # nenhuma tela fica ligada (o app Telas continua)
 

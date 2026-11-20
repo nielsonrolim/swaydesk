@@ -2136,6 +2136,26 @@ msgid_plural "%d updates available"
 msgstr[0] "%d atualização disponível"
 msgstr[1] "%d atualizações disponíveis"
 
+#: home/.local/bin/sway-updates
+msgid "Firmware"
+msgstr "Firmware"
+
+#: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+msgid "Official: %d"
+msgstr "Oficiais: %d"
+
+#: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+msgid "AUR: %d"
+msgstr "AUR: %d"
+
+#: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+msgid "Flatpak: %d"
+msgstr "Flatpak: %d"
+
+#: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+msgid "Firmware: %d"
+msgstr "Firmware: %d"
+
 #: home/.local/bin/sway-updates home/.local/bin/waybar-updates
 msgid "and %d more"
 msgid_plural "and %d more"
@@ -2143,8 +2163,20 @@ msgstr[0] "e mais %d"
 msgstr[1] "e mais %d"
 
 #: home/.local/bin/sway-updates
+msgid "Updating the system and the AUR with %s -Syu. sudo asks for your password."
+msgstr "Atualizando o sistema e o AUR com %s -Syu. O sudo pede a sua senha."
+
+#: home/.local/bin/sway-updates
 msgid "Updating the system with sudo pacman -Syu. sudo asks for your password."
 msgstr "Atualizando o sistema com sudo pacman -Syu. O sudo pede a sua senha."
+
+#: home/.local/bin/sway-updates
+msgid "Updating the Flatpak apps with flatpak update."
+msgstr "Atualizando os apps Flatpak com flatpak update."
+
+#: home/.local/bin/sway-updates
+msgid "Updating the firmware with fwupdmgr update."
+msgstr "Atualizando o firmware com fwupdmgr update."
 
 #: home/.local/bin/sway-updates
 msgid "Checking for updates again..."

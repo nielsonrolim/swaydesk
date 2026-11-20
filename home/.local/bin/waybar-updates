@@ -1,13 +1,21 @@
 #!/usr/bin/env bash
 # Ícone das atualizações do sistema na Waybar (custom/updates), só no Arch: a quantidade, e some com nenhuma. Lê
-# o cache que o sway-updates grava (~/.cache/swaydesk/updates), sem rede e sem abrir processos, a cada 5 s, e
-# só escreve quando muda; o sway-updates manda SIGUSR1 ao gravar. A dica mostra as primeiras 15 da lista.
+# o cache que o sway-updates grava em ~/.cache/swaydesk (updates, dos repositórios oficiais; updates.aur,
+# updates.flatpak e updates.firmware), sem rede e sem abrir processos, a cada 5 s, e só escreve quando muda; o
+# sway-updates manda SIGUSR1 ao gravar. A dica separa as fontes e mostra as primeiras 15 linhas.
 set -uo pipefail
 if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }
   tn() { if [ "$3" = 1 ]; then printf '%s' "$1"; else printf '%s' "$2"; fi; }; fi
 self=$(readlink -f -- "$0")
 source "${self%/*}/waybar-icon-lib"
 list=${XDG_CACHE_HOME:-$HOME/.cache}/swaydesk/updates
+SOURCES=(repo aur flatpak firmware)
+declare -A LABEL=([repo]=$(t 'Official: %d') [aur]=$(t 'AUR: %d') [flatpak]=$(t 'Flatpak: %d')
+                  [firmware]=$(t 'Firmware: %d'))
+# As linhas que o sway-updates grava: "nome antiga -> nova" ou "app ramo", só com letras, números e . : _ + ~ @ -
+# (no firmware, o _ está no lugar dos espaços do nome): nada a escapar no JSON nem no markup da dica
+PKG_LINE='^[A-Za-z0-9@._+-]+ [A-Za-z0-9.:_+~-]+ -> [A-Za-z0-9.:_+~-]+$'
+FLATPAK_LINE='^[A-Za-z0-9._-]+ [A-Za-z0-9._-]+$'
 SHOWN=15
 # Os bytes em UTF-8: o $'\U…' do bash depende do locale e, no C (um Arch sem locale-gen), sai literal
 ICON=$'\xf3\xb0\x9a\xb0'  # U+F06B0, nf-md-update
@@ -21,23 +29,38 @@ CLICK=$(t 'Click to update')
 
 line=
 build() {
-  local items=() item n tip head more extra i
-  [[ -r $list ]] && mapfile -t items <"$list" 2>/dev/null
-  n=${#items[@]}
+  local source file items item n=0 tip= head more extra shown=0 counts= section sources=0
+  local -A got=()
+  for source in "${SOURCES[@]}"; do
+    file=$list
+    [[ $source == repo ]] || file=$list.$source
+    items=()
+    [[ -r $file ]] && mapfile -t items <"$file" 2>/dev/null
+    section=
+    for item in "${items[@]}"; do
+      [[ $item =~ $PKG_LINE || $item =~ $FLATPAK_LINE ]] || continue
+      got[$source]=$((${got[$source]:-0} + 1))
+      ((shown < SHOWN)) || continue
+      shown=$((shown + 1))
+      [[ $source == firmware ]] && item=${item//_/ }
+      section+="\\n  ${item/ -> / $ARROW }"
+    done
+    ((${got[$source]:-0})) || continue
+    n=$((n + got[$source]))
+    sources=$((sources + 1))
+    counts+="${counts:+ · }${LABEL[$source]//%d/${got[$source]}}"
+    [[ -n $section ]] && tip+="\\n${LABEL[$source]//%d/${got[$source]}}$section"
+  done
   if ((n == 0)); then
     line='{"text":"","tooltip":"","class":"none"}'
     return
   fi
   head=$HEAD_MANY more=$MORE_MANY
   ((n == 1)) && head=$HEAD_ONE
-  tip=${head//%d/$n}
-  for ((i = 0; i < n && i < SHOWN; i++)); do
-    item=${items[i]}
-    # O sway-updates só grava linhas "nome antiga -> nova" com letras, números e . : _ + ~ @ -: nada a escapar
-    [[ $item =~ ^[A-Za-z0-9@._+-]+\ [A-Za-z0-9.:_+~-]+\ -\>\ [A-Za-z0-9.:_+~-]+$ ]] || continue
-    tip+="\\n${item/ -> / $ARROW }"
-  done
-  extra=$((n - SHOWN))
+  # A linha das contagens só com mais de uma fonte: com uma, a seção já diz
+  ((sources > 1)) && tip="\\n$counts\\n$tip"
+  tip="${head//%d/$n}$tip"
+  extra=$((n - shown))
   if ((extra > 0)); then
     ((extra == 1)) && more=$MORE_ONE
     tip+="\\n${more//%d/$extra}"

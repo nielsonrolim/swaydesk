@@ -740,7 +740,8 @@ def waybar_config(template_text, config, checkupdates=None):
     off = {BAR_MODULES[name[4:]] for name in config.enabled if name.startswith("bar.")}
     if checkupdates is None:
         checkupdates = shutil.which("checkupdates") is not None
-    if not checkupdates:
+    # Com o update_notifier = false, o ícone some junto com a verificação: sem ela, o cache ficaria velho
+    if not checkupdates or not enabled(config, "update_notifier"):
         off.add(UPDATES_MODULE)
     bars = data if isinstance(data, list) else [data]
     for bar in bars:

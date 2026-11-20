@@ -1,0 +1,7 @@
+# Só no pacote do Arch (o PKGBUILD o instala): lá, a GNOME Software não tem backend do pacman, e o aviso de
+# atualizações do Swaydesk (sway-updates) cuida dos repositórios oficiais, do AUR, do Flatpak e do firmware.
+# Sem isto, ela avisaria do Flatpak também, em dobro. Não há uma chave só para o aviso: allow-updates = false
+# tira as notificações de atualização, o download automático e a página Atualizações; instalar apps continua.
+# É um padrão do sistema: um valor gravado no dconf pelo usuário vale mais
+[org.gnome.software]
+allow-updates=false
