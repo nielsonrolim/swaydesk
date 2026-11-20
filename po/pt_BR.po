@@ -404,6 +404,12 @@ msgstr "Tema: %s"
 msgid "Could not update: %s"
 msgstr "Não foi possível atualizar: %s"
 
+#: home/.local/bin/sway-theme home/.local/bin/sway-theme-app
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "Wallpaper not found or not readable: %s"
+msgstr "Papel de parede não encontrado ou ilegível: %s"
+
 #: home/.local/bin/sway-theme
 msgid "Lists the installed GTK themes and changes theme, icons and accent color across the desktop."
 msgstr "Lista os temas GTK instalados e troca tema, ícones e cor de destaque em todo o desktop."
@@ -481,6 +487,10 @@ msgid "Accent color"
 msgstr "Cor de destaque"
 
 #: home/.local/bin/sway-theme-app
+msgid "Use the wallpaper's color"
+msgstr "Usar a cor do papel de parede"
+
+#: home/.local/bin/sway-theme-app
 msgid "The Papirus icons are not installed: the color changes the accent, but not the folders. Install the papirus-icon-theme package."
 msgstr "Os ícones Papirus não estão instalados: a cor muda o destaque, mas não as pastas. Instale o pacote papirus-icon-theme."
 
@@ -492,6 +502,11 @@ msgstr "%(theme)s não tem versão %(style)s"
 #: home/.local/bin/sway-theme-app
 msgid "This theme has a fixed style"
 msgstr "Este tema tem estilo fixo"
+
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "The wallpaper has no color: the default accent %s"
+msgstr "O papel de parede não tem cor: o destaque padrão %s"
 
 #: home/.local/bin/sway-theme-app
 #, python-format
@@ -2909,10 +2924,6 @@ msgstr "Outro agente de senhas está ativo"
 #: rust/nm/src/rules.rs rust/nm/src/standalone/tests.rs
 msgid "No network service running"
 msgstr "Nenhum serviço de rede ativo"
-
-#: rust/theme/src/main.rs
-msgid "Wallpaper not found or not readable: %s"
-msgstr "Papel de parede não encontrado ou ilegível: %s"
 
 #: home/.config/sway/keys/base.conf
 msgid "Session and apps"

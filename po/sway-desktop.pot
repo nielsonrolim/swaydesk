@@ -392,6 +392,12 @@ msgstr ""
 msgid "Could not update: %s"
 msgstr ""
 
+#: home/.local/bin/sway-theme home/.local/bin/sway-theme-app
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "Wallpaper not found or not readable: %s"
+msgstr ""
+
 #: home/.local/bin/sway-theme
 msgid "Lists the installed GTK themes and changes theme, icons and accent color across the desktop."
 msgstr ""
@@ -469,6 +475,10 @@ msgid "Accent color"
 msgstr ""
 
 #: home/.local/bin/sway-theme-app
+msgid "Use the wallpaper's color"
+msgstr ""
+
+#: home/.local/bin/sway-theme-app
 msgid "The Papirus icons are not installed: the color changes the accent, but not the folders. Install the papirus-icon-theme package."
 msgstr ""
 
@@ -479,6 +489,11 @@ msgstr ""
 
 #: home/.local/bin/sway-theme-app
 msgid "This theme has a fixed style"
+msgstr ""
+
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "The wallpaper has no color: the default accent %s"
 msgstr ""
 
 #: home/.local/bin/sway-theme-app
@@ -2896,10 +2911,6 @@ msgstr ""
 
 #: rust/nm/src/rules.rs rust/nm/src/standalone/tests.rs
 msgid "No network service running"
-msgstr ""
-
-#: rust/theme/src/main.rs
-msgid "Wallpaper not found or not readable: %s"
 msgstr ""
 
 #: home/.config/sway/keys/base.conf
