@@ -127,4 +127,16 @@ mod tests {
         assert_eq!(pt.ngettext("%d application", "%d applications", 2), "%d aplicativos");
         assert_eq!(pt.pgettext("decimal separator", "."), ",");
     }
+
+    // Um catálogo es só atende todo es_*: es_MX tenta es_MX e depois es
+    #[test]
+    fn reads_the_spanish_catalog_for_any_country() {
+        for language in ["es_ES.UTF-8", "es_MX", "es_AR"] {
+            let es = load(&[language.into()], &[repo_locale()]);
+            assert_eq!(es.gettext("Type to search"), "Escribe para buscar");
+            assert_eq!(es.ngettext("%d application", "%d applications", 1), "%d aplicación");
+            assert_eq!(es.ngettext("%d application", "%d applications", 2), "%d aplicaciones");
+            assert_eq!(es.pgettext("decimal separator", "."), ",");
+        }
+    }
 }

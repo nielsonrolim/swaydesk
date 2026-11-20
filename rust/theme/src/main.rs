@@ -2,8 +2,12 @@
 //! `sway-theme` em Python, com os mesmos comandos e as mesmas saídas.
 //!
 //! uso: sway-theme list | current | families | colors | init
-//!      sway-theme set <tema> [--accent #rrggbb] [--folders <cor>]
-//!      sway-theme pick <família> light|dark <cor>
+//!      sway-theme set <tema> [--accent #rrggbb] [--folders <cor>] [--auto | --no-auto]
+//!      sway-theme pick <família> light|dark <cor> [--auto | --no-auto]
+//!      sway-theme accent-auto [--print]
+//! --auto: a cor veio do papel de parede (accent_auto = true); --no-auto desliga o modo. Sem nenhum dos dois, uma
+//! cor diferente da atual desliga o modo e a mesma cor o deixa como está.
+//! accent-auto: com accent_auto = true (o padrão), aplica a cor do papel de parede; --print só mostra o nome dela.
 //! --check: só confere que o binário carrega.
 use std::process::ExitCode;
 
@@ -11,11 +15,12 @@ use swaydesk_common::config::{load_config, path, PAPIRUS_COLORS};
 use swaydesk_common::i18n::tr;
 use swaydesk_common::resident;
 use swaydesk_theme::families::{self as sf, Style};
-use swaydesk_theme::themes::{self as st, Applied};
+use swaydesk_theme::themes::{self as st, Applied, Auto};
+use swaydesk_theme::wallpaper_accent::{wallpaper, wallpaper_color};
 use swaydesk_theme::{desktop as dc, fill, fill_one, papirus as sp};
 
 const PROGRAM: &str = "sway-theme";
-const COMMANDS: &str = "{list,current,init,families,colors,set,pick}";
+const COMMANDS: &str = "{list,current,init,families,colors,set,pick,accent-auto}";
 
 fn usage_line() -> String {
     format!("usage: {PROGRAM} [-h] {COMMANDS} ...")
@@ -100,8 +105,8 @@ fn report(theme: &str, applied: Applied) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn set_theme(theme: &str, accent: Option<&str>, folders: Option<&str>) -> ExitCode {
-    match st::locked(|| st::apply(theme, accent, folders, None)).and_then(|r| r) {
+fn set_theme(theme: &str, accent: Option<&str>, folders: Option<&str>, auto: Option<bool>) -> ExitCode {
+    match st::locked(|| st::apply(theme, accent, folders, None, auto)).and_then(|r| r) {
         Ok(applied) => report(theme, applied),
         Err(err) => {
             eprintln!("{err}");
@@ -110,8 +115,8 @@ fn set_theme(theme: &str, accent: Option<&str>, folders: Option<&str>) -> ExitCo
     }
 }
 
-fn pick_theme(family: &str, style: Style, folders: &str) -> ExitCode {
-    match st::locked(|| st::pick(family, style, folders)).and_then(|r| r) {
+fn pick_theme(family: &str, style: Style, folders: &str, auto: Option<bool>) -> ExitCode {
+    match st::locked(|| st::pick(family, style, folders, auto)).and_then(|r| r) {
         Ok((theme, applied)) => report(&theme, applied),
         Err(err) => {
             eprintln!("{err}");
@@ -120,9 +125,46 @@ fn pick_theme(family: &str, style: Style, folders: &str) -> ExitCode {
     }
 }
 
+/// A cor do papel de parede, com accent_auto = true (sem cor nele ou sem papel legível, a padrão). Sem o modo,
+/// nada, com 0.
+fn accent_auto() -> ExitCode {
+    match st::locked(st::accent_auto).and_then(|r| r) {
+        Ok(Auto::Off) => ExitCode::SUCCESS,
+        Ok(Auto::Done { unreadable, applied }) => {
+            if unreadable {
+                eprintln!("{}", fill_one(&tr("Wallpaper not found or not readable: %s"), &wallpaper().display().to_string()));
+            }
+            applied.map_or(ExitCode::SUCCESS, |(theme, applied)| report(&theme, applied))
+        }
+        Err(err) => {
+            eprintln!("{PROGRAM}: {err}");
+            ExitCode::from(1)
+        }
+    }
+}
+
+/// Só o nome da cor do Papirus do papel de parede ("none" se ele não tem cor), com ou sem o modo ligado.
+fn print_accent() -> ExitCode {
+    match wallpaper_color(&wallpaper()) {
+        Some(name) => {
+            println!("{}", name.unwrap_or("none"));
+            ExitCode::SUCCESS
+        }
+        None => {
+            eprintln!("{}", fill_one(&tr("Wallpaper not found or not readable: %s"), &wallpaper().display().to_string()));
+            ExitCode::from(1)
+        }
+    }
+}
+
 fn init() -> ExitCode {
     // Na trava: o app pode estar aplicando um tema, e os dois gerariam o tema de ícones ao mesmo tempo
-    match st::locked(|| st::init_dconf(&load_config(&path()).0)) {
+    let result = st::locked(|| st::init_dconf(&load_config(&path()).0));
+    // Depois, a cor do papel de parede (o papel pode ter mudado fora do bing-wallpaper). Uma falha aqui só avisa
+    if result.is_ok() {
+        let _ = accent_auto();
+    }
+    match result {
         Ok(true) => ExitCode::SUCCESS,
         Ok(false) => {
             eprintln!("{}", tr("Could not write the theme to dconf (gsettings)"));
@@ -135,7 +177,8 @@ fn init() -> ExitCode {
     }
 }
 
-/// Os argumentos do `set`, como o argparse: o tema e as opções --accent e --folders, com ou sem o `=`.
+/// Os argumentos do `set`, como o argparse: o tema e as opções --accent e --folders, com ou sem o `=` (o
+/// --auto e o --no-auto já saíram antes).
 fn parse_set(args: &[String]) -> Result<(String, Option<String>, Option<String>), String> {
     let (mut theme, mut accent, mut folders) = (None, None, None);
     let mut i = 0;
@@ -176,7 +219,18 @@ fn main() -> ExitCode {
     let Some(command) = args.first() else {
         return usage_error("the following arguments are required: command");
     };
-    let rest = &args[1..];
+    // O --auto e o --no-auto do set e do pick, em qualquer posição depois do comando, um ou outro (o grupo
+    // exclusivo do argparse)
+    let takes_auto = matches!(command.as_str(), "set" | "pick");
+    let has = |flag: &str| takes_auto && args[1..].iter().any(|a| a == flag);
+    let auto = match (has("--auto"), has("--no-auto")) {
+        (true, true) => return usage_error("argument --no-auto: not allowed with argument --auto"),
+        (true, false) => Some(true),
+        (false, true) => Some(false),
+        (false, false) => None,
+    };
+    let rest: Vec<String> = args[1..].iter().filter(|a| !(takes_auto && (*a == "--auto" || *a == "--no-auto"))).cloned().collect();
+    let rest = &rest[..];
     let no_args = |run: fn() -> ExitCode| if rest.is_empty() { run() } else { usage_error(&format!("unrecognized arguments: {}", rest.join(" "))) };
     match command.as_str() {
         "-h" | "--help" => help(),
@@ -186,17 +240,22 @@ fn main() -> ExitCode {
         "families" => no_args(show_families),
         "colors" => no_args(show_colors),
         "set" => match parse_set(rest) {
-            Ok((theme, accent, folders)) => set_theme(&theme, accent.as_deref(), folders.as_deref()),
+            Ok((theme, accent, folders)) => set_theme(&theme, accent.as_deref(), folders.as_deref(), auto),
             Err(message) => usage_error(&message),
         },
         "pick" => match rest {
             [family, style, color] => match Style::parse(style) {
-                Some(style) => pick_theme(family, style, color),
+                Some(style) => pick_theme(family, style, color, auto),
                 None => usage_error(&format!("argument style: invalid choice: '{style}' (choose from 'light', 'dark')")),
             },
             _ if rest.len() < 3 => usage_error("the following arguments are required: family, style, color"),
             _ => usage_error(&format!("unrecognized arguments: {}", rest[3..].join(" "))),
         },
-        other => usage_error(&format!("argument command: invalid choice: '{other}' (choose from 'list', 'current', 'init', 'families', 'colors', 'set', 'pick')")),
+        "accent-auto" => match rest {
+            [] => accent_auto(),
+            [print] if print == "--print" => print_accent(),
+            _ => usage_error(&format!("unrecognized arguments: {}", rest.join(" "))),
+        },
+        other => usage_error(&format!("argument command: invalid choice: '{other}' (choose from 'list', 'current', 'init', 'families', 'colors', 'set', 'pick', 'accent-auto')")),
     }
 }

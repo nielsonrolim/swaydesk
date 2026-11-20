@@ -20,6 +20,11 @@ gtk_theme = "Mint-Y-Dark-Teal"
 icon_theme = "Papirus-Dark"
 accent = "#199ca8"
 folder_color = ""
+# true (o padrão): a cor de destaque vem do papel de parede (a cor do Papirus mais perto da cor dominante dele) e
+# muda a cada troca de papel, inclusive a do dia, e no login; ela é gravada em accent. Papel sem cor ou que não
+# abre: o destaque padrão, #199ca8. Escolher outra cor no app Tema do Desktop, ou no sway-theme set/pick, volta
+# para false. Sem a chave, o modo fica ligado só se accent ainda é o #199ca8
+accent_auto = true
 
 # Gerenciador de arquivos do atalho Ctrl+Alt+E, da gaveta e da dock: o nome do comando.
 # Vazio: o primeiro instalado entre nemo, thunar, nautilus e dolphin. No Mint é o Nemo; no Ubuntu

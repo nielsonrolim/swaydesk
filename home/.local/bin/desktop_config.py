@@ -91,6 +91,9 @@ class Config:
     weather_location: str = ""  # vazio: vem do IP
     holidays: str = ""  # o código do país, como "BR"; vazio: o do locale; "none": nenhum
     accent: str = DEFAULT_ACCENT  # como "#199ca8"
+    # A cor tirada do papel de parede: o sway-theme accent-auto grava a cor em accent. Sem a chave (ou com um valor
+    # inválido), ligado só se o accent é o DEFAULT_ACCENT: quem escolheu outra cor antes da chave fica com ela
+    accent_auto: bool = True
     gtk_theme: str = "Mint-Y-Dark-Teal"
     icon_theme: str = "Papirus-Dark"
     folder_color: str = ""  # a cor das pastas do Papirus, como "teal"; vazio: a mais perto do destaque
@@ -175,6 +178,7 @@ def enabled(config, name):
 def parse_config(data):
     """Devolve a config e os avisos: um valor ruim não invalida os outros."""
     config, warnings = Config(), []
+    auto_given = False
     known = {f.name for f in fields(Config)}
     for key, value in data.items():
         if key not in known:
@@ -185,6 +189,11 @@ def parse_config(data):
             config = replace(config, effects=parse_effects(value, warnings))
         elif key == "effects":
             warnings.append("config: invalid value in effects (use an [effects] table)")
+        elif key == "accent_auto" and type(value) is bool:
+            config = replace(config, accent_auto=value)
+            auto_given = True
+        elif key == "accent_auto":
+            warnings.append("config: invalid value in accent_auto (use true or false)")
         elif not isinstance(value, str):
             warnings.append(f"config: invalid value in {key}")
         elif key == "locale" and value and not LOCALE.fullmatch(value):
@@ -207,6 +216,8 @@ def parse_config(data):
             warnings.append(f"config: invalid file manager: {value} (use the command name, like thunar)")
         else:
             config = replace(config, **{key: value})
+    if not auto_given:
+        config = replace(config, accent_auto=config.accent == DEFAULT_ACCENT)
     return config, warnings
 
 

@@ -33,6 +33,7 @@ swaydesk-greeter-logic = { path = "greeter-logic" }
 swaydesk-help-logic = { path = "help-logic" }
 swaydesk-displays-logic = { path = "displays-logic" }
 gettext = "0.4"
+gdk-pixbuf = "0.20"
 gio = "0.20"
 gtk4 = { version = "0.9", package = "gtk4", features = ["v4_14"] }
 gtk4-layer-shell = "0.4"

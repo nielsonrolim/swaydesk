@@ -2,6 +2,7 @@
 Name=Sway Desktop
 Comment=Sway with the swaydesk components
 Comment[pt_BR]=Sway com os componentes do swaydesk
+Comment[es]=Sway con los componentes de swaydesk
 Exec=@LIBEXEC@/sway-session --package
 Type=Application
 DesktopNames=sway

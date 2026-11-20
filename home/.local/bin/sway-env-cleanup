@@ -14,16 +14,110 @@ vars=(WAYLAND_DISPLAY DISPLAY SWAYSOCK XDG_SESSION_DESKTOP XDG_CURRENT_DESKTOP X
 portals=(xdg-desktop-portal-gtk xdg-desktop-portal-wlr xdg-desktop-portal-gnome xdg-desktop-portal-kde
          plasma-xdg-desktop-portal-kde xdg-desktop-portal)
 profile=${DCONF_PROFILE:-}
+# Cada decisão vai para o log da sessão e, com hora, para o journal: a limpeza de um logout pode rodar
+# junto com o login seguinte, e só a hora diz qual fez o quê
+note() {
+  echo "sway-env-cleanup: $*" >&2
+  command -v logger >/dev/null && logger -t sway-env-cleanup "$*" 2>/dev/null
+  return 0
+}
+proc=${SWAY_DESKTOP_PROC:-/proc}
+# O processo nasceu nesta sessão: o ambiente de um serviço é o do gerenciador na hora do start
+of_this_session() {
+  local environ  # lido inteiro antes: com o pipefail, um grep -q que sai cedo faria o tr falhar e dar falso
+  environ=$(tr '\0' '\n' <"$proc/$1/environ" 2>/dev/null) || return 1
+  grep -qxF "SWAYSOCK=$SWAYSOCK" <<<"$environ"
+}
+
+# O lado do login. Uma ativação que ficou pendente no dbus-daemon desde o logout anterior (um portal
+# parado no meio do start, ou o portal-wlr em loop de restart sem tela) segura todo StartServiceByName
+# do mesmo nome até o timeout de 120 s: a Waybar esperava 25 s e saía. Nada a cancela, mas ela termina
+# quando o nome aparece no barramento, não importa quem iniciou o serviço. Então, com a tela desta
+# sessão já no systemd, o wlr e o xdg-desktop-portal sobem já: parados, start; presos (activating,
+# failed), restart. Os pedidos pendentes, inclusive o da Waybar, terminam aí. --no-block: o login não
+# espera por eles
+heal=(xdg-desktop-portal-wlr xdg-desktop-portal)
+heal_portals() {
+  local unit state pid environ end=$((SECONDS + 5))
+  # O dbus-update-activation-environment do config roda junto com este script, sem ordem: sem esperar o
+  # SWAYSOCK desta sessão chegar ao systemd, o portal subiria com o ambiente velho, sem tela
+  while :; do
+    environ=$(systemctl --user show-environment 2>/dev/null) || true
+    grep -qxF "SWAYSOCK=$SWAYSOCK" <<<"$environ" && break
+    (( SECONDS < end )) || { note "the session environment did not reach systemd; portals left as they are"; return; }
+    sleep 0.1
+  done
+  for unit in "${heal[@]}"; do
+    state=$(systemctl --user show -p ActiveState --value "$unit.service" 2>/dev/null) || continue
+    # Rodando, mas iniciado antes desta sessão (por um cliente atrasado no logout, sem tela, ou o da sessão
+    # anterior que ficou): o xdg-desktop-portal só monta os backends ao subir, e seguiria sem o gtk (sem
+    # Settings, sem FileChooser). Fica como "preso". Com outra sessão gráfica do mesmo usuário aberta ao mesmo
+    # tempo (um GNOME em outro VT), o portal dela também reinicia: ela o reativa quando precisar
+    if [[ $state == active ]]; then
+      pid=$(systemctl --user show -p MainPID --value "$unit.service" 2>/dev/null) || pid=0
+      [[ ${pid:-0} == 0 ]] || of_this_session "$pid" || state="active before this session"
+    fi
+    case $state in
+      active)   [[ -z $profile ]] || systemctl --user restart --no-block "$unit.service" 2>/dev/null ;;
+      inactive) systemctl --user start --no-block "$unit.service" 2>/dev/null ;;
+      *)        note "$unit was $state at login: restarted with this session's display"
+                systemctl --user reset-failed "$unit.service" 2>/dev/null
+                systemctl --user restart --no-block "$unit.service" 2>/dev/null ;;
+    esac
+  done
+}
+
+# Os clientes desta sessão que chamam o portal sozinhos: o blueman-applet (do blueman-agent) e o
+# nm-applet seguem vivos uns instantes depois do Sway sair e reativavam o portal no meio da limpeza.
+# Só os desta sessão, pelo SWAYSOCK que herdaram do Sway: os de outra sessão do mesmo usuário ficam
+stop_session_clients() {
+  local name pid alive killed=() tries=10
+  [[ -n ${SWAYSOCK:-} ]] && command -v pgrep >/dev/null || return 0
+  for name in blueman-applet nm-applet; do
+    for pid in $(pgrep -x -u "$(id -u)" "$name" 2>/dev/null); do
+      if of_this_session "$pid"; then
+        kill "$pid" 2>/dev/null && killed+=("$pid")
+      fi
+    done
+  done
+  # Até 2 s para saírem: um que ainda estivesse saindo podia pedir o portal depois do stop
+  while (( tries-- > 0 )); do
+    alive=0
+    for pid in "${killed[@]}"; do kill -0 "$pid" 2>/dev/null && alive=1; done
+    (( alive )) || return 0
+    sleep 0.2
+  done
+}
+
 if [[ -n $profile ]]; then
   dbus-update-activation-environment --systemd DCONF_PROFILE 2>/dev/null
-  for unit in "${portals[@]}"; do systemctl --user try-restart "$unit.service" 2>/dev/null; done
+  for unit in "${portals[@]}"; do
+    [[ " ${heal[*]} " == *" $unit "* ]] || systemctl --user try-restart "$unit.service" 2>/dev/null
+  done
 fi
+[[ -z ${SWAYSOCK:-} ]] || heal_portals
 # Termina no evento de saída ou quando a conexão cai, se o Sway morrer
 swaymsg -t subscribe '["shutdown"]' >/dev/null 2>&1 || true
+# O login seguinte pode já ter começado (um greetd rápido, o autologin): nada daqui em diante é desta sessão.
+# Antes e depois da espera pelos applets, que leva até 2 s
+other_sway() {
+  local environ sock
+  environ=$(systemctl --user show-environment 2>/dev/null) || return 1
+  sock=$(sed -n 's/^SWAYSOCK=//p' <<<"$environ")
+  [[ -n $sock && $sock != "${SWAYSOCK:-}" ]]
+}
+next_login() { note "the next login has started: its environment and portals stay"; exit 0; }
+other_sway && next_login
+stop_session_clients
+other_sway && next_login
 # Os portais primeiro, enquanto o display ainda existe: o xdg-desktop-portal via o do gtk morrer com o
 # display e o reativava na hora, com o ambiente velho, e a ativação presa (120 s) travava o login seguinte.
-# O sway-portal-gtk barra essa reativação; parar aqui encurta a janela
+# O sway-portal-gtk barra essa reativação; parar aqui encurta a janela. Os clientes que o reativam saem antes
 for unit in "${portals[@]}"; do systemctl --user stop --no-block "$unit.service" 2>/dev/null; done
+# O login seguinte já começou: com o SWAYSOCK de outro Sway no systemd, as variáveis lá são as dele, com os
+# mesmos nomes das nossas, e esvaziá-las deixava a sessão nova sem tela para os serviços (um portal subia sem
+# o gtk, sem Settings). Visto na VM quando esta limpeza se atrasava. O ambiente e os portais ficam com ela
+other_sway && next_login
 # O D-Bus não tem como remover: vazio equivale a não definido para os serviços que ele mesmo inicia
 empty=()
 for v in "${vars[@]}"; do empty+=("$v="); done
@@ -46,8 +140,18 @@ if command -v pkill >/dev/null; then
   pkill -x -u "$(id -u)" update-notifier 2>/dev/null
   pkill -x -u "$(id -u)" DiscoverNotifier 2>/dev/null
 fi
-# Parados, os portais iniciam de novo na próxima sessão, já com o ambiente dela. Um failed ou um
-# start preso deixava o login seguinte sem o portal: a Waybar esperava o portal até o timeout e saía
+# Parados, os portais iniciam de novo na próxima sessão, já com o ambiente dela. Um stop no meio de um
+# start que um cliente atrasado pediu deixa a ativação pendente no dbus-daemon; o heal_portals do login
+# seguinte a resolve. Mas se esse login já começou, os portais já são os dele: o unset-environment acima
+# tirou as nossas variáveis, então um SWAYSOCK que não é o nosso ou qualquer XDG_CURRENT_DESKTOP ou
+# WAYLAND_DISPLAY (um GNOME ou um KDE; o nome do socket pode repetir o nosso, "wayland-1") vem dele
+new_session() {
+  local environ
+  other_sway && return 0
+  environ=$(systemctl --user show-environment 2>/dev/null) || return 1
+  grep -qE '^(XDG_CURRENT_DESKTOP|WAYLAND_DISPLAY)=.' <<<"$environ"
+}
+new_session && next_login
 for unit in "${portals[@]}"; do systemctl --user stop "$unit.service" 2>/dev/null; done
 systemctl --user reset-failed "${portals[@]/%/.service}" 2>/dev/null || true
 exit 0

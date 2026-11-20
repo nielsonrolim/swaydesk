@@ -18,10 +18,13 @@ colors
 init
 .br
 .B swaydesk\-theme
-set THEME [\-\-accent #RRGGBB] [\-\-folders COLOR]
+set THEME [\-\-accent #RRGGBB] [\-\-folders COLOR] [\-\-auto | \-\-no\-auto]
 .br
 .B swaydesk\-theme
-pick FAMILY light|dark COLOR
+pick FAMILY light|dark COLOR [\-\-auto | \-\-no\-auto]
+.br
+.B swaydesk\-theme
+accent\-auto [\-\-print]
 .SH DESCRIPTION
 Lists the installed GTK themes and changes the theme, the icons and the accent color across the desktop.
 .PP
@@ -41,13 +44,25 @@ The installed theme families (Mint\-Y, Adwaita, Yaru and others), their light an
 The Papirus folder colors, the current one marked with *, and the ones not installed.
 .TP
 .B init
-Write the theme of the configuration to dconf (gsettings).
+Write the theme of the configuration to dconf (gsettings), then run accent\-auto.
 .TP
 .B set THEME
 Use the GTK theme THEME; \-\-accent sets the accent color and \-\-folders the Papirus folder color.
 .TP
 .B pick FAMILY light|dark COLOR
 Use the theme of FAMILY in the light or dark style with COLOR.
+.TP
+.B \-\-auto
+With set or pick: the color came from the wallpaper, and accent_auto becomes true.
+.TP
+.B \-\-no\-auto
+With set or pick: accent_auto becomes false. Without \-\-auto or \-\-no\-auto, a color other than the current accent is a choice by hand and turns the mode off; the same color, when only the theme or the style changes, keeps the mode as it is.
+.TP
+.B accent\-auto
+With accent_auto = true in the configuration (the default), take the Papirus color nearest the dominant color of the wallpaper (~/.local/share/wallpaper/current.jpg) and apply it as pick does, the GTK theme variant included. A wallpaper without color, or one that is missing or does not open (with a warning), gives the default accent, #199ca8. Nothing runs when it is already the accent color or when accent_auto is false. Without the accent_auto key, the mode is on only while accent is still #199ca8. bing\-wallpaper runs it after each new wallpaper, and init at login.
+.TP
+.B accent\-auto \-\-print
+Only print the name of the wallpaper's Papirus color, or none for a wallpaper without color, whatever accent_auto says; exit 1 when the wallpaper does not open.
 .TP
 .B \-h, \-\-help
 Show the usage and exit.
@@ -57,7 +72,10 @@ Exit 0 at once without doing anything: the Python launchers use it to check that
 .SH FILES
 .TP
 .I ~/.config/sway\-desktop/config.toml
-The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+The desktop configuration: language, accent color and accent_auto, GTK and icon themes, folder color, file manager, weather location and holidays.
+.TP
+.I ~/.local/state/sway\-desktop/accent\-auto
+The last wallpaper accent\-auto read (its path and modification time), its color and the version of the method, so the same file is not read again.
 .SH SEE ALSO
 .BR swaydesk (7),
 .BR swaydesk\-desktop\-config (1),

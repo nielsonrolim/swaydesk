@@ -107,6 +107,9 @@ apply_sway() {
   swaymsg "output * bg $current fill #1e1e1e" >/dev/null || return 1
   # O fundo desfocado da tela de bloqueio, já pronto: o bloqueio não o gera (prazo do sway-lock)
   "$(sibling sway-lock-blur)" >/dev/null 2>&1 || true
+  # Com o accent_auto do config.toml, a cor de destaque segue o papel novo (sem ele, o accent-auto não faz nada).
+  # Os avisos ficam no log; uma falha não é do papel de parede
+  "$(sibling sway-theme)" accent-auto >/dev/null || true
 }
 
 apply_hyprland() {

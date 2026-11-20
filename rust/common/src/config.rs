@@ -10,7 +10,7 @@ pub const TEXT_FONT: &str = "Noto Sans";
 pub const ICON_FONT: &str = "Symbols Nerd Font";
 // As mesmas chaves do Config do desktop_config.py
 const KNOWN: &[&str] = &[
-    "locale", "weather_location", "holidays", "accent", "gtk_theme", "icon_theme", "folder_color", "file_manager",
+    "locale", "weather_location", "holidays", "accent", "accent_auto", "gtk_theme", "icon_theme", "folder_color", "file_manager",
     "components", "enabled", "effects", "shortcuts",
 ];
 /// As chaves do [enabled]: os componentes da sessão que podem ser desligados (o ENABLED_KEYS do Python).
@@ -60,6 +60,10 @@ pub struct Config {
     pub locale: String,
     /// Como "#199ca8", em minúsculas
     pub accent: String,
+    /// A cor de destaque tirada do papel de parede: o sway-theme accent-auto grava a cor em accent a cada troca.
+    /// Sem a chave (ou com um valor inválido), ligado só se o accent é o DEFAULT_ACCENT: quem escolheu outra cor
+    /// antes da chave existir fica com ela
+    pub accent_auto: bool,
     /// O código do país dos feriados do calendário, como "BR"; vazio: o do locale; "none": nenhum
     pub holidays: String,
     /// A cidade do tempo, como "São Paulo"; vazio: o wttr.in usa a do IP
@@ -189,6 +193,7 @@ impl Default for Config {
         Config {
             locale: String::new(),
             accent: DEFAULT_ACCENT.to_string(),
+            accent_auto: true,
             holidays: String::new(),
             weather_location: String::new(),
             gtk_theme: "Mint-Y-Dark-Teal".to_string(),
@@ -286,6 +291,7 @@ pub fn is_accent(value: &str) -> bool {
 pub fn parse_config(text: &str) -> (Config, Vec<String>) {
     let mut config = Config::default();
     let mut warnings = Vec::new();
+    let mut auto_given = false;
     let table = match text.parse::<toml::Table>() {
         Ok(table) => table,
         Err(err) => return (config, vec![format!("config: could not read: {}", err.message())]),
@@ -303,6 +309,16 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
             match value.as_table() {
                 Some(effects) => config.effects = parse_effects(effects, &mut warnings),
                 None => warnings.push("config: invalid value in effects (use an [effects] table)".to_string()),
+            }
+            continue;
+        }
+        if key == "accent_auto" {
+            match value.as_bool() {
+                Some(auto) => {
+                    config.accent_auto = auto;
+                    auto_given = true;
+                }
+                None => warnings.push("config: invalid value in accent_auto (use true or false)".to_string()),
             }
             continue;
         }
@@ -350,6 +366,9 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
             "file_manager" => config.file_manager = value.to_string(),
             _ => {}
         }
+    }
+    if !auto_given {
+        config.accent_auto = config.accent == DEFAULT_ACCENT;
     }
     (config, warnings)
 }
@@ -566,6 +585,24 @@ mod tests {
 
     fn env(pairs: &[(&str, &str)]) -> HashMap<String, String> {
         pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+    }
+
+    #[test]
+    fn accent_auto_is_a_bool() {
+        // Sem a chave: ligado com o destaque padrão, desligado com outra cor (escolhida antes da chave existir)
+        assert!(parse_config("").0.accent_auto && Config::default().accent_auto);
+        assert!(parse_config("accent = \"#199CA8\"\n").0.accent_auto);
+        assert!(!parse_config("accent = \"#e25252\"\n").0.accent_auto);
+        let (config, warnings) = parse_config("accent_auto = true\naccent = \"#e25252\"\n");
+        assert!(config.accent_auto && warnings.is_empty());
+        assert_eq!(config.accent, "#e25252");
+        assert!(!parse_config("accent_auto = false\n").0.accent_auto);
+        // Inválido: avisa e vale a regra de sem a chave
+        for (text, auto) in [("accent_auto = \"yes\"\n", true), ("accent_auto = 1\naccent = \"#e25252\"\n", false)] {
+            let (config, warnings) = parse_config(text);
+            assert_eq!(config.accent_auto, auto, "{text}");
+            assert_eq!(warnings, ["config: invalid value in accent_auto (use true or false)"]);
+        }
     }
 
     #[test]

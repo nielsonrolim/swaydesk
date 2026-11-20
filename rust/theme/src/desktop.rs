@@ -536,14 +536,82 @@ pub fn ours(file: &Path) -> bool {
         && lines[1..].iter().all(|l| OLD_SETTINGS_KEYS.contains(&l.split('=').next().unwrap_or("")))
 }
 
-/// Devolve se o Sway recarregou. Sem sessão do Sway, não há o que recarregar.
+/// O papel de parede que o config do Sway mostra (`output * bg ~/.local/share/wallpaper/current.jpg`).
+const WALLPAPER: &str = ".local/share/wallpaper/current.jpg";
+
+/// As imagens lisas de onde o papel volta: a do skel do pacote e, nos dotfiles, a do home-copy/ do repositório
+/// (achado pelo link ~/.config/sway/config, que aponta para home/.config/sway/config).
+fn wallpaper_seeds() -> Vec<PathBuf> {
+    let mut seeds = vec![crate::setup::skel_dir().join(WALLPAPER)];
+    let sway = config_home().join("sway/config");
+    if let Some(repo) = std::fs::canonicalize(sway).ok().and_then(|p| p.ancestors().nth(4).map(Path::to_path_buf)) {
+        seeds.push(repo.join("home-copy").join(WALLPAPER));
+    }
+    seeds
+}
+
+/// Sem o papel (o arquivo não existe, ou é um link quebrado), copia o primeiro das sementes que existir; um papel
+/// em uso nunca é tocado. Devolve se o papel existe no fim. O ensure_wallpaper do desktop_config.py.
+fn ensure_wallpaper_at(target: &Path, seeds: &[PathBuf]) -> bool {
+    if target.exists() {
+        return true;
+    }
+    let Some(seed) = seeds.iter().find(|p| p.is_file()) else { return false };
+    if target.is_symlink() {
+        let _ = std::fs::remove_file(target);
+    }
+    target.parent().is_some_and(|dir| std::fs::create_dir_all(dir).is_ok()) && std::fs::copy(seed, target).is_ok()
+}
+
+pub fn ensure_wallpaper() -> bool {
+    ensure_wallpaper_at(&home().join(WALLPAPER), &wallpaper_seeds())
+}
+
+/// Devolve se o Sway recarregou. Sem sessão do Sway, não há o que recarregar. Antes, sem o papel de parede, a
+/// imagem lisa volta: senão o `output * bg` do config faz cada reload abrir o swaynag ("unable to access
+/// background file").
 pub fn reload_sway() -> bool {
+    ensure_wallpaper();
     run_timeout(Command::new("swaymsg").arg("reload").stdin(Stdio::null()), Duration::from_secs(5)).is_some_and(|(code, _)| code == 0)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn wallpaper_comes_back_only_when_missing() {
+        let dir = std::env::temp_dir().join(format!("swaydesk-wallseed-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let seed = dir.join("seed.jpg");
+        std::fs::write(&seed, b"liso").unwrap();
+        let seeds = [dir.join("sem-skel.jpg"), seed.clone()];
+        let target = dir.join("home/.local/share/wallpaper/current.jpg");
+        // Ausente: a pasta e a cópia
+        assert!(ensure_wallpaper_at(&target, &seeds));
+        assert_eq!(std::fs::read(&target).unwrap(), b"liso");
+        // Um papel em uso, arquivo ou link, fica
+        std::fs::write(&target, b"meu").unwrap();
+        assert!(ensure_wallpaper_at(&target, &seeds));
+        assert_eq!(std::fs::read(&target).unwrap(), b"meu");
+        let mine = dir.join("bing.jpg");
+        std::fs::write(&mine, b"bing").unwrap();
+        std::fs::remove_file(&target).unwrap();
+        std::os::unix::fs::symlink(&mine, &target).unwrap();
+        assert!(ensure_wallpaper_at(&target, &seeds));
+        assert!(target.is_symlink());
+        // O link quebrado sai e a imagem lisa entra no lugar
+        std::fs::remove_file(&mine).unwrap();
+        assert!(ensure_wallpaper_at(&target, &seeds));
+        assert!(!target.is_symlink());
+        assert_eq!(std::fs::read(&target).unwrap(), b"liso");
+        // Sem semente: nada muda
+        std::fs::remove_file(&target).unwrap();
+        assert!(!ensure_wallpaper_at(&target, &[dir.join("nada.jpg")]));
+        assert!(!target.exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn sway_keys_like_python() {

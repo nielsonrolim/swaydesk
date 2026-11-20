@@ -118,7 +118,7 @@ pub fn outcome(theme: &str, result: Result<Applied, Error>) -> (i32, String) {
 /// tema aplicado, o código e a mensagem.
 pub fn apply(action: &Action) -> (String, i32, String) {
     match action {
-        Action::Pick { family, style, color } => match st::locked(|| st::pick(family, *style, color)).and_then(|r| r) {
+        Action::Pick { family, style, color } => match st::locked(|| st::pick(family, *style, color, None)).and_then(|r| r) {
             Ok((theme, applied)) => {
                 let (code, message) = outcome(&theme, Ok(applied));
                 (theme, code, message)
@@ -129,7 +129,7 @@ pub fn apply(action: &Action) -> (String, i32, String) {
             }
         },
         Action::Set { theme, accent, color } => {
-            let result = st::locked(|| st::apply(theme, Some(accent), Some(color), None)).and_then(|r| r);
+            let result = st::locked(|| st::apply(theme, Some(accent), Some(color), None, None)).and_then(|r| r);
             let (code, message) = outcome(theme, result);
             (theme.clone(), code, message)
         }

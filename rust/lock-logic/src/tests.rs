@@ -45,6 +45,8 @@ fn time_and_date() {
     let now = tm(2026, 11, 12, 9, 5);
     assert_eq!(time_text(&now), "09:05");
     assert_eq!(date_format("pt_BR"), "%A, %-d de %B");
+    assert_eq!(date_format("es_MX"), "%A, %-d de %B");
+    assert_eq!(date_format("es"), "%A, %-d de %B");
     assert_eq!(date_format("en_US"), "%A, %B %-d");
     assert_eq!(date_format(""), "%A, %B %-d");
     // O processo de teste fica no locale C

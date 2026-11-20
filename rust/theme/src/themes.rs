@@ -260,9 +260,34 @@ pub fn split_tables(text: &str) -> (String, &str) {
     (text[..at].to_string(), &text[at..])
 }
 
+/// Um valor do config.toml para o set_config_values.
+#[derive(Clone, Debug, PartialEq)]
+pub enum Value {
+    Str(String),
+    Bool(bool),
+}
+
+impl From<String> for Value {
+    fn from(value: String) -> Self {
+        Value::Str(value)
+    }
+}
+
+impl From<&str> for Value {
+    fn from(value: &str) -> Self {
+        Value::Str(value.to_string())
+    }
+}
+
+impl From<bool> for Value {
+    fn from(value: bool) -> Self {
+        Value::Bool(value)
+    }
+}
+
 /// Troca só estas linhas do config.toml: os comentários e o resto ficam como estão. As chaves são as do começo
 /// do arquivo, antes da primeira tabela ([effects]): uma chave nova entra ali, senão viraria parte da tabela.
-pub fn set_config_values(file: &Path, values: &[(&str, String)]) -> Result<(), Error> {
+pub fn set_config_values(file: &Path, values: &[(&str, Value)]) -> Result<(), Error> {
     let text = match std::fs::read_to_string(file) {
         Ok(text) => text,
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => String::new(),
@@ -272,7 +297,10 @@ pub fn set_config_values(file: &Path, values: &[(&str, String)]) -> Result<(), E
     let (mut head, tail) = split_tables(&text);
     let mut appended = false;
     for (key, value) in values {
-        let line = format!("{key} = {}", serde_json::to_string(value).unwrap_or_default());
+        let line = match value {
+            Value::Str(text) => format!("{key} = {}", serde_json::to_string(text).unwrap_or_default()),
+            Value::Bool(flag) => format!("{key} = {flag}"),
+        };
         let pattern = Regex::new(&format!(r"(?m)^{}\s*=.*$", regex::escape(key))).expect("key pattern");
         if pattern.is_match(&head) {
             head = pattern.replacen(&head, 1, regex::NoExpand(&line)).into_owned();
@@ -625,7 +653,7 @@ pub fn chosen_icons(chosen: &Theme, current: &Config, folders: Option<&str>) -> 
 
 fn check_folders(folders: Option<&str>) -> Result<(), Error> {
     match folders {
-        Some(color) if papirus_color(color).is_none() => {
+        Some(color) if !color.is_empty() && papirus_color(color).is_none() => {
             Err(Error::Value(fill(&tr("unknown folder color: %(color)s. See them with: sway-theme colors"), &[("color", color)])))
         }
         _ => Ok(()),
@@ -637,8 +665,12 @@ pub struct Applied {
     pub failures: Vec<String>,
 }
 
-/// Aplica a variante da família no estilo, com a cor do Papirus. Devolve o tema e o resultado.
-pub fn pick(family: &str, style: Style, folders: &str) -> Result<(String, Applied), Error> {
+/// Aplica a variante da família no estilo, com a cor do Papirus. Devolve o tema e o resultado. auto: o do apply.
+pub fn pick(family: &str, style: Style, folders: &str, auto: Option<bool>) -> Result<(String, Applied), Error> {
+    // O "" (a pasta mais perto do destaque) só vale no set: o pick tira a cor do nome
+    if folders.is_empty() {
+        return Err(Error::Value(fill(&tr("unknown folder color: %(color)s. See them with: sway-theme colors"), &[("color", folders)])));
+    }
     check_folders(Some(folders))?;
     let themes = discover();
     let (families, _others) = sf::group(&themes);
@@ -649,12 +681,33 @@ pub fn pick(family: &str, style: Style, folders: &str) -> Result<(String, Applie
     let Some(theme) = sf::resolve(found, style, accent, folders) else {
         return Err(Error::Value(fill(&tr("%(family)s has no %(style)s version"), &[("family", &found.name), ("style", &style.label())])));
     };
-    let applied = apply(&theme, Some(accent), Some(folders), Some(themes))?;
+    let applied = apply(&theme, Some(accent), Some(folders), Some(themes), auto)?;
     Ok((theme, applied))
 }
 
-/// Aplica tudo. Erra antes de mudar qualquer coisa. folders: a cor das pastas do Papirus, só delas.
-pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: Option<Vec<Theme>>) -> Result<Applied, Error> {
+/// O accent_auto que o apply grava, ou None para não mexer na chave. auto: Some(true) (--auto, a cor veio do papel)
+/// e Some(false) (--no-auto, o interruptor do app desligado) gravam sempre. None: a mesma cor não mexe na chave (o
+/// modo fica como está) e outra cor o desliga, mas só num config que já tem a chave ou com o modo ligado
+/// (current.accent_auto, que sem a chave vem do accent padrão): ligado sem a chave, o false fica explícito. A mesma
+/// regra do sway_themes.py.
+fn accent_auto_value(auto: Option<bool>, color: &str, current: &Config, has_key: bool) -> Option<bool> {
+    if auto.is_some() {
+        return auto;
+    }
+    (color != current.accent && (current.accent_auto || has_key)).then_some(false)
+}
+
+/// Se o config.toml tem a chave (solta, antes das tabelas). Ilegível: não.
+fn has_key(file: &Path, key: &str) -> bool {
+    std::fs::read_to_string(file).ok().and_then(|text| text.parse::<toml::Table>().ok()).is_some_and(|t| t.contains_key(key))
+}
+
+/// Aplica tudo. Erra antes de mudar qualquer coisa. folders: a cor das pastas do Papirus, só delas ("": a mais perto
+/// do destaque). auto: Some(true) grava accent_auto = true e Some(false), false. None: uma cor diferente da atual é
+/// escolha manual e grava false; a mesma cor (só o tema ou o estilo mudou) deixa o modo como está. Sem o Some, a
+/// chave só é gravada num config que já a tem ou com o modo ligado (o padrão, sem a chave, quando o accent é o
+/// DEFAULT_ACCENT).
+pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: Option<Vec<Theme>>, auto: Option<bool>) -> Result<Applied, Error> {
     let available = themes.unwrap_or_else(discover);
     let Some(chosen) = available.iter().find(|t| t.name == theme).cloned() else {
         return Err(Error::Value(fill_one(&tr("theme not installed: %s. See them with: sway-theme list"), theme)));
@@ -685,7 +738,13 @@ pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: O
         notes.push(fill(&tr("There are no icons for %(theme)s: kept %(icons)s"), &[("theme", theme), ("icons", &icons)]));
     }
     let folder_value = folders.map_or_else(|| current.folder_color.clone(), str::to_string);
-    set_config_values(&file, &[("gtk_theme", theme.to_string()), ("icon_theme", icons), ("accent", color), ("folder_color", folder_value)])?;
+    let auto_value = accent_auto_value(auto, &color, &current, has_key(&file, "accent_auto"));
+    let mut values: Vec<(&str, Value)> =
+        vec![("gtk_theme", theme.into()), ("icon_theme", icons.into()), ("accent", color.into()), ("folder_color", folder_value.into())];
+    if let Some(value) = auto_value {
+        values.push(("accent_auto", value.into()));
+    }
+    set_config_values(&file, &values)?;
     let config = load_config(&file).0;
     let colors = config::palette(&config);
     // Antes de gerar os settings.ini e o qt5ct: eles usam o tema gerado, se ele existir
@@ -723,6 +782,41 @@ pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: O
     Ok(Applied { notes, failures })
 }
 
+/// O que o accent-auto fez.
+pub enum Auto {
+    /// accent_auto = false: nada
+    Off,
+    /// unreadable: o papel não existe ou não abre (vale o DEFAULT_ACCENT). applied: o tema aplicado e o
+    /// resultado; None se a cor já era a de destaque
+    Done { unreadable: bool, applied: Option<(String, Applied)> },
+}
+
+/// Com accent_auto = true, a cor do Papirus do papel de parede ou, sem cor nele ou sem papel legível, o
+/// DEFAULT_ACCENT, aplicada como na escolha manual do app Tema: na família e no estilo em uso, a variante do tema
+/// GTK mais perto da cor; fora das famílias, o tema em uso com a cor. Cor igual à de destaque: nada roda, sem
+/// piscar a barra.
+pub fn accent_auto() -> Result<Auto, Error> {
+    let config = load_config(&config::path()).0;
+    if !config.accent_auto {
+        return Ok(Auto::Off);
+    }
+    let reading = crate::wallpaper_accent::current_color();
+    let name = reading.flatten().unwrap_or_default();
+    let hex = papirus_color(name).unwrap_or(DEFAULT_ACCENT);
+    let unreadable = reading.is_none();
+    if hex == config.accent {
+        return Ok(Auto::Done { unreadable, applied: None });
+    }
+    let themes = discover();
+    let theme = dc::effective_gtk_theme(&config);
+    let (families, _) = sf::group(&themes);
+    let variant = sf::family_of(&theme)
+        .and_then(|(f, style)| families.iter().find(|x| x.name == f && x.has_style(style)).and_then(|x| sf::resolve(x, style, hex, name)))
+        .unwrap_or(theme);
+    let applied = apply(&variant, Some(hex), Some(name), Some(themes), Some(true))?;
+    Ok(Auto::Done { unreadable, applied: Some((variant, applied)) })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -742,6 +836,45 @@ mod tests {
         // A chave de mesmo nome dentro da tabela não é a solta
         assert_eq!(table["enabled"]["accent"].as_integer(), Some(1));
         assert_eq!(table["enabled"]["dock"].as_bool(), Some(false));
+    }
+
+    #[test]
+    fn bool_values_and_the_accent_auto_key() {
+        let dir = std::env::temp_dir().join(format!("swaydesk-setbool-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("config.toml");
+        std::fs::write(&file, "accent = \"#111111\"\n\n[effects]\nblur = true\n").unwrap();
+        assert!(!has_key(&file, "accent_auto"));
+        set_config_values(&file, &[("accent_auto", true.into())]).unwrap();
+        let text = std::fs::read_to_string(&file).unwrap();
+        assert!(text.contains("\naccent_auto = true\n"), "{text}");
+        assert!(has_key(&file, "accent_auto"));
+        set_config_values(&file, &[("accent_auto", false.into())]).unwrap();
+        let (config, warnings) = swaydesk_common::config::parse_config(&std::fs::read_to_string(&file).unwrap());
+        assert!(!config.accent_auto && warnings.is_empty(), "{warnings:?}");
+        assert!(!has_key(&dir.join("missing.toml"), "accent_auto"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn accent_auto_value_rules() {
+        let derived_on = Config::default(); // sem a chave, com o destaque padrão
+        let off = Config { accent: "#e25252".into(), accent_auto: false, ..Config::default() };
+        let on = Config { accent: "#e25252".into(), accent_auto: true, ..Config::default() };
+        // --auto: sempre true, mesmo num config que nunca teve a chave; --no-auto: sempre false, mesmo com a mesma cor
+        assert_eq!(accent_auto_value(Some(true), "#5294e2", &off, false), Some(true));
+        assert_eq!(accent_auto_value(Some(false), "#e25252", &on, true), Some(false));
+        assert_eq!(accent_auto_value(Some(false), DEFAULT_ACCENT, &derived_on, false), Some(false));
+        // Outra cor à mão: false explícito, também com o modo ligado só pela regra de sem a chave
+        assert_eq!(accent_auto_value(None, "#5294e2", &derived_on, false), Some(false));
+        assert_eq!(accent_auto_value(None, "#5294e2", &on, true), Some(false));
+        // A mesma cor (só o tema ou o estilo): a chave fica como está, presente ou não
+        assert_eq!(accent_auto_value(None, "#e25252", &on, true), None);
+        assert_eq!(accent_auto_value(None, DEFAULT_ACCENT, &derived_on, false), None);
+        assert_eq!(accent_auto_value(None, "#e25252", &off, true), None);
+        // Desligado e sem a chave: a chave não aparece; com ela, outra cor grava false
+        assert_eq!(accent_auto_value(None, "#5294e2", &off, false), None);
+        assert_eq!(accent_auto_value(None, "#5294e2", &off, true), Some(false));
     }
 
     #[test]

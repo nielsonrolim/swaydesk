@@ -6,6 +6,7 @@ pub mod families;
 pub mod papirus;
 pub mod setup;
 pub mod themes;
+pub mod wallpaper_accent;
 
 use std::io::Read;
 use std::process::{Command, Stdio};

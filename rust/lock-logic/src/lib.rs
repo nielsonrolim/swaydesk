@@ -50,9 +50,9 @@ pub fn time_text(now: &libc::tm) -> String {
 }
 
 /// O formato da data por extenso segue a língua em que o strftime escreve: o "de" só existe em
-/// português. time_locale: o locale efetivo, como "pt_BR".
+/// português e em espanhol ("jueves, 20 de noviembre"). time_locale: o locale efetivo, como "pt_BR".
 pub fn date_format(time_locale: &str) -> &'static str {
-    if time_locale.starts_with("pt") {
+    if time_locale.starts_with("pt") || time_locale.starts_with("es") {
         "%A, %-d de %B"
     } else {
         "%A, %B %-d"

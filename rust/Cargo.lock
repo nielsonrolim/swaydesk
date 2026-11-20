@@ -1701,6 +1701,7 @@ dependencies = [
 name = "swaydesk-theme"
 version = "0.1.3"
 dependencies = [
+ "gdk-pixbuf",
  "libc",
  "regex",
  "serde_json",

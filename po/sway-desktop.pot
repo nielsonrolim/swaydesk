@@ -2898,6 +2898,10 @@ msgstr ""
 msgid "No network service running"
 msgstr ""
 
+#: rust/theme/src/main.rs
+msgid "Wallpaper not found or not readable: %s"
+msgstr ""
+
 #: home/.config/sway/keys/base.conf
 msgid "Session and apps"
 msgstr ""

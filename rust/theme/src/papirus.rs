@@ -20,7 +20,7 @@ const SOURCE_KEY: &str = "X-SwayDesktop-Source";
 /// Muda quando o wrapper_files passa a gerar outra coisa
 const FORMAT: &str = "1";
 /// Abaixo disso, no Lab, a cor é um cinza: o matiz não diz nada
-const GREY_CHROMA: f64 = 12.0;
+pub(crate) const GREY_CHROMA: f64 = 12.0;
 
 pub fn is_papirus(name: &str) -> bool {
     THEMES.contains(&name)
@@ -43,7 +43,11 @@ pub fn available_colors(directory: Option<&Path>) -> Vec<String> {
 
 /// CIELAB (D65) do hex.
 fn lab(color: &str) -> (f64, f64, f64) {
-    let [r, g, b] = linear_rgb(color);
+    lab_linear(linear_rgb(color))
+}
+
+/// CIELAB (D65) dos canais sem a curva do sRGB (o linear_rgb).
+pub(crate) fn lab_linear([r, g, b]: [f64; 3]) -> (f64, f64, f64) {
     let xyz = [
         (0.4124 * r + 0.3576 * g + 0.1805 * b) / 0.95047,
         0.2126 * r + 0.7152 * g + 0.0722 * b,
@@ -53,14 +57,22 @@ fn lab(color: &str) -> (f64, f64, f64) {
     (116.0 * fy - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz))
 }
 
-fn lch(color: &str) -> (f64, f64, f64) {
-    let (lightness, a, b) = lab(color);
+pub(crate) fn lch(color: &str) -> (f64, f64, f64) {
+    lch_of_lab(lab(color))
+}
+
+/// O LCh (claridade, croma, matiz em graus) do Lab.
+pub(crate) fn lch_of_lab((lightness, a, b): (f64, f64, f64)) -> (f64, f64, f64) {
     (lightness, (a * a + b * b).sqrt(), b.atan2(a).to_degrees().rem_euclid(360.0))
 }
 
 /// A distância para achar a variante de um tema: entre cores, vale o matiz. Cinza só fica perto de cinza.
 pub fn distance(one: &str, other: &str) -> f64 {
-    let ((l1, c1, h1), (l2, c2, h2)) = (lch(one), lch(other));
+    distance_lch(lch(one), lch(other))
+}
+
+/// O distance com as cores já em LCh.
+pub(crate) fn distance_lch((l1, c1, h1): (f64, f64, f64), (l2, c2, h2): (f64, f64, f64)) -> f64 {
     if (c1 < GREY_CHROMA) != (c2 < GREY_CHROMA) {
         return 1000.0 + (l1 - l2).abs() + (c1 - c2).abs();
     }

@@ -395,7 +395,7 @@ fn installed_profiles() -> Vec<Profile> {
 /// reload pode levar uns segundos.
 fn apply_profile(id: &str) -> Result<(), String> {
     use swaydesk_theme::desktop;
-    swaydesk_theme::themes::set_config_values(&config::path(), &[("shortcuts", id.to_string())])
+    swaydesk_theme::themes::set_config_values(&config::path(), &[("shortcuts", id.to_string().into())])
         .map_err(|e| e.to_string())?;
     let keys = desktop::sway_keys(&config::load(), &config::keys_dir());
     desktop::write_file(&desktop::config_home().join("sway/config.d/00-keys.conf"), &keys).map_err(|e| e.to_string())?;

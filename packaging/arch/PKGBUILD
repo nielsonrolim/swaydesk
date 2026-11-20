@@ -113,8 +113,9 @@ package_swaydesk-capture() {
 
 package_swaydesk-theme() {
   pkgdesc="Sway desktop components - theme tools, Desktop Theme and Displays apps, accent color portal"
-  # O gtk4 é dos apps Tema do Desktop e Telas (traz o pango e o cairo); o gtk4-layer-shell, do Identificar
-  depends=(swaydesk-common glib2 gtk4 gtk4-layer-shell)
+  # O gtk4 é dos apps Tema do Desktop e Telas (traz o pango e o cairo); o gtk4-layer-shell, do Identificar; o
+  # gdk-pixbuf2, do sway-theme (a cor do papel de parede)
+  depends=(swaydesk-common glib2 gdk-pixbuf2 gtk4 gtk4-layer-shell)
   optdepends=('papirus-icon-theme: folder colors' 'dconf: the Sway dconf profile' 'gnome-themes-extra: Adwaita-dark for GTK 3')
   _install swaydesk-theme
 }

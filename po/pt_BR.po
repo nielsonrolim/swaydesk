@@ -2910,6 +2910,10 @@ msgstr "Outro agente de senhas está ativo"
 msgid "No network service running"
 msgstr "Nenhum serviço de rede ativo"
 
+#: rust/theme/src/main.rs
+msgid "Wallpaper not found or not readable: %s"
+msgstr "Papel de parede não encontrado ou ilegível: %s"
+
 #: home/.config/sway/keys/base.conf
 msgid "Session and apps"
 msgstr "Sessão e apps"
