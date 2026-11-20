@@ -5,11 +5,15 @@ O projeto `home:nielsonrolim` do OBS compila e publica os pacotes, assinados com
 | Repositório do OBS | Base | Para |
 |---|---|---|
 | `Debian_13` | `Debian:13/standard` | Debian 13 (trixie) |
+| `Debian_Testing` | `Debian:Testing/standard` | Debian testing (hoje o forky), em melhor esforço |
 | `xUbuntu_26.04` | `Ubuntu:26.04/universe` | Ubuntu 26.04 e Linux Mint 27 |
 | `Arch` | `Arch:Extra/standard` | Arch Linux |
 
+O Debian testing é melhor esforço: com o `rebuild="local"`, uma transição de bibliotecas no testing (um soname
+novo) deixa os pacotes não instaláveis até uma revisão nova (`-N`). O `.sources` do keyring manda para ele o
+Debian sem `VERSION_ID` (o testing e o sid).
+
 Tudo em x86_64. Os pacotes do projeto:
-O alvo `Debian_Testing` (`Debian:Testing/standard`) já existe no projeto, mas fica fora destes documentos até passar numa VM.
 
 - `swaydesk`: um fonte para todos os alvos. O `.dsc` serve ao Debian e ao Ubuntu, e o `PKGBUILD` ao Arch. Os dois usam o mesmo `.orig.tar.xz`, que leva os crates em `rust/vendor`, porque o OBS compila sem rede.
 - `swaydesk-archive-keyring` (só Debian e Ubuntu): a chave do projeto e o `.sources` do APT (`keyring/`).
@@ -146,7 +150,7 @@ osc meta pkg home:nielsonrolim swaydesk-archive-keyring -F packaging/obs/meta/sw
 ### Conferir depois do primeiro envio
 
 Antes de passar o endereço a alguém:
-- [ ] `osc results home:nielsonrolim` mostra `succeeded` nos 3 alvos do `swaydesk` e nos 2 do keyring (o Arch aparece como `disabled`).
+- [ ] `osc results home:nielsonrolim` mostra `succeeded` nos 4 alvos do `swaydesk` e nos 3 do keyring (o Arch aparece como `disabled`).
 - [ ] As chaves existem nos endereços da seção abaixo (`Debian_13/Release.key` e `Arch/x86_64/home_nielsonrolim_Arch.key`) e têm a impressão digital da seção "A chave".
 - [ ] Nas VMs, o `apt update` roda sem aviso de assinatura, e o `pacman -Syu` aceita a assinatura.
 - [ ] Uma versão nova chega como atualização no apt e no pacman.
@@ -156,7 +160,7 @@ Antes de passar o endereço a alguém:
 ### Debian, Ubuntu e Mint
 
 A instalação começa pelo `.deb` do `swaydesk-archive-keyring`, baixado direto do repositório da distro
-(`Debian_13` ou `xUbuntu_26.04`, que também serve ao Mint 27) e conferido pelo sha256 antes do `dpkg -i`. O
+(`Debian_13`, `Debian_Testing` ou `xUbuntu_26.04`, que também serve ao Mint 27) e conferido pelo sha256 antes do `dpkg -i`. O
 pacote põe a chave e o `.sources`, e daí em diante os atualiza pelo próprio apt. São os mesmos blocos dos READMEs
 públicos (`packaging/public/README.md` e `README.pt-BR.md`) e da página de instalação do site:
 
