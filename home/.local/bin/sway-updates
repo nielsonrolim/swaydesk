@@ -354,16 +354,19 @@ loop() {
 store_marker=${XDG_STATE_HOME:-$HOME/.local/state}/swaydesk/store-updates-given
 STORE_KEY=/org/gnome/software/allow-updates
 
-notifier_enabled() {
-  local config
-  # O sway-desktop-config dos dotfiles ou o do pacote, como o sway-if-enabled. 1 é desligado; um erro conta
-  # como ligado (um erro no config.toml nunca desliga nada)
-  if [[ ${SWAYDESK_SESSION-} != package && -x $HOME/.local/bin/sway-desktop-config ]]; then
-    config=$HOME/.local/bin/sway-desktop-config
+# O irmão: o de ~/.local/bin (os dotfiles, onde o install.sh liga os binários em Rust) ou, na sessão do pacote,
+# o da pasta deste script, como no sway-if-enabled
+sibling() {
+  if [[ ${SWAYDESK_SESSION-} != package && -x $HOME/.local/bin/$1 ]]; then
+    printf '%s' "$HOME/.local/bin/$1"
   else
-    config=${self%/*}/sway-desktop-config
+    printf '%s' "${self%/*}/$1"
   fi
-  "$config" enabled update_notifier >/dev/null 2>&1
+}
+
+# 1 é desligado; um erro conta como ligado (um erro no config.toml nunca desliga nada)
+notifier_enabled() {
+  "$(sibling sway-desktop-config)" enabled update_notifier >/dev/null 2>&1
   (($? != 1))
 }
 
