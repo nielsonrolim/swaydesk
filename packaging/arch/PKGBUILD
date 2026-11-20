@@ -142,7 +142,9 @@ package_swaydesk-desktop() {
   arch=(any)
   license=(MIT)
   install=swaydesk-desktop.install
-  # libqalculate: o qalc da calculadora da grade de apps
+  # libqalculate: o qalc da calculadora da grade de apps. pacman-contrib: o checkupdates do aviso de atualizações
+  # (sway-updates), porque a GNOME Software do Arch só avisa das do Flatpak. O fakeroot: o checkupdates sincroniza
+  # a cópia dos bancos com ele, e o pacman-contrib só o lista nos optdepends (sem o base-devel, ele falha)
   # O pipewire-jack em primeiro: a waybar e o ffmpeg (do wf-recorder) pedem um jack, e o pacman, que resolve em
   # ordem, perguntaria o provedor com o jack2 de padrão. O áudio da sessão é o PipeWire
   depends=(pipewire-jack swaydesk-common swaydesk-scripts swaydesk-notifd swaydesk-dock swaydesk-drawer swaydesk-widgets
@@ -151,7 +153,7 @@ package_swaydesk-desktop() {
            mate-polkit xorg-xwayland thunar blueman papirus-icon-theme grim slurp wf-recorder brightnessctl
            playerctl pavucontrol wireplumber libpulse networkmanager network-manager-applet bluez upower gammastep
            libnotify power-profiles-daemon xdg-user-dirs qt5ct qt6ct capitaine-cursors
-           gnome-keyring)
+           gnome-keyring pacman-contrib fakeroot)
   optdepends=("gnome-text-editor: the Help's Open button, for 50-local.conf"
               'nano: the same in the terminal, without a graphical editor')
   # O portal do gtk por um drop-in na unit: o dbus-broker avisa de um segundo .service com o mesmo nome

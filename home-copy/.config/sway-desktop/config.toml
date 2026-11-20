@@ -57,7 +57,7 @@ clipboard_history = true   # o histórico da área de transferência (o cliphist
 nightlight = true          # a luz noturna volta ao último modo no login
 bing_wallpaper = true      # o wallpaper do dia do Bing
 polkit_agent = true        # a janela da senha de administrador: desligada, quem pede a senha falha
-update_notifier = true     # o aviso de atualizações da distro
+update_notifier = true     # o aviso de atualizações da distro (no Arch, a verificação do pacman e a notificação)
 displays = true            # os perfis de telas ao plugar um monitor e na tampa, e o resgate quando
                            # nenhuma tela fica ligada (o app Telas continua)
 
@@ -78,6 +78,7 @@ network = true
 volume = true
 battery = true
 power = true
+updates = true             # no Arch, o ícone das atualizações do pacman (some sem nenhuma)
 
 # Os efeitos do SwayFX, um Sway com cantos arredondados, blur e sombras. No Arch, ele é opcional e vem do
 # AUR (yay -S swayfx; para voltar, sudo pacman -S sway). Com o Sway comum, esta seção não faz nada. Cada

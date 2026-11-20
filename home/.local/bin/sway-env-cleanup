@@ -139,6 +139,8 @@ fi
 if command -v pkill >/dev/null; then
   pkill -x -u "$(id -u)" update-notifier 2>/dev/null
   pkill -x -u "$(id -u)" DiscoverNotifier 2>/dev/null
+  # O laço do aviso do Arch (sway-updates loop): ao sair, ele fecha a própria notificação
+  pkill -u "$(id -u)" -f '/sway-updates loop$' 2>/dev/null
 fi
 # Parados, os portais iniciam de novo na próxima sessão, já com o ambiente dela. Um stop no meio de um
 # start que um cliente atrasado pediu deixa a ativação pendente no dbus-daemon; o heal_portals do login

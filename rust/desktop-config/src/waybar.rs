@@ -40,14 +40,21 @@ pub fn strip_jsonc(text: &str) -> String {
     String::from_utf8(out).unwrap_or_default()
 }
 
-/// O config filtrado, em JSON. Err se o modelo não for um JSONC válido.
-pub fn filtered(template: &str, config: &Config) -> Result<String, String> {
+/// O módulo das atualizações do sistema (o sway-updates), só onde há o checkupdates do pacman-contrib: o Arch. No
+/// Debian e no Ubuntu a loja avisa do apt, e o config fica como era.
+pub const UPDATES_MODULE: &str = "custom/updates";
+
+/// O config filtrado, em JSON. Err se o modelo não for um JSONC válido. `checkupdates`: se o programa existe.
+pub fn filtered(template: &str, config: &Config, checkupdates: bool) -> Result<String, String> {
     let mut data: Value = serde_json::from_str(&strip_jsonc(template)).map_err(|e| e.to_string())?;
-    let off: Vec<&str> = BAR_MODULES
+    let mut off: Vec<&str> = BAR_MODULES
         .iter()
         .filter(|(key, _)| !config.enabled(&format!("bar.{key}")))
         .map(|(_, module)| *module)
         .collect();
+    if !checkupdates {
+        off.push(UPDATES_MODULE);
+    }
     let bars: Vec<&mut Value> = match &mut data {
         Value::Array(list) => list.iter_mut().collect(),
         other => vec![other],
@@ -90,7 +97,7 @@ pub fn write(config: &Config, template: Option<&Path>) -> Result<PathBuf, String
     };
     let text = std::fs::read_to_string(&template).map_err(|e| format!("{}: {e}", template.display()))?;
     let out = config_home.join(GENERATED);
-    dc::write_file(&out, &filtered(&text, config)?).map_err(|e| format!("{}: {e}", out.display()))?;
+    dc::write_file(&out, &filtered(&text, config, swaydesk_theme::which("checkupdates"))?).map_err(|e| format!("{}: {e}", out.display()))?;
     Ok(out)
 }
 
@@ -111,7 +118,7 @@ mod tests {
     fn drops_only_the_disabled_modules() {
         let (config, warnings) = parse_config("[enabled.bar]\nweather = false\nrecording = false\nclock = true\n");
         assert!(warnings.is_empty(), "{warnings:?}");
-        let out = filtered(TEMPLATE, &config).unwrap();
+        let out = filtered(TEMPLATE, &config, true).unwrap();
         assert!(out.starts_with("// Gerado"));
         let data: Value = serde_json::from_str(&strip_jsonc(&out)).unwrap();
         assert_eq!(data["modules-center"], serde_json::json!(["custom/clock"]));
@@ -122,11 +129,24 @@ mod tests {
 
     #[test]
     fn nothing_disabled_keeps_every_module_and_bad_json_is_an_error() {
-        let out = filtered(TEMPLATE, &Config::default()).unwrap();
+        let out = filtered(TEMPLATE, &Config::default(), true).unwrap();
         let data: Value = serde_json::from_str(&strip_jsonc(&out)).unwrap();
         assert_eq!(data["modules-right"].as_array().unwrap().len(), 4);
-        assert!(filtered("{ \"modules-left\": [", &Config::default()).is_err());
-        assert!(filtered("[1, 2]", &Config::default()).is_err());
+        assert!(filtered("{ \"modules-left\": [", &Config::default(), true).is_err());
+        assert!(filtered("[1, 2]", &Config::default(), true).is_err());
+    }
+
+    #[test]
+    fn the_updates_module_only_with_checkupdates() {
+        let template = r#"{ "modules-right": ["custom/media", "custom/updates", "custom/power"] }"#;
+        let right = |checkupdates, config: &str| {
+            let (config, _) = parse_config(config);
+            let out = filtered(template, &config, checkupdates).unwrap();
+            serde_json::from_str::<Value>(&strip_jsonc(&out)).unwrap()["modules-right"].clone()
+        };
+        assert_eq!(right(true, ""), serde_json::json!(["custom/media", "custom/updates", "custom/power"]));
+        assert_eq!(right(false, ""), serde_json::json!(["custom/media", "custom/power"]));
+        assert_eq!(right(true, "[enabled.bar]\nupdates = false\n"), serde_json::json!(["custom/media", "custom/power"]));
     }
 
     #[test]

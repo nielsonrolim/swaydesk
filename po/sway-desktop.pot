@@ -2110,6 +2110,42 @@ msgstr ""
 msgid "The screenshot was saved, but did not open in the editor. Install: %s"
 msgstr ""
 
+#: home/.local/bin/sway-updates
+msgid "System updates"
+msgstr ""
+
+#: home/.local/bin/sway-updates
+msgid "Update"
+msgstr ""
+
+#: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+msgid "%d update available"
+msgid_plural "%d updates available"
+msgstr[0] ""
+msgstr[1] ""
+
+#: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+msgid "and %d more"
+msgid_plural "and %d more"
+msgstr[0] ""
+msgstr[1] ""
+
+#: home/.local/bin/sway-updates
+msgid "Updating the system with sudo pacman -Syu. sudo asks for your password."
+msgstr ""
+
+#: home/.local/bin/sway-updates
+msgid "Checking for updates again..."
+msgstr ""
+
+#: home/.local/bin/sway-updates
+msgid "Press Enter to close."
+msgstr ""
+
+#: home/.local/bin/sway-updates
+msgid "System update"
+msgstr ""
+
 #: home/.local/bin/waybar-battery
 msgid "less than 1 min"
 msgstr ""
@@ -2176,6 +2212,10 @@ msgstr ""
 
 #: home/.local/bin/waybar-media
 msgid "Paused"
+msgstr ""
+
+#: home/.local/bin/waybar-updates
+msgid "Click to update"
 msgstr ""
 
 #: home/.local/bin/waybar-volume

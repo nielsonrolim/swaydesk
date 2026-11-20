@@ -2122,6 +2122,42 @@ msgstr "Gradia não instalado"
 msgid "The screenshot was saved, but did not open in the editor. Install: %s"
 msgstr "A captura foi salva, mas não abriu no editor. Instale: %s"
 
+#: home/.local/bin/sway-updates
+msgid "System updates"
+msgstr "Atualizações do sistema"
+
+#: home/.local/bin/sway-updates
+msgid "Update"
+msgstr "Atualizar"
+
+#: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+msgid "%d update available"
+msgid_plural "%d updates available"
+msgstr[0] "%d atualização disponível"
+msgstr[1] "%d atualizações disponíveis"
+
+#: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+msgid "and %d more"
+msgid_plural "and %d more"
+msgstr[0] "e mais %d"
+msgstr[1] "e mais %d"
+
+#: home/.local/bin/sway-updates
+msgid "Updating the system with sudo pacman -Syu. sudo asks for your password."
+msgstr "Atualizando o sistema com sudo pacman -Syu. O sudo pede a sua senha."
+
+#: home/.local/bin/sway-updates
+msgid "Checking for updates again..."
+msgstr "Procurando atualizações de novo..."
+
+#: home/.local/bin/sway-updates
+msgid "Press Enter to close."
+msgstr "Pressione Enter para fechar."
+
+#: home/.local/bin/sway-updates
+msgid "System update"
+msgstr "Atualização do sistema"
+
 #: home/.local/bin/waybar-battery
 msgid "less than 1 min"
 msgstr "menos de 1 min"
@@ -2189,6 +2225,10 @@ msgstr "Cafeína até %s: sem bloqueio, tela apagada ou suspensão"
 #: home/.local/bin/waybar-media
 msgid "Paused"
 msgstr "Pausado"
+
+#: home/.local/bin/waybar-updates
+msgid "Click to update"
+msgstr "Clique para atualizar"
 
 #: home/.local/bin/waybar-volume
 msgid "Muted · %s"

@@ -25,7 +25,7 @@ pub const BAR_MODULES: &[(&str, &str)] = &[
     ("notifications", "custom/notification"), ("clipboard", "custom/clipboard"), ("language", "custom/language"),
     ("system", "custom/system"), ("brightness", "custom/brightness"), ("caffeine", "custom/caffeine"),
     ("bluetooth", "custom/bluetooth"), ("network", "custom/network"), ("volume", "custom/volume"),
-    ("battery", "custom/battery"), ("power", "custom/power"),
+    ("battery", "custom/battery"), ("power", "custom/power"), ("updates", "custom/updates"),
 ];
 // As chaves do [effects] (o Effects do desktop_config.py)
 const EFFECT_KEYS: &[&str] = &["corner_radius", "blur", "shadows", "layer_blur", "dim_inactive"];

@@ -53,7 +53,8 @@ components that are off.
 .B waybar [TEMPLATE]
 Write ~/.config/swaydesk\-desktop/waybar/config.jsonc: the Waybar configuration TEMPLATE (by default the
 package's in the packaged session, ~/.config/waybar/config.jsonc otherwise) without the modules turned off in
-[enabled.bar], and print its path. The session's sway\-waybar runs it before each start and falls back to the
+[enabled.bar], and print its path. Without checkupdates (pacman\-contrib) in the PATH, the updates module is left
+out too: it is only for Arch. The session's sway\-waybar runs it before each start and falls back to the
 template when it fails. generate writes it too.
 .TP
 .B \-\-check
@@ -64,10 +65,11 @@ Exit 0 at once without doing anything: the Python launchers use it to check that
 The desktop configuration: language (locale), accent color (accent), GTK and icon themes (gtk_theme, icon_theme), folder color (folder_color), file manager (file_manager), weather location (weather_location) and holidays (holidays). The fonts come from the GTK system font.
 .IP
 The [enabled] table turns session components off with false: dock, app_grid, switcher, notifications, osd,
-clipboard_history, nightlight, bing_wallpaper, polkit_agent, update_notifier and displays (the automatic
+clipboard_history, nightlight, bing_wallpaper, polkit_agent, update_notifier (on Arch, also the background check for
+pacman updates and its notification) and displays (the automatic
 screen profiles and the rescue that turns the screens on when none is on; the Displays app stays). The [enabled.bar] table does
 the same for the Waybar modules: weather, clock, media, recording, notifications, clipboard, language, system,
-brightness, caffeine, bluetooth, network, volume, battery and power. A key that is absent is on. A change takes
+brightness, caffeine, bluetooth, network, volume, battery, power and updates (the Arch updates icon). A key that is absent is on. A change takes
 effect at the next login; for the bar, also when Waybar restarts.
 .IP
 The shortcuts key picks the keyboard shortcut profile: swaydesk (the default), i3, hyprland, niri or dwm. generate

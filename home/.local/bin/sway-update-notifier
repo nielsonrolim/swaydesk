@@ -6,6 +6,14 @@
 #   update-notifier (Ubuntu Desktop): abre o Atualizador de Programas quando há atualizações;
 #   DiscoverNotifier (Kubuntu e Debian com KDE): ícone na bandeja da Waybar, que abre o Discover.
 # Sem nenhum, como no Mint, não faz nada. O sway-env-cleanup os encerra ao sair do Sway.
+#
+# No Arch, antes de qualquer um: a GNOME Software de lá não tem backend do pacman e só avisa das atualizações do
+# Flatpak. Com o checkupdates (pacman-contrib), o sway-updates confere os repositórios oficiais em segundo plano,
+# com ícone na barra e notificação; ele roda com ou sem a GNOME Software, e não roda na ISO live.
+if command -v checkupdates >/dev/null 2>&1; then
+  updates=${SWAY_UPDATES:-$(dirname -- "$(readlink -f -- "$0")")/sway-updates}
+  [ -x "$updates" ] && "$updates" loop </dev/null &
+fi
 if command -v gnome-software >/dev/null 2>&1; then
   exec gnome-software --gapplication-service
 fi

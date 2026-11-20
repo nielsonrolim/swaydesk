@@ -1,0 +1,225 @@
+#!/usr/bin/env bash
+# As atualizações do sistema no Arch. Lá a GNOME Software não tem backend do pacman e só avisa das do Flatpak.
+# Este confere os repositórios oficiais com o checkupdates do pacman-contrib, que sincroniza uma cópia
+# temporária dos bancos e não mexe nos do sistema. Nunca atualiza sozinho e não guarda senha.
+# uso: sway-updates loop     a verificação em segundo plano: 5 minutos depois do login e depois a cada 6 horas.
+#                            O sway-update-notifier o abre (com update_notifier = false no [enabled], não abre),
+#                            e ele termina com a sessão. Não roda na ISO live
+#      sway-updates check    confere agora: a lista vai para o cache que o ícone da Waybar (waybar-updates) lê,
+#                            e uma notificação vem quando a lista tem algo novo
+#      sway-updates upgrade  abre o kitty com sudo pacman -Syu e, no fim, confere de novo. Com um já aberto,
+#                            traz esse para a frente
+#
+# O cache, em ~/.cache/swaydesk: updates (as linhas do checkupdates, "nome antiga -> nova") e updates.notified
+# (as linhas "nome nova" da última notificação). Sem o checkupdates, nada acontece: no Debian e no Ubuntu a loja
+# avisa do apt.
+set -uo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }
+  tn() { if [ "$3" = 1 ]; then printf '%s' "$1"; else printf '%s' "$2"; fi; }; fi
+self=$(readlink -f -- "$0")
+cache=${XDG_CACHE_HOME:-$HOME/.cache}/swaydesk
+run=${XDG_RUNTIME_DIR:-/tmp}
+list=$cache/updates
+notified=$cache/updates.notified
+upgrade_lock=$run/sway-updates-upgrade.lock
+waiter_pid=$run/sway-updates-notify.pid
+notify_id=$run/sway-updates-notify.id
+# Os testes trocam estes
+pacman_lock=${SWAY_UPDATES_PACMAN_LOCK:-/var/lib/pacman/db.lck}
+live_mark=${SWAY_UPDATES_LIVE:-/run/archiso}
+first=${SWAY_UPDATES_FIRST:-300}       # a primeira verificação depois do login
+every=${SWAY_UPDATES_EVERY:-21600}     # depois, a cada 6 horas
+retry=${SWAY_UPDATES_RETRY:-900}       # sem rede: 15 minutos
+busy_retry=${SWAY_UPDATES_BUSY:-600}   # com o pacman rodando: 10 minutos
+nap=${SWAY_UPDATES_NAP:-900}           # o sono mais longo: quem decide é o relógio, porque o sleep para na suspensão
+wait_limit=${SWAY_UPDATES_WAIT:-$every}  # quanto a notificação espera um clique
+
+log() { echo "sway-updates: $*" >&2; }
+
+# Os ícones das barras abertas leem o cache de novo (waybar-updates, um pidfile por barra)
+refresh_icons() {
+  local pidfile pid
+  for pidfile in "$run"/waybar-updates.*.pid; do
+    [[ -r $pidfile ]] || continue
+    pid=$(<"$pidfile") 2>/dev/null || continue
+    [[ $pid =~ ^[0-9]+$ ]] && kill -USR1 "$pid" 2>/dev/null
+  done
+  return 0
+}
+
+# Um pacman está mexendo no sistema (a trava dele), ou a nossa janela de atualização está aberta. Uma trava sem
+# nenhum pacman rodando sobrou de uma queda: o pacman também se recusa a rodar, e o log diz como resolver
+busy() {
+  if [[ -e $pacman_lock ]]; then
+    pgrep -x pacman >/dev/null 2>&1 || log "stale pacman lock, with no pacman running: after checking, remove $pacman_lock"
+    return 0
+  fi
+  [[ -e $upgrade_lock ]] && ! flock -n "$upgrade_lock" true 2>/dev/null
+}
+
+# A notificação e a espera pela ação dela. Uma por vez: o notify-wait roda numa sessão própria (setsid), e
+# encerrá-lo leva o grupo todo, com o notify-send. Uma rodada nova fecha a anterior e abre outra; o
+# notify-wait termina quando a notificação fecha (clicada, dispensada ou trocada) ou no limite de tempo, e aí a
+# fecha: um botão que ninguém escuta não fica na central
+stop_waiter() {
+  local pid
+  if [[ -r $waiter_pid ]] && pid=$(<"$waiter_pid") && [[ $pid =~ ^[0-9]+$ ]]; then
+    kill -TERM -- "-$pid" 2>/dev/null
+  fi
+  rm -f "$waiter_pid"
+  return 0
+}
+
+close_by_id() {
+  local id
+  if [[ -r $notify_id ]] && id=$(<"$notify_id") && [[ $id =~ ^[0-9]+$ ]]; then
+    busctl --user call org.freedesktop.Notifications /org/freedesktop/Notifications \
+      org.freedesktop.Notifications CloseNotification u "$id" >/dev/null 2>&1
+  fi
+  rm -f "$notify_id"
+  return 0
+}
+
+close_notification() { stop_waiter; close_by_id; }
+
+notify_wait() {
+  local count=$1 body=$2 id= line action= rc=
+  echo $$ >"$waiter_pid"
+  # Só apaga o pidfile se ainda for o seu: o próximo notify-wait pode já ter gravado o dele
+  trap '[[ $(cat "$waiter_pid" 2>/dev/null) == $$ ]] && rm -f "$waiter_pid"; trap - TERM; kill -- -$$ 2>/dev/null; exit 0' TERM
+  # O -p escreve o id logo que a notificação aparece; o -w espera, e escreve o nome da ação clicada. O
+  # --foreground deixa o timeout no grupo deste: sem ele, o timeout abre um grupo próprio, e encerrar o grupo
+  # deixaria o notify-send esperando (e recebendo a ação do mesmo id) por horas
+  exec 3< <(timeout --foreground "$wait_limit" notify-send -p -w -a "$(t 'System updates')" \
+              -i system-software-update -A "update=$(t 'Update')" \
+              "$(printf "$(tn '%d update available' '%d updates available' "$count")" "$count")" "$body" 2>/dev/null
+            echo "rc $?")
+  read -r -u 3 id && [[ $id =~ ^[0-9]+$ ]] && printf '%s\n' "$id" >"$notify_id"
+  while read -r -u 3 line; do
+    case $line in "rc "*) rc=${line#rc }; break ;; *) action=$line ;; esac
+  done
+  if [[ $action == update ]]; then
+    rm -f "$notify_id"
+    setsid -f "$self" upgrade >/dev/null 2>&1 </dev/null
+  elif [[ $rc == 124 ]]; then
+    close_by_id  # o tempo acabou: sai da central também
+  else
+    rm -f "$notify_id"  # fechada ou dispensada
+  fi
+  [[ $(cat "$waiter_pid" 2>/dev/null) == $$ ]] && rm -f "$waiter_pid"
+  return 0
+}
+
+notify() {
+  command -v notify-send >/dev/null 2>&1 || return 0
+  # A anterior sai da central antes: trocá-la no lugar (-r) só atualizaria a central, sem o toast, quando ela
+  # foi dispensada com o X e ficou lá
+  close_notification
+  setsid -f "$self" notify-wait "$1" "$2" </dev/null >/dev/null 2>&1
+}
+
+# A lista nova, as linhas "nome nova" dela e a notificação quando há algo que não foi visto
+check() {
+  local out err rc lines=() line names=() seen new=0 body= extra
+  if busy; then log "pacman is busy: skipped"; return 3; fi
+  err=$(mktemp) || return 1
+  out=$(checkupdates 2>"$err"); rc=$?
+  # A última linha do erro vai para o log: sem rede, um repositório fora do ar, ou o fakeroot faltando
+  line=$(grep -v '^[[:space:]]*$' "$err" | tail -n 1); rm -f "$err"
+  case $rc in
+    0) ;;
+    2) out= ;;  # nenhuma atualização
+    *) log "checkupdates failed ($rc): ${line:-no network or a repository down}"; return 1 ;;
+  esac
+  # Só as linhas bem formadas: elas vão como estão para o JSON da barra
+  while IFS= read -r line; do
+    [[ $line =~ ^[A-Za-z0-9@._+-]+\ [A-Za-z0-9.:_+~-]+\ -\>\ [A-Za-z0-9.:_+~-]+$ ]] && lines+=("$line")
+  done <<<"$out"
+  mkdir -p "$cache" || return 1
+  # Um arquivo temporário por processo: a verificação do laço e a do fim da atualização podem rodar juntas
+  { if ((${#lines[@]})); then printf '%s\n' "${lines[@]}"; fi; } >"$list.tmp.$$" && mv -f "$list.tmp.$$" "$list"
+  refresh_icons
+  if ((${#lines[@]} == 0)); then
+    : >"$notified"
+    close_notification
+    return 0
+  fi
+  for line in "${lines[@]}"; do names+=("${line%% *} ${line##* }"); done
+  seen=$(cat "$notified" 2>/dev/null)
+  for line in "${names[@]}"; do
+    grep -qxF -- "$line" <<<"$seen" || { new=1; break; }
+  done
+  printf '%s\n' "${names[@]}" >"$notified"
+  ((new)) || return 0
+  for line in "${lines[@]:0:5}"; do body+="${line%% *}"$'\n'; done
+  extra=$((${#lines[@]} - 5))
+  ((extra > 0)) && body+=$(printf "$(tn 'and %d more' 'and %d more' "$extra")" "$extra")
+  notify "${#lines[@]}" "${body%$'\n'}"
+  return 0
+}
+
+loop() {
+  local now due rc pause sleeper=
+  [[ -e $live_mark ]] && exit 0
+  command -v checkupdates >/dev/null 2>&1 || exit 0
+  mkdir -p "$run"
+  exec 8>"$run/sway-updates-loop.lock"
+  flock -n 8 || exit 0  # um por sessão
+  # Os filhos não herdam a trava (o 8>&- em cada um): um sleep ou um notify-wait que sobrasse do logout a
+  # seguraria, e o laço do login seguinte sairia calado. O sleep sai junto com o laço
+  trap '[[ -n $sleeper ]] && kill "$sleeper" 2>/dev/null; close_notification 8>&-; exit 0' TERM INT HUP
+  printf -v now '%(%s)T' -1
+  due=$((now + first))
+  while :; do
+    printf -v now '%(%s)T' -1
+    if ((now >= due)); then
+      check 8>&-; rc=$?
+      case $rc in
+        0) due=$((now + every)) ;;
+        3) due=$((now + busy_retry)) ;;
+        *) due=$((now + retry)) ;;
+      esac
+    fi
+    pause=$((due - now))
+    ((pause > nap)) && pause=$nap
+    ((pause < 1)) && pause=1
+    sleep "$pause" 8>&- &  # em segundo plano, para o trap rodar na hora
+    sleeper=$!
+    wait "$sleeper" 2>/dev/null
+    sleeper=
+    swaymsg -t get_version >/dev/null 2>&1 8>&- || break  # a sessão acabou
+  done
+  close_notification 8>&-
+}
+
+# Dentro do kitty: a atualização, uma verificação nova e uma tecla para fechar
+run_upgrade() {
+  exec 9>"$upgrade_lock"
+  flock -n 9 || exit 0
+  printf '%s\n\n' "$(t 'Updating the system with sudo pacman -Syu. sudo asks for your password.')"
+  sudo pacman -Syu
+  echo
+  exec 9>&-
+  printf '%s\n' "$(t 'Checking for updates again...')"
+  check >/dev/null 2>&1
+  echo
+  printf '%s ' "$(t 'Press Enter to close.')"  # o read -p só escreve num terminal
+  read -r _
+}
+
+upgrade() {
+  if [[ -e $upgrade_lock ]] && ! flock -n "$upgrade_lock" true 2>/dev/null; then
+    swaymsg '[app_id="^swaydesk-updates$"] focus' >/dev/null 2>&1
+    exit 0
+  fi
+  exec kitty --class swaydesk-updates --title "$(t 'System update')" "$self" run-upgrade
+}
+
+case ${1:-} in
+  loop) loop ;;
+  check) check ;;
+  upgrade) upgrade ;;
+  run-upgrade) run_upgrade ;;
+  notify-wait) notify_wait "${2:-0}" "${3:-}" ;;
+  *) echo "usage: sway-updates loop|check|upgrade" >&2; exit 2 ;;
+esac

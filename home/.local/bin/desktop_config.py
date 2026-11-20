@@ -136,7 +136,7 @@ BAR_MODULES = {
     "notifications": "custom/notification", "clipboard": "custom/clipboard", "language": "custom/language",
     "system": "custom/system", "brightness": "custom/brightness", "caffeine": "custom/caffeine",
     "bluetooth": "custom/bluetooth", "network": "custom/network", "volume": "custom/volume",
-    "battery": "custom/battery", "power": "custom/power",
+    "battery": "custom/battery", "power": "custom/power", "updates": "custom/updates",
 }
 
 
@@ -728,11 +728,20 @@ def strip_jsonc(text):
     return "".join(out)
 
 
-def waybar_config(template_text, config):
+# O módulo das atualizações do sistema (o sway-updates), só onde há o checkupdates do pacman-contrib: o Arch
+UPDATES_MODULE = "custom/updates"
+
+
+def waybar_config(template_text, config, checkupdates=None):
     """O config da Waybar sem os módulos desligados no [enabled.bar], em JSON. ValueError se o modelo não
-    for um JSONC válido: quem chama sobe a Waybar com o modelo."""
+    for um JSONC válido: quem chama sobe a Waybar com o modelo. Sem o checkupdates (None: procura no PATH),
+    sai também o custom/updates: no Debian e no Ubuntu a loja avisa do apt."""
     data = json.loads(strip_jsonc(template_text))
     off = {BAR_MODULES[name[4:]] for name in config.enabled if name.startswith("bar.")}
+    if checkupdates is None:
+        checkupdates = shutil.which("checkupdates") is not None
+    if not checkupdates:
+        off.add(UPDATES_MODULE)
     bars = data if isinstance(data, list) else [data]
     for bar in bars:
         if not isinstance(bar, dict):

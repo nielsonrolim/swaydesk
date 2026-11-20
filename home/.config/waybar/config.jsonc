@@ -5,7 +5,7 @@
   "spacing": 0,
   "modules-left":   ["sway/workspaces"],
   "modules-center": ["custom/weather", "custom/clock"],
-  "modules-right":  ["sway/mode", "custom/rec", "custom/media", "custom/notification", "tray", "custom/clipboard", "custom/language", "custom/system", "custom/brightness", "custom/caffeine",
+  "modules-right":  ["sway/mode", "custom/rec", "custom/media", "custom/updates", "custom/notification", "tray", "custom/clipboard", "custom/language", "custom/system", "custom/brightness", "custom/caffeine",
                      "custom/bluetooth", "custom/network", "custom/volume", "custom/battery", "custom/power"],
 
   // 9 workspaces sempre visíveis; os vazios ganham a classe .persistent
@@ -102,6 +102,16 @@
     "on-click": "~/.local/bin/waybar-brightness-popup",
     "on-scroll-up": "~/.local/bin/sway-osd brightness up",
     "on-scroll-down": "~/.local/bin/sway-osd brightness down"
+  },
+
+  // Atualizações do sistema, só no Arch (sway-updates): a quantidade, e some sem nenhuma; a dica lista as
+  // primeiras. Clique abre o kitty com sudo pacman -Syu. Fora do Arch (sem o checkupdates), o
+  // sway-desktop-config waybar tira o módulo do config
+  "custom/updates": {
+    "exec": "exec ~/.local/bin/waybar-updates",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/sway-updates upgrade"
   },
 
   // Notificações: o sway-notifd guarda a lista; clique abre o popup e clique direito liga ou

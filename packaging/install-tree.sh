@@ -34,7 +34,7 @@ MODULES=(waybar_holidays.py sway_i18n.py desktop_config.py sway-i18n.sh)  # o sw
 SESSION_SCRIPTS=(sway-after-env sway-if-enabled sway-waybar sway-env-cleanup sway-polkit-agent sway-update-notifier
                  blueman-agent bing-wallpaper sway-osd sway-super sway-resize sway-master sway-ws waybar-clock
                  waybar-media waybar-volume waybar-battery waybar-brightness waybar-caffeine sway-launcher
-                 sway-portal-gtk sway-has-display)
+                 sway-portal-gtk sway-has-display sway-updates waybar-updates)
 SESSION_MODULES=(waybar-icon-lib)  # incluído com "." pelos módulos da Waybar
 share=/usr/share/swaydesk-desktop
 
