@@ -9,6 +9,7 @@ pub mod paths;
 pub mod reference;
 pub mod i18n;
 pub mod keyboard;
+pub mod offline_updates;
 pub mod renderer;
 pub mod resident;
 pub mod theme_resources;

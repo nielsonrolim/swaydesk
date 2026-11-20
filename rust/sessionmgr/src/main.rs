@@ -1,6 +1,10 @@
 //! O mínimo do org.gnome.SessionManager no Sway: o "Reiniciar e atualizar" da GNOME Software. O porte do
 //! `sway-sessionmgr` em Python.
 //!
+//! Como o gnome-session, responde na hora e pede a confirmação: o `session-menu --confirm`, com contagem de
+//! 60 s, que roda a ação (e trata a atualização offline, swaydesk_common::offline_updates). Se o diálogo não
+//! abrir, age direto, como antes, para a atualização não se perder.
+//!
 //! Só o Reboot e o Shutdown respondem; o resto dá UnknownMethod, para nenhum app achar que está no GNOME.
 //! Roda só na sessão Sway (exec no config, nunca pela ativação do D-Bus) e sai junto com ela: o barramento
 //! da sessão sobrevive ao logout, e um GNOME aberto depois precisa do nome livre.
@@ -10,7 +14,7 @@ use std::process::{Command, ExitCode, Stdio};
 use std::time::Duration;
 
 use gio::glib;
-use swaydesk_common::resident;
+use swaydesk_common::{offline_updates, resident};
 
 const PROGRAM: &str = "sway-sessionmgr";
 const NAME: &str = "org.gnome.SessionManager";
@@ -21,7 +25,7 @@ const XML: &str = r#"<node>
     <method name="Shutdown"/>
   </interface>
 </node>"#;
-/// A resposta sai antes: a GNOME Software cancela a atualização se a chamada falhar
+/// A resposta sai antes: a GNOME Software cancela a atualização se a chamada falhar (o _reboot_failed_cb)
 const DELAY: Duration = Duration::from_millis(300);
 
 /// O que cada método faz, pelo session-action, que no Sway chama o systemctl
@@ -51,7 +55,40 @@ fn act(action: &str) {
     }
 }
 
-fn on_call(method: &str, invocation: gio::DBusMethodInvocation) {
+/// O diálogo de confirmação: o lançador de ~/.local/bin (dotfiles) ou o binário (pacotes).
+fn session_menu() -> PathBuf {
+    swaydesk_common::paths::component("session-menu", "swaydesk-session-menu")
+}
+
+/// A saída do `session-menu --confirm` que não chegou a mostrar nada (o GTK sem tela)
+const CONFIRM_UNAVAILABLE: i32 = 3;
+
+/// Pede a confirmação e espera o diálogo fechar. Só se ele não existir ou não chegar a abrir
+/// (CONFIRM_UNAVAILABLE), age direto, pelo plano da atualização offline. Qualquer outra saída não age: o GTK
+/// sai com 1 quando o Sway some (um logout com o diálogo aberto), e um panic depois do Cancelar não pode
+/// virar um reinício. Não agir não perde nada: a atualização agendada entra no próximo reinício.
+fn confirm_or_act(bus: gio::DBusConnection, action: &'static str) {
+    std::thread::spawn(move || {
+        let menu = session_menu();
+        let status = Command::new(&menu).args(["--confirm", action]).stdin(Stdio::null()).status();
+        let unavailable = match &status {
+            Ok(s) => s.code() == Some(CONFIRM_UNAVAILABLE),
+            Err(_) => true,
+        };
+        if !unavailable {
+            if !status.as_ref().is_ok_and(|s| s.success()) {
+                eprintln!("{PROGRAM}: the confirmation ended with {status:?}; doing nothing");
+            }
+            return;
+        }
+        eprintln!("{PROGRAM}: the confirmation did not open ({}: {status:?}); acting directly", menu.display());
+        let Some(request) = offline_updates::Request::from_action(action) else { return };
+        let plan = offline_updates::plan(request, offline_updates::query(Some(&bus)));
+        act(offline_updates::confirm(Some(&bus), &plan));
+    });
+}
+
+fn on_call(bus: &gio::DBusConnection, method: &str, invocation: gio::DBusMethodInvocation) {
     let Some(action) = action(method) else {
         invocation.return_dbus_error("org.freedesktop.DBus.Error.UnknownMethod", &format!("{method} does not exist in Sway"));
         return;
@@ -59,7 +96,8 @@ fn on_call(method: &str, invocation: gio::DBusMethodInvocation) {
     let sender = invocation.sender().map(|s| s.to_string()).unwrap_or_default();
     eprintln!("{PROGRAM}: {method} requested by {sender}");
     invocation.return_value(None);
-    glib::timeout_add_local_once(DELAY, move || act(action));
+    let bus = bus.clone();
+    glib::timeout_add_local_once(DELAY, move || confirm_or_act(bus, action));
 }
 
 /// Sai quando o Sway sai: o evento de saída, ou a conexão que cai se ele morrer.
@@ -88,7 +126,7 @@ fn main() -> ExitCode {
     let iface = node.lookup_interface("org.gnome.SessionManager").expect("interface");
     let registered = bus
         .register_object(PATH, &iface)
-        .method_call(|_conn, _sender, _path, _iface, method, _params, invocation| on_call(method, invocation))
+        .method_call(|conn, _sender, _path, _iface, method, _params, invocation| on_call(&conn, method, invocation))
         .build();
     if let Err(err) = registered {
         eprintln!("{PROGRAM}: register object: {err}");

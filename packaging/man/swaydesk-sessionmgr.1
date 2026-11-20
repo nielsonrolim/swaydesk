@@ -6,6 +6,10 @@ swaydesk\-sessionmgr \- minimal org.gnome.SessionManager for Sway
 .SH DESCRIPTION
 Answers only Reboot and Shutdown of org.gnome.SessionManager, for the "Restart and update" of GNOME Software; the other methods return UnknownMethod. The Sway configuration starts it, never D\-Bus activation, and it exits with the session.
 .PP
+It answers at once, then asks for confirmation with
+.BR "swaydesk\-session\-menu \-\-confirm" ,
+which restarts or shuts down after 60 seconds or when the user confirms; canceling does nothing. If the confirmation cannot open, it restarts or shuts down directly.
+.PP
 The session runs it under the name sway\-sessionmgr (a link in the package's helper directory to /usr/bin/swaydesk\-sessionmgr); the process name is sway\-sessionmgr too.
 .SH OPTIONS
 .TP

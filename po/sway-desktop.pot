@@ -62,6 +62,52 @@ msgstr ""
 msgid "arrows and Enter · click outside or Esc to close"
 msgstr ""
 
+#: home/.local/bin/session-menu
+msgid "Restart now"
+msgstr ""
+
+#: home/.local/bin/session-menu
+msgid "Shut down now"
+msgstr ""
+
+#: home/.local/bin/session-menu
+#, python-format
+msgid "The system will restart automatically in %d second"
+msgid_plural "The system will restart automatically in %d seconds"
+msgstr[0] ""
+msgstr[1] ""
+
+#: home/.local/bin/session-menu
+#, python-format
+msgid "The system will power off automatically in %d second"
+msgid_plural "The system will power off automatically in %d seconds"
+msgstr[0] ""
+msgstr[1] ""
+
+#: home/.local/bin/session-menu
+msgid "Updates will be installed during the restart."
+msgstr ""
+
+#: home/.local/bin/session-menu
+msgid "The computer will restart to install the updates and then power off."
+msgstr ""
+
+#: home/.local/bin/session-menu
+msgid "Updates will be installed the next time the computer starts."
+msgstr ""
+
+#: home/.local/bin/session-menu home/.local/bin/waybar-network-popup
+msgid "Cancel"
+msgstr ""
+
+#: home/.local/bin/session-menu
+msgid "If you cancel, the updates stay downloaded; nothing is installed now."
+msgstr ""
+
+#: home/.local/bin/session-menu
+msgid "click outside or Esc to cancel"
+msgstr ""
+
 #: home/.local/bin/sway-capture
 msgid "Region"
 msgstr ""
@@ -1475,10 +1521,6 @@ msgstr ""
 
 #: home/.local/bin/waybar-network-popup
 msgid "Waiting for password"
-msgstr ""
-
-#: home/.local/bin/waybar-network-popup
-msgid "Cancel"
 msgstr ""
 
 #: home/.local/bin/waybar-network-popup

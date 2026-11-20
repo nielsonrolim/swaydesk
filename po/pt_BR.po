@@ -62,6 +62,52 @@ msgstr "ligado há %s"
 msgid "arrows and Enter · click outside or Esc to close"
 msgstr "setas e Enter · clique fora ou Esc fecha"
 
+#: home/.local/bin/session-menu
+msgid "Restart now"
+msgstr "Reiniciar agora"
+
+#: home/.local/bin/session-menu
+msgid "Shut down now"
+msgstr "Desligar agora"
+
+#: home/.local/bin/session-menu
+#, python-format
+msgid "The system will restart automatically in %d second"
+msgid_plural "The system will restart automatically in %d seconds"
+msgstr[0] "O sistema vai reiniciar automaticamente em %d segundo"
+msgstr[1] "O sistema vai reiniciar automaticamente em %d segundos"
+
+#: home/.local/bin/session-menu
+#, python-format
+msgid "The system will power off automatically in %d second"
+msgid_plural "The system will power off automatically in %d seconds"
+msgstr[0] "O sistema vai desligar automaticamente em %d segundo"
+msgstr[1] "O sistema vai desligar automaticamente em %d segundos"
+
+#: home/.local/bin/session-menu
+msgid "Updates will be installed during the restart."
+msgstr "As atualizações serão instaladas durante o reinício."
+
+#: home/.local/bin/session-menu
+msgid "The computer will restart to install the updates and then power off."
+msgstr "O computador vai reiniciar para instalar as atualizações e depois desligar."
+
+#: home/.local/bin/session-menu
+msgid "Updates will be installed the next time the computer starts."
+msgstr "As atualizações serão instaladas na próxima vez que o computador ligar."
+
+#: home/.local/bin/session-menu home/.local/bin/waybar-network-popup
+msgid "Cancel"
+msgstr "Cancelar"
+
+#: home/.local/bin/session-menu
+msgid "If you cancel, the updates stay downloaded; nothing is installed now."
+msgstr "Se cancelar, as atualizações continuam baixadas; nada é instalado agora."
+
+#: home/.local/bin/session-menu
+msgid "click outside or Esc to cancel"
+msgstr "clique fora ou Esc cancela"
+
 #: home/.local/bin/sway-capture
 msgid "Region"
 msgstr "Região"
@@ -1488,10 +1534,6 @@ msgstr "Conectado · %s"
 #: home/.local/bin/waybar-network-popup
 msgid "Waiting for password"
 msgstr "Aguardando senha"
-
-#: home/.local/bin/waybar-network-popup
-msgid "Cancel"
-msgstr "Cancelar"
 
 #: home/.local/bin/waybar-network-popup
 #, python-format

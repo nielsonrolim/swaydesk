@@ -3,11 +3,19 @@
 swaydesk\-session\-menu \- session menu: lock, log out, suspend, restart, shut down
 .SH SYNOPSIS
 .B swaydesk\-session\-menu
+.br
+.B swaydesk\-session\-menu \-\-confirm
+.BR reboot | poweroff
 .SH DESCRIPTION
 Opens in the middle of the screen over a dimmed background: Lock, Log out, Suspend, Restart, Shut down. The keys are l, e (exit), s, r (reboot) and p (power off); the arrows and Tab move, Enter activates, Esc or clicking outside closes. The actions go through the session\-action helper. Ctrl+Alt+Delete and the power button of Waybar open it; running it again closes it.
 .PP
 The session runs it under the name session\-menu (a link in the package's helper directory to /usr/bin/swaydesk\-session\-menu); the process name is session\-menu too.
 .SH OPTIONS
+.TP
+.BR "\-\-confirm reboot" | poweroff
+Ask before a restart or shutdown that an application requested through
+.BR swaydesk\-sessionmgr (1),
+as the GNOME end\-of\-session dialog does: the action runs after 60 seconds or on "Restart now" ("Shut down now"). Cancel, Esc or clicking outside cancels; the menu keys do nothing here. With an offline update from GNOME Software pending, the dialog says it will be installed. A shutdown then restarts to install it and powers off afterwards, when GNOME Software accepts that action (org.gnome.Software.OfflineUpdates); canceling installs nothing now, and the update stays downloaded.
 .TP
 .B \-\-check
 Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
@@ -17,4 +25,5 @@ Exit 0 at once without doing anything: the Python launchers use it to check that
 The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
 .SH SEE ALSO
 .BR swaydesk (7),
-.BR swaydesk\-lock (1)
+.BR swaydesk\-lock (1),
+.BR swaydesk\-sessionmgr (1)
