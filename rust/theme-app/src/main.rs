@@ -2,7 +2,8 @@
 //! porte de `home/.local/bin/sway-theme-app`, que passa a vez a este binário (sway_rust).
 //!
 //! A barra lateral tem as famílias (Mint-Y, Mint-L, Adwaita, Yaru...) e, depois delas, os outros temas. À
-//! direita ficam a prévia, o estilo e as cores. Escolher só muda a prévia. O botão Aplicar, ou Enter,
+//! direita ficam a prévia, o estilo e as cores, com o interruptor da cor do papel de parede (accent_auto) acima
+//! delas. Escolher só muda a prévia. O botão Aplicar, ou Enter,
 //! aplica pela biblioteca do sway-theme (swaydesk-theme), e a janela continua aberta para testar outra
 //! combinação: aplicar reinicia a barra. Abrir de novo traz a janela que já está aberta.
 mod choice;
@@ -21,7 +22,7 @@ use swaydesk_common::config::{self, load_config, papirus_color, Config, PAPIRUS_
 use swaydesk_common::i18n::{self, tr};
 use swaydesk_theme::families::{self as sf, Family, Style};
 use swaydesk_theme::themes::{self as st, Theme};
-use swaydesk_theme::{desktop as dc, fill, fill_one, papirus as sp};
+use swaydesk_theme::{desktop as dc, fill, fill_one, papirus as sp, wallpaper_accent as wa};
 
 const APP_ID: &str = "org.swaydesktop.Theme"; // igual ao nome do .desktop: é como a dock acha o ícone
 const SWATCH: i32 = 30;
@@ -34,6 +35,7 @@ const CSS: &str = r#"
 .theme-section { font-weight: bold; }
 .theme-swatches flowboxchild { padding: 2px; border-radius: 999px; }
 .theme-swatches flowboxchild:selected { background: transparent; }
+.theme-swatches.theme-auto { opacity: 0.45; }
 "#;
 
 /// O círculo da cor, com uma marca quando é a escolhida.
@@ -151,6 +153,8 @@ struct Window {
     /// O tema em uso
     current: RefCell<String>,
     current_color: RefCell<String>,
+    /// O accent_auto em uso
+    current_auto: Cell<bool>,
     note: RefCell<Option<String>>,
     icons_cache: RefCell<HashMap<String, String>>,
     applying: Cell<bool>,
@@ -175,6 +179,9 @@ struct Window {
     style_buttons: Vec<(Style, gtk4::ToggleButton)>,
     style_note: gtk4::Label,
     color_name: gtk4::Label,
+    auto_switch: gtk4::Switch,
+    auto_dot: gtk4::DrawingArea,
+    auto_note: gtk4::Label,
     flowbox: gtk4::FlowBox,
     swatches: Vec<(String, gtk4::FlowBoxChild, gtk4::DrawingArea)>,
     summary: gtk4::Label,
@@ -311,6 +318,26 @@ impl Window {
         dim(&color_name);
         color_title.append(&color_name);
         content.append(&color_title);
+        // A cor do papel de parede: o interruptor, a amostra da cor que ele daria agora e o nome dela
+        let auto_row = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
+        let auto_switch = gtk4::Switch::new();
+        auto_switch.set_valign(gtk4::Align::Center);
+        let auto_label = gtk4::Label::new(Some(&tr("Use the wallpaper's color")));
+        auto_label.set_xalign(0.0);
+        auto_label.set_mnemonic_widget(Some(&auto_switch));
+        let auto_dot = gtk4::DrawingArea::new();
+        auto_dot.set_content_width(18);
+        auto_dot.set_content_height(18);
+        auto_dot.set_valign(gtk4::Align::Center);
+        let auto_note = gtk4::Label::new(None);
+        auto_note.set_xalign(0.0);
+        auto_note.set_wrap(true);
+        auto_note.set_hexpand(true);
+        dim(&auto_note);
+        for widget in [auto_switch.upcast_ref::<gtk4::Widget>(), auto_label.upcast_ref(), auto_dot.upcast_ref(), auto_note.upcast_ref()] {
+            auto_row.append(widget);
+        }
+        content.append(&auto_row);
         let flowbox = gtk4::FlowBox::new();
         flowbox.set_selection_mode(gtk4::SelectionMode::Single);
         flowbox.set_homogeneous(true);
@@ -366,6 +393,7 @@ impl Window {
             wanted: RefCell::new(String::new()),
             current: RefCell::new(String::new()),
             current_color: RefCell::new(String::new()),
+            current_auto: Cell::new(false),
             note: RefCell::new(None),
             icons_cache: RefCell::new(HashMap::new()),
             applying: Cell::new(false),
@@ -388,16 +416,29 @@ impl Window {
             style_buttons,
             style_note,
             color_name,
+            auto_switch,
+            auto_dot,
+            auto_note,
             flowbox,
             swatches,
             summary,
             hint,
         });
         this.read_config();
-        {
-            let (current, color) = (this.current.borrow().clone(), this.current_color.borrow().clone());
-            this.choice.borrow_mut().load(&current, &color);
-        }
+        this.load_choice();
+        let me = this.me.clone();
+        this.auto_dot.set_draw_func(move |area, cr, width, height| {
+            let Some(w) = me.upgrade() else { return };
+            let accent = w.choice.borrow().accent_for_auto();
+            let (x, y, radius) = (width as f64 / 2.0, height as f64 / 2.0, width.min(height) as f64 / 2.0 - 1.0);
+            cr.arc(x, y, radius, 0.0, std::f64::consts::TAU);
+            preview::set_rgb(cr, &accent);
+            let _ = cr.fill_preserve();
+            let fg = area.color();
+            cr.set_source_rgba(fg.red() as f64, fg.green() as f64, fg.blue() as f64, 0.25);
+            cr.set_line_width(1.0);
+            let _ = cr.stroke();
+        });
         this.fill_rows(&families, &others);
         this.connect();
         this.window.present();
@@ -497,6 +538,12 @@ impl Window {
         }
         let color = self.with(|w, ()| w.on_color_selected());
         self.flowbox.connect_selected_children_changed(move |_| color(()));
+        // Um clique numa amostra com o interruptor ligado também é escolher à mão: o selected-children-changed não
+        // vem quando a amostra já era a marcada
+        let clicked = self.with(|w, ()| w.on_color_selected());
+        self.flowbox.connect_child_activated(move |_, _| clicked(()));
+        let auto = self.with(|w, active: bool| w.on_auto_toggled(active));
+        self.auto_switch.connect_active_notify(move |s| auto(s.is_active()));
 
         let info = self.info.clone();
         self.info.connect_response(move |_, _| info.set_visible(false));
@@ -560,7 +607,7 @@ impl Window {
             choice.family = families.iter().find(|f| Some(&f.name) == name.as_ref()).cloned();
             let other_gone = choice.other.as_ref().is_none_or(|o| !self.themes.borrow().contains_key(o));
             if choice.family.is_none() && other_gone {
-                choice.load(&self.current.borrow(), &self.current_color.borrow());
+                choice.load(&self.current.borrow(), &self.current_color.borrow(), self.current_auto.get());
             }
         }
         self.updating.set(true);
@@ -573,16 +620,32 @@ impl Window {
         *self.wanted.borrow_mut() = config.gtk_theme.clone();
         *self.current.borrow_mut() = dc::effective_gtk_theme(&config);
         *self.note.borrow_mut() = st::missing_note(&config);
-        // Sem o Papirus em uso, a cor mais perto do destaque, entre as que o app mostra
-        *self.current_color.borrow_mut() = st::folder_color(&config).unwrap_or_else(|| sp::nearest_color(&config.accent, &self.colors));
+        // Sem o Papirus em uso, a cor mais perto do destaque, entre as que o app mostra; o destaque padrão exato
+        // (que não é amostra), com o modo desligado, carrega como nenhuma ("")
+        *self.current_color.borrow_mut() = choice::loaded_color(&config.accent, &config.folder_color, config.accent_auto, || {
+            st::folder_color(&config).unwrap_or_else(|| sp::nearest_color(&config.accent, &self.colors))
+        });
+        self.current_auto.set(config.accent_auto);
         *self.config.borrow_mut() = config;
+        // O papel pode ter mudado (o do dia): a cor que o interruptor daria agora
+        self.choice.borrow_mut().wallpaper = wa::current_color();
+        self.auto_dot.queue_draw();
         self.icons_cache.borrow_mut().clear();
     }
 
-    /// A escolha é o tema e a cor em uso. O destaque não entra: um que não é cor do Papirus (o padrão do
-    /// config) deixaria o Aplicar e o Voltar ativos sem nenhuma mudança escolhida.
+    /// A escolha do tema, da cor e do modo em uso.
+    fn load_choice(&self) {
+        let (current, color) = (self.current.borrow().clone(), self.current_color.borrow().clone());
+        self.choice.borrow_mut().load(&current, &color, self.current_auto.get());
+    }
+
+    /// A escolha é o tema, a cor e o modo em uso. O destaque não entra: um que não é cor do Papirus (o padrão do
+    /// config) deixaria o Aplicar e o Voltar ativos sem nenhuma mudança escolhida. Com o modo, nem a cor: ela vem
+    /// do papel de parede.
     fn applied(&self) -> bool {
-        (Some(self.wanted.borrow().clone()), self.current_color.borrow().clone()) == self.choice.borrow().key()
+        let auto = self.current_auto.get();
+        let color = if auto { String::new() } else { self.current_color.borrow().clone() };
+        (Some(self.wanted.borrow().clone()), color, auto) == self.choice.borrow().key()
     }
 
     /// Uma mudança de fora (terminal, config editado). Se a escolha era a aplicada, ela acompanha: senão
@@ -602,8 +665,7 @@ impl Window {
             self.reload_themes();
         }
         if follow {
-            let color = self.current_color.borrow().clone();
-            self.choice.borrow_mut().load(&current, &color);
+            self.load_choice();
         }
         self.refresh(false);
     }
@@ -625,8 +687,7 @@ impl Window {
 
     #[allow(deprecated)]
     fn revert(&self) {
-        let (current, color) = (self.current.borrow().clone(), self.current_color.borrow().clone());
-        self.choice.borrow_mut().load(&current, &color);
+        self.load_choice();
         self.info.set_visible(false);
         self.refresh(true);
     }
@@ -636,18 +697,24 @@ impl Window {
         self.updating.set(true);
         let current = self.current.borrow().clone();
         let current_name = sf::family_of(&current).map(|(f, _)| f.to_string()).unwrap_or(current);
-        let (family_name, other, style, color, theme, accent, has_family, exact, family_accents) = {
+        let (family_name, other, style, color, theme, accent, has_family, exact, family_accents, auto, wallpaper, default_accent) = {
             let c = self.choice.borrow();
+            // A cor das pastas: a do Papirus que vale ou, sem ela (o destaque padrão), a mais perto dele
+            let name = c.color_name();
+            let default_accent = name.is_empty();
             (
                 c.family.as_ref().map(|f| f.name.clone()),
                 c.other.clone(),
                 c.style,
-                c.color.clone(),
+                if name.is_empty() { sp::nearest_color(&c.accent(), &self.colors) } else { name },
                 c.theme(),
                 c.accent(),
                 c.family.is_some(),
                 c.exact(),
                 c.family.as_ref().map(|f| f.accents().len()).unwrap_or(0),
+                c.auto,
+                c.wallpaper,
+                default_accent,
             )
         };
         for row in self.rows.borrow().iter() {
@@ -676,14 +743,28 @@ impl Window {
             button.set_tooltip_text(tip.as_deref());
         }
         self.style_note.set_text(&if has_family { String::new() } else { tr("This theme has a fixed style") });
-        if let Some((_, child, _)) = self.swatches.iter().find(|(n, _, _)| *n == color) {
-            self.flowbox.select_child(child);
+        // Com o interruptor ligado, as amostras ficam esmaecidas, com a cor do papel marcada (se ela está entre
+        // elas); continuam clicáveis: escolher uma desliga o modo
+        self.auto_switch.set_active(auto);
+        self.auto_switch.set_sensitive(!self.applying.get());
+        if auto {
+            self.flowbox.add_css_class("theme-auto");
+        } else {
+            self.flowbox.remove_css_class("theme-auto");
+        }
+        // O destaque padrão exato não é uma das amostras: nenhuma marcada (a mais perto só dá a cor das pastas)
+        match self.swatches.iter().find(|(n, _, _)| *n == color).filter(|_| !default_accent) {
+            Some((_, child, _)) => self.flowbox.select_child(child),
+            None => self.flowbox.unselect_all(),
         }
         for (_, _, area) in &self.swatches {
             area.queue_draw();
         }
+        self.auto_dot.queue_draw();
+        self.auto_note.set_text(&auto_note(wallpaper));
         self.updating.set(false);
-        self.color_name.set_text(&format!("{color} · {accent}"));
+        // O padrão não é uma cor do Papirus: só o hex
+        self.color_name.set_text(&if default_accent { accent.clone() } else { format!("{color} · {accent}") });
         let chosen = theme.as_ref().and_then(|t| self.themes.borrow().get(t).cloned());
         let icons = chosen.as_ref().map_or_else(|| "?".to_string(), |t| self.icons_for(t, &color));
         self.preview.set_choice(theme.clone(), style, &accent, &color);
@@ -692,7 +773,9 @@ impl Window {
             parts.push(fill_one(&tr("%s folders"), &color));
         }
         self.summary.set_markup(&format!("<b>{}</b> {}", glib::markup_escape_text(&tr("Will apply:")), glib::markup_escape_text(&parts.join(" · "))));
-        self.hint.set_text(&self.hint_text(theme.as_deref().unwrap_or(""), &family_name, &color, exact, family_accents, other.is_some()));
+        // No destaque padrão, o aviso de variante fala do hex, não da amostra mais perto
+        let hint_color = if default_accent { accent.clone() } else { color.clone() };
+        self.hint.set_text(&self.hint_text(theme.as_deref().unwrap_or(""), &family_name, &hint_color, exact, family_accents, other.is_some()));
         self.update_buttons();
     }
 
@@ -780,9 +863,19 @@ impl Window {
         let selected = self.flowbox.selected_children();
         let Some(child) = selected.first() else { return };
         if let Some((name, _, _)) = self.swatches.iter().find(|(_, c, _)| c == child) {
-            self.choice.borrow_mut().color = name.clone();
+            self.choice.borrow_mut().pick_color(name); // uma cor escolhida à mão desliga o modo
             self.refresh(false);
         }
+    }
+
+    fn on_auto_toggled(&self, active: bool) {
+        if self.updating.get() {
+            return;
+        }
+        if !self.applying.get() {
+            self.choice.borrow_mut().set_auto(active);
+        }
+        self.refresh(false);
     }
 
     fn visible_rows(&self) -> Vec<gtk4::ListBoxRow> {
@@ -895,6 +988,15 @@ impl Window {
             });
             *self.hide_source.borrow_mut() = Some(id);
         }
+    }
+}
+
+/// O que a amostra ao lado do interruptor mostra: a cor do papel ou por que vale o destaque padrão.
+fn auto_note(wallpaper: Option<Option<&'static str>>) -> String {
+    match wallpaper {
+        Some(Some(name)) => format!("{name} · {}", papirus_color(name).unwrap_or_default()),
+        Some(None) => fill_one(&tr("The wallpaper has no color: the default accent %s"), config::DEFAULT_ACCENT),
+        None => fill_one(&tr("Wallpaper not found or not readable: %s"), &wa::wallpaper().display().to_string()),
     }
 }
 

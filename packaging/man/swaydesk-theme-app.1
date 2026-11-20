@@ -6,6 +6,8 @@ swaydesk\-theme\-app \- Desktop Theme application
 .SH DESCRIPTION
 A window to choose the GTK theme family, light or dark, and the accent color among the Papirus colors. Choosing only changes the preview; Apply (or Enter) applies it through the same code as swaydesk\-theme, and the window stays open. Opening it again raises the open window. Its menu entry is org.swaydesktop.Theme.
 .PP
+The switch "Use the wallpaper's color", above the colors, is accent_auto (on by default): the accent follows the wallpaper, as swaydesk\-theme accent\-auto does, and the dot beside it shows the color it gives now (the default accent, #199ca8, for a wallpaper without color or one that does not open). With it on, the colors are dimmed; choosing one turns it off. Apply saves the switch with the theme.
+.PP
 The session runs it under the name sway\-theme\-app (a link in the package's helper directory to /usr/bin/swaydesk\-theme\-app); the process name is sway\-theme\-app too.
 .SH OPTIONS
 .TP
@@ -14,7 +16,7 @@ Exit 0 at once without doing anything: the Python launchers use it to check that
 .SH FILES
 .TP
 .I ~/.config/sway\-desktop/config.toml
-The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+The desktop configuration: language, accent color and accent_auto, GTK and icon themes, folder color, file manager, weather location and holidays.
 .SH SEE ALSO
 .BR swaydesk (7),
 .BR swaydesk\-theme (1)

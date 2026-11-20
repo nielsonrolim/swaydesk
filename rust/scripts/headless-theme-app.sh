@@ -10,12 +10,14 @@
 #
 # Temas falsos em ~/.themes: a família Mint-Y (escuro teal e azul, claro teal) e o Arc-Dark, de fora. Os
 # casos: o app sobe com a versão pedida e o app_id certo; abrir de novo não abre outra janela; escolher o
-# Arc-Dark na lateral e Aplicar grava o tema no config.toml, e a janela continua aberta; Esc fecha. Sai com 1
-# se algum caso falhar.
+# Arc-Dark na lateral e Aplicar grava o tema no config.toml, e a janela continua aberta. A cor do papel de parede
+# (um vermelho liso, só na versão em Rust): o interruptor abre ligado (o padrão, sem a chave), e o Aplicar grava o vermelho com
+# accent_auto = true; uma amostra (o azul) desliga o interruptor, e o Aplicar grava a cor com accent_auto = false;
+# ligar de novo volta ao vermelho. Sai com 1 se algum caso falhar.
 set -u
 impl=${1:-rust}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
-mkdir -p "$HOME/.local/bin" "$HOME/.config/sway-desktop" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+mkdir -p "$HOME/.local/bin" "$HOME/.config/sway-desktop" "$HOME/.local/share/wallpaper" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
 for f in /bin/swaydesk-*; do [ "${f##*/}" = swaydesk-vpointer ] || cp "$f" "$HOME/.local/bin/"; done
 theme() {  # nome, fundo, texto, destaque
@@ -28,6 +30,9 @@ theme Mint-Y-Dark-Blue "#2f2f2f" "#dadada" "#0c75de"
 theme Mint-Y-Teal "#f0f0f0" "#303030" "#199ca8"
 theme Arc-Dark "#383c4a" "#d3dae3" "#5294e2"
 printf 'gtk_theme = "Mint-Y-Dark-Teal"\n' > "$HOME/.config/sway-desktop/config.toml"
+# O papel de parede: um PPM vermelho (#e25252, o red do Papirus) com o nome de sempre; o GdkPixbuf lê pelo conteúdo
+python3 -c "import sys; sys.stdout.buffer.write(b'P6\n64 64\n255\n' + bytes([0xe2, 0x52, 0x52]) * 4096)" \
+  > "$HOME/.local/share/wallpaper/current.jpg"
 
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
@@ -92,6 +97,64 @@ else
   fail "o tema não foi gravado: $(cat "$HOME/.config/sway-desktop/config.toml")"
 fi
 [ "$(windows)" = 1 ] && ok "a janela continua aberta depois de aplicar" || fail "a janela fechou ao aplicar"
+
+config() { cat "$HOME/.config/sway-desktop/config.toml"; }
+# Os casos da cor do papel só na versão em Rust: os cliques são posições na janela, e o layout do GTK 3 é outro (o
+# app em Python é testado na VM)
+if [ "$impl" = rust ]; then
+# O interruptor abriu ligado: o Arc-Dark foi com a cor do papel
+if config | grep -qx 'accent = "#e25252"' && config | grep -qx 'accent_auto = true'; then
+  ok "com o interruptor ligado (o padrão), o Aplicar grava a cor do papel e accent_auto = true"
+else
+  fail "a cor do papel não foi gravada: $(config)"
+fi
+# A barra de aviso do Aplicar (no contêiner, o dconf falha) empurra o conteúdo para baixo: o X a fecha
+close_info() { pointer move $((wx + ww - 23)) $((wy + 67)) sleep 100 click sleep 300; }
+apply_and_wait() {  # o Aplicar; espera a linha no config.toml
+  pointer move $((wx + ww - 171)) $((wy + 22)) sleep 100 click sleep 100
+  for _ in $(seq 100); do config | grep -qx "$1" && break; sleep 0.1; done
+  sleep 1
+  close_info
+}
+close_info
+# O azul é a terceira amostra da primeira linha
+pointer move $((wx + 345)) $((wy + 432)) sleep 100 click sleep 500
+shot 4-azul
+apply_and_wait 'accent_auto = false'
+shot 5-azul-aplicado
+if config | grep -qx 'accent = "#5294e2"' && config | grep -qx 'accent_auto = false'; then
+  ok "escolher uma cor desliga o interruptor, e o Aplicar grava accent_auto = false"
+else
+  fail "a cor à mão não desligou o modo: $(config)"
+fi
+pointer move $((wx + 277)) $((wy + 392)) sleep 100 click sleep 500  # o interruptor
+shot 6-auto-ligado
+apply_and_wait 'accent_auto = true'
+shot 7-auto-aplicado
+if config | grep -qx 'accent = "#e25252"' && config | grep -qx 'accent_auto = true'; then
+  ok "ligar o interruptor e Aplicar volta à cor do papel"
+else
+  fail "o interruptor não voltou à cor do papel: $(config)"
+fi
+# Reaberto no destaque padrão exato (que não é amostra), com o modo desligado: trocar só o tema mantém o padrão,
+# em vez de gravar a amostra mais perto (darkcyan)
+kill "$pid" 2>/dev/null
+for _ in $(seq 50); do [ "$(windows)" = 0 ] && break; sleep 0.1; done
+printf 'gtk_theme = "Mint-Y-Dark-Teal"\naccent = "#199ca8"\nfolder_color = ""\naccent_auto = false\n' > "$HOME/.config/sway-desktop/config.toml"
+app
+for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
+sleep 1.5
+pid=$(pgrep -n -f "swaydesk-theme-app")
+shot 8-padrao
+pointer move $((wx + 100)) $((wy + 235)) sleep 100 click sleep 500  # o Arc-Dark
+apply_and_wait 'gtk_theme = "Arc-Dark"'
+shot 9-padrao-aplicado
+if config | grep -qx 'accent = "#199ca8"' && config | grep -qx 'folder_color = ""' && config | grep -qx 'accent_auto = false'; then
+  ok "reaberto no destaque padrão, trocar o tema mantém #199ca8 e as pastas na padrão"
+else
+  fail "o destaque padrão não ficou: $(config)"
+fi
+fi
 grep -q "CRITICAL\|Traceback\|panicked" /tmp/app.log && { fail "avisos no log"; cat /tmp/app.log; }
 kill "$pid" 2>/dev/null
 exit $failed

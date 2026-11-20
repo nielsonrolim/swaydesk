@@ -1,5 +1,6 @@
-//! O que está escolhido na janela, sem GTK: a família (ou um tema de fora), o estilo e a cor. O `Choice`
-//! do `sway-theme-app` em Python, e a aplicação pela biblioteca (no lugar do `sway-theme pick|set`).
+//! O que está escolhido na janela, sem GTK: a família (ou um tema de fora), o estilo e a cor, que é uma das do
+//! Papirus ou a do papel de parede (accent_auto). O `Choice` do `sway-theme-app` em Python, e a aplicação pela
+//! biblioteca (no lugar do `sway-theme pick|set`).
 use swaydesk_common::config::{papirus_color, DEFAULT_ACCENT};
 use swaydesk_common::i18n::tr;
 use swaydesk_theme::families::{self as sf, Family, Style};
@@ -16,12 +17,12 @@ pub fn matches(names: &[String], text: &str) -> bool {
     })
 }
 
-/// O que aplicar: a família no estilo e na cor (`sway-theme pick`), ou um tema de fora com o destaque
-/// e as pastas na cor (`sway-theme set`).
+/// O que aplicar: a família no estilo e na cor (`sway-theme pick`), ou um tema com o destaque e as pastas na cor
+/// (`sway-theme set`). auto: o accent_auto que fica gravado (o --auto ou o --no-auto), o do interruptor.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
-    Pick { family: String, style: Style, color: String },
-    Set { theme: String, accent: String, color: String },
+    Pick { family: String, style: Style, color: String, auto: bool },
+    Set { theme: String, accent: String, color: String, auto: bool },
 }
 
 pub struct Choice {
@@ -30,18 +31,37 @@ pub struct Choice {
     pub family: Option<Family>,
     pub other: Option<String>,
     pub style: Style,
+    /// A cor do Papirus escolhida à mão (com o auto, a que volta ao desligar o interruptor)
     pub color: String,
+    /// A cor do papel de parede (o interruptor ligado)
+    pub auto: bool,
+    /// A leitura do papel de parede: None não abre, Some(None) sem cor, Some(Some(nome)) a cor do Papirus
+    pub wallpaper: Option<Option<&'static str>>,
+    /// O modo desligado em cima da cor padrão (papel sem cor ou ilegível): ela fica, até escolher uma amostra
+    pub kept_default: bool,
+}
+
+/// A cor em uso, como o app a carrega: "" quando o modo está desligado em cima do destaque padrão exato, com as
+/// pastas na padrão (folder_color ""), como o accent-auto o deixa com um papel sem cor. Senão a das pastas.
+pub fn loaded_color(accent: &str, folder_color: &str, auto: bool, folders: impl FnOnce() -> String) -> String {
+    if !auto && accent.eq_ignore_ascii_case(DEFAULT_ACCENT) && folder_color.is_empty() {
+        return String::new();
+    }
+    folders()
 }
 
 impl Choice {
     /// A cor começa na primeira das que o app mostra.
     pub fn new(families: Vec<Family>, others: Vec<Theme>, colors: &[String]) -> Choice {
         let color = colors.first().cloned().unwrap_or_else(|| "teal".into());
-        Choice { families, others, family: None, other: None, style: Style::Dark, color }
+        Choice { families, others, family: None, other: None, style: Style::Dark, color, auto: false, wallpaper: None, kept_default: false }
     }
 
-    /// A escolha do tema em uso e da cor; sem família nem tema de fora, a primeira família.
-    pub fn load(&mut self, theme_name: &str, color: &str) {
+    /// A escolha do tema em uso, da cor e do modo; sem família nem tema de fora, a primeira família. A cor ""
+    /// com o modo desligado: o destaque padrão exato, que não é uma das amostras (fica até escolher uma).
+    pub fn load(&mut self, theme_name: &str, color: &str, auto: bool) {
+        self.auto = auto;
+        self.kept_default = !auto && color.is_empty();
         let selection = sf::selection(&self.families, &self.others, theme_name, Some(color.to_string()));
         self.family = selection.family;
         self.other = selection.other;
@@ -50,6 +70,28 @@ impl Choice {
         if self.family.is_none() && self.other.is_none() {
             self.family = self.families.first().cloned();
         }
+    }
+
+    /// O interruptor. Ao desligar, a cor à mão começa na que estava na tela: a do papel ou, sem cor do Papirus
+    /// nele, a padrão exata (que não é uma das amostras).
+    pub fn set_auto(&mut self, active: bool) {
+        if self.auto && !active {
+            match self.wallpaper.flatten() {
+                Some(name) => self.color = name.to_string(),
+                None => self.kept_default = true,
+            }
+        }
+        if active {
+            self.kept_default = false;
+        }
+        self.auto = active;
+    }
+
+    /// Uma cor escolhida à mão desliga o modo.
+    pub fn pick_color(&mut self, name: &str) {
+        self.color = name.to_string();
+        self.auto = false;
+        self.kept_default = false;
     }
 
     /// Fica no estilo de antes, se a família o tiver; senão, o primeiro em ordem alfabética (o escuro).
@@ -72,13 +114,30 @@ impl Choice {
         self.family.as_ref().is_some_and(|f| f.has_style(style))
     }
 
+    /// O nome da cor do Papirus que vale: a escolhida ou, com o auto, a do papel ("" sem cor nele ou sem papel
+    /// legível: vale o DEFAULT_ACCENT, e as pastas ficam na mais perto dele).
+    pub fn color_name(&self) -> String {
+        if self.auto {
+            return self.wallpaper.flatten().unwrap_or_default().to_string();
+        }
+        if self.kept_default {
+            return String::new();
+        }
+        self.color.clone()
+    }
+
     pub fn accent(&self) -> String {
-        papirus_color(&self.color).unwrap_or(DEFAULT_ACCENT).to_string()
+        papirus_color(&self.color_name()).unwrap_or(DEFAULT_ACCENT).to_string()
+    }
+
+    /// A cor que o interruptor daria agora, ligado ou não (a amostra ao lado dele).
+    pub fn accent_for_auto(&self) -> String {
+        self.wallpaper.flatten().and_then(papirus_color).unwrap_or(DEFAULT_ACCENT).to_string()
     }
 
     pub fn theme(&self) -> Option<String> {
         match &self.family {
-            Some(family) => sf::resolve(family, self.style, &self.accent(), &self.color),
+            Some(family) => sf::resolve(family, self.style, &self.accent(), &self.color_name()),
             None => self.other.clone(),
         }
     }
@@ -86,21 +145,25 @@ impl Choice {
     /// Se o tema GTK tem a cor escolhida. Falso quando é a variante mais perto, ou o tema não muda de cor.
     pub fn exact(&self) -> bool {
         let Some(family) = &self.family else { return false };
-        let theme = self.theme();
-        family.variants.iter().any(|v| Some(&v.theme) == theme.as_ref() && v.color == self.color)
+        let (theme, name) = (self.theme(), self.color_name());
+        !name.is_empty() && family.variants.iter().any(|v| Some(&v.theme) == theme.as_ref() && v.color == name)
     }
 
+    /// O mesmo que o accent-auto faria com o interruptor ligado: a família com a cor do papel (pick) ou, sem cor do
+    /// Papirus (o DEFAULT_ACCENT), a variante mais perto dele com as pastas na mais perto (set com --folders "").
     pub fn action(&self) -> Option<Action> {
+        let (name, auto) = (self.color_name(), self.auto);
         match (&self.family, &self.other) {
-            (Some(family), _) => Some(Action::Pick { family: family.name.clone(), style: self.style, color: self.color.clone() }),
-            (None, Some(theme)) => Some(Action::Set { theme: theme.clone(), accent: self.accent(), color: self.color.clone() }),
+            (Some(family), _) if !name.is_empty() => Some(Action::Pick { family: family.name.clone(), style: self.style, color: name, auto }),
+            (Some(_), _) => self.theme().map(|theme| Action::Set { theme, accent: self.accent(), color: name, auto }),
+            (None, Some(theme)) => Some(Action::Set { theme: theme.clone(), accent: self.accent(), color: name, auto }),
             _ => None,
         }
     }
 
-    /// Para comparar com o que está aplicado.
-    pub fn key(&self) -> (Option<String>, String) {
-        (self.theme(), self.color.clone())
+    /// Para comparar com o que está aplicado: o tema, a cor e o modo. Com o auto, a cor não entra (vem do papel).
+    pub fn key(&self) -> (Option<String>, String, bool) {
+        (self.theme(), if self.auto { String::new() } else { self.color_name() }, self.auto)
     }
 }
 
@@ -118,7 +181,7 @@ pub fn outcome(theme: &str, result: Result<Applied, Error>) -> (i32, String) {
 /// tema aplicado, o código e a mensagem.
 pub fn apply(action: &Action) -> (String, i32, String) {
     match action {
-        Action::Pick { family, style, color } => match st::locked(|| st::pick(family, *style, color, None)).and_then(|r| r) {
+        Action::Pick { family, style, color, auto } => match st::locked(|| st::pick(family, *style, color, Some(*auto))).and_then(|r| r) {
             Ok((theme, applied)) => {
                 let (code, message) = outcome(&theme, Ok(applied));
                 (theme, code, message)
@@ -128,8 +191,8 @@ pub fn apply(action: &Action) -> (String, i32, String) {
                 (family.clone(), code, message)
             }
         },
-        Action::Set { theme, accent, color } => {
-            let result = st::locked(|| st::apply(theme, Some(accent), Some(color), None, None)).and_then(|r| r);
+        Action::Set { theme, accent, color, auto } => {
+            let result = st::locked(|| st::apply(theme, Some(accent), Some(color), None, Some(*auto))).and_then(|r| r);
             let (code, message) = outcome(theme, result);
             (theme.clone(), code, message)
         }
@@ -178,38 +241,144 @@ mod tests {
     #[test]
     fn load_finds_the_family_or_the_other_theme() {
         let mut c = choice();
-        c.load("Mint-Y-Dark-Teal", "teal");
+        c.load("Mint-Y-Dark-Teal", "teal", false);
         assert_eq!(c.family.as_ref().map(|f| f.name.as_str()), Some("Mint-Y"));
         assert_eq!((c.style, c.color.as_str()), (Style::Dark, "teal"));
-        c.load("Arc-Dark", "blue");
+        c.load("Arc-Dark", "blue", false);
         assert_eq!((c.family.is_none(), c.other.as_deref(), c.style), (true, Some("Arc-Dark"), Style::Dark));
-        assert_eq!(c.action(), Some(Action::Set { theme: "Arc-Dark".into(), accent: papirus_color("blue").unwrap().into(), color: "blue".into() }));
+        assert_eq!(
+            c.action(),
+            Some(Action::Set { theme: "Arc-Dark".into(), accent: papirus_color("blue").unwrap().into(), color: "blue".into(), auto: false })
+        );
     }
 
     #[test]
     fn a_theme_not_installed_keeps_its_name() {
         let mut c = choice();
-        c.load("Nada", "teal");
+        c.load("Nada", "teal", false);
         assert_eq!(c.other.as_deref(), Some("Nada"));
     }
 
     #[test]
     fn the_family_resolves_the_variant_and_says_if_it_is_exact() {
         let mut c = choice();
-        c.load("Mint-Y-Dark-Teal", "teal");
+        c.load("Mint-Y-Dark-Teal", "teal", false);
         assert_eq!(c.theme().as_deref(), Some("Mint-Y-Dark-Teal"));
         assert!(c.exact());
         c.color = "red".into(); // sem variante vermelha: a mais perto
         assert!(c.theme().is_some());
         assert!(!c.exact());
-        assert_eq!(c.key(), (c.theme(), "red".to_string()));
-        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "red".into() }));
+        assert_eq!(c.key(), (c.theme(), "red".to_string(), false));
+        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "red".into(), auto: false }));
+    }
+
+    #[test]
+    fn auto_takes_the_wallpaper_color_or_the_default() {
+        let mut c = choice();
+        c.load("Mint-Y-Dark-Teal", "teal", true);
+        c.wallpaper = Some(Some("blue"));
+        assert_eq!((c.color_name().as_str(), c.accent()), ("blue", papirus_color("blue").unwrap().to_string()));
+        assert_eq!(c.theme().as_deref(), Some("Mint-Y-Dark-Blue"));
+        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "blue".into(), auto: true }));
+        // A cor escolhida à mão fica guardada, e a chave não a compara
+        assert_eq!(c.color, "teal");
+        assert_eq!(c.key(), (Some("Mint-Y-Dark-Blue".into()), String::new(), true));
+        // Sem cor no papel, ou sem papel: o destaque padrão, na variante mais perto, com as pastas na mais perto
+        for reading in [Some(None), None] {
+            c.wallpaper = reading;
+            assert_eq!((c.color_name().as_str(), c.accent().as_str()), ("", DEFAULT_ACCENT));
+            assert!(!c.exact());
+            assert_eq!(
+                c.action(),
+                Some(Action::Set { theme: "Mint-Y-Dark-Teal".into(), accent: DEFAULT_ACCENT.into(), color: String::new(), auto: true })
+            );
+        }
+        // Desligado: volta a cor à mão, e o Aplicar desliga o modo
+        c.auto = false;
+        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "teal".into(), auto: false }));
+        // Um tema de fora das famílias, com a cor do papel
+        c.load("Arc-Dark", "teal", true);
+        c.wallpaper = Some(Some("red"));
+        assert_eq!(
+            c.action(),
+            Some(Action::Set { theme: "Arc-Dark".into(), accent: papirus_color("red").unwrap().into(), color: "red".into(), auto: true })
+        );
+    }
+
+    #[test]
+    fn switching_auto_off_keeps_what_was_on_screen() {
+        let mut c = choice();
+        // Com a cor do papel: ela vira a cor à mão
+        c.load("Mint-Y-Dark-Teal", "teal", true);
+        c.wallpaper = Some(Some("blue"));
+        c.set_auto(false);
+        assert_eq!((c.color.as_str(), c.kept_default), ("blue", false));
+        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "blue".into(), auto: false }));
+        // Sem cor no papel, ou ilegível: fica o destaque padrão exato, não a amostra mais perto
+        for reading in [Some(None), None] {
+            c.load("Mint-Y-Dark-Teal", "teal", true);
+            c.wallpaper = reading;
+            c.set_auto(false);
+            assert!(c.kept_default);
+            assert_eq!((c.color_name().as_str(), c.accent().as_str()), ("", DEFAULT_ACCENT));
+            assert_eq!(
+                c.action(),
+                Some(Action::Set { theme: "Mint-Y-Dark-Teal".into(), accent: DEFAULT_ACCENT.into(), color: String::new(), auto: false })
+            );
+            assert_eq!(c.key(), (Some("Mint-Y-Dark-Teal".into()), String::new(), false));
+        }
+        // Até escolher uma amostra, ligar de novo ou recarregar
+        c.pick_color("red");
+        assert!(!c.kept_default && !c.auto);
+        assert_eq!(c.color_name(), "red");
+        c.set_auto(true);
+        c.set_auto(false);
+        assert!(c.kept_default);
+        c.set_auto(true);
+        assert!(!c.kept_default);
+        c.set_auto(false);
+        c.load("Mint-Y-Dark-Teal", "teal", false);
+        assert!(!c.kept_default);
+        assert_eq!(c.color_name(), "teal");
+        // Desligar o que já está desligado não muda nada
+        c.set_auto(false);
+        assert!(!c.kept_default);
+    }
+
+    #[test]
+    fn the_default_accent_loads_as_no_swatch() {
+        let nearest = || "darkcyan".to_string();
+        // O padrão exato, com as pastas na padrão e o modo desligado: nenhuma amostra
+        assert_eq!(loaded_color(DEFAULT_ACCENT, "", false, nearest), "");
+        assert_eq!(loaded_color(&DEFAULT_ACCENT.to_uppercase(), "", false, nearest), "");
+        // Com o modo ligado, com pastas numa cor ou com outro destaque: a das pastas, como antes
+        assert_eq!(loaded_color(DEFAULT_ACCENT, "", true, nearest), "darkcyan");
+        assert_eq!(loaded_color(DEFAULT_ACCENT, "teal", false, || "teal".into()), "teal");
+        assert_eq!(loaded_color("#16a085", "", false, || "teal".into()), "teal");
+        let mut c = choice();
+        c.load("Mint-Y-Dark-Teal", "", false);
+        assert!(c.kept_default && !c.auto);
+        assert_eq!((c.color_name().as_str(), c.accent().as_str()), ("", DEFAULT_ACCENT));
+        // Mudar só o estilo mantém o padrão
+        c.style = Style::Light;
+        assert_eq!(
+            c.action(),
+            Some(Action::Set { theme: "Mint-Y-Teal".into(), accent: DEFAULT_ACCENT.into(), color: String::new(), auto: false })
+        );
+        // A chave bate com a do aplicado (a cor ""), e qualquer amostra é uma mudança, a mais perto também
+        assert_eq!(c.key().1, "");
+        c.pick_color("darkcyan");
+        assert_eq!(c.key().1, "darkcyan");
+        assert_eq!(c.accent(), papirus_color("darkcyan").unwrap());
+        // Com o modo ligado, "" não vale como padrão guardado
+        c.load("Mint-Y-Dark-Teal", "", true);
+        assert!(!c.kept_default);
     }
 
     #[test]
     fn picking_keeps_the_style_when_the_family_has_it() {
         let mut c = choice();
-        c.load("Arc-Dark", "teal");
+        c.load("Arc-Dark", "teal", false);
         c.style = Style::Light;
         c.pick_family(&mint());
         assert_eq!(c.style, Style::Light);
