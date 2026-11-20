@@ -8,6 +8,10 @@
     <path project="Debian:13" repository="standard"/>
     <arch>x86_64</arch>
   </repository>
+  <repository name="Debian_Testing" rebuild="local">
+    <path project="Debian:Testing" repository="standard"/>
+    <arch>x86_64</arch>
+  </repository>
   <repository name="xUbuntu_26.04" rebuild="local">
     <path project="Ubuntu:26.04" repository="universe"/>
     <arch>x86_64</arch>

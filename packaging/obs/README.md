@@ -9,7 +9,7 @@ O projeto `home:nielsonrolim` do OBS compila e publica os pacotes, assinados com
 | `Arch` | `Arch:Extra/standard` | Arch Linux |
 
 Tudo em x86_64. Os pacotes do projeto:
-O Debian testing fica de fora até passar numa VM.
+O alvo `Debian_Testing` (`Debian:Testing/standard`) já existe no projeto, mas fica fora destes documentos até passar numa VM.
 
 - `swaydesk`: um fonte para todos os alvos. O `.dsc` serve ao Debian e ao Ubuntu, e o `PKGBUILD` ao Arch. Os dois usam o mesmo `.orig.tar.xz`, que leva os crates em `rust/vendor`, porque o OBS compila sem rede.
 - `swaydesk-archive-keyring` (só Debian e Ubuntu): a chave do projeto e o `.sources` do APT (`keyring/`).
@@ -161,9 +161,9 @@ pacote põe a chave e o `.sources`, e daí em diante os atualiza pelo próprio a
 públicos (`packaging/public/README.md` e `README.pt-BR.md`) e da página de instalação do site:
 
 ```sh
-deb=swaydesk-archive-keyring_2026.11.15_all.deb
+deb=swaydesk-archive-keyring_2026.11.20_all.deb
 dir=$(mktemp -d) && curl -fsSL https://download.opensuse.org/repositories/home:/nielsonrolim/Debian_13/all/$deb -o "$dir/$deb" &&
-echo "5b8a2cb8af4a051bf5d3decdcf66fb0f4fcbb66d2728656969e1d673e4c00821  $dir/$deb" | sha256sum -c && sudo dpkg -i "$dir/$deb" && rm -r "$dir" &&
+echo "2527bebb378c926e631fb367f2ccb18120cea26617c3a90b859c633cb2845700  $dir/$deb" | sha256sum -c && sudo dpkg -i "$dir/$deb" && rm -r "$dir" &&
 sudo apt update && sudo apt install swaydesk-desktop
 ```
 

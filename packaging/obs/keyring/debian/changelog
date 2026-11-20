@@ -1,3 +1,10 @@
+swaydesk-archive-keyring (2026.11.20) unstable; urgency=medium
+
+  * The APT source for Debian testing (the Debian_Testing repository): a
+    Debian without VERSION_ID gets it. The key is unchanged.
+
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Fri, 20 Nov 2026 12:00:00 -0300
+
 swaydesk-archive-keyring (2026.11.15) unstable; urgency=medium
 
   * The key of the home:nielsonrolim OBS project (5815F0B65BE1CFB9, expires
