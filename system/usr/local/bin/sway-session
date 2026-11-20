@@ -68,8 +68,10 @@ fi
 [ -f "$dconf_profile" ] && export DCONF_PROFILE="$dconf_profile"
 export SWAYDESK_SESSION=$mode
 # Já no systemd do usuário, antes do Sway: as units que o graphical-session.target sobe (a Waybar e o
-# gammastep dos pacotes) conferem a variável, e os serviços ativados pelo D-Bus a herdam
-systemctl --user import-environment SWAYDESK_SESSION >/dev/null 2>&1 || true
+# gammastep dos pacotes) conferem a variável, e os serviços ativados pelo D-Bus a herdam. O DCONF_PROFILE
+# também: um portal ativado antes do dbus-update-activation-environment do config do Sway (visto na VM,
+# numa troca rápida do Cinnamon para o Sway) leria a base normal, com o tema da outra sessão
+systemctl --user import-environment SWAYDESK_SESSION ${DCONF_PROFILE:+DCONF_PROFILE} >/dev/null 2>&1 || true
 
 # Log do sway (o da sessão anterior fica em sway.log.old). Os apps abertos pelo Sway
 # herdam o mesmo arquivo, então ele pode ter dados deles e crescer: fica só para o
