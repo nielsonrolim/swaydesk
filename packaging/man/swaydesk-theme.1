@@ -18,10 +18,13 @@ colors
 init
 .br
 .B swaydesk\-theme
-set THEME [\-\-accent #RRGGBB] [\-\-folders COLOR] [\-\-auto | \-\-no\-auto]
+icons [ICONS]
 .br
 .B swaydesk\-theme
-pick FAMILY light|dark COLOR [\-\-auto | \-\-no\-auto]
+set THEME [\-\-accent #RRGGBB] [\-\-folders COLOR] [\-\-icons ICONS] [\-\-auto | \-\-no\-auto]
+.br
+.B swaydesk\-theme
+pick FAMILY light|dark COLOR [\-\-icons ICONS] [\-\-auto | \-\-no\-auto]
 .br
 .B swaydesk\-theme
 accent\-auto [\-\-print]
@@ -46,11 +49,20 @@ The Papirus folder colors, the current one marked with *, and the ones not insta
 .B init
 Write the theme of the configuration to dconf (gsettings), then run accent\-auto.
 .TP
+.B icons
+The icon themes that can be chosen, the current one marked with *: real icon themes (not hidden, not cursor themes, not hicolor), the first icon directory with a theme winning. The three Papirus themes are one entry, Papirus, which follows the light or dark style.
+.TP
+.B icons ICONS
+Use the icon theme ICONS and change nothing else: the GTK theme, the accent, the folder color and accent_auto stay. An unknown name exits 2.
+.TP
 .B set THEME
-Use the GTK theme THEME; \-\-accent sets the accent color and \-\-folders the Papirus folder color.
+Use the GTK theme THEME; \-\-accent sets the accent color and \-\-folders the Papirus folder color. Changing the theme or the color keeps an icon theme that is not Papirus; Papirus follows the style of the theme, and the icons that came with the previous theme follow the new one.
 .TP
 .B pick FAMILY light|dark COLOR
 Use the theme of FAMILY in the light or dark style with COLOR.
+.TP
+.B \-\-icons ICONS
+With set or pick: use the icon theme ICONS, as the icons command does, instead of the ones the theme change would keep.
 .TP
 .B \-\-auto
 With set or pick: the color came from the wallpaper, and accent_auto becomes true.

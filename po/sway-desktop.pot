@@ -591,6 +591,11 @@ msgid "Open outside Sway (%s): the GTK and icon themes applied here also change 
 msgstr ""
 
 #: home/.local/bin/sway_themes.py
+#, python-format
+msgid "unknown icon theme: %s. See them with: sway-theme icons"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
 msgid "drawer"
 msgstr ""
 
@@ -636,6 +641,11 @@ msgstr ""
 #: home/.local/bin/sway_themes.py
 #, python-format
 msgid "%(theme)s does not define an accent color: kept %(color)s. To change it, use --accent"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "Icons: %s"
 msgstr ""
 
 #: home/.local/bin/sway_themes.py
@@ -3025,6 +3035,26 @@ msgstr ""
 
 #: rust/nm/src/rules.rs rust/nm/src/standalone/tests.rs
 msgid "No network service running"
+msgstr ""
+
+#: rust/theme-app/src/main.rs
+msgid "Icons"
+msgstr ""
+
+#: rust/theme-app/src/main.rs
+msgid "Papirus (light or dark, with the style)"
+msgstr ""
+
+#: rust/theme-app/src/main.rs
+msgid "The folders of %s don't change color: the color changes the accent only."
+msgstr ""
+
+#: rust/theme-app/src/main.rs
+msgid "%(family)s has no %(color)s variant: it uses %(theme)s. The bar and the GTK 4 apps get the exact color."
+msgstr ""
+
+#: rust/theme-app/src/main.rs
+msgid "This theme keeps its own colors: the accent changes the bar and the GTK 4 apps."
 msgstr ""
 
 #: home/.config/sway/keys/base.conf

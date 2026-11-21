@@ -2,25 +2,30 @@
 //! `sway-theme` em Python, com os mesmos comandos e as mesmas saídas.
 //!
 //! uso: sway-theme list | current | families | colors | init
-//!      sway-theme set <tema> [--accent #rrggbb] [--folders <cor>] [--auto | --no-auto]
-//!      sway-theme pick <família> light|dark <cor> [--auto | --no-auto]
+//!      sway-theme icons [<ícones>]
+//!      sway-theme set <tema> [--accent #rrggbb] [--folders <cor>] [--icons <ícones>] [--auto | --no-auto]
+//!      sway-theme pick <família> light|dark <cor> [--icons <ícones>] [--auto | --no-auto]
 //!      sway-theme accent-auto [--print]
 //! --auto: a cor veio do papel de parede (accent_auto = true); --no-auto desliga o modo. Sem nenhum dos dois, uma
 //! cor diferente da atual desliga o modo e a mesma cor o deixa como está.
+//! icons: sem nome, os temas de ícones que dá para escolher (o * é o em uso); com nome, troca só os ícones.
+//! --icons: os ícones pedidos, no lugar dos que a troca de tema manteria.
 //! accent-auto: com accent_auto = true (o padrão), aplica a cor do papel de parede; --print só mostra o nome dela.
 //! --check: só confere que o binário carrega.
 use std::process::ExitCode;
 
-use swaydesk_common::config::{load_config, path, PAPIRUS_COLORS};
+use std::collections::HashMap;
+
+use swaydesk_common::config::{load_config, message_languages, path, PAPIRUS_COLORS};
 use swaydesk_common::i18n::tr;
 use swaydesk_common::resident;
 use swaydesk_theme::families::{self as sf, Style};
 use swaydesk_theme::themes::{self as st, Applied, Auto};
 use swaydesk_theme::wallpaper_accent::{wallpaper, wallpaper_color};
-use swaydesk_theme::{desktop as dc, fill, fill_one, papirus as sp};
+use swaydesk_theme::{desktop as dc, fill, fill_one, icon_themes, papirus as sp};
 
 const PROGRAM: &str = "sway-theme";
-const COMMANDS: &str = "{list,current,init,families,colors,set,pick,accent-auto}";
+const COMMANDS: &str = "{list,current,init,families,colors,icons,set,pick,accent-auto}";
 
 fn usage_line() -> String {
     format!("usage: {PROGRAM} [-h] {COMMANDS} ...")
@@ -93,6 +98,37 @@ fn show_colors() -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// Os temas de ícones que dá para escolher, com o * no em uso (os três Papirus são a entrada "Papirus").
+fn show_icons() -> ExitCode {
+    let config = load_config(&path()).0;
+    let env: HashMap<String, String> = std::env::vars().collect();
+    let lang = message_languages(&config, &env).into_iter().next().unwrap_or_default();
+    let current = dc::installed_icon_theme(&config);
+    let current = icon_themes::entry_of(&current);
+    for theme in icon_themes::installed(&lang) {
+        let mark = if theme.id == current { "*" } else { " " };
+        println!("{mark} {:24} {}", theme.id, theme.label);
+    }
+    ExitCode::SUCCESS
+}
+
+/// Só os ícones: o tema GTK, o destaque, as pastas e o accent_auto ficam como estão. O config é lido dentro da
+/// trava: um accent-auto no meio gravaria outra cor, e o apply com a antiga desfaria a dele e desligaria o modo.
+fn set_icons(name: &str) -> ExitCode {
+    let result = st::locked(|| {
+        let config = load_config(&path()).0;
+        let theme = dc::effective_gtk_theme(&config);
+        st::apply(&theme, Some(&config.accent), Some(&config.folder_color), None, None, Some(name)).map(|applied| (theme, applied))
+    });
+    match result.and_then(|r| r) {
+        Ok((theme, applied)) => report(&theme, applied),
+        Err(err) => {
+            eprintln!("{err}");
+            ExitCode::from(2)
+        }
+    }
+}
+
 fn report(theme: &str, applied: Applied) -> ExitCode {
     println!("{}", fill_one(&tr("Theme: %s"), theme));
     for note in &applied.notes {
@@ -105,8 +141,8 @@ fn report(theme: &str, applied: Applied) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-fn set_theme(theme: &str, accent: Option<&str>, folders: Option<&str>, auto: Option<bool>) -> ExitCode {
-    match st::locked(|| st::apply(theme, accent, folders, None, auto)).and_then(|r| r) {
+fn set_theme(theme: &str, accent: Option<&str>, folders: Option<&str>, auto: Option<bool>, icons: Option<&str>) -> ExitCode {
+    match st::locked(|| st::apply(theme, accent, folders, None, auto, icons)).and_then(|r| r) {
         Ok(applied) => report(theme, applied),
         Err(err) => {
             eprintln!("{err}");
@@ -115,8 +151,8 @@ fn set_theme(theme: &str, accent: Option<&str>, folders: Option<&str>, auto: Opt
     }
 }
 
-fn pick_theme(family: &str, style: Style, folders: &str, auto: Option<bool>) -> ExitCode {
-    match st::locked(|| st::pick(family, style, folders, auto)).and_then(|r| r) {
+fn pick_theme(family: &str, style: Style, folders: &str, auto: Option<bool>, icons: Option<&str>) -> ExitCode {
+    match st::locked(|| st::pick(family, style, folders, auto, icons)).and_then(|r| r) {
         Ok((theme, applied)) => report(&theme, applied),
         Err(err) => {
             eprintln!("{err}");
@@ -210,6 +246,24 @@ fn parse_set(args: &[String]) -> Result<(String, Option<String>, Option<String>)
     Ok((theme, accent, folders))
 }
 
+/// Tira o --icons (com ou sem o `=`) dos argumentos do set e do pick, em qualquer posição.
+fn take_icons(args: &[String]) -> Result<(Vec<String>, Option<String>), String> {
+    let (mut rest, mut icons) = (Vec::new(), None);
+    let mut i = 0;
+    while i < args.len() {
+        if let Some(value) = args[i].strip_prefix("--icons=") {
+            icons = Some(value.to_string());
+        } else if args[i] == "--icons" {
+            i += 1;
+            icons = Some(args.get(i).filter(|v| !v.starts_with("--")).cloned().ok_or("argument --icons: expected one argument")?);
+        } else {
+            rest.push(args[i].clone());
+        }
+        i += 1;
+    }
+    Ok((rest, icons))
+}
+
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|a| a == "--check") {
@@ -230,7 +284,15 @@ fn main() -> ExitCode {
         (false, false) => None,
     };
     let rest: Vec<String> = args[1..].iter().filter(|a| !(takes_auto && (*a == "--auto" || *a == "--no-auto"))).cloned().collect();
-    let rest = &rest[..];
+    let (rest, icons) = if takes_auto {
+        match take_icons(&rest) {
+            Ok(taken) => taken,
+            Err(message) => return usage_error(&message),
+        }
+    } else {
+        (rest, None)
+    };
+    let (rest, icons) = (&rest[..], icons.as_deref());
     let no_args = |run: fn() -> ExitCode| if rest.is_empty() { run() } else { usage_error(&format!("unrecognized arguments: {}", rest.join(" "))) };
     match command.as_str() {
         "-h" | "--help" => help(),
@@ -239,13 +301,18 @@ fn main() -> ExitCode {
         "init" => no_args(init),
         "families" => no_args(show_families),
         "colors" => no_args(show_colors),
+        "icons" => match rest {
+            [] => show_icons(),
+            [name] => set_icons(name),
+            _ => usage_error(&format!("unrecognized arguments: {}", rest[1..].join(" "))),
+        },
         "set" => match parse_set(rest) {
-            Ok((theme, accent, folders)) => set_theme(&theme, accent.as_deref(), folders.as_deref(), auto),
+            Ok((theme, accent, folders)) => set_theme(&theme, accent.as_deref(), folders.as_deref(), auto, icons),
             Err(message) => usage_error(&message),
         },
         "pick" => match rest {
             [family, style, color] => match Style::parse(style) {
-                Some(style) => pick_theme(family, style, color, auto),
+                Some(style) => pick_theme(family, style, color, auto, icons),
                 None => usage_error(&format!("argument style: invalid choice: '{style}' (choose from 'light', 'dark')")),
             },
             _ if rest.len() < 3 => usage_error("the following arguments are required: family, style, color"),
@@ -256,6 +323,6 @@ fn main() -> ExitCode {
             [print] if print == "--print" => print_accent(),
             _ => usage_error(&format!("unrecognized arguments: {}", rest.join(" "))),
         },
-        other => usage_error(&format!("argument command: invalid choice: '{other}' (choose from 'list', 'current', 'init', 'families', 'colors', 'set', 'pick', 'accent-auto')")),
+        other => usage_error(&format!("argument command: invalid choice: '{other}' (choose from 'list', 'current', 'init', 'families', 'colors', 'icons', 'set', 'pick', 'accent-auto')")),
     }
 }

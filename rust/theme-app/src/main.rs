@@ -22,11 +22,14 @@ use swaydesk_common::config::{self, load_config, papirus_color, Config, PAPIRUS_
 use swaydesk_common::i18n::{self, tr};
 use swaydesk_theme::families::{self as sf, Family, Style};
 use swaydesk_theme::themes::{self as st, Theme};
+use swaydesk_theme::icon_themes::{self as it, IconTheme};
 use swaydesk_theme::{desktop as dc, fill, fill_one, papirus as sp, wallpaper_accent as wa};
 
 const APP_ID: &str = "org.swaydesktop.Theme"; // igual ao nome do .desktop: é como a dock acha o ícone
 const SWATCH: i32 = 30;
 const INFO_SECONDS: u32 = 8;
+/// A faixa de ícones de cada tema na lista: os mais diferentes entre os temas, a pasta primeiro
+const ICON_STRIP: [&str; 5] = ["folder", "user-home", "text-x-generic", "utilities-terminal", "preferences-system"];
 const CSS: &str = r#"
 .theme-sidebar { border-right: 1px solid alpha(currentColor, 0.15); }
 .theme-sidebar list { background: transparent; }
@@ -186,6 +189,14 @@ struct Window {
     swatches: Vec<(String, gtk4::FlowBoxChild, gtk4::DrawingArea)>,
     summary: gtk4::Label,
     hint: gtk4::Label,
+    /// Os temas de ícones da lista, na ordem dela, e os ícones em uso (a entrada)
+    icon_themes: RefCell<Vec<IconTheme>>,
+    current_icons: RefCell<String>,
+    icons_model: gtk4::StringList,
+    icons_dropdown: gtk4::DropDown,
+    /// Os temas de ícones da faixa, um por nome (a busca de cada ícone usa a herança do tema)
+    icon_lookups: RefCell<HashMap<String, gtk4::IconTheme>>,
+    folders_note: gtk4::Label,
 }
 
 fn load_themes() -> (Vec<Theme>, Vec<Family>, Vec<Theme>) {
@@ -307,6 +318,18 @@ impl Window {
         style_row.append(&style_note);
         content.append(&style_row);
 
+        // Os ícones: a lista dos temas de ícones, cada um com o nome e uma faixa de ícones dele
+        let icons_row = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
+        let icons_label = gtk4::Label::new(Some(&tr("Icons")));
+        icons_label.set_xalign(0.0);
+        icons_label.add_css_class("theme-section");
+        icons_row.append(&icons_label);
+        let icons_model = gtk4::StringList::new(&[]);
+        let icons_dropdown = gtk4::DropDown::new(Some(icons_model.clone()), None::<gtk4::Expression>);
+        icons_label.set_mnemonic_widget(Some(&icons_dropdown));
+        icons_row.append(&icons_dropdown);
+        content.append(&icons_row);
+
         let color_title = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
         color_title.set_margin_top(8);
         let color_label = gtk4::Label::new(Some(&tr("Accent color")));
@@ -355,6 +378,12 @@ impl Window {
             swatches.push((name.clone(), child, area));
         }
         content.append(&flowbox);
+        // Com outros ícones, a cor muda só o destaque
+        let folders_note = gtk4::Label::new(None);
+        folders_note.set_xalign(0.0);
+        folders_note.set_wrap(true);
+        dim(&folders_note);
+        content.append(&folders_note);
         let papirus = sp::theme_dir("Papirus").is_some();
         if !papirus {
             let note = gtk4::Label::new(Some(&tr(
@@ -423,8 +452,17 @@ impl Window {
             swatches,
             summary,
             hint,
+            icon_themes: RefCell::new(Vec::new()),
+            current_icons: RefCell::new(String::new()),
+            icons_model,
+            icons_dropdown,
+            icon_lookups: RefCell::new(HashMap::new()),
+            folders_note,
         });
+        this.set_icons_factory();
+        // Depois do config: a língua dos nomes vem dele
         this.read_config();
+        this.fill_icon_themes();
         this.load_choice();
         let me = this.me.clone();
         this.auto_dot.set_draw_func(move |area, cr, width, height| {
@@ -460,6 +498,8 @@ impl Window {
     fn connect(self: &Rc<Self>) {
         let apply = self.with(|w, ()| w.apply_selected());
         self.apply_button.connect_clicked(move |_| apply(()));
+        let icons = self.with(|w, ()| w.on_icons_selected());
+        self.icons_dropdown.connect_selected_notify(move |_| icons(()));
         let revert = self.with(|w, ()| w.revert());
         self.revert_button.connect_clicked(move |_| revert(()));
 
@@ -598,6 +638,7 @@ impl Window {
     fn reload_themes(&self) {
         let (themes, families, others) = load_themes();
         *self.themes.borrow_mut() = themes.into_iter().map(|t| (t.name.clone(), t)).collect();
+        self.fill_icon_themes();
         self.papirus.set(sp::theme_dir("Papirus").is_some());
         {
             let mut choice = self.choice.borrow_mut();
@@ -626,6 +667,7 @@ impl Window {
             st::folder_color(&config).unwrap_or_else(|| sp::nearest_color(&config.accent, &self.colors))
         });
         self.current_auto.set(config.accent_auto);
+        *self.current_icons.borrow_mut() = it::entry_of(&dc::installed_icon_theme(&config)).to_string();
         *self.config.borrow_mut() = config;
         // O papel pode ter mudado (o do dia): a cor que o interruptor daria agora
         self.choice.borrow_mut().wallpaper = wa::current_color();
@@ -633,10 +675,101 @@ impl Window {
         self.icons_cache.borrow_mut().clear();
     }
 
-    /// A escolha do tema, da cor e do modo em uso.
+    /// A escolha do tema, da cor, do modo e dos ícones em uso.
     fn load_choice(&self) {
         let (current, color) = (self.current.borrow().clone(), self.current_color.borrow().clone());
-        self.choice.borrow_mut().load(&current, &color, self.current_auto.get());
+        let mut choice = self.choice.borrow_mut();
+        choice.load(&current, &color, self.current_auto.get());
+        choice.load_icons(&self.current_icons.borrow());
+    }
+
+    /// Os temas de ícones da lista, de novo (um instalado com a janela aberta). A escolha fica, se ainda existe.
+    fn fill_icon_themes(&self) {
+        let env: HashMap<String, String> = std::env::vars().collect();
+        let lang = config::message_languages(&self.config.borrow(), &env).into_iter().next().unwrap_or_default();
+        let themes = it::installed(&lang);
+        let ids: Vec<String> = themes.iter().map(|t| t.id.clone()).collect();
+        let ids: Vec<&str> = ids.iter().map(String::as_str).collect();
+        // Os nomes antes das linhas: o splice já desenha as linhas, que leem o nome daqui
+        *self.icon_themes.borrow_mut() = themes;
+        self.icon_lookups.borrow_mut().clear();
+        self.updating.set(true);
+        self.icons_model.splice(0, self.icons_model.n_items(), &ids);
+        self.updating.set(false);
+    }
+
+    /// O nome na lista: o do index.theme; o do Papirus diz que segue o estilo.
+    fn icon_label(&self, id: &str) -> String {
+        if id == it::PAPIRUS {
+            return tr("Papirus (light or dark, with the style)");
+        }
+        self.icon_themes.borrow().iter().find(|t| t.id == id).map_or_else(|| id.to_string(), |t| t.label.clone())
+    }
+
+    /// A busca dos ícones de um tema da lista (o Papirus no estilo escolhido), sem o gerado nem as reservas: a
+    /// faixa mostra o tema como ele é.
+    fn icon_lookup(&self, id: &str) -> gtk4::IconTheme {
+        let name = if id == it::PAPIRUS {
+            let style = sf::icons_for_style(self.choice.borrow().style);
+            if dc::icons_installed(style) { style.to_string() } else { sp::THEMES.iter().find(|n| dc::icons_installed(n)).unwrap_or(&style).to_string() }
+        } else {
+            id.to_string()
+        };
+        self.icon_lookups
+            .borrow_mut()
+            .entry(name.clone())
+            .or_insert_with(|| {
+                let theme = gtk4::IconTheme::new();
+                theme.set_theme_name(Some(&name));
+                theme
+            })
+            .clone()
+    }
+
+    /// Cada linha da lista: o nome e a faixa de ícones do tema (um ícone que ele não tem fica de fora).
+    fn set_icons_factory(&self) {
+        let factory = gtk4::SignalListItemFactory::new();
+        factory.connect_setup(|_, item| {
+            let Some(item) = item.downcast_ref::<gtk4::ListItem>() else { return };
+            let row = gtk4::Box::new(gtk4::Orientation::Horizontal, 10);
+            let label = gtk4::Label::new(None);
+            label.set_xalign(0.0);
+            row.append(&label);
+            let strip = gtk4::Box::new(gtk4::Orientation::Horizontal, 4);
+            row.append(&strip);
+            item.set_child(Some(&row));
+        });
+        let me = self.me.clone();
+        factory.connect_bind(move |_, item| {
+            let Some(w) = me.upgrade() else { return };
+            let Some(item) = item.downcast_ref::<gtk4::ListItem>() else { return };
+            let Some(id) = item.item().and_downcast::<gtk4::StringObject>().map(|o| o.string().to_string()) else { return };
+            let Some(row) = item.child().and_downcast::<gtk4::Box>() else { return };
+            let Some(label) = row.first_child().and_downcast::<gtk4::Label>() else { return };
+            let Some(strip) = row.last_child().and_downcast::<gtk4::Box>() else { return };
+            label.set_text(&w.icon_label(&id));
+            while let Some(child) = strip.first_child() {
+                strip.remove(&child);
+            }
+            let lookup = w.icon_lookup(&id);
+            for name in ICON_STRIP.iter().filter(|n| lookup.has_icon(n)) {
+                let paintable = lookup.lookup_icon(name, &[], 16, w.window.scale_factor(), gtk4::TextDirection::None, gtk4::IconLookupFlags::empty());
+                let image = gtk4::Image::from_paintable(Some(&paintable));
+                image.set_pixel_size(16);
+                strip.append(&image);
+            }
+        });
+        self.icons_dropdown.set_factory(Some(&factory));
+    }
+
+    fn on_icons_selected(&self) {
+        if self.updating.get() || self.applying.get() {
+            return;
+        }
+        let position = self.icons_dropdown.selected();
+        let Some(id) = self.icon_themes.borrow().get(position as usize).map(|t| t.id.clone()) else { return };
+        self.choice.borrow_mut().icons = id;
+        self.refresh(false);
     }
 
     /// A escolha é o tema, a cor e o modo em uso. O destaque não entra: um que não é cor do Papirus (o padrão do
@@ -645,7 +778,7 @@ impl Window {
     fn applied(&self) -> bool {
         let auto = self.current_auto.get();
         let color = if auto { String::new() } else { self.current_color.borrow().clone() };
-        (Some(self.wanted.borrow().clone()), color, auto) == self.choice.borrow().key()
+        (Some(self.wanted.borrow().clone()), color, auto, self.current_icons.borrow().clone()) == self.choice.borrow().key()
     }
 
     /// Uma mudança de fora (terminal, config editado). Se a escolha era a aplicada, ela acompanha: senão
@@ -666,6 +799,9 @@ impl Window {
         }
         if follow {
             self.load_choice();
+        } else {
+            let icons = self.current_icons.borrow().clone();
+            self.choice.borrow_mut().follow_icons(&icons);
         }
         self.refresh(false);
     }
@@ -757,6 +893,13 @@ impl Window {
             Some((_, child, _)) => self.flowbox.select_child(child),
             None => self.flowbox.unselect_all(),
         }
+        // Os ícones escolhidos na lista; os em uso fora dela (não instalados), nenhum
+        let chosen_icons = self.choice.borrow().icons.clone();
+        let position = self.icon_themes.borrow().iter().position(|t| t.id == chosen_icons);
+        self.icons_dropdown.set_selected(position.map_or(gtk4::INVALID_LIST_POSITION, |p| p as u32));
+        self.icons_dropdown.set_sensitive(!self.applying.get() && self.icons_model.n_items() > 0);
+        // A faixa do Papirus segue o estilo
+        self.icons_dropdown.queue_draw();
         for (_, _, area) in &self.swatches {
             area.queue_draw();
         }
@@ -768,19 +911,31 @@ impl Window {
         let chosen = theme.as_ref().and_then(|t| self.themes.borrow().get(t).cloned());
         let icons = chosen.as_ref().map_or_else(|| "?".to_string(), |t| self.icons_for(t));
         self.preview.set_choice(theme.clone(), style, &accent, &color);
-        let mut parts = vec![theme.clone().unwrap_or_else(|| "?".into()), icons];
-        if self.papirus.get() {
+        // A cor das pastas só com o Papirus: com outros ícones, a nota diz que a cor muda só o destaque
+        let papirus_icons = sp::is_papirus(&icons);
+        let mut parts = vec![theme.clone().unwrap_or_else(|| "?".into()), icons.clone()];
+        if self.papirus.get() && papirus_icons {
             parts.push(fill_one(&tr("%s folders"), &color));
         }
+        let folders_note = (self.papirus.get() && !papirus_icons && icons != "?")
+            .then(|| fill_one(&tr("The folders of %s don't change color: the color changes the accent only."), &icons));
+        self.folders_note.set_visible(folders_note.is_some());
+        self.folders_note.set_text(folders_note.as_deref().unwrap_or(""));
         self.summary.set_markup(&format!("<b>{}</b> {}", glib::markup_escape_text(&tr("Will apply:")), glib::markup_escape_text(&parts.join(" · "))));
         // No destaque padrão, o aviso de variante fala do hex, não da amostra mais perto
         let hint_color = if default_accent { accent.clone() } else { color.clone() };
-        self.hint.set_text(&self.hint_text(theme.as_deref().unwrap_or(""), &family_name, &hint_color, exact, family_accents, other.is_some()));
+        // As pastas só pegam a cor com o Papirus instalado e em uso (a mesma condição do "pastas" do resumo)
+        let folders = self.papirus.get() && papirus_icons;
+        self.hint.set_text(&self.hint_text(theme.as_deref().unwrap_or(""), &family_name, &hint_color, exact, family_accents, other.is_some(), folders));
         self.update_buttons();
     }
 
-    /// Os ícones que o apply vai gravar. Guardados por tema: o refresh roda a cada tecla da busca.
+    /// Os ícones que o apply vai gravar: os escolhidos na lista ou, sem mudança nela, os que a troca de tema dá.
+    /// Guardados por tema: o refresh roda a cada tecla da busca.
     fn icons_for(&self, chosen: &Theme) -> String {
+        if let Some(wanted) = self.choice.borrow().wanted_icons() {
+            return st::resolve_icons(&wanted, chosen).unwrap_or(wanted);
+        }
         if let Some(icons) = self.icons_cache.borrow().get(&chosen.name) {
             return icons.clone();
         }
@@ -790,13 +945,14 @@ impl Window {
     }
 
     /// O aviso de outro desktop vem antes de tudo, somado ao do tema.
-    fn hint_text(&self, theme: &str, family: &Option<String>, color: &str, exact: bool, family_accents: usize, other: bool) -> String {
+    fn hint_text(&self, theme: &str, family: &Option<String>, color: &str, exact: bool, family_accents: usize, other: bool, folders: bool) -> String {
         let foreign = st::foreign_desktop_note_here().map(|note| format!("{note}."));
-        let theme_hint = self.theme_hint(theme, family, color, exact, family_accents, other);
+        let theme_hint = self.theme_hint(theme, family, color, exact, family_accents, other, folders);
         foreign.into_iter().chain(Some(theme_hint)).filter(|line| !line.is_empty()).collect::<Vec<_>>().join("\n")
     }
 
-    fn theme_hint(&self, theme: &str, family: &Option<String>, color: &str, exact: bool, family_accents: usize, other: bool) -> String {
+    /// folders: as pastas pegam a cor (ícones Papirus); sem isso, a dica não fala delas.
+    fn theme_hint(&self, theme: &str, family: &Option<String>, color: &str, exact: bool, family_accents: usize, other: bool, folders: bool) -> String {
         if let Some(note) = self.note.borrow().as_ref() {
             return fill_one(&tr("%s. Choose a theme to save it in the config."), note);
         }
@@ -805,14 +961,23 @@ impl Window {
         }
         if let Some(family) = family {
             if !exact && family_accents > 0 {
+                let text = if folders {
+                    tr("%(family)s has no %(color)s variant: it uses %(theme)s. The bar, the folders and the GTK 4 apps get the exact color.")
+                } else {
+                    tr("%(family)s has no %(color)s variant: it uses %(theme)s. The bar and the GTK 4 apps get the exact color.")
+                };
                 return fill(
-                    &tr("%(family)s has no %(color)s variant: it uses %(theme)s. The bar, the folders and the GTK 4 apps get the exact color."),
+                    &text,
                     &[("family", family), ("color", color), ("theme", theme)],
                 );
             }
         }
         if (family.is_some() && family_accents == 0) || other {
-            return tr("This theme keeps its own colors: the accent changes the bar, the folders and the GTK 4 apps.");
+            return if folders {
+                tr("This theme keeps its own colors: the accent changes the bar, the folders and the GTK 4 apps.")
+            } else {
+                tr("This theme keeps its own colors: the accent changes the bar and the GTK 4 apps.")
+            };
         }
         String::new()
     }

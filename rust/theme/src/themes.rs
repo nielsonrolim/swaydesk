@@ -334,33 +334,55 @@ pub fn folder_color(config: &Config) -> Option<String> {
 }
 
 /// O nome a gravar no dconf. Com o Papirus, o tema gerado, com as pastas na cor; com o Breeze Dark
-/// instalado, ele herda o escolhido e o Breeze Dark.
-pub fn gtk_icon_theme(name: &str, folders: Option<&str>, remove: bool) -> String {
+/// instalado, ele herda o escolhido e o Breeze Dark. Com outro tema, o gerado herda o escolhido e, para os ícones
+/// que faltam nele (os da Ajuda, da dock, dos popups), o Papirus no estilo (dark), o Adwaita e o Breeze Dark.
+pub fn gtk_icon_theme(name: &str, folders: Option<&str>, dark: bool, remove: bool) -> String {
     if ["breeze", FALLBACK_ICONS, ICONS_WRAPPER].contains(&name) {
         return name.to_string();
     }
+    let inherits = icon_inherits(name, dark, dc::icons_installed);
     let colored = if sp::is_papirus(name) { folders.filter(|f| !f.is_empty()) } else { None };
-    let fallback = dc::icons_installed(FALLBACK_ICONS);
-    if colored.is_none() && !fallback {
+    // Sem cor nas pastas e sem nenhum de reserva instalado, o gerado não acrescenta nada
+    if colored.is_none() && !inherits.iter().any(|i| i != name && i != "hicolor") {
         if remove {
             sp::remove();
         }
         return name.to_string();
     }
-    let mut inherits = vec![name.to_string()];
-    if fallback {
-        inherits.push(FALLBACK_ICONS.to_string());
-    }
-    inherits.push("hicolor".to_string());
     match sp::build(name, &inherits, colored) {
         Ok(()) => ICONS_WRAPPER.to_string(),
         Err(_) => name.to_string(),
     }
 }
 
+/// O Inherits do tema gerado: o escolhido, os de reserva instalados (para o Papirus, só o Breeze Dark) e o hicolor.
+pub fn icon_inherits(name: &str, dark: bool, installed: impl Fn(&str) -> bool) -> Vec<String> {
+    let fallbacks: &[&str] = if sp::is_papirus(name) { &[FALLBACK_ICONS] } else { &[sf::icons_for_style(if dark { Style::Dark } else { Style::Light }), "Adwaita", FALLBACK_ICONS] };
+    let mut inherits = vec![name.to_string()];
+    inherits.extend(fallbacks.iter().filter(|f| **f != name && installed(f)).map(|f| f.to_string()));
+    if name != "hicolor" {
+        inherits.push("hicolor".to_string());
+    }
+    inherits
+}
+
 /// Gera (ou apaga) o tema dos ícones da config e devolve o nome a gravar no dconf.
 pub fn config_icon_theme(config: &Config, remove: bool) -> String {
-    gtk_icon_theme(&dc::installed_icon_theme(config), folder_color(config).as_deref(), remove)
+    let dark = theme_is_dark(&dc::effective_gtk_theme(config));
+    gtk_icon_theme(&dc::installed_icon_theme(config), folder_color(config).as_deref(), dark, remove)
+}
+
+/// Os ícones pedidos (--icons, o seletor do app): um dos que dá para escolher; o Papirus no estilo do tema.
+pub fn resolve_icons(name: &str, chosen: &Theme) -> Result<String, Error> {
+    let entry = crate::icon_themes::entry_of(name);
+    if !crate::icon_themes::installed("").iter().any(|t| t.id == entry) {
+        return Err(Error::Value(fill_one(&tr("unknown icon theme: %s. See them with: sway-theme icons"), name)));
+    }
+    if entry != crate::icon_themes::PAPIRUS {
+        return Ok(entry.to_string());
+    }
+    let style = sf::icons_for_style(sf::style_of(chosen));
+    Ok(std::iter::once(style).chain(sp::THEMES.iter().copied()).find(|n| dc::icons_installed(n)).unwrap_or(style).to_string())
 }
 
 fn dconf_values(config: &Config, icons: Option<String>) -> Vec<(&'static str, String)> {
@@ -688,7 +710,7 @@ pub struct Applied {
 }
 
 /// Aplica a variante da família no estilo, com a cor do Papirus. Devolve o tema e o resultado. auto: o do apply.
-pub fn pick(family: &str, style: Style, folders: &str, auto: Option<bool>) -> Result<(String, Applied), Error> {
+pub fn pick(family: &str, style: Style, folders: &str, auto: Option<bool>, icons: Option<&str>) -> Result<(String, Applied), Error> {
     // O "" (a pasta mais perto do destaque) só vale no set: o pick tira a cor do nome
     if folders.is_empty() {
         return Err(Error::Value(fill(&tr("unknown folder color: %(color)s. See them with: sway-theme colors"), &[("color", folders)])));
@@ -703,7 +725,7 @@ pub fn pick(family: &str, style: Style, folders: &str, auto: Option<bool>) -> Re
     let Some(theme) = sf::resolve(found, style, accent, folders) else {
         return Err(Error::Value(fill(&tr("%(family)s has no %(style)s version"), &[("family", &found.name), ("style", &style.label())])));
     };
-    let applied = apply(&theme, Some(accent), Some(folders), Some(themes), auto)?;
+    let applied = apply(&theme, Some(accent), Some(folders), Some(themes), auto, icons)?;
     Ok((theme, applied))
 }
 
@@ -729,7 +751,7 @@ fn has_key(file: &Path, key: &str) -> bool {
 /// escolha manual e grava false; a mesma cor (só o tema ou o estilo mudou) deixa o modo como está. Sem o Some, a
 /// chave só é gravada num config que já a tem ou com o modo ligado (o padrão, sem a chave, quando o accent é o
 /// DEFAULT_ACCENT).
-pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: Option<Vec<Theme>>, auto: Option<bool>) -> Result<Applied, Error> {
+pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: Option<Vec<Theme>>, auto: Option<bool>, icons: Option<&str>) -> Result<Applied, Error> {
     let available = themes.unwrap_or_else(discover);
     let Some(chosen) = available.iter().find(|t| t.name == theme).cloned() else {
         return Err(Error::Value(fill_one(&tr("theme not installed: %s. See them with: sway-theme list"), theme)));
@@ -738,6 +760,7 @@ pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: O
         return Err(Error::Value(fill(&tr("invalid color: %(color)s (use one like %(example)s)"), &[("color", accent), ("example", DEFAULT_ACCENT)])));
     }
     check_folders(folders)?;
+    let wanted_icons = icons.map(|name| resolve_icons(name, &chosen)).transpose()?;
     let file = config::path();
     let (current, problems) = load_config(&file);
     if problems.iter().any(|p| p.contains("could not read")) {
@@ -755,10 +778,19 @@ pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: O
     if accent.is_none() && chosen.accent.is_none() {
         notes.push(fill(&tr("%(theme)s does not define an accent color: kept %(color)s. To change it, use --accent"), &[("theme", theme), ("color", &color)]));
     }
-    let icons = chosen_icons(&chosen, &current);
-    if chosen.icons.is_none() && icons != sf::icons_for_style(sf::style_of(&chosen)) {
-        notes.push(fill(&tr("There are no icons for %(theme)s: kept %(icons)s"), &[("theme", theme), ("icons", &icons)]));
-    }
+    let icons = match wanted_icons {
+        Some(icons) => {
+            notes.push(fill_one(&tr("Icons: %s"), &icons));
+            icons
+        }
+        None => {
+            let icons = chosen_icons(&chosen, &current);
+            if chosen.icons.is_none() && icons != sf::icons_for_style(sf::style_of(&chosen)) {
+                notes.push(fill(&tr("There are no icons for %(theme)s: kept %(icons)s"), &[("theme", theme), ("icons", &icons)]));
+            }
+            icons
+        }
+    };
     let folder_value = folders.map_or_else(|| current.folder_color.clone(), str::to_string);
     let auto_value = accent_auto_value(auto, &color, &current, has_key(&file, "accent_auto"));
     let mut values: Vec<(&str, Value)> =
@@ -835,7 +867,7 @@ pub fn accent_auto() -> Result<Auto, Error> {
     let variant = sf::family_of(&theme)
         .and_then(|(f, style)| families.iter().find(|x| x.name == f && x.has_style(style)).and_then(|x| sf::resolve(x, style, hex, name)))
         .unwrap_or(theme);
-    let applied = apply(&variant, Some(hex), Some(name), Some(themes), Some(true))?;
+    let applied = apply(&variant, Some(hex), Some(name), Some(themes), Some(true), None)?;
     Ok(Auto::Done { unreadable, applied: Some((variant, applied)) })
 }
 
@@ -876,6 +908,20 @@ mod tests {
         assert!(!config.accent_auto && warnings.is_empty(), "{warnings:?}");
         assert!(!has_key(&dir.join("missing.toml"), "accent_auto"));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_wrapper_inherits_fallbacks_for_the_missing_icons() {
+        let all = |_: &str| true;
+        assert_eq!(icon_inherits("Yaru", true, all), ["Yaru", "Papirus-Dark", "Adwaita", "breeze-dark", "hicolor"]);
+        assert_eq!(icon_inherits("Yaru", false, all), ["Yaru", "Papirus", "Adwaita", "breeze-dark", "hicolor"]);
+        // Sem repetir o escolhido, e só os instalados
+        assert_eq!(icon_inherits("Adwaita", true, all), ["Adwaita", "Papirus-Dark", "breeze-dark", "hicolor"]);
+        assert_eq!(icon_inherits("Yaru", true, |n| n == "Adwaita"), ["Yaru", "Adwaita", "hicolor"]);
+        assert_eq!(icon_inherits("Yaru", true, |_| false), ["Yaru", "hicolor"]);
+        assert_eq!(icon_inherits("hicolor", true, |_| false), ["hicolor"]);
+        // O Papirus, como antes: só o Breeze Dark de reserva
+        assert_eq!(icon_inherits("Papirus-Dark", true, all), ["Papirus-Dark", "breeze-dark", "hicolor"]);
     }
 
     #[test]

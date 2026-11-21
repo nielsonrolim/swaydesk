@@ -1,0 +1,356 @@
+{
+ "comment": "Casos do icon_themes.rs (lista dos temas de ícones), lidos também pelos testes do lado em Python. dirs: as pastas de ícones, da que vence para a que perde; index: o index.theme (sem ele, a pasta não tem o tema); subdirs: os diretórios que existem; expected: [id, nome] na ordem de mostrar.",
+ "cases": [
+  {
+   "name": "basic, sorted by label, Papirus first",
+   "lang": "C",
+   "dirs": [
+    {
+     "themes": {
+      "Yaru": {
+       "index": "[Icon Theme]\nName=Yaru\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "breeze": {
+       "index": "[Icon Theme]\nName=Breeze\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "Adwaita": {
+       "index": "[Icon Theme]\nName=Adwaita\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "Papirus-Dark": {
+       "index": "[Icon Theme]\nName=Papirus-Dark\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      }
+     }
+    }
+   ],
+   "expected": [
+    [
+     "Papirus",
+     "Papirus"
+    ],
+    [
+     "Adwaita",
+     "Adwaita"
+    ],
+    [
+     "breeze",
+     "Breeze"
+    ],
+    [
+     "Yaru",
+     "Yaru"
+    ]
+   ]
+  },
+  {
+   "name": "the three Papirus are one entry",
+   "lang": "C",
+   "dirs": [
+    {
+     "themes": {
+      "Papirus": {
+       "index": "[Icon Theme]\nName=Papirus\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "Papirus-Dark": {
+       "index": "[Icon Theme]\nName=Papirus-Dark\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "Papirus-Light": {
+       "index": "[Icon Theme]\nName=Papirus-Light\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      }
+     }
+    }
+   ],
+   "expected": [
+    [
+     "Papirus",
+     "Papirus"
+    ]
+   ]
+  },
+  {
+   "name": "the first dir with the theme wins",
+   "lang": "C",
+   "dirs": [
+    {
+     "themes": {
+      "Yaru": {
+       "index": "[Icon Theme]\nName=Yaru do usuário\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      }
+     }
+    },
+    {
+     "themes": {
+      "Yaru": {
+       "index": "[Icon Theme]\nName=Yaru\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "Adwaita": {
+       "index": "[Icon Theme]\nName=Adwaita\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      }
+     }
+    }
+   ],
+   "expected": [
+    [
+     "Adwaita",
+     "Adwaita"
+    ],
+    [
+     "Yaru",
+     "Yaru do usuário"
+    ]
+   ]
+  },
+  {
+   "name": "a hidden theme in the first dir hides the later one",
+   "lang": "C",
+   "dirs": [
+    {
+     "themes": {
+      "Yaru": {
+       "index": "[Icon Theme]\nName=Yaru\nDirectories=48x48/apps\nHidden=true\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      }
+     }
+    },
+    {
+     "themes": {
+      "Yaru": {
+       "index": "[Icon Theme]\nName=Yaru\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      }
+     }
+    }
+   ],
+   "expected": []
+  },
+  {
+   "name": "a dir without index.theme does not count",
+   "lang": "C",
+   "dirs": [
+    {
+     "themes": {
+      "Yaru": {
+       "subdirs": [
+        "48x48/apps"
+       ]
+      }
+     }
+    },
+    {
+     "themes": {
+      "Yaru": {
+       "index": "[Icon Theme]\nName=Yaru\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      }
+     }
+    }
+   ],
+   "expected": [
+    [
+     "Yaru",
+     "Yaru"
+    ]
+   ]
+  },
+  {
+   "name": "cursor-only, no Directories, missing dirs",
+   "lang": "C",
+   "dirs": [
+    {
+     "themes": {
+      "DMZ-White": {
+       "index": "[Icon Theme]\nName=DMZ (White)\nInherits=DMZ-Black\n",
+       "subdirs": [
+        "cursors"
+       ]
+      },
+      "Bibata": {
+       "index": "[Icon Theme]\nName=Bibata\nDirectories=cursors\n",
+       "subdirs": [
+        "cursors"
+       ]
+      },
+      "Vazio": {
+       "index": "[Icon Theme]\nName=Vazio\nDirectories=48x48/apps\n",
+       "subdirs": []
+      },
+      "Adwaita": {
+       "index": "[Icon Theme]\nName=Adwaita\nDirectories=cursors,48x48/apps\n",
+       "subdirs": [
+        "cursors",
+        "48x48/apps"
+       ]
+      }
+     }
+    }
+   ],
+   "expected": [
+    [
+     "Adwaita",
+     "Adwaita"
+    ]
+   ]
+  },
+  {
+   "name": "bases and the wrapper are left out",
+   "lang": "C",
+   "dirs": [
+    {
+     "themes": {
+      "hicolor": {
+       "index": "[Icon Theme]\nName=Hicolor\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "default": {
+       "index": "[Icon Theme]\nName=Default\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "locolor": {
+       "index": "[Icon Theme]\nName=Locolor\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "sway-desktop-icons": {
+       "index": "[Icon Theme]\nName=Sway\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      ".sway-desktop-icons-1-2": {
+       "index": "[Icon Theme]\nName=Sway\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "breeze": {
+       "index": "[Icon Theme]\nName=Breeze\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      }
+     }
+    }
+   ],
+   "expected": [
+    [
+     "breeze",
+     "Breeze"
+    ]
+   ]
+  },
+  {
+   "name": "translated names",
+   "lang": "pt_BR.UTF-8",
+   "dirs": [
+    {
+     "themes": {
+      "a": {
+       "index": "[Icon Theme]\nName=Alpha\nDirectories=48x48/apps\nName[pt_BR]=Alfa\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "b": {
+       "index": "[Icon Theme]\nName=Beta\nDirectories=48x48/apps\nName[pt]=Beta pt\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      },
+      "c": {
+       "index": "[Icon Theme]\nDirectories=48x48/apps\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      }
+     }
+    }
+   ],
+   "expected": [
+    [
+     "a",
+     "Alfa"
+    ],
+    [
+     "b",
+     "Beta pt"
+    ],
+    [
+     "c",
+     "c"
+    ]
+   ]
+  },
+  {
+   "name": "ScaledDirectories also count, and keys outside [Icon Theme] do not",
+   "lang": "C",
+   "dirs": [
+    {
+     "themes": {
+      "Scaled": {
+       "index": "[Icon Theme]\nName=Scaled\nDirectories=\nScaledDirectories=48x48@2/apps\n",
+       "subdirs": [
+        "48x48@2/apps"
+       ]
+      },
+      "Outro": {
+       "index": "[Icon Theme]\nName=Outro\nDirectories=48x48/apps\n\n[48x48/apps]\nName=Errado\nSize=48\n",
+       "subdirs": [
+        "48x48/apps"
+       ]
+      }
+     }
+    }
+   ],
+   "expected": [
+    [
+     "Outro",
+     "Outro"
+    ],
+    [
+     "Scaled",
+     "Scaled"
+    ]
+   ]
+  }
+ ]
+}

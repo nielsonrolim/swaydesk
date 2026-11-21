@@ -603,6 +603,11 @@ msgid "Open outside Sway (%s): the GTK and icon themes applied here also change 
 msgstr "Abierto fuera de Sway (%s): los temas GTK y de iconos aplicados aquí también cambian la configuración de ese escritorio"
 
 #: home/.local/bin/sway_themes.py
+#, python-format
+msgid "unknown icon theme: %s. See them with: sway-theme icons"
+msgstr "tema de iconos desconocido: %s. Consulta los disponibles con: sway-theme icons"
+
+#: home/.local/bin/sway_themes.py
 msgid "drawer"
 msgstr "cuadrícula de aplicaciones"
 
@@ -649,6 +654,11 @@ msgstr "no se encontraron plantillas en %s: ejecuta ./install.sh"
 #, python-format
 msgid "%(theme)s does not define an accent color: kept %(color)s. To change it, use --accent"
 msgstr "%(theme)s no define un color de acento: se mantuvo %(color)s. Para cambiarlo, usa --accent"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "Icons: %s"
+msgstr "Iconos: %s"
 
 #: home/.local/bin/sway_themes.py
 #, python-format
@@ -3038,6 +3048,26 @@ msgstr "Otro agente de contraseñas está activo"
 #: rust/nm/src/rules.rs rust/nm/src/standalone/tests.rs
 msgid "No network service running"
 msgstr "No hay ningún servicio de red en ejecución"
+
+#: rust/theme-app/src/main.rs
+msgid "Icons"
+msgstr "Iconos"
+
+#: rust/theme-app/src/main.rs
+msgid "Papirus (light or dark, with the style)"
+msgstr "Papirus (claro u oscuro, según el estilo)"
+
+#: rust/theme-app/src/main.rs
+msgid "The folders of %s don't change color: the color changes the accent only."
+msgstr "Las carpetas de %s no cambian de color: el color solo cambia el acento."
+
+#: rust/theme-app/src/main.rs
+msgid "%(family)s has no %(color)s variant: it uses %(theme)s. The bar and the GTK 4 apps get the exact color."
+msgstr "%(family)s no tiene la variante %(color)s: usa %(theme)s. La barra y las aplicaciones GTK 4 reciben el color exacto."
+
+#: rust/theme-app/src/main.rs
+msgid "This theme keeps its own colors: the accent changes the bar and the GTK 4 apps."
+msgstr "Este tema conserva sus propios colores: el acento cambia la barra y las aplicaciones GTK 4."
 
 #: home/.config/sway/keys/base.conf
 msgid "Session and apps"

@@ -3,6 +3,7 @@
 //! O `sway-theme`, o `sway-desktop-config` e o app Tema (o sway-theme-app) usam esta biblioteca.
 pub mod desktop;
 pub mod families;
+pub mod icon_themes;
 pub mod papirus;
 pub mod setup;
 pub mod themes;

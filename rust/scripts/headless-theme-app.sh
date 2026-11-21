@@ -29,6 +29,15 @@ theme Mint-Y-Dark-Teal "#2f2f2f" "#dadada" "#199ca8"
 theme Mint-Y-Dark-Blue "#2f2f2f" "#dadada" "#0c75de"
 theme Mint-Y-Teal "#f0f0f0" "#303030" "#199ca8"
 theme Arc-Dark "#383c4a" "#d3dae3" "#5294e2"
+# Dois temas de ícones para a lista, com uma pasta cada (sem o Papirus: os casos de antes ficam como eram)
+icons() {  # nome, cor da pasta
+  mkdir -p "$HOME/.icons/$1/48x48/places"
+  printf '[Icon Theme]\nName=%s\nDirectories=48x48/places\n\n[48x48/places]\nSize=48\nContext=Places\n' "$1" > "$HOME/.icons/$1/index.theme"
+  printf '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48"><rect x="4" y="10" width="40" height="30" fill="%s"/></svg>\n' "$2" \
+    > "$HOME/.icons/$1/48x48/places/folder.svg"
+}
+icons Adwaita "#3584e4"
+icons Yaru "#e95420"
 printf 'gtk_theme = "Mint-Y-Dark-Teal"\n' > "$HOME/.config/sway-desktop/config.toml"
 # O papel de parede: um PPM vermelho (#e25252, o red do Papirus) com o nome de sempre; o GdkPixbuf lê pelo conteúdo
 python3 -c "import sys; sys.stdout.buffer.write(b'P6\n64 64\n255\n' + bytes([0xe2, 0x52, 0x52]) * 4096)" \
@@ -118,7 +127,7 @@ apply_and_wait() {  # o Aplicar; espera a linha no config.toml
 }
 close_info
 # O azul é a terceira amostra da primeira linha
-pointer move $((wx + 345)) $((wy + 432)) sleep 100 click sleep 500
+pointer move $((wx + 345)) $((wy + 472)) sleep 100 click sleep 500
 shot 4-azul
 apply_and_wait 'accent_auto = false'
 shot 5-azul-aplicado
@@ -127,7 +136,7 @@ if config | grep -qx 'accent = "#5294e2"' && config | grep -qx 'accent_auto = fa
 else
   fail "a cor à mão não desligou o modo: $(config)"
 fi
-pointer move $((wx + 277)) $((wy + 392)) sleep 100 click sleep 500  # o interruptor
+pointer move $((wx + 277)) $((wy + 432)) sleep 100 click sleep 500  # o interruptor
 shot 6-auto-ligado
 apply_and_wait 'accent_auto = true'
 shot 7-auto-aplicado
@@ -153,6 +162,19 @@ if config | grep -qx 'accent = "#199ca8"' && config | grep -qx 'folder_color = "
   ok "reaberto no destaque padrão, trocar o tema mantém #199ca8 e as pastas na padrão"
 else
   fail "o destaque padrão não ficou: $(config)"
+fi
+# A lista de ícones (Adwaita e Yaru, os dois falsos; o em uso é o Yaru, que a troca de tema achou na reserva):
+# abrir, escolher o Adwaita (a primeira linha) e Aplicar grava só os ícones
+pointer move $((wx + 340)) $((wy + 355)) sleep 100 click sleep 600
+shot 10-icones-lista
+pointer move $((wx + 342)) $((wy + 405)) sleep 100 click sleep 500
+apply_and_wait 'icon_theme = "Adwaita"'
+shot 11-icones-aplicado
+if config | grep -qx 'icon_theme = "Adwaita"' && config | grep -qx 'gtk_theme = "Arc-Dark"' && config | grep -qx 'accent = "#199ca8"' \
+  && config | grep -qx 'accent_auto = false'; then
+  ok "a lista de ícones troca só os ícones"
+else
+  fail "os ícones não foram gravados: $(config)"
 fi
 fi
 grep -q "CRITICAL\|Traceback\|panicked" /tmp/app.log && { fail "avisos no log"; cat /tmp/app.log; }
