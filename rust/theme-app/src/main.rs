@@ -827,7 +827,7 @@ impl Window {
     }
 
     /// Uma mudança de fora (terminal, config editado). Se a escolha era a aplicada, ela acompanha: senão
-    /// o Aplicar ligaria e desfaria a mudança. Uma escolha em andamento fica.
+    /// o Aplicar ligaria e desfaria a mudança. Numa escolha em andamento, só o que a pessoa mexeu fica.
     fn on_theme_changed(&self) {
         // O CSS do tema novo vale depois deste aviso: a cor do texto da janela muda só no próximo quadro
         let strips = self.with(|w, ()| w.sync_strips());
@@ -848,8 +848,11 @@ impl Window {
         if follow {
             self.load_choice();
         } else {
-            let icons = self.current_icons.borrow().clone();
-            self.choice.borrow_mut().follow_icons(&icons);
+            // Com uma escolha em andamento, os campos que a pessoa não mexeu acompanham a mudança de fora
+            let (current, color, icons) = (self.current.borrow().clone(), self.current_color.borrow().clone(), self.current_icons.borrow().clone());
+            let mut choice = self.choice.borrow_mut();
+            choice.follow(&current, &color, self.current_auto.get());
+            choice.follow_icons(&icons);
         }
         self.refresh(false);
     }

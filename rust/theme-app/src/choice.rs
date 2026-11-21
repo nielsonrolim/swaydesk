@@ -43,6 +43,20 @@ pub struct Choice {
     /// Os ícones escolhidos na lista (a entrada, "Papirus" pelos três) e os em uso quando a janela carregou
     pub icons: String,
     pub loaded_icons: String,
+    /// O que estava aplicado quando a escolha carregou (ou acompanhou por último): um campo igual a ele é um que
+    /// a pessoa não mexeu, e acompanha uma mudança de fora
+    pub loaded: Loaded,
+}
+
+/// Os campos da escolha, como carregam de um tema aplicado.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Loaded {
+    pub family: Option<String>,
+    pub other: Option<String>,
+    pub style: Style,
+    pub color: String,
+    pub kept_default: bool,
+    pub auto: bool,
 }
 
 /// A cor em uso, como o app a carrega: "" quando o modo está desligado em cima do destaque padrão exato, com as
@@ -70,22 +84,87 @@ impl Choice {
             kept_default: false,
             icons: String::new(),
             loaded_icons: String::new(),
+            loaded: Loaded { family: None, other: None, style: Style::Dark, color: String::new(), kept_default: false, auto: false },
         }
+    }
+
+    /// Os campos que o tema em uso, a cor e o modo dão; sem família nem tema de fora, a primeira família.
+    fn loaded_from(&self, theme_name: &str, color: &str, auto: bool) -> Loaded {
+        let selection = sf::selection(&self.families, &self.others, theme_name, Some(color.to_string()));
+        let mut family = selection.family.map(|f| f.name);
+        if family.is_none() && selection.other.is_none() {
+            family = self.families.first().map(|f| f.name.clone());
+        }
+        Loaded {
+            family,
+            other: selection.other,
+            style: selection.style,
+            color: selection.color.unwrap_or_else(|| color.to_string()),
+            kept_default: !auto && color.is_empty(),
+            auto,
+        }
+    }
+
+    /// Os campos da escolha agora, para comparar com os carregados.
+    fn fields(&self) -> Loaded {
+        Loaded {
+            family: self.family.as_ref().map(|f| f.name.clone()),
+            other: self.other.clone(),
+            style: self.style,
+            color: self.color.clone(),
+            kept_default: self.kept_default,
+            auto: self.auto,
+        }
+    }
+
+    fn set_fields(&mut self, fields: &Loaded) {
+        self.family = fields.family.as_ref().and_then(|name| self.families.iter().find(|f| &f.name == name)).cloned();
+        self.other = fields.other.clone();
+        self.style = fields.style;
+        self.color = fields.color.clone();
+        self.kept_default = fields.kept_default;
+        self.auto = fields.auto;
     }
 
     /// A escolha do tema em uso, da cor e do modo; sem família nem tema de fora, a primeira família. A cor ""
     /// com o modo desligado: o destaque padrão exato, que não é uma das amostras (fica até escolher uma).
     pub fn load(&mut self, theme_name: &str, color: &str, auto: bool) {
-        self.auto = auto;
-        self.kept_default = !auto && color.is_empty();
-        let selection = sf::selection(&self.families, &self.others, theme_name, Some(color.to_string()));
-        self.family = selection.family;
-        self.other = selection.other;
-        self.style = selection.style;
-        self.color = selection.color.unwrap_or_else(|| color.to_string());
-        if self.family.is_none() && self.other.is_none() {
-            self.family = self.families.first().cloned();
+        let loaded = self.loaded_from(theme_name, color, auto);
+        self.set_fields(&loaded);
+        self.loaded = loaded;
+    }
+
+    /// O tema, a cor ou o modo mudaram por fora (terminal, config editado) com uma escolha em andamento: cada
+    /// campo que a pessoa não mexeu (igual ao carregado) acompanha; os que ela mudou ficam. O tema é a família
+    /// ou o de fora; o estilo, a cor (com o "fica a padrão") e o modo vão cada um por si.
+    pub fn follow(&mut self, theme_name: &str, color: &str, auto: bool) {
+        let fresh = self.loaded_from(theme_name, color, auto);
+        let (old, mut now) = (self.loaded.clone(), self.fields());
+        if (&now.family, &now.other) == (&old.family, &old.other) {
+            (now.family, now.other) = (fresh.family.clone(), fresh.other.clone());
         }
+        if now.style == old.style {
+            now.style = fresh.style;
+        }
+        if (&now.color, now.kept_default) == (&old.color, old.kept_default) {
+            (now.color, now.kept_default) = (fresh.color.clone(), fresh.kept_default);
+        }
+        if now.auto == old.auto {
+            now.auto = fresh.auto;
+        }
+        // O tema de fora tem o estilo dele; a família, só os que tem (como ao escolhê-la)
+        if now.family.is_none() {
+            if let Some(theme) = now.other.as_ref().and_then(|name| self.others.iter().find(|t| &t.name == name)) {
+                now.style = sf::style_of(theme);
+            }
+        }
+        self.set_fields(&now);
+        if let Some(family) = self.family.clone() {
+            if !family.has_style(self.style) {
+                self.style = if family.has_style(Style::Dark) { Style::Dark } else { Style::Light };
+            }
+        }
+        self.loaded = fresh;
     }
 
     /// Os ícones em uso (a entrada da lista): a escolha começa neles.
@@ -441,6 +520,49 @@ mod tests {
         c.icons = "Adwaita".into();
         c.follow_icons("Papirus");
         assert_eq!((c.icons.as_str(), c.wanted_icons().as_deref()), ("Adwaita", Some("Adwaita")));
+    }
+
+    #[test]
+    fn an_outside_change_moves_only_the_fields_not_touched() {
+        // Só os ícones mexidos: o tema de fora (o estilo claro) chega inteiro, e os ícones ficam
+        let mut c = choice();
+        c.load("Mint-Y-Dark-Teal", "teal", false);
+        c.load_icons("Yaru");
+        c.icons = "GNOME".into();
+        c.follow("Mint-Y-Teal", "teal", false);
+        c.follow_icons("Yaru");
+        assert_eq!((c.theme().as_deref(), c.icons.as_str()), (Some("Mint-Y-Teal"), "GNOME"));
+        // A cor mexida fica; o estilo acompanha
+        let mut c = choice();
+        c.load("Mint-Y-Dark-Teal", "teal", false);
+        c.pick_color("red");
+        c.follow("Mint-Y-Teal", "teal", false);
+        assert_eq!((c.style, c.color_name().as_str()), (Style::Light, "red"));
+        // O estilo mexido fica; a cor acompanha
+        let mut c = choice();
+        c.load("Mint-Y-Dark-Teal", "teal", false);
+        c.style = Style::Light;
+        c.follow("Mint-Y-Dark-Blue", "blue", false);
+        assert_eq!((c.style, c.color_name().as_str()), (Style::Light, "blue"));
+        // Um tema de fora escolhido fica, com o estilo dele, mesmo que o de fora mude o estilo
+        let mut c = choice();
+        c.load("Mint-Y-Dark-Teal", "teal", false);
+        c.pick_other(&theme("Arc-Dark", true, None));
+        c.follow("Mint-Y-Teal", "teal", false);
+        assert_eq!((c.other.as_deref(), c.style), (Some("Arc-Dark"), Style::Dark));
+        // O modo ligado à mão fica; a cor (à mão, a que volta ao desligar) acompanha
+        let mut c = choice();
+        c.load("Mint-Y-Dark-Teal", "teal", false);
+        c.set_auto(true);
+        c.follow("Mint-Y-Dark-Blue", "blue", false);
+        assert_eq!((c.auto, c.color.as_str()), (true, "blue"));
+        // Depois de acompanhar, o carregado é o novo: uma segunda mudança de fora compara com ele
+        let mut c = choice();
+        c.load("Mint-Y-Dark-Teal", "teal", false);
+        c.pick_color("red");
+        c.follow("Mint-Y-Teal", "teal", false);
+        c.follow("Mint-Y-Dark-Teal", "teal", false);
+        assert_eq!((c.style, c.color_name().as_str()), (Style::Dark, "red"));
     }
 
     #[test]
