@@ -10,6 +10,7 @@ pub mod themes;
 pub mod wallpaper_accent;
 
 use std::io::Read;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -32,6 +33,23 @@ impl std::fmt::Display for Error {
 impl From<std::io::Error> for Error {
     fn from(err: std::io::Error) -> Self {
         Error::Io(err)
+    }
+}
+
+/// O comando do tema que as mensagens mandam digitar: "sway-theme" nos dotfiles (o lançador em Python, ou o link
+/// do --rust-only, fica ao lado do binário em ~/.local/bin) e "swaydesk-theme" nos pacotes (no /usr/bin não há
+/// sway-theme; o do libexec é um link que o current_exe já resolve para o /usr/bin).
+pub fn command_name() -> &'static str {
+    static NAME: std::sync::OnceLock<&'static str> = std::sync::OnceLock::new();
+    NAME.get_or_init(|| command_beside(std::env::current_exe().ok().as_deref().and_then(Path::parent)))
+}
+
+/// O command_name de um binário nesta pasta.
+pub fn command_beside(dir: Option<&Path>) -> &'static str {
+    if dir.is_some_and(|d| d.join("sway-theme").exists()) {
+        "sway-theme"
+    } else {
+        "swaydesk-theme"
     }
 }
 
@@ -94,4 +112,20 @@ pub fn which(name: &str) -> bool {
     std::env::split_paths(&path).any(|dir| {
         std::fs::metadata(dir.join(name)).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_command_is_sway_theme_only_beside_its_launcher() {
+        let dir = std::env::temp_dir().join(format!("swaydesk-theme-command-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        assert_eq!(command_beside(Some(&dir)), "swaydesk-theme"); // o /usr/bin do pacote
+        std::fs::write(dir.join("sway-theme"), "#!/bin/sh\n").unwrap();
+        assert_eq!(command_beside(Some(&dir)), "sway-theme"); // o ~/.local/bin dos dotfiles
+        assert_eq!(command_beside(None), "swaydesk-theme");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
 }

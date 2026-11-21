@@ -626,8 +626,8 @@ msgstr "Abierto fuera de Sway (%s): los temas GTK y de iconos aplicados aquí ta
 
 #: home/.local/bin/sway_themes.py
 #, python-format
-msgid "unknown icon theme: %s. See them with: sway-theme icons"
-msgstr "tema de iconos desconocido: %s. Consulta los disponibles con: sway-theme icons"
+msgid "unknown icon theme: %(name)s. See them with: %(command)s icons"
+msgstr "tema de iconos desconocido: %(name)s. Consulta los disponibles con: %(command)s icons"
 
 #: home/.local/bin/sway_themes.py
 msgid "drawer"
@@ -639,13 +639,13 @@ msgstr "indicador de volumen (vuelve a iniciar sesión)"
 
 #: home/.local/bin/sway_themes.py
 #, python-format
-msgid "unknown folder color: %(color)s. See them with: sway-theme colors"
-msgstr "color de carpeta desconocido: %(color)s. Consulta los disponibles con: sway-theme colors"
+msgid "unknown folder color: %(color)s. See them with: %(command)s colors"
+msgstr "color de carpeta desconocido: %(color)s. Consulta los disponibles con: %(command)s colors"
 
 #: home/.local/bin/sway_themes.py
 #, python-format
-msgid "theme family not installed: %s. See them with: sway-theme families"
-msgstr "familia de temas no instalada: %s. Consulta las disponibles con: sway-theme families"
+msgid "theme family not installed: %(family)s. See them with: %(command)s families"
+msgstr "familia de temas no instalada: %(family)s. Consulta las disponibles con: %(command)s families"
 
 #: home/.local/bin/sway_themes.py
 #, python-format
@@ -654,8 +654,8 @@ msgstr "%(family)s no tiene versión %(style)s"
 
 #: home/.local/bin/sway_themes.py
 #, python-format
-msgid "theme not installed: %s. See them with: sway-theme list"
-msgstr "tema no instalado: %s. Consulta los disponibles con: sway-theme list"
+msgid "theme not installed: %(theme)s. See them with: %(command)s list"
+msgstr "tema no instalado: %(theme)s. Consulta los disponibles con: %(command)s list"
 
 #: home/.local/bin/sway_themes.py
 #, python-format

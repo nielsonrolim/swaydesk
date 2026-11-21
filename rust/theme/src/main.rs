@@ -22,18 +22,19 @@ use swaydesk_common::resident;
 use swaydesk_theme::families::{self as sf, Style};
 use swaydesk_theme::themes::{self as st, Applied, Auto};
 use swaydesk_theme::wallpaper_accent::{wallpaper, wallpaper_color};
-use swaydesk_theme::{desktop as dc, fill, fill_one, icon_themes, papirus as sp};
+use swaydesk_theme::{command_name, desktop as dc, fill, fill_one, icon_themes, papirus as sp};
 
+/// O nome do processo. Nas mensagens vai o command_name, que nos pacotes é o swaydesk-theme
 const PROGRAM: &str = "sway-theme";
 const COMMANDS: &str = "{list,current,init,families,colors,icons,set,pick,accent-auto}";
 
 fn usage_line() -> String {
-    format!("usage: {PROGRAM} [-h] {COMMANDS} ...")
+    format!("usage: {} [-h] {COMMANDS} ...", command_name())
 }
 
 /// O erro do argparse: o uso e a mensagem no stderr, com 2.
 fn usage_error(message: &str) -> ExitCode {
-    eprintln!("{}\n{PROGRAM}: error: {message}", usage_line());
+    eprintln!("{}\n{}: error: {message}", usage_line(), command_name());
     ExitCode::from(2)
 }
 
@@ -173,7 +174,7 @@ fn accent_auto() -> ExitCode {
             applied.map_or(ExitCode::SUCCESS, |(theme, applied)| report(&theme, applied))
         }
         Err(err) => {
-            eprintln!("{PROGRAM}: {err}");
+            eprintln!("{}: {err}", command_name());
             ExitCode::from(1)
         }
     }
@@ -207,7 +208,7 @@ fn init() -> ExitCode {
             ExitCode::from(1)
         }
         Err(err) => {
-            eprintln!("{PROGRAM}: {err}");
+            eprintln!("{}: {err}", command_name());
             ExitCode::from(1)
         }
     }

@@ -13,7 +13,7 @@ use swaydesk_common::i18n::tr;
 use crate::desktop::{self as dc, ICONS_WRAPPER};
 use crate::families::{self as sf, Style};
 use crate::papirus as sp;
-use crate::{fill, fill_one, run, run_timeout, Error};
+use crate::{command_name, fill, fill_one, run, run_timeout, Error};
 
 /// Em ordem: a primeira definição encontrada é a cor do tema
 const COLOR_NAMES: &[&str] = &["accent_color", "theme_selected_bg_color", "selected_bg_color"];
@@ -376,7 +376,7 @@ pub fn config_icon_theme(config: &Config, remove: bool) -> String {
 pub fn resolve_icons(name: &str, chosen: &Theme) -> Result<String, Error> {
     let entry = crate::icon_themes::entry_of(name);
     if !crate::icon_themes::installed("").iter().any(|t| t.id == entry) {
-        return Err(Error::Value(fill_one(&tr("unknown icon theme: %s. See them with: sway-theme icons"), name)));
+        return Err(Error::Value(fill(&tr("unknown icon theme: %(name)s. See them with: %(command)s icons"), &[("name", name), ("command", command_name())])));
     }
     if entry != crate::icon_themes::PAPIRUS {
         return Ok(entry.to_string());
@@ -698,7 +698,7 @@ pub fn pick_icons(
 fn check_folders(folders: Option<&str>) -> Result<(), Error> {
     match folders {
         Some(color) if !color.is_empty() && papirus_color(color).is_none() => {
-            Err(Error::Value(fill(&tr("unknown folder color: %(color)s. See them with: sway-theme colors"), &[("color", color)])))
+            Err(Error::Value(fill(&tr("unknown folder color: %(color)s. See them with: %(command)s colors"), &[("color", color), ("command", command_name())])))
         }
         _ => Ok(()),
     }
@@ -713,13 +713,13 @@ pub struct Applied {
 pub fn pick(family: &str, style: Style, folders: &str, auto: Option<bool>, icons: Option<&str>) -> Result<(String, Applied), Error> {
     // O "" (a pasta mais perto do destaque) só vale no set: o pick tira a cor do nome
     if folders.is_empty() {
-        return Err(Error::Value(fill(&tr("unknown folder color: %(color)s. See them with: sway-theme colors"), &[("color", folders)])));
+        return Err(Error::Value(fill(&tr("unknown folder color: %(color)s. See them with: %(command)s colors"), &[("color", folders), ("command", command_name())])));
     }
     check_folders(Some(folders))?;
     let themes = discover();
     let (families, _others) = sf::group(&themes);
     let Some(found) = families.iter().find(|f| fold(&f.name) == fold(family)) else {
-        return Err(Error::Value(fill_one(&tr("theme family not installed: %s. See them with: sway-theme families"), family)));
+        return Err(Error::Value(fill(&tr("theme family not installed: %(family)s. See them with: %(command)s families"), &[("family", family), ("command", command_name())])));
     };
     let accent = papirus_color(folders).unwrap_or_default();
     let Some(theme) = sf::resolve(found, style, accent, folders) else {
@@ -754,7 +754,7 @@ fn has_key(file: &Path, key: &str) -> bool {
 pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: Option<Vec<Theme>>, auto: Option<bool>, icons: Option<&str>) -> Result<Applied, Error> {
     let available = themes.unwrap_or_else(discover);
     let Some(chosen) = available.iter().find(|t| t.name == theme).cloned() else {
-        return Err(Error::Value(fill_one(&tr("theme not installed: %s. See them with: sway-theme list"), theme)));
+        return Err(Error::Value(fill(&tr("theme not installed: %(theme)s. See them with: %(command)s list"), &[("theme", theme), ("command", command_name())])));
     };
     if let Some(accent) = accent.filter(|a| !is_accent(a)) {
         return Err(Error::Value(fill(&tr("invalid color: %(color)s (use one like %(example)s)"), &[("color", accent), ("example", DEFAULT_ACCENT)])));
