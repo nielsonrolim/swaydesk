@@ -257,18 +257,20 @@ case $pkg in
     files=$root/packaging/files
     install -Dm644 "$files/greeter-sway.conf" "$dest/usr/share/swaydesk-greeter/sway.conf"
     install -d "$dest/usr/share/swaydesk-greeter" "$dest/usr/lib/systemd/system/greetd.service.d" "$dest/usr/lib/tmpfiles.d"
-    # O serviço do PAM das sessões das pessoas: no Arch, o /etc/pam.d/greetd não chama o gnome-keyring, e o
-    # pacote traz o próprio serviço (SWAYDESK_GREETER_PAM, do PKGBUILD), sem mexer no arquivo do greetd. A
-    # sessão do greeter fica com o serviço greetd, como antes. No Debian e no Ubuntu, o /etc/pam.d/greetd já
-    # chama o gnome-keyring: nada muda
-    edits=(-e "s|@USER@|$greeter_user|g" -e "s|@VT@|$greeter_vt|g")
-    if [[ -n ${SWAYDESK_GREETER_PAM:-} ]]; then
-      install -Dm644 "$files/greeter-pam-arch" "$dest/etc/pam.d/$SWAYDESK_GREETER_PAM"
-      edits+=(-e "s|^@GENERAL@\$|# As sessões das pessoas: o serviço do PAM com o gnome-keyring (/etc/pam.d/$SWAYDESK_GREETER_PAM)\\n[general]\\nservice = \"$SWAYDESK_GREETER_PAM\"\\n|"
-              -e "s|^@GREETER_SERVICE@\$|# A sessão da própria tela: o serviço do greetd, sem chaveiro\\nservice = \"greetd\"|")
-    else
-      edits+=(-e '/^@GENERAL@$/d' -e '/^@GREETER_SERVICE@$/d')
-    fi
+    # O serviço do PAM das sessões das pessoas: o pacote traz o próprio, o /etc/pam.d/swaydesk-greeter, sem
+    # mexer no arquivo do greetd. No Arch (SWAYDESK_GREETER_PAM_STACK=arch, do PKGBUILD), o /etc/pam.d/greetd
+    # não chama o gnome-keyring. No Debian e no Ubuntu, é o /etc/pam.d/greetd do Debian 13 (o login, com o
+    # LANG do /etc/default/locale, e o gnome-keyring): o greetd do Debian testing trocou o dele por só
+    # common-*, e a sessão saía sem o LANG e sem o chaveiro. A sessão do greeter fica com o serviço greetd
+    pam_stack=${SWAYDESK_GREETER_PAM_STACK:-debian}
+    case $pam_stack in
+      arch|debian) ;;
+      *) echo "install-tree: SWAYDESK_GREETER_PAM_STACK must be arch or debian" >&2; exit 2 ;;
+    esac
+    install -Dm644 "$files/greeter-pam-$pam_stack" "$dest/etc/pam.d/swaydesk-greeter"
+    edits=(-e "s|@USER@|$greeter_user|g" -e "s|@VT@|$greeter_vt|g"
+           -e "s|^@GENERAL@\$|# As sessões das pessoas: o serviço do PAM do pacote (/etc/pam.d/swaydesk-greeter)\\n[general]\\nservice = \"swaydesk-greeter\"\\n|"
+           -e "s|^@GREETER_SERVICE@\$|# A sessão da própria tela: o serviço do greetd, sem chaveiro\\nservice = \"greetd\"|")
     sed "${edits[@]}" "$files/greeter-greetd.toml" > "$dest/usr/share/swaydesk-greeter/greetd.toml"
     install -m644 "$files/greeter-greetd.service.conf" "$dest/usr/lib/systemd/system/greetd.service.d/swaydesk-greeter.conf"
     sed "s|@USER@|$greeter_user|g" "$files/greeter-tmpfiles.conf" > "$dest/usr/lib/tmpfiles.d/swaydesk-greeter.conf"

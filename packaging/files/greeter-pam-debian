@@ -1,0 +1,15 @@
+#%PAM-1.0
+# O login pela tela do Sway Desktop (swaydesk-greeter) no Debian e no Ubuntu: o /etc/pam.d/greetd do greetd do
+# Debian 13 e do Ubuntu 26.04. O login traz o pam_env com o /etc/default/locale (o LANG da sessão) e o resto do
+# login em texto; o gnome-keyring cria e destrava o chaveiro "login" com a senha da pessoa. O greetd do Debian
+# testing trocou o arquivo dele por só common-auth/account/session: sem o LANG (o desktop em inglês) e sem o
+# chaveiro. Com este serviço, as sessões abertas pela tela são iguais nas três. O greetd.toml do
+# swaydesk-greeter usa este serviço só nas sessões das pessoas; a do próprio greeter (o usuário _greetd, sem
+# chaveiro) fica com o serviço greetd. Sem o pacote, nada mais aponta para cá.
+@include login
+
+-auth        optional        pam_gnome_keyring.so
+-auth        optional        pam_kwallet5.so
+
+-session     optional        pam_gnome_keyring.so auto_start
+-session     optional        pam_kwallet5.so auto_start

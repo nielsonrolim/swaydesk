@@ -45,6 +45,16 @@ The account photo: PNG or JPEG, up to 2 MiB and 2048x2048.
 .TP
 .I /etc/default/keyboard, /etc/locale.conf, /etc/default/locale
 The system keyboard (or systemd's, without the first file) and language.
+.TP
+.I /etc/pam.d/swaydesk\-greeter
+The PAM service of the sessions opened from the login screen (greetd.toml's
+.BR [general] " service" ).
+On Debian and Ubuntu it is the login stack, with the system language from /etc/default/locale, plus
+gnome\-keyring, which unlocks the login keyring with the login password; on Arch, system\-local\-login plus
+gnome\-keyring. The login screen's own session keeps greetd's service.
+Changes to the PAM of the logins from this screen (a fingerprint reader, a security key) go in this file, not in
+.IR /etc/pam.d/greetd ;
+what pam\-auth\-update puts in common\-auth applies to both.
 .SH NOTES
 To go back to the greeter of /etc/greetd/config.toml without removing the package:
 .PP
