@@ -4,7 +4,8 @@
 # mesmo Release protege contra um download corrompido ou cortado, não contra quem controla o Release: não é
 # uma assinatura (decisão do usuário: sem GPG).
 #
-# Cada ISO entra com o nome swaydesk-X.Y.Z-<distro>.iso (debian13-amd64, ubuntu26.04-amd64, arch-x86_64). O
+# Cada ISO entra com o nome swaydesk-X.Y.Z-<distro>.iso (debian13-amd64, debiantesting-amd64, ubuntu26.04-amd64,
+# arch-x86_64). O
 # GitHub não aceita um arquivo de Release com mais de 2 GiB: uma ISO acima disso NÃO é publicada (nem aqui nem
 # na página de download do site; decisão do usuário: nada de dividir, enxugar ou outro servidor). O script
 # avisa qual ficou de fora e com que tamanho, e segue com as outras.
@@ -12,7 +13,7 @@
 # Depois do envio, baixa do Release o que acabou de subir e confere com o SHA256SUMS: o que o usuário baixa é
 # o que foi conferido aqui. Um Release que já tem um desses arquivos não é sobrescrito (nada de --clobber).
 #
-# uso: packaging/release-isos.sh [--dry-run] vX.Y.Z PASTA debian13=ISO ubuntu2604=ISO arch=ISO
+# uso: packaging/release-isos.sh [--dry-run] vX.Y.Z PASTA debian13=ISO [debiantesting=ISO] ubuntu2604=ISO arch=ISO
 #      packaging/release-isos.sh [--dry-run] --add vX.Y.Z PASTA arch=ISO
 #      PASTA recebe os nomes finais (links físicos ou cópias), o SHA256SUMS e a conferência do download: fica
 #      fora do /tmp, porque são gigabytes. Com --dry-run, monta e confere a PASTA e mostra o que enviaria.
@@ -40,7 +41,7 @@ while [[ ${1:-} == --* ]]; do
   shift
 done
 usage() {
-  echo "uso: packaging/release-isos.sh [--dry-run] vX.Y.Z PASTA debian13=ISO ubuntu2604=ISO arch=ISO" >&2
+  echo "uso: packaging/release-isos.sh [--dry-run] vX.Y.Z PASTA debian13=ISO [debiantesting=ISO] ubuntu2604=ISO arch=ISO" >&2
   echo "     packaging/release-isos.sh [--dry-run] --add vX.Y.Z PASTA DISTRO=ISO" >&2
   exit 2
 }
@@ -50,9 +51,11 @@ shift 2
 [[ $tag =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]] || { echo "release-isos: the tag must be vX.Y.Z, not $tag" >&2; exit 2; }
 version=${BASH_REMATCH[1]}
 
-declare -A suffix=([debian13]=debian13-amd64 [ubuntu2604]=ubuntu26.04-amd64 [arch]=arch-x86_64)
-declare -A label=([debian13]="Debian 13" [ubuntu2604]="Ubuntu 26.04" [arch]="Arch Linux")
-order=(debian13 ubuntu2604 arch)
+declare -A suffix=([debian13]=debian13-amd64 [debiantesting]=debiantesting-amd64 [ubuntu2604]=ubuntu26.04-amd64
+                   [arch]=arch-x86_64)
+declare -A label=([debian13]="Debian 13" [debiantesting]="Debian Testing" [ubuntu2604]="Ubuntu 26.04"
+                  [arch]="Arch Linux")
+order=(debian13 debiantesting ubuntu2604 arch)
 declare -A source=()
 for arg in "$@"; do
   key=${arg%%=*} path=${arg#*=}
@@ -114,19 +117,32 @@ add_mode() {
     || { echo "release-isos: --add: the old lines changed" >&2; exit 1; }
   echo "== SHA256SUMS (new)"; cat "$out/SHA256SUMS.new"
 
-  # A seção "ISOs" do texto ganha as linhas novas depois da última linha de ISO, na ordem das distros
+  # A seção "ISOs" do texto ganha as linhas novas na ordem das distros: cada uma antes da primeira linha de ISO
+  # que vem depois dela em order (a de Debian Testing antes da do Ubuntu), ou depois da última linha de ISO
   local body
   body=$("$gh" release view "$tag" -R "$repo" --json body -q .body)
   grep -qxF '### ISOs' <<<"$body" || { echo "release-isos: --add: $tag's text has no ISOs section" >&2; exit 1; }
-  local entries=() key
-  for key in "${order[@]}"; do
-    name=swaydesk-$version-${suffix[$key]}.iso
-    for f in "${files[@]}"; do if [[ $f == "$name" ]]; then entries+=("- \`$name\`: ${label[$key]}"); fi; done
+  local entries=() ranks=() key i
+  for i in "${!order[@]}"; do
+    key=${order[$i]} name=swaydesk-$version-${suffix[$key]}.iso
+    ranks+=("$i ${name}")
+    for f in "${files[@]}"; do if [[ $f == "$name" ]]; then entries+=("$i"$'\t'"- \`$name\`: ${label[$key]}"); fi; done
   done
-  printf '%s\n' "$body" | awk -v new="$(printf '%s\n' "${entries[@]}")" -v pat="^- \`swaydesk-$version-" '
+  printf '%s\n' "$body" | awk -v new="$(printf '%s\n' "${entries[@]}")" -v ranks="$(printf '%s\n' "${ranks[@]}")" \
+      -v pat="^- \`swaydesk-$version-" '
+    BEGIN { n = split(new, e, "\n"); for (j = 1; j <= n; j++) { r[j] = substr(e[j], 1, index(e[j], "\t") - 1) + 0
+                                                                  e[j] = substr(e[j], index(e[j], "\t") + 1) }
+            m = split(ranks, k, "\n"); for (j = 1; j <= m; j++) { split(k[j], kv, " "); rank["- `" kv[2] "`"] = kv[1] + 0 } }
     { lines[NR] = $0 } $0 ~ pat { last = NR }
     END { if (!last) exit 1
-          for (i = 1; i <= NR; i++) { print lines[i]; if (i == last) print new } }' > "$out/release-body.md" \
+          for (i = 1; i <= NR; i++) {
+            if (lines[i] ~ pat) {
+              mine = lines[i]; sub(/: .*/, "", mine)
+              if (mine in rank) for (j = 1; j <= n; j++) if (!done[j] && r[j] < rank[mine]) { print e[j]; done[j] = 1 }
+            }
+            print lines[i]
+            if (i == last) for (j = 1; j <= n; j++) if (!done[j]) { print e[j]; done[j] = 1 }
+          } }' > "$out/release-body.md" \
     || { echo "release-isos: --add: no ISO line in $tag's ISOs section" >&2; exit 1; }
   echo "== Release text (new)"; cat "$out/release-body.md"
 

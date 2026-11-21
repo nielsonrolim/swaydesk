@@ -59,10 +59,11 @@ Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último sn
 
    Sem esse passo, um snapshot de depois da tag sairia `X.Y.Z~git…`, abaixo da versão publicada, e ninguém o receberia. O `version.sh` recusa esse caso, e o `tests/test_packaging.py` confere que as versões batem.
 
-7. As ISOs, quando as três versões finais estiverem prontas e testadas (pode ser dias depois, com o `main`
+7. As ISOs, quando as versões finais estiverem prontas e testadas (pode ser dias depois, com o `main`
    já adiante: o script não depende do commit): `packaging/release-isos.sh vX.Y.Z PASTA
-   debian13=… ubuntu2604=… arch=…` (antes com `--dry-run`). Ele as anexa ao Release do espelho com os nomes
-   `swaydesk-X.Y.Z-debian13-amd64.iso`, `swaydesk-X.Y.Z-ubuntu26.04-amd64.iso` e `swaydesk-X.Y.Z-arch-x86_64.iso`
+   debian13=… [debiantesting=…] ubuntu2604=… arch=…` (antes com `--dry-run`; a de Debian Testing é opcional). Ele as
+   anexa ao Release do espelho com os nomes `swaydesk-X.Y.Z-debian13-amd64.iso`,
+   `swaydesk-X.Y.Z-debiantesting-amd64.iso`, `swaydesk-X.Y.Z-ubuntu26.04-amd64.iso` e `swaydesk-X.Y.Z-arch-x86_64.iso`
    e um `SHA256SUMS` (só SHA-256, sem GPG), baixa de volta e confere, e põe uma seção "ISOs" no fim do texto do
    Release. Uma ISO com mais de 2 GiB (o limite de um arquivo de Release no GitHub) **não é publicada**, nem no
    Release nem na página de download do site: o script avisa qual ficou de fora, com o tamanho, e segue com as
@@ -80,9 +81,9 @@ Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último sn
    `SHA256SUMS`, e o `.old` sai. **Entre os dois renomes (uma fração de segundo), quem baixar o `SHA256SUMS`
    recebe um 404**: o GitHub não troca dois arquivos de uma vez, e esse intervalo foi aceito. Depois da troca,
    o script baixa todas as ISOs listadas e confere todas, e só então acrescenta a linha da ISO na seção do
-   texto. Se o segundo renome falhar, o antigo volta ao nome. Uma sobra (`SHA256SUMS.new` ou `.old`) de uma
+   texto, na ordem das distros. Se o segundo renome falhar, o antigo volta ao nome. Uma sobra (`SHA256SUMS.new` ou `.old`) de uma
    execução interrompida faz o `--add` recusar até ser tirada. A conferência final baixa todas as ISOs do Release: a `PASTA` precisa de
-   espaço para todas (uns 6 GB com três).
+   espaço para todas (uns 8 GB com quatro).
 
 ### Uma revisão só do empacotamento (X.Y.Z-N)
 
