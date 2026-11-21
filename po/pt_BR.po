@@ -529,6 +529,10 @@ msgid "Dark"
 msgstr "Escuro"
 
 #: home/.local/bin/sway-theme-app
+msgid "Icons"
+msgstr "Ícones"
+
+#: home/.local/bin/sway-theme-app
 msgid "Accent color"
 msgstr "Cor de destaque"
 
@@ -560,6 +564,11 @@ msgid "%s folders"
 msgstr "pastas %s"
 
 #: home/.local/bin/sway-theme-app
+#, python-format
+msgid "The folders of %s don't change color: the color changes the accent only."
+msgstr "As pastas do %s não mudam de cor: a cor muda só o destaque."
+
+#: home/.local/bin/sway-theme-app
 msgid "Will apply:"
 msgstr "Será aplicado:"
 
@@ -574,8 +583,21 @@ msgid "%(family)s has no %(color)s variant: it uses %(theme)s. The bar, the fold
 msgstr "%(family)s não tem a variante %(color)s: usa o %(theme)s. A barra, as pastas e os apps GTK 4 ficam com a cor exata."
 
 #: home/.local/bin/sway-theme-app
+#, python-format
+msgid "%(family)s has no %(color)s variant: it uses %(theme)s. The bar and the GTK 4 apps get the exact color."
+msgstr "%(family)s não tem a variante %(color)s: usa o %(theme)s. A barra e os apps GTK 4 ficam com a cor exata."
+
+#: home/.local/bin/sway-theme-app
 msgid "This theme keeps its own colors: the accent changes the bar, the folders and the GTK 4 apps."
 msgstr "Este tema mantém as próprias cores: o destaque muda a barra, as pastas e os apps GTK 4."
+
+#: home/.local/bin/sway-theme-app
+msgid "This theme keeps its own colors: the accent changes the bar and the GTK 4 apps."
+msgstr "Este tema mantém as próprias cores: o destaque muda a barra e os apps GTK 4."
+
+#: home/.local/bin/sway-theme-app
+msgid "Papirus (light or dark, with the style)"
+msgstr "Papirus (claro ou escuro, com o estilo)"
 
 #: home/.local/bin/sway-theme-app
 #, python-format
@@ -3048,26 +3070,6 @@ msgstr "Outro agente de senhas está ativo"
 #: rust/nm/src/rules.rs rust/nm/src/standalone/tests.rs
 msgid "No network service running"
 msgstr "Nenhum serviço de rede ativo"
-
-#: rust/theme-app/src/main.rs
-msgid "Icons"
-msgstr "Ícones"
-
-#: rust/theme-app/src/main.rs
-msgid "Papirus (light or dark, with the style)"
-msgstr "Papirus (claro ou escuro, com o estilo)"
-
-#: rust/theme-app/src/main.rs
-msgid "The folders of %s don't change color: the color changes the accent only."
-msgstr "As pastas do %s não mudam de cor: a cor muda só o destaque."
-
-#: rust/theme-app/src/main.rs
-msgid "%(family)s has no %(color)s variant: it uses %(theme)s. The bar and the GTK 4 apps get the exact color."
-msgstr "%(family)s não tem a variante %(color)s: usa o %(theme)s. A barra e os apps GTK 4 ficam com a cor exata."
-
-#: rust/theme-app/src/main.rs
-msgid "This theme keeps its own colors: the accent changes the bar and the GTK 4 apps."
-msgstr "Este tema mantém as próprias cores: o destaque muda a barra e os apps GTK 4."
 
 #: home/.config/sway/keys/base.conf
 msgid "Session and apps"

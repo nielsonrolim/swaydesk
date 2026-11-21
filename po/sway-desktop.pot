@@ -517,6 +517,10 @@ msgid "Dark"
 msgstr ""
 
 #: home/.local/bin/sway-theme-app
+msgid "Icons"
+msgstr ""
+
+#: home/.local/bin/sway-theme-app
 msgid "Accent color"
 msgstr ""
 
@@ -548,6 +552,11 @@ msgid "%s folders"
 msgstr ""
 
 #: home/.local/bin/sway-theme-app
+#, python-format
+msgid "The folders of %s don't change color: the color changes the accent only."
+msgstr ""
+
+#: home/.local/bin/sway-theme-app
 msgid "Will apply:"
 msgstr ""
 
@@ -562,7 +571,20 @@ msgid "%(family)s has no %(color)s variant: it uses %(theme)s. The bar, the fold
 msgstr ""
 
 #: home/.local/bin/sway-theme-app
+#, python-format
+msgid "%(family)s has no %(color)s variant: it uses %(theme)s. The bar and the GTK 4 apps get the exact color."
+msgstr ""
+
+#: home/.local/bin/sway-theme-app
 msgid "This theme keeps its own colors: the accent changes the bar, the folders and the GTK 4 apps."
+msgstr ""
+
+#: home/.local/bin/sway-theme-app
+msgid "This theme keeps its own colors: the accent changes the bar and the GTK 4 apps."
+msgstr ""
+
+#: home/.local/bin/sway-theme-app
+msgid "Papirus (light or dark, with the style)"
 msgstr ""
 
 #: home/.local/bin/sway-theme-app
@@ -3035,26 +3057,6 @@ msgstr ""
 
 #: rust/nm/src/rules.rs rust/nm/src/standalone/tests.rs
 msgid "No network service running"
-msgstr ""
-
-#: rust/theme-app/src/main.rs
-msgid "Icons"
-msgstr ""
-
-#: rust/theme-app/src/main.rs
-msgid "Papirus (light or dark, with the style)"
-msgstr ""
-
-#: rust/theme-app/src/main.rs
-msgid "The folders of %s don't change color: the color changes the accent only."
-msgstr ""
-
-#: rust/theme-app/src/main.rs
-msgid "%(family)s has no %(color)s variant: it uses %(theme)s. The bar and the GTK 4 apps get the exact color."
-msgstr ""
-
-#: rust/theme-app/src/main.rs
-msgid "This theme keeps its own colors: the accent changes the bar and the GTK 4 apps."
 msgstr ""
 
 #: home/.config/sway/keys/base.conf
