@@ -62,7 +62,7 @@ usage() {
 (($# >= 3)) || usage
 tag=$1 out=$2
 shift 2
-[[ $tag =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]] || { echo "release-isos: the tag must be vX.Y.Z, not $tag" >&2; exit 2; }
+[[ $tag =~ ^v([0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?)$ ]] || { echo "release-isos: the tag must be vX.Y.Z or vX.Y.Z.W, not $tag" >&2; exit 2; }
 version=${BASH_REMATCH[1]}
 
 declare -A suffix=([debian13]=debian13-amd64 [debiantesting]=debiantesting-amd64 [ubuntu2604]=ubuntu26.04-amd64

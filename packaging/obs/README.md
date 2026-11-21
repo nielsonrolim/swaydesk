@@ -127,6 +127,33 @@ Arch. Os nomes de arquivo mudam, e o CDN do OBS não serve um binário velho gua
    (o `%CSIZE%` do `.db` do Arch, o `Size:` do `Packages`) igual ao que o download entrega, VMs (`apt upgrade` e
    `pacman -Syu` a partir do `-N-1`) e uma nota no Release `vX.Y.Z` do espelho.
 
+### Uma correção com código (X.Y.Z.W)
+
+Quando um lançamento precisa de uma correção no código (o que está no orig) e o `main` já está na versão
+seguinte, a versão ganha uma quarta parte: `X.Y.Z.1`. Ela fica acima da `X.Y.Z` e abaixo da `X.Y.(Z+1)` no dpkg
+e no pacman (`tests/test_version.py`), e tem um orig próprio.
+
+1. Uma branch `release/X.Y.Z`, a partir da tag `vX.Y.Z`. Cada correção entra primeiro no `main` e depois na
+   branch, por cherry-pick, num PR para a `release/X.Y.Z`. Este suporte à quarta parte (o `version.sh`, o
+   `pkgbuild.py`, o `mirror.sh --branch`, o `release-isos.sh`) também vai por cherry-pick.
+2. O Cargo só aceita semver, então fica na `X.Y.Z`. A versão dos pacotes vem de uma chave que o Cargo ignora,
+   no `rust/Cargo.toml`:
+
+   ```toml
+   [workspace.metadata.swaydesk]
+   release = "X.Y.Z.1"
+   ```
+   Com ela, `version.sh` dá o snapshot `X.Y.Z.1~git…` (Arch `X.Y.Z.1git…`), e na tag `vX.Y.Z.1` o lançamento. Nenhum
+   componente mostra a versão do Cargo (`tests/test_packaging.py`). `pkgver=X.Y.Z.1` no `PKGBUILD`, as man
+   pages com "swaydesk X.Y.Z.1" e o `debian/changelog` com a entrada `X.Y.Z.1-1`.
+3. O lançamento como os outros, na branch: PR de lançamento para a `release/X.Y.Z`, a tag
+   `git tag -a vX.Y.Z.1 -m "Swaydesk X.Y.Z.1"`, `make-source.sh` (orig novo) e `push.sh` de um clone nessa tag.
+4. O espelho: `packaging/mirror.sh --branch release/X.Y.Z --tag vX.Y.Z.1` (HEAD = `origin/release/X.Y.Z`).
+   Publica na branch `release/X.Y.Z` do espelho, criada na primeira vez a partir da tag `vX.Y.Z` de lá, e a
+   `main` do espelho fica como está. As ISOs vão com `release-isos.sh vX.Y.Z.1` (do `main`).
+5. No `main`, depois: a entrada `X.Y.Z.1` do CHANGELOG público, a linha de versão atual dos READMEs e a
+   entrada do `debian/changelog`, e o `mirror.sh` de sempre.
+
 O OBS não recompila sozinho: os repositórios têm `rebuild="local"` (`meta/repositories.xml`), e só uma
 mudança da nossa fonte gera pacotes. Se uma atualização da distro quebrar uma ABI (no Arch, um soname novo),
 a saída é uma revisão `-N`. **Nunca dispare um rebuild (ou um wipe) de um lançamento** no OBS, nem à mão: o
