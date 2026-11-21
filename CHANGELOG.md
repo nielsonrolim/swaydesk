@@ -36,7 +36,8 @@ The accent color now follows the wallpaper, the icon theme can be chosen, Swayde
 
 ### Install images
 
-- **App store**: GNOME Software with Flathub, on the three images. On Debian and Ubuntu it also installs and updates the distro's packages and the firmware; on Arch it handles Flatpak apps, and the update notice handles the rest.
+- **App store**: GNOME Software with Flathub, on the four images. On Debian and Ubuntu it also installs and updates the distro's packages and the firmware; on Arch it handles Flatpak apps, and the update notice handles the rest.
+- **Debian testing image** (`swaydesk-0.1.3-debiantesting-amd64.iso`): a live and installer image on Debian testing (forky), built like the Debian 13 one: the same installer, the app store (GNOME Software with Flathub, Debian's packages and firmware updates), English, Portuguese and Spanish, and the NVIDIA driver under Secure Boot. The installed system follows testing (`testing`, `testing-updates`, `testing-security`), so its packages keep moving; for a stable system, use the Debian 13 image.
 - **Spanish** in the installer, on its codecs page and in the notices after the install, and offline in the live session.
 - **NVIDIA under Secure Boot on Debian**: with Secure Boot on, the codecs and drivers box now installs the NVIDIA driver too, signed with a key of the computer. After the first login a notice asks you to run `sudo swaydesk-extras`, which shows a one-time password of 8 digits, and at the next restart you enroll the key on MokManager's blue screen with that password. Before, the driver was left out until you turned Secure Boot off.
 - On Debian and Ubuntu, the installer's keyboard test field now follows the layout you pick. In 0.1.2 that worked only on Arch.
@@ -45,6 +46,7 @@ The accent color now follows the wallpaper, the icon theme can be chosen, Swayde
 ### Known limitations
 
 - Debian testing and Arch are rolling releases: Swaydesk is tested on them at every release, but updates to the distributions themselves may need fixes afterwards.
+- The Debian testing image is a snapshot of its build day: after a new testing kernel, the NVIDIA driver (DKMS) can lag behind for a while. It has no HP printer drivers (`hplip`, not in testing right now); install them with apt when they return.
 - In the installer, a Latin American Spanish locale (es_MX, es_AR…) preselects the Spain keyboard layout; pick **Spanish (Latin American)** by hand. The date and number formats follow the location detected from your network, not the language you pick.
 - In Spanish, the keyring's password prompt on the first login is partly in English; that text comes from gnome-keyring.
 - On Ubuntu, the progress line of the screen shown while updates install at restart ("55% complete") stays in English; it comes from PackageKit.
