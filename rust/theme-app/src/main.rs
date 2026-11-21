@@ -196,6 +196,8 @@ struct Window {
     icons_dropdown: gtk4::DropDown,
     /// Os temas de ícones da faixa, um por nome (a busca de cada ícone usa a herança do tema)
     icon_lookups: RefCell<HashMap<String, gtk4::IconTheme>>,
+    /// O Papirus da faixa: o que contrasta com o fundo da janela, não o do estilo escolhido
+    strip_papirus: RefCell<String>,
     folders_note: gtk4::Label,
 }
 
@@ -457,6 +459,7 @@ impl Window {
             icons_model,
             icons_dropdown,
             icon_lookups: RefCell::new(HashMap::new()),
+            strip_papirus: RefCell::new(String::new()),
             folders_note,
         });
         this.set_icons_factory();
@@ -706,12 +709,54 @@ impl Window {
         self.icon_themes.borrow().iter().find(|t| t.id == id).map_or_else(|| id.to_string(), |t| t.label.clone())
     }
 
-    /// A busca dos ícones de um tema da lista (o Papirus no estilo escolhido), sem o gerado nem as reservas: a
-    /// faixa mostra o tema como ele é.
+    /// O nome de uns ícones no resumo e na nota: o rótulo da lista ("GNOME", não "gnome"). O Papirus fica com a
+    /// variante (Papirus-Dark), que é o que vai ser gravado.
+    fn icons_display(&self, name: &str) -> String {
+        if sp::is_papirus(name) {
+            return name.to_string();
+        }
+        self.icon_themes.borrow().iter().find(|t| t.id == name).map_or_else(|| name.to_string(), |t| t.label.clone())
+    }
+
+    /// O Papirus que se lê no fundo da janela agora: o escuro (ícones claros) com texto claro.
+    fn papirus_for_window(&self) -> String {
+        let fg = self.window.color();
+        let light_text = 0.299 * fg.red() + 0.587 * fg.green() + 0.114 * fg.blue() > 0.5;
+        let wanted = sf::icons_for_style(if light_text { Style::Dark } else { Style::Light });
+        if dc::icons_installed(wanted) { wanted.to_string() } else { sp::THEMES.iter().find(|n| dc::icons_installed(n)).unwrap_or(&wanted).to_string() }
+    }
+
+    /// Com o fundo da janela trocado (outro tema GTK aplicado), as linhas já desenhadas refazem a faixa do Papirus.
+    fn sync_strips(&self) {
+        let name = self.papirus_for_window();
+        if *self.strip_papirus.borrow() == name {
+            return;
+        }
+        *self.strip_papirus.borrow_mut() = name;
+        let n = self.icons_model.n_items();
+        if n == 0 {
+            return;
+        }
+        // Trocar as linhas pelas mesmas refaz o bind de cada uma (o queue_draw só redesenha as imagens antigas)
+        let ids: Vec<String> = (0..n).filter_map(|i| self.icons_model.string(i)).map(|s| s.to_string()).collect();
+        let ids: Vec<&str> = ids.iter().map(String::as_str).collect();
+        let selected = self.icons_dropdown.selected();
+        let updating = self.updating.replace(true);
+        self.icons_model.splice(0, n, &ids);
+        self.icons_dropdown.set_selected(selected);
+        self.updating.set(updating);
+    }
+
+    /// A busca dos ícones de um tema da lista, sem o gerado nem as reservas: a faixa mostra o tema como ele é. O
+    /// Papirus vem na variante que contrasta com o fundo da lista.
     fn icon_lookup(&self, id: &str) -> gtk4::IconTheme {
         let name = if id == it::PAPIRUS {
-            let style = sf::icons_for_style(self.choice.borrow().style);
-            if dc::icons_installed(style) { style.to_string() } else { sp::THEMES.iter().find(|n| dc::icons_installed(n)).unwrap_or(&style).to_string() }
+            let mut name = self.strip_papirus.borrow().clone();
+            if name.is_empty() {
+                name = self.papirus_for_window();
+                *self.strip_papirus.borrow_mut() = name.clone();
+            }
+            name
         } else {
             id.to_string()
         };
@@ -784,6 +829,9 @@ impl Window {
     /// Uma mudança de fora (terminal, config editado). Se a escolha era a aplicada, ela acompanha: senão
     /// o Aplicar ligaria e desfaria a mudança. Uma escolha em andamento fica.
     fn on_theme_changed(&self) {
+        // O CSS do tema novo vale depois deste aviso: a cor do texto da janela muda só no próximo quadro
+        let strips = self.with(|w, ()| w.sync_strips());
+        glib::timeout_add_local_once(Duration::from_millis(300), move || strips(()));
         if self.applying.get() {
             return; // o fim da aplicação passa por aqui
         }
@@ -898,8 +946,7 @@ impl Window {
         let position = self.icon_themes.borrow().iter().position(|t| t.id == chosen_icons);
         self.icons_dropdown.set_selected(position.map_or(gtk4::INVALID_LIST_POSITION, |p| p as u32));
         self.icons_dropdown.set_sensitive(!self.applying.get() && self.icons_model.n_items() > 0);
-        // A faixa do Papirus segue o estilo
-        self.icons_dropdown.queue_draw();
+        self.sync_strips();
         for (_, _, area) in &self.swatches {
             area.queue_draw();
         }
@@ -910,15 +957,16 @@ impl Window {
         self.color_name.set_text(&if default_accent { accent.clone() } else { format!("{color} · {accent}") });
         let chosen = theme.as_ref().and_then(|t| self.themes.borrow().get(t).cloned());
         let icons = chosen.as_ref().map_or_else(|| "?".to_string(), |t| self.icons_for(t));
-        self.preview.set_choice(theme.clone(), style, &accent, &color);
+        self.preview.set_choice(theme.clone(), style, &accent, &color, &icons);
         // A cor das pastas só com o Papirus: com outros ícones, a nota diz que a cor muda só o destaque
         let papirus_icons = sp::is_papirus(&icons);
-        let mut parts = vec![theme.clone().unwrap_or_else(|| "?".into()), icons.clone()];
+        let icons_label = self.icons_display(&icons);
+        let mut parts = vec![theme.clone().unwrap_or_else(|| "?".into()), icons_label.clone()];
         if self.papirus.get() && papirus_icons {
             parts.push(fill_one(&tr("%s folders"), &color));
         }
         let folders_note = (self.papirus.get() && !papirus_icons && icons != "?")
-            .then(|| fill_one(&tr("The folders of %s don't change color: the color changes the accent only."), &icons));
+            .then(|| fill_one(&tr("The folders of %s don't change color: the color changes the accent only."), &icons_label));
         self.folders_note.set_visible(folders_note.is_some());
         self.folders_note.set_text(folders_note.as_deref().unwrap_or(""));
         self.summary.set_markup(&format!("<b>{}</b> {}", glib::markup_escape_text(&tr("Will apply:")), glib::markup_escape_text(&parts.join(" · "))));

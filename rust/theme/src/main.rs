@@ -24,6 +24,17 @@ use swaydesk_theme::themes::{self as st, Applied, Auto};
 use swaydesk_theme::wallpaper_accent::{wallpaper, wallpaper_color};
 use swaydesk_theme::{command_name, desktop as dc, fill, fill_one, icon_themes, papirus as sp};
 
+/// Uma linha das listagens. Com a saída fechada no meio (`| head`), para sem erro, como as ferramentas de
+/// sempre; o println! entraria em pânico com o EPIPE.
+macro_rules! out {
+    ($($arg:tt)*) => {{
+        use std::io::Write as _;
+        if let Err(err) = writeln!(std::io::stdout(), $($arg)*) {
+            std::process::exit(if err.kind() == std::io::ErrorKind::BrokenPipe { 0 } else { 1 });
+        }
+    }};
+}
+
 /// O nome do processo. Nas mensagens vai o command_name, que nos pacotes é o swaydesk-theme
 const PROGRAM: &str = "sway-theme";
 const COMMANDS: &str = "{list,current,init,families,colors,icons,set,pick,accent-auto}";
@@ -51,20 +62,20 @@ fn show_list() -> ExitCode {
         let mark = if theme.name == current { "*" } else { " " };
         let kind = if theme.dark { tr("dark") } else { tr("light") };
         let color = theme.accent.clone().unwrap_or_else(|| tr("no color"));
-        println!("{mark} {:32} {color:8} {:20} {kind}", theme.name, theme.icons.as_deref().unwrap_or("-"));
+        out!("{mark} {:32} {color:8} {:20} {kind}", theme.name, theme.icons.as_deref().unwrap_or("-"));
     }
     if let Some(note) = st::missing_note(&config) {
-        println!("\n{note}");
+        out!("\n{note}");
     }
     ExitCode::SUCCESS
 }
 
 fn show_current() -> ExitCode {
     let config = load_config(&path()).0;
-    println!("{}", fill(&tr("%(theme)s · icons %(icons)s · accent %(accent)s"),
+    out!("{}", fill(&tr("%(theme)s · icons %(icons)s · accent %(accent)s"),
                         &[("theme", &dc::effective_gtk_theme(&config)), ("icons", &config.icon_theme), ("accent", &config.accent)]));
     if let Some(note) = st::missing_note(&config) {
-        println!("{note}");
+        out!("{note}");
     }
     ExitCode::SUCCESS
 }
@@ -74,11 +85,11 @@ fn show_families() -> ExitCode {
     for family in &families {
         let styles: Vec<String> = [Style::Light, Style::Dark].into_iter().filter(|s| family.has_style(*s)).map(Style::label).collect();
         let names: Vec<&str> = family.variants.iter().map(|v| v.theme.as_str()).collect();
-        println!("{:16} {:14} {}", family.name, styles.join(" "), names.join(", "));
+        out!("{:16} {:14} {}", family.name, styles.join(" "), names.join(", "));
     }
     if !others.is_empty() {
         let names: Vec<&str> = others.iter().map(|t| t.name.as_str()).collect();
-        println!("{:16} {:14} {}", tr("Others"), "", names.join(", "));
+        out!("{:16} {:14} {}", tr("Others"), "", names.join(", "));
     }
     ExitCode::SUCCESS
 }
@@ -90,11 +101,11 @@ fn show_colors() -> ExitCode {
     for (name, color) in PAPIRUS_COLORS {
         let mark = if current.as_deref() == Some(*name) { "*" } else { " " };
         let missing = if installed.iter().any(|n| n == name) { String::new() } else { format!("  ({})", tr("not installed")) };
-        println!("{mark} {name:12} {color}{missing}");
+        out!("{mark} {name:12} {color}{missing}");
     }
     if installed.is_empty() {
-        println!();
-        println!("{}", tr("The Papirus icons are not installed: install the papirus-icon-theme package"));
+        out!();
+        out!("{}", tr("The Papirus icons are not installed: install the papirus-icon-theme package"));
     }
     ExitCode::SUCCESS
 }
@@ -108,7 +119,7 @@ fn show_icons() -> ExitCode {
     let current = icon_themes::entry_of(&current);
     for theme in icon_themes::installed(&lang) {
         let mark = if theme.id == current { "*" } else { " " };
-        println!("{mark} {:24} {}", theme.id, theme.label);
+        out!("{mark} {:24} {}", theme.id, theme.label);
     }
     ExitCode::SUCCESS
 }

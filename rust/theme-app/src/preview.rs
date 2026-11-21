@@ -57,9 +57,11 @@ struct State {
     style: Style,
     accent: String,
     color: String,
+    /// Os ícones que vão valer: as pastas são as deles (as do Papirus, na cor)
+    icon_theme: String,
     /// As cores por tema e estilo: o draw roda a cada redimensionamento
     palettes: HashMap<(Option<String>, Style), HashMap<&'static str, String>>,
-    icons: HashMap<(String, i32), Option<gdk_pixbuf::Pixbuf>>,
+    icons: HashMap<(String, String, i32), Option<gdk_pixbuf::Pixbuf>>,
 }
 
 pub struct Preview {
@@ -76,6 +78,7 @@ impl Preview {
             style: Style::Dark,
             accent: "#16a085".into(),
             color: "teal".into(),
+            icon_theme: String::new(),
             palettes: HashMap::new(),
             icons: HashMap::new(),
         }));
@@ -88,24 +91,38 @@ impl Preview {
         Rc::new(Preview { area, state })
     }
 
-    pub fn set_choice(&self, theme: Option<String>, style: Style, accent: &str, color: &str) {
+    pub fn set_choice(&self, theme: Option<String>, style: Style, accent: &str, color: &str, icons: &str) {
         {
             let mut state = self.state.borrow_mut();
             state.theme = theme;
             state.style = style;
             state.accent = accent.to_string();
             state.color = color.to_string();
+            state.icon_theme = icons.to_string();
         }
         self.area.queue_draw();
     }
 }
 
-/// O ícone da pasta na cor, do Papirus. Sem ele, a pasta do tema de ícones em uso.
-fn folder(area: &gtk4::DrawingArea, color: &str, size: i32) -> Option<gdk_pixbuf::Pixbuf> {
-    if let Some(directory) = sp::theme_dir("Papirus") {
-        let path = directory.join("48x48/places").join(format!("folder-{color}.svg"));
-        if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file_at_size(&path, size, size) {
-            return Some(pixbuf);
+/// O ícone da pasta: com os ícones Papirus (ou sem saber quais), o do Papirus na cor; com outros, a pasta deles.
+/// Sem nenhum dos dois, a pasta do tema de ícones em uso.
+fn folder(area: &gtk4::DrawingArea, icons: &str, color: &str, size: i32) -> Option<gdk_pixbuf::Pixbuf> {
+    let papirus = icons.is_empty() || icons == "?" || sp::is_papirus(icons);
+    if papirus {
+        if let Some(directory) = sp::theme_dir("Papirus") {
+            let path = directory.join("48x48/places").join(format!("folder-{color}.svg"));
+            if let Ok(pixbuf) = gdk_pixbuf::Pixbuf::from_file_at_size(&path, size, size) {
+                return Some(pixbuf);
+            }
+        }
+    } else {
+        let theme = gtk4::IconTheme::new();
+        theme.set_theme_name(Some(icons));
+        if theme.has_icon("folder") {
+            let icon = theme.lookup_icon("folder", &[], size, 1, gtk4::TextDirection::None, gtk4::IconLookupFlags::empty());
+            if let Some(pixbuf) = icon.file().and_then(|f| f.path()).and_then(|p| gdk_pixbuf::Pixbuf::from_file_at_size(p, size, size).ok()) {
+                return Some(pixbuf);
+            }
         }
     }
     let theme = gtk4::IconTheme::for_display(&area.display());
@@ -187,11 +204,11 @@ fn draw(area: &gtk4::DrawingArea, cr: &cairo::Context, width: f64, height: f64, 
         }
         text(area, cr, wx + 16.0, ry, label, if index == 1 { &on } else { fg }, 9, false);
     }
-    // As pastas, na cor do Papirus
+    // As pastas dos ícones escolhidos: as do Papirus na cor, as dos outros como são
     let size = 44;
-    let icon_key = (state.color.clone(), size);
+    let icon_key = (state.icon_theme.clone(), state.color.clone(), size);
     if !state.icons.contains_key(&icon_key) {
-        let icon = folder(area, &state.color, size);
+        let icon = folder(area, &state.icon_theme, &state.color, size);
         state.icons.insert(icon_key.clone(), icon);
     }
     let icon = state.icons[&icon_key].clone();
