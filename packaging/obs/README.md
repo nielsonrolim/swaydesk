@@ -85,6 +85,19 @@ Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último sn
    execução interrompida faz o `--add` recusar até ser tirada. A conferência final baixa todas as ISOs do Release: a `PASTA` precisa de
    espaço para todas (uns 8 GB com quatro).
 
+   Uma ISO já publicada que precisa de uma correção é trocada com `packaging/release-isos.sh --replace vX.Y.Z
+   PASTA arch=… [ubuntu2604=…]` (antes com `--dry-run`), numa `PASTA` nova e vazia. A ISO tem de estar no
+   Release e no `SHA256SUMS`. Cada nova sobe como `NOME.new` junto de um `SHA256SUMS.new` (só as linhas das
+   trocadas mudam, no mesmo lugar), e tudo é baixado e comparado byte a byte antes de qualquer troca. Logo
+   antes das trocas, o `SHA256SUMS` publicado é baixado de novo: se mudou desde o começo, o script para sem
+   trocar nada. As trocas são renomes pela API (`NOME` → `NOME.old`, `NOME.new` → `NOME`, o `SHA256SUMS` por
+   último); **entre a troca de uma ISO e a do `SHA256SUMS` (segundos), a ISO nova não confere com o
+   `SHA256SUMS` antigo**. Depois, todas as ISOs são baixadas e conferidas, e só então os `.old` saem (até lá,
+   dá para voltar atrás). Com várias ISOs, uma falha no meio das trocas deixa as já trocadas fora do `SHA256SUMS`
+   até o conserto à mão: trocar uma ISO por execução evita isso. O texto do Release
+   não muda. Fora do `--dry-run`, qualquer modo segura um flock (`$XDG_RUNTIME_DIR/swaydesk-release.lock`):
+   duas execuções nesta máquina não mexem no Release ao mesmo tempo; quem usa outra máquina avisa antes.
+
 ### Uma revisão só do empacotamento (X.Y.Z-N)
 
 Quando os pacotes de um lançamento precisam sair de novo sem mudar o código (um rebuild, um conserto do
