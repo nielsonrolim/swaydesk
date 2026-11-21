@@ -1,8 +1,27 @@
-swaydesk (0.1.3-1) UNRELEASED; urgency=medium
+swaydesk (0.1.3-1) unstable; urgency=medium
 
-  * Development after 0.1.2.
+  * The accent color follows the wallpaper (accent_auto, on by default when
+    the accent is still the default one).
+  * The icon theme can be chosen: swaydesk-theme icons and the Desktop
+    Theme app's Icons list; a theme or color change keeps it.
+  * Spanish translation of the desktop, the apps and the login screen.
+  * Packages for Debian testing (Debian_Testing), a rolling release tested
+    at every release.
+  * Arch: an update notice for pacman, the AUR, Flatpak and firmware.
+  * swaydesk-sessionmgr asks before restarting or shutting down, with a
+    60-second countdown; a pending offline update from GNOME Software 50+
+    restarts, installs and powers off on shutdown.
+  * swaydesk-greeter ships its own PAM service on Debian and Ubuntu too
+    (/etc/pam.d/swaydesk-greeter, Debian 13's greetd file): Debian
+    testing's greetd dropped "@include login", and the session lost LANG
+    and the keyring unlock.
+  * Fixes: the portal after a quick logout and login, the Help icons with
+    any icon theme, a missing wallpaper, the default accent swatch, the
+    other desktop's portal theme, swaydesk-theme into a closed pipe, the
+    theme hints naming swaydesk-theme with the packages, and the Arch gtk
+    portal drop-in.
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Thu, 19 Nov 2026 15:58:09 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Sat, 21 Nov 2026 12:00:00 -0300
 
 swaydesk (0.1.2-1) unstable; urgency=medium
 

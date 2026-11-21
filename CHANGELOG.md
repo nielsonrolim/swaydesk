@@ -2,6 +2,53 @@
 
 Each release is published as packages and, shortly after, as install images. Updates arrive through `apt upgrade` or `pacman -Syu`.
 
+## 0.1.3 — 2026-11-21
+
+The accent color now follows the wallpaper, the icon theme can be chosen, Swaydesk speaks Spanish, Debian testing gets packages and Arch gets its own update notice. The install images bring an app store.
+
+### Added
+
+- **Accent color from the wallpaper**, on by default: Swaydesk picks the Papirus color closest to the wallpaper's main color, and changes it with every new wallpaper, the daily one included. Desktop Theme has a **Use the wallpaper's color** switch, and picking a color yourself turns it off. A wallpaper without color gives the default accent. In `~/.config/sway-desktop/config.toml` it's `accent_auto`. On upgrade it turns on only if you still have the default accent, so a color you picked stays.
+- **Choose the icon theme**: Desktop Theme has an **Icons** list, with a strip of each theme's icons. On the command line, `swaydesk-theme icons` lists them and `swaydesk-theme icons NAME` changes only the icons; `set` and `pick` take `--icons NAME`. With icons other than Papirus, the ones a theme lacks (Help, the dock, the popups) come from Papirus, Adwaita or Breeze, and the folders don't take the accent color. The preview card shows the chosen theme's folders.
+- **Spanish**: the desktop, the app menus and the optional login screen, for any Spanish locale (es_ES, es_MX, es_AR…). The long date reads "viernes, 20 de noviembre".
+- **Debian testing** (forky): packages in the `Debian_Testing` repository. Like Arch, it's a rolling release: Swaydesk is tested on it at every release, but updates to the distribution itself may need fixes afterwards. See the [install page](https://swaydesk.nielsonrolim.com/en-us/install/).
+- **Update notice on Arch**: Swaydesk checks for updates in the background and shows their count in the bar, with a notification when there is something new. It covers the official repositories, the AUR (through paru or yay, if you already have one installed), Flatpak apps and firmware (fwupd). A click, or the notification's **Update** button, opens a terminal with the update; nothing is updated on its own. On Arch, GNOME Software's own update checks come turned off, since the notice covers them. To turn the notice off, set `update_notifier = false` in `[enabled]`; to hide only the icon, `updates = false` in `[enabled.bar]`. See [Updates on Arch](https://swaydesk.nielsonrolim.com/en-us/guide/config/#updates-on-arch).
+
+### Changed
+
+- `swaydesk-archive-keyring` 2026.11.20 adds the Debian testing repository. The keyring `.deb`'s sha256 changed on Debian 13 and Ubuntu 26.04 too; the install page has the new values. If you installed through the keyring `.deb`, apt updates it and there's nothing to do.
+- When an app asks to restart or shut down, such as GNOME Software's **Restart & Update**, Swaydesk now asks first, with a 60-second countdown, **Restart now** and **Cancel**, as GNOME does. Before, it restarted at once. Cancelling installs nothing and the update stays downloaded.
+- If you customized `/etc/pam.d/greetd` (a fingerprint reader, a security key), make that change in `/etc/pam.d/swaydesk-greeter`: the login screen's sessions now use that file.
+
+### Fixed
+
+- After logging out and back in quickly, Waybar could take up to 2 minutes to appear, and the file chooser and screenshots through the portal hung meanwhile. The previous session left the portal's start pending. Now the new login restarts the stuck portals, and the previous session's cleanup no longer erases the new session's environment.
+- Shutting down with an update pending (GNOME Software 50 or later: Ubuntu 26.04, Debian testing) now restarts, installs the update and then powers off, as on GNOME. Before, it powered off directly and the update was installed only at the next boot. On Debian 13 (GNOME Software 48) it shuts down as before, and the update is installed at the next boot.
+- Every Help card now has an icon with any icon theme; some were blank under Adwaita, Yaru, Papirus or Breeze. Desktop Theme has its own icon (`org.swaydesktop.Theme`), which shows with any icon theme.
+- A theme or color change keeps the icon theme you chose, such as Yaru. Before, it went back to Papirus, and with the accent color following the wallpaper, that would have happened with every new wallpaper.
+- In Desktop Theme, the default accent color (#199ca8) is no longer taken for the nearest swatch: changing only the style keeps it, and picking that swatch can be applied.
+- If the wallpaper file is missing, a theme change no longer opens Sway's error bar ("unable to access background file"): the plain background comes back.
+- After logging out of another desktop and into Swaydesk, apps no longer take that desktop's theme or light/dark style through the portal.
+- `swaydesk-theme list`, `current`, `families`, `colors` and `icons` piped into a command that stops early, such as `head`, no longer print a Rust panic (broken pipe).
+- With the packages, the theme's error messages (`swaydesk-theme` and the Desktop Theme app) point to `swaydesk-theme colors`, `families`, `list` and `icons`, and so does its usage line; they pointed to `sway-theme`, which with the packages isn't on the PATH.
+- On Debian testing, the desktop opened from the login screen came up in English and without unlocking the keyring: testing's greetd changed its PAM file. `swaydesk-greeter` now brings its own PAM service, `/etc/pam.d/swaydesk-greeter`, on Debian and Ubuntu as already on Arch. Nothing changes on Debian 13 and Ubuntu 26.04.
+- Arch: the gtk portal starts through a drop-in on its systemd unit, without dbus-broker's "Ignoring duplicate name" warning at every login. Debian and Ubuntu are unchanged.
+
+### Install images
+
+- **App store**: GNOME Software with Flathub, on the three images. On Debian and Ubuntu it also installs and updates the distro's packages and the firmware; on Arch it handles Flatpak apps, and the update notice handles the rest.
+- **Spanish** in the installer, on its codecs page and in the notices after the install, and offline in the live session.
+- **NVIDIA under Secure Boot on Debian**: with Secure Boot on, the codecs and drivers box now installs the NVIDIA driver too, signed with a key of the computer. After the first login a notice asks you to run `sudo swaydesk-extras`, which shows a one-time password of 8 digits, and at the next restart you enroll the key on MokManager's blue screen with that password. Before, the driver was left out until you turned Secure Boot off.
+- On Debian and Ubuntu, the installer's keyboard test field now follows the layout you pick. In 0.1.2 that worked only on Arch.
+- On Ubuntu, the screen shown while updates install at restart is in the installed system's language (Portuguese or Spanish; English otherwise).
+
+### Known limitations
+
+- Debian testing and Arch are rolling releases: Swaydesk is tested on them at every release, but updates to the distributions themselves may need fixes afterwards.
+- In the installer, a Latin American Spanish locale (es_MX, es_AR…) preselects the Spain keyboard layout; pick **Spanish (Latin American)** by hand. The date and number formats follow the location detected from your network, not the language you pick.
+- In Spanish, the keyring's password prompt on the first login is partly in English; that text comes from gnome-keyring.
+- On Ubuntu, the progress line of the screen shown while updates install at restart ("55% complete") stays in English; it comes from PackageKit.
+
 ## 0.1.2 — 2026-11-19
 
 A bug-fix release.
@@ -67,5 +114,5 @@ Your settings live in `~/.config/sway-desktop/`, and package updates never overw
 ### Known limitations
 
 - Blur behind the bar, the dock and the popups (`layer_blur`) is off by default. In a VM it left visual glitches; it hasn't been tested on a real GPU yet.
-- No Debian testing packages yet.
+- No Debian testing packages yet. (Packages since 0.1.3.)
 - Debian 13: on each user's first login, the keyring asks for your password once, after a notification that explains it. From the next login on, it unlocks by itself. gnome-keyring 48 creates the login keyring but doesn't publish it on D-Bus ([gnome-keyring#137](https://gitlab.gnome.org/GNOME/gnome-keyring/-/issues/137), fixed upstream in 51.0; Debian 13 ships 48), so Swaydesk restarts the daemon, and the unlock from the login is lost. Ubuntu 26.04 and Arch are not affected.
