@@ -23,7 +23,7 @@ Full documentation, with screenshots and the keyboard shortcuts: **https://swayd
 | Screenshot and recording | `swaydesk-capture` | Panels for screenshots (area, window, screen) and screen recording |
 | Theme | `swaydesk-theme` | The Theme app: accent color, light/dark and icons, applied to GTK, Qt, Sway, Waybar and rofi |
 | Session | `swaydesk-session` | Lock screen, session menu (log out, suspend, restart, shut down), keyring unlock and session services |
-| Login screen | `swaydesk-greeter` | Optional greeter for greetd, in the look of the lock screen |
+| Login screen | `swaydesk-greeter` | Greeter for greetd, in the look of the lock screen: optional with another display manager, needed for a graphical login without one |
 | Help | `swaydesk-widgets` | A window with the Sway shortcuts in use and a card per desktop app |
 | Displays | `swaydesk-theme` | The Displays app: arrange the screens on a map, with resolution, refresh rate, scale and rotation, and a profile per set of monitors, applied when they're plugged in or the lid closes |
 
@@ -271,9 +271,11 @@ sudo pacman -Syu swaydesk-desktop
 
 If you use GDM, SDDM or LightDM, there's nothing to set up: pick the **Sway Desktop** session on the login screen you already have.
 
-### Optional: the Swaydesk login screen
+Without a display manager, as on a minimal or server install, the system starts in a text console: install `swaydesk-greeter`, below, for a graphical login.
 
-`swaydesk-greeter` is an optional login screen for [greetd](https://sr.ht/~kennylevinsen/greetd/), in the look of the Swaydesk lock screen. Install it with `sudo apt install swaydesk-greeter` (Debian, Ubuntu, Mint) or `sudo pacman -S swaydesk-greeter` (Arch). On Debian and Ubuntu it turns itself on only when no other display manager is set; on Arch, turn it on with `sudo systemctl enable greetd`. To switch from GDM, SDDM or LightDM, disable that one and run `sudo systemctl enable greetd`; to go back, `sudo systemctl disable greetd` and enable the old one again (for example `sudo systemctl enable gdm`).
+### The Swaydesk login screen
+
+`swaydesk-greeter` is a login screen for [greetd](https://sr.ht/~kennylevinsen/greetd/), in the look of the Swaydesk lock screen. It's optional if you already have GDM, SDDM or LightDM, and needed for a graphical login on a system without a display manager. Install it with `sudo apt install swaydesk-greeter` (Debian, Ubuntu, Mint) or `sudo pacman -S swaydesk-greeter` (Arch). On Debian and Ubuntu it turns itself on only when no other display manager is set; on Arch, turn it on with `sudo systemctl enable greetd`. To switch from GDM, SDDM or LightDM, disable that one and run `sudo systemctl enable greetd`; to go back, `sudo systemctl disable greetd` and enable the old one again (for example `sudo systemctl enable gdm`).
 
 ## Build from source
 

@@ -23,7 +23,7 @@ A documentação completa, com capturas de tela e os atalhos de teclado, está e
 | Captura e gravação | `swaydesk-capture` | Os painéis de captura de tela (área, janela, tela) e de gravação |
 | Tema | `swaydesk-theme` | O app Tema: cor de destaque, claro ou escuro e ícones, aplicados ao GTK, ao Qt, ao Sway, à Waybar e ao rofi |
 | Sessão | `swaydesk-session` | A tela de bloqueio, o menu da sessão (sair, suspender, reiniciar, desligar), o desbloqueio do chaveiro e os serviços da sessão |
-| Tela de login | `swaydesk-greeter` | Uma tela de login opcional para o greetd, no visual da tela de bloqueio |
+| Tela de login | `swaydesk-greeter` | Uma tela de login para o greetd, no visual da tela de bloqueio: opcional com outro gerenciador de login, necessária para entrar no modo gráfico sem um |
 | Ajuda | `swaydesk-widgets` | Uma janela com os atalhos do Sway em uso e um cartão por app do desktop |
 | Telas | `swaydesk-theme` | O app Telas: arruma as telas num mapa, com resolução, taxa de atualização, escala e rotação, e um perfil por conjunto de monitores, aplicado ao conectá-los ou ao fechar a tampa |
 
@@ -271,9 +271,11 @@ O [SwayFX](https://github.com/WillPower3309/swayfx) é o Sway com cantos arredon
 
 Se você usa o GDM, o SDDM ou o LightDM, não precisa configurar nada: escolha a sessão **Sway Desktop** na tela de login que você já tem.
 
-### Opcional: a tela de login do Swaydesk
+Sem um gerenciador de login, como numa instalação mínima ou de servidor, o sistema abre num console de texto: instale o `swaydesk-greeter`, abaixo, para entrar no modo gráfico.
 
-O `swaydesk-greeter` é uma tela de login opcional para o [greetd](https://sr.ht/~kennylevinsen/greetd/), no visual da tela de bloqueio do Swaydesk. Instale com `sudo apt install swaydesk-greeter` (Debian, Ubuntu, Mint) ou `sudo pacman -S swaydesk-greeter` (Arch). No Debian e no Ubuntu, ele só se ativa sozinho quando não há outro gerenciador de login configurado; no Arch, ative-o com `sudo systemctl enable greetd`. Para trocar do GDM, do SDDM ou do LightDM, desative o atual e rode `sudo systemctl enable greetd`; para voltar, `sudo systemctl disable greetd` e ative o antigo de novo (por exemplo, `sudo systemctl enable gdm`).
+### A tela de login do Swaydesk
+
+O `swaydesk-greeter` é uma tela de login para o [greetd](https://sr.ht/~kennylevinsen/greetd/), no visual da tela de bloqueio do Swaydesk. Ela é opcional se você já tem o GDM, o SDDM ou o LightDM, e necessária para entrar no modo gráfico num sistema sem gerenciador de login. Instale com `sudo apt install swaydesk-greeter` (Debian, Ubuntu, Mint) ou `sudo pacman -S swaydesk-greeter` (Arch). No Debian e no Ubuntu, ele só se ativa sozinho quando não há outro gerenciador de login configurado; no Arch, ative-o com `sudo systemctl enable greetd`. Para trocar do GDM, do SDDM ou do LightDM, desative o atual e rode `sudo systemctl enable greetd`; para voltar, `sudo systemctl disable greetd` e ative o antigo de novo (por exemplo, `sudo systemctl enable gdm`).
 
 ## Compilar a partir do código
 
