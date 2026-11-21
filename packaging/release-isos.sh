@@ -104,7 +104,7 @@ add_mode() {
   [[ -s $old && -z $(tail -c 1 "$old") ]] \
     || { echo "release-isos: --add: $tag's SHA256SUMS is empty or doesn't end in a newline" >&2; exit 1; }
   while IFS= read -r line; do
-    [[ $line =~ ^[0-9a-f]{64}\ \ (swaydesk-$version-[a-z0-9.-]+\.iso)$ ]] \
+    [[ $line =~ ^[0-9a-f]{64}\ \ (swaydesk-$version-[a-z0-9._-]+\.iso)$ ]] \
       || { echo "release-isos: --add: unexpected line in $tag's SHA256SUMS: $line" >&2; exit 1; }
     name=${BASH_REMATCH[1]}
     for f in "${files[@]}"; do
