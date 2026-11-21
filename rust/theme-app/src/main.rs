@@ -766,7 +766,7 @@ impl Window {
         // O padrão não é uma cor do Papirus: só o hex
         self.color_name.set_text(&if default_accent { accent.clone() } else { format!("{color} · {accent}") });
         let chosen = theme.as_ref().and_then(|t| self.themes.borrow().get(t).cloned());
-        let icons = chosen.as_ref().map_or_else(|| "?".to_string(), |t| self.icons_for(t, &color));
+        let icons = chosen.as_ref().map_or_else(|| "?".to_string(), |t| self.icons_for(t));
         self.preview.set_choice(theme.clone(), style, &accent, &color);
         let mut parts = vec![theme.clone().unwrap_or_else(|| "?".into()), icons];
         if self.papirus.get() {
@@ -780,11 +780,11 @@ impl Window {
     }
 
     /// Os ícones que o apply vai gravar. Guardados por tema: o refresh roda a cada tecla da busca.
-    fn icons_for(&self, chosen: &Theme, color: &str) -> String {
+    fn icons_for(&self, chosen: &Theme) -> String {
         if let Some(icons) = self.icons_cache.borrow().get(&chosen.name) {
             return icons.clone();
         }
-        let icons = st::chosen_icons(chosen, &self.config.borrow(), Some(color));
+        let icons = st::chosen_icons(chosen, &self.config.borrow());
         self.icons_cache.borrow_mut().insert(chosen.name.clone(), icons.clone());
         icons
     }

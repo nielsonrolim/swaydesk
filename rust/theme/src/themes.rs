@@ -642,13 +642,35 @@ fn restart_desktop() -> Vec<String> {
     failures
 }
 
-/// Os ícones que o apply grava para o tema.
-pub fn chosen_icons(chosen: &Theme, current: &Config, folders: Option<&str>) -> String {
+/// Os ícones que o apply grava para o tema. Trocar o tema ou a cor (o accent-auto também) nunca troca os ícones
+/// que a pessoa escolheu: um tema de ícones instalado que não é o Papirus fica, a não ser que seja o que veio com
+/// o tema GTK em uso (Mint-Y-Red com o Mint-Y-Dark-Red), que acompanha o tema novo. Com o Papirus em uso (ou o do
+/// config não instalado), o Papirus no estilo do tema; sem ele, os ícones com o nome do tema ou os instalados.
+pub fn chosen_icons(chosen: &Theme, current: &Config) -> String {
     let papirus = sf::icons_for_style(sf::style_of(chosen));
-    if (folders.is_some() || sp::is_papirus(&current.icon_theme)) && dc::icons_installed(papirus) {
+    let current_theme_icons = icons_for(&current.gtk_theme);
+    pick_icons(&current.icon_theme, current_theme_icons.as_deref(), papirus, chosen.icons.as_deref(), dc::icons_installed, || {
+        dc::installed_icon_theme(current)
+    })
+}
+
+/// A regra do chosen_icons, sem o disco. current_theme_icons: os ícones com o nome do tema GTK em uso; installed
+/// diz se um tema de ícones existe; fallback, o instalado da lista de reserva.
+pub fn pick_icons(
+    current: &str,
+    current_theme_icons: Option<&str>,
+    papirus: &str,
+    theme_icons: Option<&str>,
+    installed: impl Fn(&str) -> bool,
+    fallback: impl FnOnce() -> String,
+) -> String {
+    if !sp::is_papirus(current) && installed(current) && current_theme_icons != Some(current) {
+        return current.to_string();
+    }
+    if installed(papirus) {
         return papirus.to_string();
     }
-    chosen.icons.clone().unwrap_or_else(|| dc::installed_icon_theme(current))
+    theme_icons.map_or_else(fallback, str::to_string)
 }
 
 fn check_folders(folders: Option<&str>) -> Result<(), Error> {
@@ -733,7 +755,7 @@ pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: O
     if accent.is_none() && chosen.accent.is_none() {
         notes.push(fill(&tr("%(theme)s does not define an accent color: kept %(color)s. To change it, use --accent"), &[("theme", theme), ("color", &color)]));
     }
-    let icons = chosen_icons(&chosen, &current, folders);
+    let icons = chosen_icons(&chosen, &current);
     if chosen.icons.is_none() && icons != sf::icons_for_style(sf::style_of(&chosen)) {
         notes.push(fill(&tr("There are no icons for %(theme)s: kept %(icons)s"), &[("theme", theme), ("icons", &icons)]));
     }
@@ -854,6 +876,42 @@ mod tests {
         assert!(!config.accent_auto && warnings.is_empty(), "{warnings:?}");
         assert!(!has_key(&dir.join("missing.toml"), "accent_auto"));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn icons_stay_unless_papirus_is_in_use() {
+        // (em uso, instalados, ícones com o nome do tema) → o gravado; o tema escolhido é escuro (Papirus-Dark), e
+        // o tema em uso não traz ícones com o nome dele
+        let cases: &[(&str, &[&str], Option<&str>, &str)] = &[
+            // Um tema de ícones da pessoa, instalado, fica: com ou sem o Papirus, com ou sem ícones do tema
+            ("Yaru", &["Yaru", "Papirus-Dark", "Mint-Y-Red"], Some("Mint-Y-Red"), "Yaru"),
+            ("Yaru", &["Yaru"], None, "Yaru"),
+            ("Novo-Red", &["Novo-Red", "Papirus-Dark"], None, "Novo-Red"),
+            // O Papirus em uso (qualquer um dos três) segue o estilo do tema
+            ("Papirus", &["Papirus", "Papirus-Dark"], Some("Mint-Y-Red"), "Papirus-Dark"),
+            ("Papirus-Light", &["Papirus-Light", "Papirus-Dark"], None, "Papirus-Dark"),
+            // O do config não instalado: o Papirus, se houver; senão os do tema; senão a reserva
+            ("Sumiu", &["Papirus-Dark", "Mint-Y-Red"], Some("Mint-Y-Red"), "Papirus-Dark"),
+            ("Papirus-Dark", &["Mint-Y-Red"], Some("Mint-Y-Red"), "Mint-Y-Red"),
+            ("Papirus-Dark", &["Adwaita"], None, "reserva"),
+        ];
+        for (current, installed, theme_icons, expected) in cases {
+            let got = pick_icons(current, None, "Papirus-Dark", *theme_icons, |n| installed.contains(&n), || "reserva".into());
+            assert_eq!(&got, expected, "{current} {installed:?} {theme_icons:?}");
+        }
+        // Os ícones que vieram com o tema em uso (Mint-Y-Red do Mint-Y-Dark-Red) acompanham o tema novo:
+        // (em uso, ícones do tema em uso, instalados, ícones do tema novo) → o gravado
+        let theme_cases: &[(&str, &str, &[&str], Option<&str>, &str)] = &[
+            ("Mint-Y-Red", "Mint-Y-Red", &["Mint-Y-Red", "Mint-Y-Blue"], Some("Mint-Y-Blue"), "Mint-Y-Blue"),
+            ("Mint-Y-Red", "Mint-Y-Red", &["Mint-Y-Red", "Papirus-Dark"], Some("Mint-Y-Blue"), "Papirus-Dark"),
+            ("Mint-Y-Red", "Mint-Y-Red", &["Mint-Y-Red"], None, "reserva"),
+            // Escolhidos à mão, de outro nome que o do tema em uso, ficam
+            ("Yaru", "Mint-Y-Red", &["Yaru", "Mint-Y-Red", "Papirus-Dark"], Some("Mint-Y-Blue"), "Yaru"),
+        ];
+        for (current, in_use, installed, theme_icons, expected) in theme_cases {
+            let got = pick_icons(current, Some(in_use), "Papirus-Dark", *theme_icons, |n| installed.contains(&n), || "reserva".into());
+            assert_eq!(&got, expected, "{current} {in_use} {installed:?} {theme_icons:?}");
+        }
     }
 
     #[test]
