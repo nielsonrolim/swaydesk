@@ -74,7 +74,9 @@ case ${1-} in
     # parado, o target também diz no systemctl que a sessão do Swaydesk acabou
     systemctl --user stop "$target" 2>/dev/null
     mine=()
-    for unit in $(systemctl --user show -p Wants --value xdg-desktop-autostart.target 2>/dev/null); do
+    # Em palavras pelo read -a, sem o glob de um for sobre $(…): um * ou ? num nome nunca vira arquivos da pasta
+    read -ra wants <<<"$(systemctl --user show -p Wants --value xdg-desktop-autostart.target 2>/dev/null)"
+    for unit in "${wants[@]}"; do
       # O show põe entre aspas, com a barra dobrada, todo nome com escape: "app-nm\\x2dapplet@autostart.service".
       # Sem desfazer isso, os nomes com hífen (quase todos) não casavam e ficavam rodando depois do logout
       if [[ $unit == \"*\" ]]; then
