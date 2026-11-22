@@ -29,6 +29,16 @@ case ":$PATH:" in
     fi
     ;;
 esac
+# O ~/.local/bin no PATH em toda distro: o ~/.profile do Debian e do Ubuntu só o põe se a pasta já existia
+# no login, e o do Arch nunca. Na frente, como o do Debian. Depois do bloco acima, que usa essa mesma pasta
+# no PATH como sinal de que a tela já leu o ~/.profile. Só no ambiente do Sway e dos filhos dele: no systemd
+# e no D-Bus, a limpeza da saída não teria como tirá-lo (vazio quebraria os serviços), e o GDM entrega esse
+# ambiente ao login seguinte, que o tomaria por sinal e pularia o ~/.profile
+mkdir -p "$HOME/.local/bin" 2>/dev/null
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) PATH="$HOME/.local/bin${PATH:+:$PATH}"; export PATH ;;
+esac
 
 # O sway-env-cleanup, ao sair do Sway, deixa estas variáveis vazias no D-Bus, que não sabe
 # removê-las, e o GDM as repassa ao login seguinte. Vazio não é o mesmo que ausente: com
