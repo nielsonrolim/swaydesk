@@ -133,7 +133,9 @@ subject=$(git -C "$root" log -1 --format=%s "$head" | sed -E 's/ \(#[0-9]+\)$//;
 # genérica: nada vaza e nada para (um lançamento com tag não pode ganhar outro título)
 # Na dúvida, a genérica: só um "não casa" limpo (saída 1 do grep) deixa o título passar; um padrão inválido
 # (saída 2) não deixa
-# Só serve um arquivo de uma linha, sem espaços (o mesmo que o test_mirror exige)
+# Só serve um arquivo de uma linha, sem espaços (o mesmo que o test_mirror exige). No título, também a palavra
+# "builder" (ou "builders") sozinha, em minúsculas e sem "::" antes: nos arquivos ela esbarra no ::builder() do
+# GTK, mas num título um falso positivo só custa a mensagem genérica (o Builder do GTK, com maiúscula, passa)
 session_names=$(git -C "$root" show "$head:tests/session-names.regex" 2>/dev/null) || session_names=
 [[ $session_names =~ ^[^[:space:]]+$ ]] || session_names=
 names_rc=1
@@ -147,6 +149,9 @@ elif ((names_rc == 0)); then
   subject="Update from the private repository"
 elif ((names_rc != 1)); then
   echo "mirror: tests/session-names.regex is not a valid grep -E pattern: the generic commit message is used" >&2
+  subject="Update from the private repository"
+elif grep -qE -- '(^|[^:[:alnum:]_])builders?\b' <<<"$subject"; then
+  echo "mirror: the squash title names a working session (builder): the generic commit message is used" >&2
   subject="Update from the private repository"
 fi
 mkdir "$work/message"
