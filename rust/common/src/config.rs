@@ -11,7 +11,7 @@ pub const ICON_FONT: &str = "Symbols Nerd Font";
 // As mesmas chaves do Config do desktop_config.py
 const KNOWN: &[&str] = &[
     "locale", "weather_location", "holidays", "accent", "accent_auto", "gtk_theme", "icon_theme", "folder_color", "file_manager",
-    "components", "enabled", "effects", "shortcuts",
+    "components", "enabled", "effects", "shortcuts", "power_profiles_in_system",
 ];
 /// As chaves do [enabled]: os componentes da sessão que podem ser desligados (o ENABLED_KEYS do Python).
 pub const ENABLED_KEYS: &[&str] = &[
@@ -78,6 +78,9 @@ pub struct Config {
     pub components: String,
     /// O perfil de atalhos, um dos SHORTCUT_PROFILES; "swaydesk" sem a chave ou com um nome inválido
     pub shortcuts: String,
+    /// Quando o popup Sistema mostra os perfis de energia, um dos power::IN_SYSTEM: "auto" (só sem bateria),
+    /// "always" ou "never"; "auto" sem a chave ou com um valor inválido
+    pub power_profiles_in_system: String,
     /// Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui
     /// está ligado: a chave ausente liga, para um config antigo continuar como era
     pub disabled: BTreeSet<String>,
@@ -202,6 +205,7 @@ impl Default for Config {
             file_manager: String::new(),
             components: "auto".to_string(),
             shortcuts: "swaydesk".to_string(),
+            power_profiles_in_system: "auto".to_string(),
             disabled: BTreeSet::new(),
             effects: Effects::default(),
         }
@@ -360,6 +364,10 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
                 "config: invalid shortcuts: {value} (use swaydesk, i3, hyprland, niri or dwm)"
             )),
             "shortcuts" => config.shortcuts = value.to_string(),
+            "power_profiles_in_system" if !crate::power::IN_SYSTEM.contains(&value) => warnings.push(format!(
+                "config: invalid power_profiles_in_system: {value} (use auto, always or never)"
+            )),
+            "power_profiles_in_system" => config.power_profiles_in_system = value.to_string(),
             "file_manager" if !value.is_empty() && !is_name(value, false) => {
                 warnings.push(format!("config: invalid file manager: {value} (use the command name, like thunar)"))
             }
@@ -736,5 +744,19 @@ mod tests {
         assert_eq!(warnings, ["config: invalid shortcuts: sway (use swaydesk, i3, hyprland, niri or dwm)"]);
         assert_eq!(parse_config("shortcuts = 1").1, ["config: invalid value in shortcuts"]);
         assert!(shortcut_keys_file("../etc/passwd").is_none());
+    }
+
+    #[test]
+    fn power_profiles_in_system() {
+        // Os mesmos casos do test_power_profiles_in_system do Python
+        assert_eq!(parse_config("").0.power_profiles_in_system, "auto");
+        for value in ["auto", "always", "never"] {
+            let (config, warnings) = parse_config(&format!("power_profiles_in_system = \"{value}\""));
+            assert_eq!((config.power_profiles_in_system.as_str(), warnings.len()), (value, 0));
+        }
+        let (config, warnings) = parse_config("power_profiles_in_system = \"laptop\"");
+        assert_eq!(config.power_profiles_in_system, "auto");
+        assert_eq!(warnings, ["config: invalid power_profiles_in_system: laptop (use auto, always or never)"]);
+        assert_eq!(parse_config("power_profiles_in_system = true").1, ["config: invalid value in power_profiles_in_system"]);
     }
 }

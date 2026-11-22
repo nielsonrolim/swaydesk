@@ -1,25 +1,11 @@
-//! O que o popup lê do upower e do power-profiles-daemon, sem GTK: o porte das funções de
-//! `home/.local/bin/waybar-battery-popup`.
+//! O que o popup lê do upower, sem GTK: o porte das funções de `home/.local/bin/waybar-battery-popup`.
+//! Os perfis de energia e a bateria da máquina ficam no `swaydesk_common::power`.
 use std::collections::HashMap;
-use std::process::{Command, Stdio};
 
 /// As horas do gráfico.
 pub const HOURS: u32 = 12;
-pub const PP: [&str; 4] = ["net.hadess.PowerProfiles", "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles", "ActiveProfile"];
 
-/// A saída de um comando em inglês (LC_ALL=C), com prazo de 3 s (e o KILL 1 s depois, como o timeout
-/// do subprocess do Python); vazia se falhou.
-pub fn sh(args: &[&str]) -> String {
-    Command::new("timeout")
-        .args(["-k", "1", "3"])
-        .args(args)
-        .env("LC_ALL", "C")
-        .stdin(Stdio::null())
-        .stderr(Stdio::null())
-        .output()
-        .map(|out| String::from_utf8_lossy(&out.stdout).into_owned())
-        .unwrap_or_default()
-}
+pub use swaydesk_common::power::sh;
 
 /// Os campos do `upower -i`: a primeira ocorrência de cada chave vale.
 pub fn parse_upower(text: &str) -> HashMap<String, String> {
@@ -88,54 +74,6 @@ pub fn history(path: &str) -> Vec<(f64, f64)> {
         "busctl", "--json=short", "--system", "call", "org.freedesktop.UPower", path,
         "org.freedesktop.UPower.Device", "GetHistory", "suu", "charge", &span, "200",
     ]))
-}
-
-/// O `s "balanced"` do `busctl get-property`.
-pub fn parse_profile(text: &str) -> String {
-    let text = text.trim();
-    match text.strip_prefix("s \"").and_then(|t| t.strip_suffix('"')) {
-        Some(profile) => profile.to_string(),
-        None => String::new(),
-    }
-}
-
-/// Os perfis que o daemon oferece, do `busctl --json=short get-property ... Profiles` (aa{sv}). Vazio: sem
-/// daemon (a seção some).
-pub fn parse_profiles(text: &str) -> Vec<String> {
-    let Ok(value) = serde_json::from_str::<serde_json::Value>(text) else { return Vec::new() };
-    value
-        .get("data")
-        .and_then(|d| d.as_array())
-        .into_iter()
-        .flatten()
-        .filter_map(|p| p.get("Profile")?.get("data")?.as_str().map(str::to_string))
-        .collect()
-}
-
-pub fn get_profiles() -> Vec<String> {
-    let mut args = vec!["busctl", "--system", "--json=short", "get-property"];
-    args.extend(&PP[..3]);
-    args.push("Profiles");
-    parse_profiles(&sh(&args))
-}
-
-pub fn get_profile() -> String {
-    let mut args = vec!["busctl", "--system", "get-property"];
-    args.extend(PP);
-    parse_profile(&sh(&args))
-}
-
-/// Fora da linha da interface. Devolve se o perfil mudou.
-pub fn set_profile(key: &str) -> bool {
-    Command::new("timeout")
-        .args(["-k", "1", "35", "busctl", "--system", "--timeout=30", "set-property"])
-        .args(PP)
-        .args(["s", key])
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .is_ok_and(|s| s.success())
 }
 
 /// Na tomada? Pelo sysfs, não pelo estado da bateria (que fica "pending" ao segurar a carga).
@@ -234,22 +172,6 @@ mod tests {
         assert_eq!(parse_history(json), vec![(1731400000.0, 82.0), (1731400100.0, 80.0)]);
         assert!(parse_history("").is_empty());
         assert!(parse_history(r#"{"data":[]}"#).is_empty());
-    }
-
-    #[test]
-    fn offered_profiles_from_busctl() {
-        let text = r#"{"type":"aa{sv}","data":[{"Profile":{"type":"s","data":"power-saver"},"Driver":{"type":"s","data":"placeholder"}},{"Profile":{"type":"s","data":"balanced"},"Driver":{"type":"s","data":"placeholder"}}]}"#;
-        assert_eq!(parse_profiles(text), ["power-saver", "balanced"]);
-        assert!(parse_profiles("").is_empty());
-        assert!(parse_profiles("Failed to get property").is_empty());
-        assert!(parse_profiles(r#"{"type":"aa{sv}","data":[{"Driver":{"type":"s","data":"x"}}]}"#).is_empty());
-    }
-
-    #[test]
-    fn profile_from_busctl() {
-        assert_eq!(parse_profile("s \"balanced\"\n"), "balanced");
-        assert_eq!(parse_profile(""), "");
-        assert_eq!(parse_profile("Failed"), "");
     }
 
     #[test]

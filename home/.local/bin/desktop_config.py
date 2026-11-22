@@ -100,6 +100,9 @@ class Config:
     file_manager: str = ""  # comando, como "thunar"; vazio: o primeiro instalado de FILE_MANAGERS
     components: str = "auto"  # a versão dos componentes: auto (Rust onde houver), python ou rust
     shortcuts: str = "swaydesk"  # o perfil de atalhos, um dos SHORTCUT_PROFILES
+    # Quando o popup Sistema mostra os perfis de energia, um dos POWER_IN_SYSTEM: "auto" (só sem bateria), "always"
+    # ou "never"
+    power_profiles_in_system: str = "auto"
     # Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui está
     # ligado: a chave ausente liga, para um config antigo continuar como era
     enabled: frozenset = frozenset()
@@ -124,6 +127,8 @@ def path():
 
 
 COMPONENTS = ("auto", "python", "rust")
+# Os valores do power_profiles_in_system (o IN_SYSTEM do sway_power e do swaydesk_common::power)
+POWER_IN_SYSTEM = ("auto", "always", "never")
 # Os perfis de atalhos do shortcuts (o SHORTCUT_PROFILES do swaydesk_common::config): o nome no config e o
 # mostrado, o da marca. Cada um é um sway/keys/<nome>.conf, incluído depois do keys/base.conf
 SHORTCUT_PROFILES = {"swaydesk": "Swaydesk", "i3": "i3", "hyprland": "Hyprland", "niri": "niri", "dwm": "dwm"}
@@ -212,6 +217,8 @@ def parse_config(data):
             warnings.append(f"config: invalid components: {value} (use auto, python or rust)")
         elif key == "shortcuts" and value not in SHORTCUT_PROFILES:
             warnings.append(f"config: invalid shortcuts: {value} (use swaydesk, i3, hyprland, niri or dwm)")
+        elif key == "power_profiles_in_system" and value not in POWER_IN_SYSTEM:
+            warnings.append(f"config: invalid power_profiles_in_system: {value} (use auto, always or never)")
         elif key == "file_manager" and value and not COMMAND_NAME.fullmatch(value):
             warnings.append(f"config: invalid file manager: {value} (use the command name, like thunar)")
         else:

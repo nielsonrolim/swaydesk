@@ -4,7 +4,8 @@
 # headless-toasts.sh, com os binários swaydesk-system-popup e swaydesk-vpointer em /bin.
 #
 # Para cada versão (rust e python): um sh em laço (o primeiro da lista por CPU), a captura, um clique no
-# botão dele (vira "Confirmar"), a captura, o segundo clique (SIGTERM), e o laço tem de ter saído. Sai com 1
+# botão dele (vira "Confirmar"), a captura, o segundo clique (SIGTERM), e o laço tem de ter saído. Depois, os
+# perfis de energia com um busctl e um upower falsos: a seção aparece e o clique troca o perfil. Sai com 1
 # se algo falhar.
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
@@ -39,6 +40,35 @@ for impl in rust python; do
   expect "$impl: o popup continua aberto" "aberto" "$(kill -0 "$popup" 2>/dev/null && echo aberto || echo fechado)"
   grim "/out/system-$impl-after.png"
   kill $busy 2>/dev/null; wait $busy 2>/dev/null
+  kill $popup 2>/dev/null; wait $popup 2>/dev/null; sleep 0.5
+done
+
+# Os perfis de energia: um busctl e um upower falsos no PATH, sem a bateria da máquina (só um mouse). No
+# "auto", a seção aparece com os dois perfis que o daemon oferece, e o clique no primeiro grava o set-property
+mkdir -p /tmp/fake
+cat > /tmp/fake/busctl <<'FAKE'
+#!/bin/sh
+case "$*" in
+  *set-property*) printf '%s\n' "$*" >>/tmp/fake/set ;;
+  *' Profiles') echo '{"type":"aa{sv}","data":[{"Profile":{"type":"s","data":"power-saver"}},{"Profile":{"type":"s","data":"balanced"}}]}' ;;
+  *' ActiveProfile') echo 's "balanced"' ;;
+  *) exit 1 ;;
+esac
+FAKE
+cat > /tmp/fake/upower <<'FAKE'
+#!/bin/sh
+printf '%s\n' /org/freedesktop/UPower/devices/line_power_AC /org/freedesktop/UPower/devices/mouse_hidpp_battery_0
+FAKE
+chmod +x /tmp/fake/busctl /tmp/fake/upower
+for impl in rust python; do
+  rm -f /tmp/fake/set
+  PATH=/tmp/fake:$PATH SWAY_SYSTEM_POPUP_IMPL=$impl "$HOME/.local/bin/waybar-system-popup" 2>>/tmp/popup.err & popup=$!
+  sleep 3.5
+  grim "/out/system-$impl-profiles.png"
+  click 995 261  # o "Power saver"
+  sleep 0.5
+  expect "$impl: o clique troca o perfil" "power-saver" "$(sed -n 's/.* s //p' /tmp/fake/set 2>/dev/null)"
+  expect "$impl: o popup continua aberto com os perfis" "aberto" "$(kill -0 "$popup" 2>/dev/null && echo aberto || echo fechado)"
   kill $popup 2>/dev/null; wait $popup 2>/dev/null; sleep 0.5
 done
 grep -v '^$' /tmp/popup.err | grep -v 'session bus' | head -20

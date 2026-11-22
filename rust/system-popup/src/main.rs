@@ -5,6 +5,9 @@
 //! Encerrar pede confirmação (um segundo clique em 3 s) e manda SIGTERM; se o processo continuar vivo,
 //! o botão vira "Forçar" (SIGKILL). Só os processos do próprio usuário têm o botão, e nunca os da sessão
 //! nem os do projeto. Com --monitor (clique direito no ícone), só abre o monitor do sistema.
+//!
+//! Os perfis de energia aparecem aqui conforme o power_profiles_in_system do config.toml: no "auto", só sem
+//! bateria (o ícone da bateria some, e os botões do popup dela com ele). Só os que o daemon oferece.
 use std::cell::{Cell, RefCell};
 use std::collections::{HashMap, HashSet};
 use std::process::ExitCode;
@@ -15,6 +18,7 @@ use std::time::{Duration, Instant};
 use gtk4::prelude::*;
 use gtk4::{gio, glib, pango};
 use swaydesk_common::i18n::{decimal, tr};
+use swaydesk_common::{config, power};
 use swaydesk_system_logic::{self as ss, Key, Process, Sort};
 use swaydesk_ui::cmd::{bin, spawn_detached, status};
 use swaydesk_ui::list::{link_button, set_status, Options, CSS_OPT};
@@ -54,6 +58,13 @@ button.link {
   padding: 0 4px; min-height: 0; font-size: 12px;
 }
 button.link:hover { color: #ffffff; }
+button.prof {
+  background: #38383d; border: none; box-shadow: none; color: #dadada;
+  padding: 6px 4px; border-radius: 8px; min-height: 0; font-size: 13px;
+}
+button.prof:hover { background: #4c4c50; }
+button.prof.active { background: @accent; color: @on_accent; }
+button.prof.active:hover { background: @accent_hover; }
 "#;
 
 fn size(value: u64) -> String {
@@ -212,6 +223,18 @@ struct Data {
     before: HashMap<Key, Process>,
     times: ((u64, u64), (u64, u64)),
     endable: HashMap<Key, bool>,
+    /// Os perfis de energia, quando a seção aparece: (o ativo, os oferecidos)
+    power: Option<(String, Vec<String>)>,
+    /// Só na primeira leitura com a decisão pendente: se a seção aparece
+    power_shown: Option<bool>,
+}
+
+/// O que a leitura faz com os perfis de energia.
+enum PowerStep {
+    /// A primeira: decidir pelo power_profiles_in_system (no "auto", o upower diz se há bateria)
+    Decide(String),
+    Read,
+    Skip,
 }
 
 type Verdicts = HashMap<(Key, Vec<String>, i32, Option<Key>, Option<Vec<String>>, Option<i32>), bool>;
@@ -222,6 +245,7 @@ struct ReadInput {
     verdicts: Verdicts,
     keep: HashSet<Key>,
     project: Arc<ss::Project>,
+    power: PowerStep,
 }
 
 fn read(input: ReadInput) -> Result<(Data, Verdicts), String> {
@@ -237,6 +261,14 @@ fn read(input: ReadInput) -> Result<(Data, Verdicts), String> {
     };
     let (procs, times) = (ss::processes(&proc), ss::cpu_times(&proc).map_err(|e| e.to_string())?);
     let (endable, verdicts) = endable_of(&first.0, &procs, (first.1, times), &input.keep, input.verdicts, &input.project, &proc);
+    let (power_shown, read_power) = match &input.power {
+        PowerStep::Decide(setting) => {
+            let shown = power::decide_in_system(setting, power::has_battery);
+            (Some(shown), shown)
+        }
+        PowerStep::Read => (None, true),
+        PowerStep::Skip => (None, false),
+    };
     let data = Data {
         cpu: ss::cpu_percent(first.1, times),
         load: ss::load_average(&proc),
@@ -247,6 +279,8 @@ fn read(input: ReadInput) -> Result<(Data, Verdicts), String> {
         times: (first.1, times),
         endable,
         procs,
+        power: read_power.then(|| (power::get_profile(), power::get_profiles())),
+        power_shown,
     };
     Ok((data, verdicts))
 }
@@ -304,6 +338,8 @@ struct Popup {
     list_motion: gtk4::EventControllerMotion,
     status: gtk4::Label,
     reading: Cell<bool>,
+    /// Um perfil mudou durante uma leitura: ler de novo quando ela acabar, que a dela traz o antigo.
+    reread: Cell<bool>,
     read_errors: Cell<u32>,
     read_error: RefCell<String>,
     sample: RefCell<Option<(HashMap<Key, Process>, (u64, u64))>>,
@@ -316,6 +352,12 @@ struct Popup {
     reorder_pending: Cell<bool>,
     showing_rows: Cell<bool>,
     monitor: Option<&'static str>,
+    /// A seção dos perfis de energia, escondida até a primeira leitura decidir
+    prof_section: gtk4::Box,
+    prof_buttons: Vec<(&'static str, gtk4::Button)>,
+    /// None: a decisão ainda não chegou
+    power_shown: Cell<Option<bool>>,
+    power_setting: String,
 }
 
 impl Popup {
@@ -339,6 +381,25 @@ impl Popup {
             disk_box.append(&meter.widget);
         }
         card.append(&disk_box);
+
+        // Perfis de energia (botões fixos; só a classe "active" muda), escondidos até a leitura decidir
+        let prof_section = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
+        prof_section.append(&label(&tr("Power profile"), &["section"], 0.0));
+        let prof = gtk4::Box::new(gtk4::Orientation::Horizontal, 6);
+        prof.set_homogeneous(true);
+        let mut prof_buttons = Vec::new();
+        for (key, name) in power::PROFILES.into_iter().zip([tr("Power saver"), tr("Balanced"), tr("Performance")]) {
+            let button = gtk4::Button::with_label(&name);
+            button.add_css_class("prof");
+            prof.append(&button);
+            prof_buttons.push((key, button));
+        }
+        prof_section.append(&prof);
+        prof_section.set_visible(false);
+        card.append(&prof_section);
+        let power_setting = config::load().power_profiles_in_system;
+        // "never" nem pergunta ao upower
+        let power_shown = Cell::new((power_setting == "never").then_some(false));
 
         let head = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
         head.append(&label(&tr("Processes"), &["section"], 0.0));
@@ -366,6 +427,7 @@ impl Popup {
                 list_motion: gtk4::EventControllerMotion::new(),
                 status,
                 reading: Cell::new(false),
+                reread: Cell::new(false),
                 read_errors: Cell::new(0),
                 read_error: RefCell::new(String::new()),
                 sample: RefCell::new(None),
@@ -376,8 +438,20 @@ impl Popup {
                 reorder_pending: Cell::new(false),
                 showing_rows: Cell::new(false),
                 monitor: ss::system_monitor(),
+                prof_section,
+                prof_buttons,
+                power_shown,
+                power_setting,
             }
         });
+        for (key, button) in &this.prof_buttons {
+            let (me, key) = (Rc::downgrade(&this), *key);
+            button.connect_clicked(move |_| {
+                if let Some(p) = me.upgrade() {
+                    p.on_profile(key);
+                }
+            });
+        }
         this.order.widget.set_halign(gtk4::Align::End);
         this.order.widget.set_hexpand(true);
         this.order.select("cpu");
@@ -446,6 +520,11 @@ impl Popup {
             verdicts: std::mem::take(&mut *self.verdicts.borrow_mut()),
             keep,
             project: self.project.clone(),
+            power: match self.power_shown.get() {
+                None => PowerStep::Decide(self.power_setting.clone()),
+                Some(true) => PowerStep::Read,
+                Some(false) => PowerStep::Skip,
+            },
         };
         let me = Rc::downgrade(self);
         glib::MainContext::default().spawn_local(async move {
@@ -459,6 +538,9 @@ impl Popup {
                 }
                 Ok(Err(err)) => p.read_failed(&err),
                 Err(_) => p.read_failed("panic"),
+            }
+            if p.reread.replace(false) {
+                p.refresh();
             }
         });
     }
@@ -506,8 +588,27 @@ impl Popup {
                 None => meter.update(0.0, "--", path, false), // desmontado ou ilegível
             }
         }
+        if let Some(shown) = data.power_shown {
+            self.power_shown.set(Some(shown));
+        }
+        self.show_profiles(data.power.as_ref());
         self.data.replace(Some(data));
         self.show_rows();
+    }
+
+    /// Só os perfis que o daemon oferece (o ppd sem suporte da plataforma não tem o performance); sem
+    /// daemon, a seção some.
+    fn show_profiles(&self, power: Option<&(String, Vec<String>)>) {
+        let offered: &[String] = power.map(|(_, offered)| offered.as_slice()).unwrap_or_default();
+        for (key, button) in &self.prof_buttons {
+            button.set_visible(offered.iter().any(|p| p == key));
+            if power.is_some_and(|(active, _)| active == key) {
+                button.add_css_class("active");
+            } else {
+                button.remove_css_class("active");
+            }
+        }
+        self.prof_section.set_visible(!offered.is_empty());
     }
 
     fn show_rows(&self) {
@@ -630,6 +731,23 @@ impl Popup {
                 }
             });
         }
+    }
+
+    fn on_profile(self: &Rc<Self>, key: &'static str) {
+        let me = Rc::downgrade(self);
+        glib::MainContext::default().spawn_local(async move {
+            let ok = gio::spawn_blocking(move || power::set_profile(key)).await.unwrap_or(false);
+            if !ok {
+                let _ = spawn_detached("notify-send", &["-u", "critical", &tr("System"), &tr("Could not change the power profile")]);
+            }
+            if let Some(p) = me.upgrade() {
+                if p.reading.get() {
+                    p.reread.set(true);
+                } else {
+                    p.refresh();
+                }
+            }
+        });
     }
 
     fn open_monitor(&self) {

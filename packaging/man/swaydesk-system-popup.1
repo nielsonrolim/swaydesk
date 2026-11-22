@@ -6,6 +6,13 @@ swaydesk\-system\-popup \- system monitor popup for Waybar
 .SH DESCRIPTION
 CPU, memory, disk, temperature and the processes that use the most. A process of the user (never one of the session) can be ended: a second click within 3 seconds sends SIGTERM, and if it is still alive the button becomes Force (SIGKILL).
 .PP
+On a computer without a battery, where the battery icon and the profile buttons of its popup are gone, a Power
+profile row (between the disk and the processes) has the power profiles power\-profiles\-daemon offers, the active
+one in the accent color; a click changes the profile over D\-Bus without closing the popup, and a notification says
+when it fails. Without the daemon the row is hidden. The power_profiles_in_system key of config.toml picks when the
+row shows: auto (the default) only without a battery, always also on laptops, never not at all. Only auto asks
+upower for a battery (a path with /battery_ in upower \-e; a mouse's does not count).
+.PP
 Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
 .PP
 The session runs it under the name waybar\-system\-popup (a link in the package's helper directory to /usr/bin/swaydesk\-system\-popup); the process name is waybar\-system\-popup too.
@@ -19,6 +26,6 @@ Exit 0 at once without doing anything: the Python launchers use it to check that
 .SH FILES
 .TP
 .I ~/.config/sway\-desktop/config.toml
-The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location and holidays.
+The desktop configuration: language, accent color, GTK and icon themes, folder color, file manager, weather location, holidays and power_profiles_in_system. It is read when the popup opens.
 .SH SEE ALSO
 .BR swaydesk (7)

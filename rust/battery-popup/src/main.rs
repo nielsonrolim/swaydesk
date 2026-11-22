@@ -18,7 +18,7 @@ use std::time::Instant;
 use gtk4::prelude::*;
 use gtk4::{gio, glib, pango};
 use swaydesk_common::i18n::{decimal, ntr, tr};
-use swaydesk_common::{config, resident};
+use swaydesk_common::{config, power, resident};
 use swaydesk_ui::cmd::spawn_detached;
 use swaydesk_ui::{label, run_popup, PopupWindow};
 use upower::{duration, num, parse_upower, py_round, sh, HOURS};
@@ -79,7 +79,7 @@ fn read(first: bool, known: Option<String>, with_history: bool) -> Reading {
     if first {
         let listing = sh(&["upower", "-e"]);
         let paths: Vec<&str> = listing.split_whitespace().collect();
-        bat = paths.iter().find(|p| p.contains("battery_")).map(|p| p.to_string());
+        bat = power::battery_path(&listing);
         let mut others = Vec::new();
         for path in &paths {
             if Some(*path) == bat.as_deref() || path.contains("line_power") || path.contains("DisplayDevice") {
@@ -99,8 +99,8 @@ fn read(first: bool, known: Option<String>, with_history: bool) -> Reading {
         }
     }
     reading.ac = upower::on_ac(Path::new("/sys/class/power_supply"));
-    reading.profile = upower::get_profile();
-    reading.profiles = upower::get_profiles();
+    reading.profile = power::get_profile();
+    reading.profiles = power::get_profiles();
     reading
 }
 
@@ -461,7 +461,7 @@ impl Popup {
     fn on_profile(self: &Rc<Self>, key: &'static str) {
         let me = Rc::downgrade(self);
         glib::MainContext::default().spawn_local(async move {
-            let ok = gio::spawn_blocking(move || upower::set_profile(key)).await.unwrap_or(false);
+            let ok = gio::spawn_blocking(move || power::set_profile(key)).await.unwrap_or(false);
             if !ok {
                 let _ = spawn_detached("notify-send", &["-u", "critical", &tr("Battery"), &tr("Could not change the power profile")]);
             }

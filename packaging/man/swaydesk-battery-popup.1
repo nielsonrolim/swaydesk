@@ -6,6 +6,8 @@ swaydesk\-battery\-popup \- battery popup for Waybar
 .SH DESCRIPTION
 Charge and state, time left, power draw, battery health, a chart of the last 12 hours, the power profiles (the active one in the accent color) and the battery of other devices (headset, mouse). It refreshes every 5 seconds. The data come from upower and power\-profiles\-daemon over D\-Bus.
 .PP
+The profile buttons stay here whatever power_profiles_in_system says; on a computer without a battery the System popup has them (see swaydesk\-system\-popup(1)).
+.PP
 Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
 .PP
 The session runs it under the name waybar\-battery\-popup (a link in the package's helper directory to /usr/bin/swaydesk\-battery\-popup); the process name is waybar\-battery\-popup too.
