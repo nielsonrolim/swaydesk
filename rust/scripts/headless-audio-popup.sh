@@ -76,10 +76,16 @@ for impl in $impls; do
   : >/tmp/calls
   click 1100 190
   expect "$impl: o item novo, embaixo, recebe o clique" "pactl set-sink-port alsa_output.pci analog-output-lineout|wpctl set-default 50" "$(paste -sd'|' /tmp/calls)"
-  # O link desceu para fora da área antiga do cartão: só chega a ele se a região de entrada cresceu
-  click 1214 339
+  # O link desceu para fora da área antiga do cartão: só chega a ele se a região de entrada cresceu. O cartão do
+  # GTK 3 (python) é 12 px mais alto que o do GTK 4 (rust): o link fica em 351, não em 339
+  link_y=339
+  [ "$impl" = python ] && link_y=351
+  : >"$XDG_RUNTIME_DIR/waybar-popups.log"  # sem a linha da rodada anterior: um clique perdido dá ""
+  click 1214 "$link_y"
   expect "$impl: a região de entrada acompanha o cartão" "pavucontrol" "$(tail -n 1 "$XDG_RUNTIME_DIR/waybar-popups.log" | grep -o 'pavucontrol\|clique fora')"
-  wait $popup 2>/dev/null
+  # O popup fecha com o clique; se não fechou (uma falha acima), não fica esperando para sempre
+  for _ in $(seq 50); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done
+  kill "$popup" 2>/dev/null; wait $popup 2>/dev/null
   SWAY_AUDIO_IMPL=$impl "$HOME/.local/bin/waybar-audio" 2>>/tmp/popup.err & popup=$!
   sleep 2
   click 1100 650  # abaixo do cartão, ainda dentro da superfície de 900 px
