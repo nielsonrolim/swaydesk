@@ -11,8 +11,8 @@ include /etc/sway/config.d/*
 # --- Aparência ---
 # Com a do sistema se faltar, no tamanho dela: config.d/00-font.conf, gerado pelo sway-desktop-config
 font pango:Noto Sans 10
-default_border pixel 2
-default_floating_border pixel 2
+default_border pixel 3
+default_floating_border pixel 3
 gaps inner 5
 gaps outer 5
 smart_borders on
