@@ -1,0 +1,5 @@
+// swaydesk-efi: after every dpkg run, the EFI fallback path of a Swaydesk install again (the grub and shim
+// upgrades redo it without what a Swaydesk folder needs; see /usr/libexec/swaydesk/swaydesk-efi-fallback). Does nothing on BIOS, without the
+// ESP mounted or with another layout, and never fails apt: also not after the package was removed and this
+// conffile stayed. A clean environment: the SWAYDESK_* variables of the tests never come from the admin's shell
+DPkg::Post-Invoke { "if [ -x /usr/libexec/swaydesk/swaydesk-efi-fallback ]; then env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin timeout 30 /usr/libexec/swaydesk/swaydesk-efi-fallback || true; fi"; };

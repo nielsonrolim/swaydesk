@@ -29,7 +29,7 @@ O Swaydesk é um projeto independente, construído sobre o [Sway](https://swaywm
 | Ajuda | `swaydesk-widgets` | Uma janela com os atalhos do Sway em uso e um cartão por app do desktop |
 | Telas | `swaydesk-theme` | O app Telas: arruma as telas num mapa, com resolução, taxa de atualização, escala e rotação, e um perfil por conjunto de monitores, aplicado ao conectá-los ou ao fechar a tampa |
 
-O `swaydesk-common` traz os dados e as fontes em comum, e o `swaydesk-scripts` os scripts auxiliares.
+O `swaydesk-common` traz os dados e as fontes em comum, e o `swaydesk-scripts` os scripts auxiliares. No Debian e no Ubuntu, o `swaydesk-desktop` também traz o `swaydesk-efi`, que mantém funcionando com o Secure Boot o caminho de reserva do firmware (`EFI/BOOT`) dos sistemas instalados por uma imagem do Swaydesk. Em qualquer outro sistema, inclusive um que só adicionou este repositório, ele não faz nada: nunca mexe no ESP, nas entradas de boot nem nos arquivos de outro sistema. Para desligá-lo, escreva `off` em `/etc/swaydesk/efi-fallback`.
 
 ## Como as peças se encaixam
 

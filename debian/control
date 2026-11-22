@@ -116,7 +116,7 @@ Description: Sway desktop components - session menu, lock screen and services
 
 Package: swaydesk-desktop
 Architecture: all
-Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), swaydesk-notifd (>= ${source:Version}), swaydesk-notifd (<< ${source:Version}.1~), swaydesk-dock (>= ${source:Version}), swaydesk-dock (<< ${source:Version}.1~), swaydesk-drawer (>= ${source:Version}), swaydesk-drawer (<< ${source:Version}.1~), swaydesk-widgets (>= ${source:Version}), swaydesk-widgets (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-theme (>= ${source:Version}), swaydesk-theme (<< ${source:Version}.1~), swaydesk-session (>= ${source:Version}), swaydesk-session (<< ${source:Version}.1~), ${misc:Depends}, sway, swaybg, swayidle, swaylock, waybar, kitty, rofi, qalc, jq, curl, wl-clipboard, cliphist, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, dconf-cli, libglib2.0-bin, fonts-noto-core, fonts-noto-color-emoji, gnome-themes-extra, adw-gtk-theme, systemd, mate-polkit | lxpolkit
+Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), swaydesk-notifd (>= ${source:Version}), swaydesk-notifd (<< ${source:Version}.1~), swaydesk-dock (>= ${source:Version}), swaydesk-dock (<< ${source:Version}.1~), swaydesk-drawer (>= ${source:Version}), swaydesk-drawer (<< ${source:Version}.1~), swaydesk-widgets (>= ${source:Version}), swaydesk-widgets (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-theme (>= ${source:Version}), swaydesk-theme (<< ${source:Version}.1~), swaydesk-session (>= ${source:Version}), swaydesk-session (<< ${source:Version}.1~), swaydesk-efi (>= ${source:Version}), swaydesk-efi (<< ${source:Version}.1~), ${misc:Depends}, sway, swaybg, swayidle, swaylock, waybar, kitty, rofi, qalc, jq, curl, wl-clipboard, cliphist, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, dconf-cli, libglib2.0-bin, fonts-noto-core, fonts-noto-color-emoji, gnome-themes-extra, adw-gtk-theme, systemd, mate-polkit | lxpolkit
 Recommends: papirus-icon-theme, thunar | file-manager, grim, slurp, wf-recorder, brightnessctl, playerctl, pavucontrol, gammastep, blueman, network-manager-applet | network-manager-gnome, libnotify-bin, power-profiles-daemon, xwayland, qt5ct, qt6ct, gnome-text-editor
 Description: Sway desktop - the full session
  The "Sway Desktop" session for the display manager: the Sway and Waybar
@@ -150,3 +150,30 @@ Description: Sway desktop - login screen for greetd
  "sudo mkdir -p /etc/systemd/system/greetd.service.d && sudo ln -s
  /dev/null /etc/systemd/system/greetd.service.d/swaydesk-greeter.conf &&
  sudo systemctl daemon-reload", effective at the next boot.
+
+Package: swaydesk-efi
+Architecture: all
+Depends: ${misc:Depends}
+Recommends: shim-signed
+Description: Sway desktop - EFI fallback path of the Swaydesk ISO installs
+ Only acts on a system installed from a Swaydesk ISO; on any other system,
+ including a Debian or Ubuntu that only added the Swaydesk repository, it
+ does nothing at all.
+ .
+ On a Swaydesk ISO install, it keeps the firmware's fallback boot path
+ (EFI/BOOT) a working copy of the Swaydesk folder (EFI/swaydesk) under
+ Secure Boot: shim with GRUB and MokManager next to it, the fallback
+ loader that creates the boot entry again after it was lost (a firmware
+ reset, the disk in another computer), the GRUB configuration stub, and
+ the entry name "swaydesk" in shim's list. APT runs it after every package
+ change, since the GRUB and shim upgrades redo that path; it also fixes
+ the installs from the 0.1.3 ISOs, whose fallback path Secure Boot refuses.
+ .
+ It never touches the boot entries in NVRAM, the other systems' folders or
+ a fallback path that belongs to another system, and it never fails APT.
+ On an Ubuntu install from a 0.1.3 image, it renames the old
+ EFI/ubuntu/BOOTX64.CSV that names the entry "Swaydesk" (to
+ BOOTX64.CSV.swaydesk-old), so the firmware gets a single Swaydesk entry
+ back.
+ Changes go to the journal (swaydesk-efi). To turn it off, write "off" to
+ /etc/swaydesk/efi-fallback.

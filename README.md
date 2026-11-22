@@ -29,7 +29,7 @@ Swaydesk is an independent project built on top of [Sway](https://swaywm.org). I
 | Help | `swaydesk-widgets` | A window with the Sway shortcuts in use and a card per desktop app |
 | Displays | `swaydesk-theme` | The Displays app: arrange the screens on a map, with resolution, refresh rate, scale and rotation, and a profile per set of monitors, applied when they're plugged in or the lid closes |
 
-`swaydesk-common` holds the shared data and fonts, and `swaydesk-scripts` the helper scripts.
+`swaydesk-common` holds the shared data and fonts, and `swaydesk-scripts` the helper scripts. On Debian and Ubuntu, `swaydesk-desktop` also brings `swaydesk-efi`, which keeps the firmware's fallback boot path (`EFI/BOOT`) working under Secure Boot on systems installed from a Swaydesk image. On any other system, including one that only added this repository, it does nothing: it never touches the ESP, the boot entries or another system's files. To turn it off, write `off` to `/etc/swaydesk/efi-fallback`.
 
 ## How it fits together
 

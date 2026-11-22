@@ -1,0 +1,2 @@
+packaging/efi/swaydesk-efi-fallback usr/libexec/swaydesk/
+packaging/efi/90swaydesk-efi-fallback etc/apt/apt.conf.d/

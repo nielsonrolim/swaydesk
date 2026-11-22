@@ -1,0 +1,198 @@
+#!/bin/sh
+# swaydesk-efi: the firmware's fallback path (EFI/BOOT) of a Swaydesk ISO install, a copy of the Swaydesk folder
+# (EFI/swaydesk) with what Secure Boot and the fallback need. The installer runs it after its grub-install
+# (shellprocess@swaydesk-efi-removable), APT after every dpkg run (/etc/apt/apt.conf.d/90swaydesk-efi-fallback)
+# and the postinst once, so the grub-efi-amd64 and shim-signed upgrades never leave it behind:
+# - BOOTX64.EFI = the folder's shim, with its grubx64.efi and mmx64.efi next to it. A 0.1.3.x install has the
+#   folder's grubx64 there (Calamares' installEFIFallback), which Secure Boot refuses;
+# - fbx64.efi: without it, the fallback boots but never creates the entry again. Copied again when shim-signed
+#   brings a new one (a new shim can revoke an old fb through SBAT);
+# - grub.cfg, the folder's own (a stub that finds /boot): the signed grub looks for it next to itself and then
+#   in /EFI/debian, its built-in prefix, which a Swaydesk doesn't have; without it, grub>;
+# - EFI/swaydesk/BOOTX64.CSV names the entry as grub-install does, so there is still one entry when the next
+#   upgrade registers it: grub-install copies shim's, which says "debian", and fbx64 names the entry it
+#   creates after it. Debian's grub-install labels it with GRUB_DISTRIBUTOR in lowercase ("swaydesk"),
+#   Ubuntu's keeps the case ("Swaydesk").
+#
+# It only acts on a Swaydesk ISO install, never on a system that only added the repository or on a fallback
+# path that belongs to another system on the same ESP. All of these must hold:
+# - the ESP is mounted at /boot/efi and the system came from our ISO (/usr/local/sbin/swaydesk-extras);
+# - EFI/swaydesk (any case) has this system's signed shim;
+# - EFI/BOOT/BOOTX64.EFI is ours: the folder's grubx64 (a 0.1.3.x install), the file this script wrote last
+#   (/var/lib/swaydesk-efi/bootx64.sha256), or the folder's shim when no other folder of the ESP has a shim
+#   (a Debian next to it with the same shim-signed build puts the same bytes there, and its fallback is its
+#   own). The installer's step says so with SWAYDESK_EFI_INSTALLED=1: its grub-install has just written it;
+# - /etc/swaydesk/efi-fallback doesn't say "off" (for those who manage the ESP themselves);
+# - the ESP has room for everything, so it never does half the job.
+# The files are written one by one under a temporary name and renamed, only when the content differs, with
+# BOOTX64.EFI last: until then the fallback still boots what it booted before. Nothing is deleted, NVRAM and
+# the other folders are never touched (except the rename of Ubuntu 0.1.3.x's own CSV, below), no network. Every change goes to the journal (swaydesk-efi), and it
+# always exits 0: APT runs it after every install.
+# SWAYDESK_ESP, SWAYDESK_SHIM_DIR, SWAYDESK_ROOT (also for /etc/os-release), SWAYDESK_LOGGER and
+# SWAYDESK_FREE_KB change the paths, the logger and the free space in the tests (with SWAYDESK_ESP, the folder needn't be a mount point).
+esp=${SWAYDESK_ESP:-/boot/efi}
+shim=${SWAYDESK_SHIM_DIR:-/usr/lib/shim}
+root=${SWAYDESK_ROOT:-}
+state=$root/var/lib/swaydesk-efi/bootx64.sha256
+id=swaydesk
+label=swaydesk
+if grep -Eqs '^(ID|ID_LIKE)=.*ubuntu' "$root/etc/os-release"; then
+  label=Swaydesk
+fi
+
+log() {
+  ${SWAYDESK_LOGGER:-logger -t swaydesk-efi} "$*" 2>/dev/null || true
+}
+
+# A folder of EFI/ by name, in any case (the ESP is FAT: EFI/boot and EFI/BOOT are the same)
+folder() {
+  for d in "$esp"/EFI/*/; do
+    d=${d%/}
+    name=${d##*/}
+    [ "$(printf %s "$name" | tr A-Z a-z)" = "$1" ] && { printf %s "$d"; return 0; }
+  done
+  return 1
+}
+
+# A file of a folder by name, in any case
+file_in() {
+  for f in "$1"/*; do
+    name=${f##*/}
+    [ "$(printf %s "$name" | tr A-Z a-z)" = "$2" ] && { printf %s "$f"; return 0; }
+  done
+  return 1
+}
+
+# The file of a folder by name, or the name it gets
+target() {
+  file_in "$1" "$2" || printf %s "$1/$3"
+}
+
+sha() {
+  sha256sum "$1" 2>/dev/null | cut -d' ' -f1
+}
+
+# Copies only when the content differs (the ESP is small and FAT; no needless writes), under a temporary name
+# first and then renamed over the old one
+put() {
+  cmp -s "$1" "$2" 2>/dev/null && return 0
+  if cp "$1" "$2.swaydesk-new" && mv -f "$2.swaydesk-new" "$2"; then
+    log "updated $2"
+    return 0
+  fi
+  rm -f "$2.swaydesk-new"
+  log "could not update $2"
+  return 1
+}
+
+[ "$(cat "$root/etc/swaydesk/efi-fallback" 2>/dev/null)" = off ] && exit 0
+[ -e "$root/usr/local/sbin/swaydesk-extras" ] || exit 0
+[ -n "${SWAYDESK_ESP:-}" ] || mountpoint -q "$esp" 2>/dev/null || exit 0
+ours=$(folder "$id") || exit 0
+boot=$(folder boot) || exit 0
+bootx=$(file_in "$boot" bootx64.efi) || exit 0
+oshim=$(file_in "$ours" shimx64.efi) || exit 0
+ogrub=$(file_in "$ours" grubx64.efi) || exit 0
+omm=$(file_in "$ours" mmx64.efi) || exit 0
+# The folder's shim is one of this system's signed shims: Debian has shimx64.efi.signed; Ubuntu makes it an
+# alternative between .latest, .previous and the nx builds, so any of them counts
+signed=
+for s in "$shim"/shimx64*.efi.signed*; do
+  [ -f "$s" ] && cmp -s "$oshim" "$s" && { signed=$s; break; }
+done
+[ -n "$signed" ] || exit 0
+
+# Ubuntu 0.1.3.x: EFI/ubuntu kept the CSV that its grub-install wrote with our label, so fbx64 also recreates
+# a "Swaydesk" entry for that old folder. Renamed (never deleted) only when it is byte for byte that line: a
+# real Ubuntu's says "ubuntu"
+old013=$(mktemp) || exit 0
+trap 'rm -f "$old013"' EXIT
+if printf 'shimx64.efi,Swaydesk,,This is the boot entry for Swaydesk\n' | iconv -f UTF-8 -t UTF-16LE >"$old013" \
+   && ubuntu=$(folder ubuntu) && ucsv=$(file_in "$ubuntu" bootx64.csv) && cmp -s "$ucsv" "$old013" \
+   && [ ! -e "$ucsv.swaydesk-old" ]; then
+  if mv "$ucsv" "$ucsv.swaydesk-old"; then
+    log "renamed $ucsv to $ucsv.swaydesk-old (the 0.1.3.x entry of that folder)"
+  else
+    log "could not rename $ucsv"
+  fi
+fi
+# The fallback path is ours: our 0.1.3.x grub, what we wrote last (a shim upgrade only renews the folder), or
+# our shim when no other system on the ESP has one, or the installer that has just written it
+# (an Ubuntu 0.1.3.x's own EFI/ubuntu, whose CSV was renamed above and that no real Ubuntu wrote again since,
+# isn't another system)
+other_shim() {
+  for d in "$esp"/EFI/*/; do
+    d=${d%/}
+    [ "$d" = "$ours" ] || [ "$d" = "$boot" ] && continue
+    if file_in "$d" bootx64.csv.swaydesk-old >/dev/null && ! file_in "$d" bootx64.csv >/dev/null; then
+      continue
+    fi
+    file_in "$d" shimx64.efi >/dev/null && return 0
+  done
+  return 1
+}
+if cmp -s "$bootx" "$ogrub"; then
+  :
+elif [ -n "$(sha "$bootx")" ] && [ "$(sha "$bootx")" = "$(cat "$state" 2>/dev/null)" ]; then
+  :
+elif cmp -s "$bootx" "$oshim" && { [ "${SWAYDESK_EFI_INSTALLED:-}" = 1 ] || ! other_shim; }; then
+  :
+else
+  exit 0
+fi
+
+# What we wrote (or found already right): the next runs know the fallback path is ours
+remember() {
+  [ "$(sha "$bootx")" = "$(cat "$state" 2>/dev/null)" ] && return 0
+  mkdir -p "${state%/*}" 2>/dev/null && sha "$bootx" >"$state" 2>/dev/null || true
+}
+# The fallback loader: fbx64.efi.signed on Debian, fbx64.efi on Ubuntu
+fb=
+for f in "$shim/fbx64.efi.signed" "$shim/fbx64.efi"; do
+  [ -f "$f" ] && { fb=$f; break; }
+done
+cfg=$(file_in "$ours" grub.cfg) || cfg=
+
+want=$(mktemp) || exit 0
+trap 'rm -f "$old013" "$want"' EXIT
+# UCS-2 little-endian, without a BOM, as shim's own
+printf 'shimx64.efi,%s,,This is the boot entry for Swaydesk\n' "$label" | iconv -f UTF-8 -t UTF-16LE >"$want" || exit 0
+csv=$(target "$ours" bootx64.csv BOOTX64.CSV)
+
+# Room for every file that changes, plus its temporary copy
+need=0
+for pair in "$ogrub|$(target "$boot" grubx64.efi grubx64.efi)" "$omm|$(target "$boot" mmx64.efi mmx64.efi)" \
+            "$fb|$(target "$boot" fbx64.efi fbx64.efi)" "$cfg|$(target "$boot" grub.cfg grub.cfg)" \
+            "$want|$csv" "$oshim|$bootx"; do
+  src=${pair%%|*}
+  dst=${pair#*|}
+  [ -n "$src" ] || continue
+  cmp -s "$src" "$dst" 2>/dev/null && continue
+  need=$((need + $(du -k "$src" | cut -f1) * 2))
+done
+if [ "$need" = 0 ]; then
+  cmp -s "$bootx" "$oshim" && remember
+  exit 0
+fi
+free=${SWAYDESK_FREE_KB:-$(df -Pk "$esp" 2>/dev/null | awk 'NR == 2 { print $4 }')}
+if [ -z "$free" ] || [ "$free" -lt $((need + 64)) ]; then
+  log "not enough room on $esp for the fallback path (${need} KiB needed, ${free:-?} KiB free); nothing changed"
+  exit 0
+fi
+
+status=0
+put "$ogrub" "$(target "$boot" grubx64.efi grubx64.efi)" || status=1
+put "$omm" "$(target "$boot" mmx64.efi mmx64.efi)" || status=1
+[ -z "$fb" ] || put "$fb" "$(target "$boot" fbx64.efi fbx64.efi)" || status=1
+[ -z "$cfg" ] || put "$cfg" "$(target "$boot" grub.cfg grub.cfg)" || status=1
+put "$want" "$csv" || status=1
+# The shim last, only with all it loads already in place
+if [ "$status" = 0 ]; then
+  if put "$oshim" "$bootx"; then
+    remember
+  else
+    status=1
+  fi
+fi
+[ "$status" = 0 ] || echo "swaydesk-efi-fallback: could not update everything in $boot and $ours" >&2
+exit 0

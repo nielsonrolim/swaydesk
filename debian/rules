@@ -7,9 +7,9 @@ export CARGO_HOME = $(CURDIR)/debian/cargo-home
 export CARGO_TARGET_DIR = $(CURDIR)/debian/cargo-target
 CRATES := $(shell packaging/install-tree.sh --crates)
 OFFLINE := $(if $(wildcard rust/vendor),--offline,)
-# O swaydesk-dpkg-includes só existe no Debian/Ubuntu: o filtro do dpkg vem do debian/ (o .install), não do
-# install-tree.sh, que o Arch também usa
-PACKAGES := $(filter-out swaydesk-dpkg-includes,$(shell dh_listpackages))
+# Os pacotes só do Debian e do Ubuntu (o swaydesk-dpkg-includes e o swaydesk-efi) levam os arquivos pelo
+# debian/<pacote>.install, fora do install-tree.sh, que o PKGBUILD do Arch também usa
+PACKAGES := $(filter-out swaydesk-dpkg-includes swaydesk-efi,$(shell dh_listpackages))
 
 %:
 	dh $@

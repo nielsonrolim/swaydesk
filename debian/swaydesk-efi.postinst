@@ -1,0 +1,17 @@
+#!/bin/sh
+# swaydesk-efi: the EFI fallback path right away. APT reads its Post-Invoke hooks when it starts, so the
+# run that installs this package doesn't see the new one yet. Never fails the installation.
+set -e
+
+case "$1" in
+  configure)
+    if [ -x /usr/libexec/swaydesk/swaydesk-efi-fallback ]; then
+      # A clean environment, as in the APT hook
+      env -i PATH=/usr/sbin:/usr/bin:/sbin:/bin timeout 30 /usr/libexec/swaydesk/swaydesk-efi-fallback || true
+    fi
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0
