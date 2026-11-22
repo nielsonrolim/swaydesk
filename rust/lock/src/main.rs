@@ -462,10 +462,12 @@ fn read_state() -> SystemState {
         let states = media::read_all(&bus, &|_| (None, None));
         media::pick(&states, None).cloned()
     });
+    let (name, many) = sl::keyboard_layout(&inputs);
+    let layout = (swaydesk_common::i18n::layout_name(&name), many);
     SystemState {
         battery: sl::battery(Path::new(sl::POWER_SUPPLY)),
         net: Some(sl::network(Path::new(sl::SYS_NET), Path::new(sl::PROC_WIRELESS))),
-        layout: sl::keyboard_layout(&inputs),
+        layout,
         media,
     }
 }

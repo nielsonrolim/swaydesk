@@ -188,6 +188,7 @@ fn read_layout() -> (String, bool) {
     output_within(Command::new("swaymsg").args(["-r", "-t", "get_inputs"]), SWAYMSG_TIMEOUT)
         .and_then(|out| serde_json::from_slice(&out).ok())
         .map(|inputs| sl::keyboard_layout(&inputs))
+        .map(|(name, many)| (swaydesk_common::i18n::layout_name(&name), many))
         .unwrap_or_default()
 }
 

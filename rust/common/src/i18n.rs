@@ -15,6 +15,14 @@ use crate::config;
 pub const DOMAIN: &str = "sway-desktop";
 
 static CATALOG: OnceLock<Catalog> = OnceLock::new();
+static XKB_CATALOG: OnceLock<Catalog> = OnceLock::new();
+
+/// Os nomes dos layouts de teclado (o `xkb_active_layout_name` do Sway, em inglês) são traduzidos pelo
+/// próprio xkeyboard-config (xkb-data no Debian): `xkeyboard-config-2` nas versões novas, `xkeyboard-config`
+/// nas outras. No Ubuntu e no Mint, as traduções vêm nos language-pack-<língua>-base, em
+/// /usr/share/locale-langpack (o gettext do Ubuntu procura lá primeiro; o nosso leitor de .mo, não).
+const XKB_DOMAINS: [&str; 2] = ["xkeyboard-config-2", "xkeyboard-config"];
+const XKB_DIRS: [&str; 3] = ["/usr/local/share/locale", "/usr/share/locale-langpack", "/usr/share/locale"];
 
 /// Onde procurar `<língua>/LC_MESSAGES/sway-desktop.mo`, em ordem: a pasta do install.sh, a que
 /// fica ao lado do programa (`bin/../share/locale`, como no Python) e as do sistema.
@@ -46,10 +54,14 @@ fn expand(language: &str) -> Vec<String> {
 }
 
 fn load(languages: &[String], dirs: &[PathBuf]) -> Catalog {
+    load_domains(&[DOMAIN], languages, dirs)
+}
+
+fn load_domains(domains: &[&str], languages: &[String], dirs: &[PathBuf]) -> Catalog {
     for language in languages {
         for name in expand(language) {
-            for dir in dirs {
-                let file = dir.join(&name).join("LC_MESSAGES").join(format!("{DOMAIN}.mo"));
+            for (dir, domain) in dirs.iter().flat_map(|d| domains.iter().map(move |m| (d, m))) {
+                let file = dir.join(&name).join("LC_MESSAGES").join(format!("{domain}.mo"));
                 if let Ok(handle) = File::open(&file) {
                     match Catalog::parse(handle) {
                         Ok(catalog) => return catalog,
@@ -71,7 +83,28 @@ pub fn load_catalog(languages: &[String], dirs: &[PathBuf]) -> Catalog {
 /// primeiro texto pedido carrega do mesmo jeito.
 pub fn init(config: &config::Config) {
     let env: HashMap<String, String> = std::env::vars().collect();
-    let _ = CATALOG.set(load(&config::message_languages(config, &env), &locale_dirs()));
+    let languages = config::message_languages(config, &env);
+    let _ = CATALOG.set(load(&languages, &locale_dirs()));
+    let _ = XKB_CATALOG.set(load_xkb(&languages, &XKB_DIRS.map(PathBuf::from)));
+}
+
+fn load_xkb(languages: &[String], dirs: &[PathBuf]) -> Catalog {
+    load_domains(&XKB_DOMAINS, languages, dirs)
+}
+
+/// O nome de um layout de teclado na língua da sessão ("Portuguese (Brazil)" → "Portugués (Brasil)").
+/// Sem a tradução instalada, o nome em inglês, como veio. Vazio fica vazio (o msgid "" é o cabeçalho).
+pub fn layout_name(name: &str) -> String {
+    if name.is_empty() {
+        return String::new();
+    }
+    XKB_CATALOG
+        .get_or_init(|| {
+            let env: HashMap<String, String> = std::env::vars().collect();
+            load_xkb(&config::message_languages(&config::load(), &env), &XKB_DIRS.map(PathBuf::from))
+        })
+        .gettext(name)
+        .to_string()
 }
 
 fn catalog() -> &'static Catalog {
@@ -131,6 +164,55 @@ mod tests {
         assert_eq!(pt.ngettext("%d application", "%d applications", 1), "%d aplicativo");
         assert_eq!(pt.ngettext("%d application", "%d applications", 2), "%d aplicativos");
         assert_eq!(pt.pgettext("decimal separator", "."), ",");
+    }
+
+    // O xkeyboard-config de verdade não está no repositório: um .mo mínimo com o nome do domínio novo
+    #[test]
+    fn layout_names_come_from_the_xkeyboard_config_domain() {
+        let dir = std::env::temp_dir().join(format!("i18n-xkb-{}", std::process::id()));
+        let messages = dir.join("es/LC_MESSAGES");
+        std::fs::create_dir_all(&messages).unwrap();
+        std::fs::write(messages.join("xkeyboard-config-2.mo"), mo(&[("Portuguese (Brazil)", "Portugués (Brasil)")])).unwrap();
+        let es = load_xkb(&["es_ES.UTF-8".into()], &[dir.clone()]);
+        assert_eq!(es.gettext("Portuguese (Brazil)"), "Portugués (Brasil)");
+        // Sem tradução do nome, ou sem catálogo na língua: o inglês
+        assert_eq!(es.gettext("English (US)"), "English (US)");
+        assert_eq!(load_xkb(&["pt_BR".into()], &[dir.clone()]).gettext("Portuguese (Brazil)"), "Portuguese (Brazil)");
+        // Ubuntu e Mint: o .mo só numa pasta posterior (/usr/share/locale-langpack), não na primeira
+        let empty = std::env::temp_dir().join(format!("i18n-xkb-empty-{}", std::process::id()));
+        std::fs::create_dir_all(&empty).unwrap();
+        assert_eq!(load_xkb(&["es_ES".into()], &[empty.clone(), dir.clone()]).gettext("Portuguese (Brazil)"), "Portugués (Brasil)");
+        let at = |d: &str| XKB_DIRS.iter().position(|x| *x == d).unwrap();
+        assert!(at("/usr/share/locale-langpack") < at("/usr/share/locale"));
+        std::fs::remove_dir_all(&dir).unwrap();
+        std::fs::remove_dir_all(&empty).unwrap();
+    }
+
+    /// Um .mo (little-endian) com estes pares, sem hash.
+    fn mo(pairs: &[(&str, &str)]) -> Vec<u8> {
+        let mut pairs: Vec<(&str, &str)> = [("", "Content-Type: text/plain; charset=UTF-8\n")].into_iter().chain(pairs.iter().copied()).collect();
+        pairs.sort();
+        let n = pairs.len() as u32;
+        let (originals, translations) = (28, 28 + 8 * n);
+        let mut data_at = 28 + 16 * n;
+        let (mut table, mut strings) = (Vec::new(), Vec::new());
+        for column in [0, 1] {
+            for pair in &pairs {
+                let text = if column == 0 { pair.0 } else { pair.1 };
+                table.extend((text.len() as u32).to_le_bytes());
+                table.extend(data_at.to_le_bytes());
+                strings.extend(text.as_bytes());
+                strings.push(0);
+                data_at += text.len() as u32 + 1;
+            }
+        }
+        let mut out = Vec::new();
+        for word in [0x950412de_u32, 0, n, originals, translations, 0, 0] {
+            out.extend(word.to_le_bytes());
+        }
+        out.extend(table);
+        out.extend(strings);
+        out
     }
 
     // Um catálogo es só atende todo es_*: es_MX tenta es_MX e depois es

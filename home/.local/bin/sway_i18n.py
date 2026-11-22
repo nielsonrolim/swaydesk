@@ -27,7 +27,8 @@ def translation(languages):
     return gettext.NullTranslations()
 
 
-_translation = translation(dc.message_languages(dc.load_config(dc.path())[0]))
+_languages = dc.message_languages(dc.load_config(dc.path())[0])
+_translation = translation(_languages)
 _ = _translation.gettext
 ngettext = _translation.ngettext
 pgettext = _translation.pgettext
@@ -37,3 +38,35 @@ def decimal(value, digits=1):
     """O número com o separador decimal da língua: 12.5 em inglês, 12,5 em português."""
     # TRANSLATORS: the decimal separator of your language
     return f"{value:.{digits}f}".replace(".", pgettext("decimal separator", "."))
+
+
+# Os nomes dos layouts de teclado (o xkb_active_layout_name do Sway, em inglês) vêm traduzidos do próprio
+# xkeyboard-config (xkb-data no Debian): xkeyboard-config-2 nas versões novas, xkeyboard-config nas outras. No
+# Ubuntu e no Mint, vêm nos language-pack-<língua>-base, em /usr/share/locale-langpack, que o gettext do Python
+# não procura sozinho
+XKB_DOMAINS = ("xkeyboard-config-2", "xkeyboard-config")
+XKB_LOCALEDIRS = (Path("/usr/local/share/locale"), Path("/usr/share/locale-langpack"), SYSTEM_LOCALEDIR)
+
+
+def xkb_translation(languages, localedirs=XKB_LOCALEDIRS):
+    for language in languages or ["en"]:
+        for localedir in localedirs:
+            for domain in XKB_DOMAINS:
+                found = gettext.translation(domain, localedir, languages=[language], fallback=True)
+                if type(found) is not gettext.NullTranslations:
+                    return found
+    return gettext.NullTranslations()
+
+
+_xkb = None
+
+
+def layout_name(name):
+    """O nome de um layout de teclado na língua da sessão ("Portuguese (Brazil)" → "Português (Brasil)").
+    Sem a tradução instalada, o nome em inglês, como veio; vazio fica vazio (o msgid "" é o cabeçalho)."""
+    global _xkb
+    if not name:
+        return ""
+    if _xkb is None:
+        _xkb = xkb_translation(_languages)
+    return _xkb.gettext(name)
