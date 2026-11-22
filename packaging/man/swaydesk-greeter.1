@@ -44,7 +44,8 @@ The last account and session, written only by the greeter user (the directory is
 The account photo: PNG or JPEG, up to 2 MiB and 2048x2048.
 .TP
 .I /etc/default/keyboard, /etc/locale.conf, /etc/default/locale
-The system keyboard (or systemd's, without the first file) and language.
+The system keyboard and language. For the keyboard, /etc/default/keyboard or systemd's
+/etc/X11/xorg.conf.d/00-keyboard.conf or /etc/vconsole.conf, whichever changed last.
 .TP
 .I /etc/pam.d/swaydesk\-greeter
 The PAM service of the sessions opened from the login screen (greetd.toml's
