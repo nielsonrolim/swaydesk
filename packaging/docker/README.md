@@ -7,7 +7,7 @@ the base distribution image (`debian:13`, `ubuntu:26.04`, `archlinux`).
 | Image | File | Used for |
 | --- | --- | --- |
 | `swaydesk-build:debian13` | `build-debian13.Dockerfile` | `cargo build`/`cargo test` of `rust/` for Debian 13 |
-| `swaydesk-build:arch` | `build-arch.Dockerfile` | `makepkg` of `packaging/arch/PKGBUILD`, and the Rust tests on Arch |
+| `swaydesk-build:arch` | `build-arch.Dockerfile` | `makepkg` of `packaging/arch/PKGBUILD`, the Rust tests on Arch, and the Python test files that need Arch (`pacman`'s `vercmp`, `jq`) |
 | `swaydesk-smoke:debian13` | `smoke-debian13.Dockerfile` | the headless Sway tests, `rust/scripts/headless-*.sh` |
 | `swaydesk-smoke:debian13-qalc` | `smoke-debian13-qalc.Dockerfile` | `rust/scripts/headless-drawer-qalc.sh` (the smoke image plus qalc and wl-clipboard) |
 
@@ -21,6 +21,11 @@ docker build -t swaydesk-build:arch -f packaging/docker/build-arch.Dockerfile pa
 docker build -t swaydesk-smoke:debian13 -f packaging/docker/smoke-debian13.Dockerfile packaging/docker
 docker build -t swaydesk-smoke:debian13-qalc -f packaging/docker/smoke-debian13-qalc.Dockerfile packaging/docker
 ```
+
+A test that calls a command for real needs it in the image: the test suite lists, per image, the
+commands its tests call, checks the Dockerfiles against that list, and checks the built images before a full
+test run. A Dockerfile that drops a package fails that check; an image built before a package was added
+fails the run until it's rebuilt.
 
 `--build-arg BASE=<tag>` gives the qalc image another smoke image to start from. The bases are the moving
 tags `debian:13` and `archlinux:latest`, so a rebuild picks up the distributions' updates; the Arch one, a
