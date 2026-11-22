@@ -54,7 +54,7 @@ segura a versão até ser corrigida ou explicada; o resumo vai junto do pedido d
    - feche a entrada de cima do `debian/changelog`: a versão `X.Y.Z-1`, a distribuição `unstable` no lugar de `UNRELEASED`, a data e o resumo das mudanças;
    - a entrada `## X.Y.Z — AAAA-MM-DD` no topo do `packaging/public/CHANGELOG.md`, que é a nota do Release;
    - a linha "Current release" / "Versão atual" do `packaging/public/README.md` e do `README.pt-BR.md`. O `tests/test_mirror.py` confere que ela é a versão de cima do `CHANGELOG.md`;
-   - o rodapé do site, com o builder3, junto com a publicação;
+   - o rodapé do site (no repositório do site), junto com a publicação;
    - se o [adw-gtk3](https://github.com/lassekongo83/adw-gtk3/releases) tem versão nova: atualize o `adw-gtk-theme` (a URL e o sha256 do `upstream`, conferido contra o `digest` do Release no GitHub, uma entrada no `debian/changelog` dele e o hash no `tests/test_obs.py`) e envie-o ao OBS antes do `swaydesk`.
 2. `git tag -a vX.Y.Z -m "Swaydesk X.Y.Z"` nesse commit e `git push origin vX.Y.Z`.
 3. Gere e envie os pacotes desse commit, como em "Enviar ao OBS" abaixo.
@@ -249,7 +249,7 @@ manual (`osc rebuild`), uma mudança no `prjconf` ou no meta do projeto que o fa
 mesma mudança:
 1. o `keyring-published.sha256` (o nome do arquivo, se a versão mudou, e o hash);
 2. os blocos do Debian e do Ubuntu nos dois READMEs públicos (o `test_mirror` aponta o que ficou para trás);
-3. a página de instalação do site, com o builder3.
+3. a página de instalação do site (no repositório do site).
 
 Depois de publicado, o `packaging/obs/check-keyring.sh` baixa os `.deb` do OBS e compara com o
 `keyring-published.sha256`; rode-o depois de qualquer envio e antes de passar os READMEs adiante. O `push.sh` lembra

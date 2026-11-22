@@ -309,7 +309,7 @@ const WATCHER_CANCELLED: i32 = -1;
 /// O swaymsg dos eventos em uso no processo, para o fim do [`run_single`]. O setpriv --pdeathsig não basta:
 /// ele nasce numa linha do GIO, e na saída do processo o Linux o passa para outra linha do mesmo processo sem
 /// mandar o sinal. Um popup fechado por SIGTERM (abrir de novo, ou abrir outro popup) saía do laço sem passar
-/// pelo close, e o swaymsg ficava órfão (visto pela vm-manager no #117, reproduzido no Sway headless).
+/// pelo close, e o swaymsg ficava órfão (visto numa VM no #117, reproduzido no Sway headless).
 static LIVE_WATCHER: AtomicI32 = AtomicI32::new(0);
 
 /// Encerra o swaymsg dos eventos que ainda estiver vivo. Chamado ao sair do laço principal.

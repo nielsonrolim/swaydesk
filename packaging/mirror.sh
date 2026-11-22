@@ -5,9 +5,11 @@
 # packaging/public, na raiz.
 # Os dotfiles, o install.sh, os componentes em Python, a documentação interna e os testes ficam de fora.
 #
-# Roda quem fez o merge, com a main local igual à origin/main. Cada envio é um commit novo por cima do
-# anterior, com o título do squash da main (sem os "#N", que lá apontariam para outras issues) e uma linha
-# fixa: o corpo, com o contexto interno do PR, não vai. O autor fica no endereço noreply. Nunca força o push. Antes, o packaging/audit-tree.sh confere a árvore e a mensagem: se ele
+# Roda quem fez o merge, com a main local igual à origin/main. Cada envio é um commit novo por cima do anterior,
+# com o título do squash da main (sem os "#N", que lá apontariam para outras issues) e uma linha fixa: o corpo, com
+# o contexto interno do PR, não vai. Um título que cita uma sessão de trabalho, ou um commit sem um
+# tests/session-names.regex que sirva, sai como "Update from the private repository". O autor fica no endereço
+# noreply. Nunca força o push. Antes, o packaging/audit-tree.sh confere a árvore e a mensagem: se ele
 # acha algo desta máquina, nada é enviado.
 #
 # uso: packaging/mirror.sh [--dry-run]    com --dry-run, monta, confere e faz o commit numa pasta
@@ -125,6 +127,28 @@ rm -rf "${work:?}/full"
 # A mensagem: o título do squash, sem os números de PR e de issue do privado, e uma linha fixa
 subject=$(git -C "$root" log -1 --format=%s "$head" | sed -E 's/ \(#[0-9]+\)$//; s/#[0-9]+//g; s/  +/ /g; s/ +$//')
 [[ -n $subject ]] || subject="Update from the private repository"
+# Sem os nomes das sessões de trabalho do privado: o título do squash só existe depois do merge, então é aqui que
+# ele é conferido. O padrão vem do tests/session-names.regex do próprio commit, que não é espelhado (no mirror.sh
+# ele iria para o público). Com um nome, ou sem o padrão (uma branch de lançamento antiga), a mensagem é a
+# genérica: nada vaza e nada para (um lançamento com tag não pode ganhar outro título)
+# Na dúvida, a genérica: só um "não casa" limpo (saída 1 do grep) deixa o título passar; um padrão inválido
+# (saída 2) não deixa
+# Só serve um arquivo de uma linha, sem espaços (o mesmo que o test_mirror exige)
+session_names=$(git -C "$root" show "$head:tests/session-names.regex" 2>/dev/null) || session_names=
+[[ $session_names =~ ^[^[:space:]]+$ ]] || session_names=
+names_rc=1
+[[ -z $session_names ]] || { grep -qiE -- "$session_names" <<<"$subject" && names_rc=0 || names_rc=$?; }
+if [[ -z $session_names ]]; then
+  echo "mirror: no usable tests/session-names.regex in $head (missing, or not one line without spaces or CRLF):" \
+    "the generic commit message is used" >&2
+  subject="Update from the private repository"
+elif ((names_rc == 0)); then
+  echo "mirror: the squash title names a working session: the generic commit message is used" >&2
+  subject="Update from the private repository"
+elif ((names_rc != 1)); then
+  echo "mirror: tests/session-names.regex is not a valid grep -E pattern: the generic commit message is used" >&2
+  subject="Update from the private repository"
+fi
 mkdir "$work/message"
 printf '%s\n\n%s\n' "$subject" "Mirrored from the private repository." > "$work/message/MESSAGE"
 

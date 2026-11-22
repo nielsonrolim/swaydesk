@@ -406,7 +406,7 @@ fn apply_profile(id: &str) -> Result<(), String> {
 }
 
 /// O aviso de um perfil que muda mais que as teclas: o dwm usa Alt como Mod (decisão do usuário), e alguns
-/// atalhos dos apps com Alt deixam de chegar a eles. O mesmo texto abre o keys/dwm.conf (builder5).
+/// atalhos dos apps com Alt deixam de chegar a eles. O mesmo texto abre o keys/dwm.conf.
 fn profile_notice(id: &str) -> Option<String> {
     match id {
         "dwm" => Some(tr("dwm profile: the modifier is Alt, as in dwm, not Super. Some app shortcuts with Alt (like Alt+F, which opens the File menu) no longer reach the apps. Two shortcuts change only here: the window cards (Alt+Tab and Alt+Shift+Tab in the other profiles) move to Super+Tab and Super+Shift+Tab, because Alt+Tab goes back to the last workspace; and the launcher (Alt+Space) moves to Super+Space, because Alt+Space switches the window layout. The Swaydesk actions that dwm doesn't have (notifications, clipboard, window search, capture and recording) stay on Super. Floating windows with the mouse: Alt+drag. The keyboard layout: Super+Ctrl+Space.")),
