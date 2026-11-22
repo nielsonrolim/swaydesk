@@ -2,6 +2,25 @@
 
 Each release is published as packages and, shortly after, as install images. Updates arrive through `apt upgrade` or `pacman -Syu`.
 
+## 0.1.3.1 — 2026-11-22
+
+A bug-fix release for the keyboard and the install images: `ç` on US International, accents in GTK 4 apps, the system keyboard reaching existing accounts, and the Arch installer from a USB stick.
+
+### Fixed
+
+- With the US international keyboard, `'` + `c` now gives `ç` (and `'` + `C` gives `Ç`) in GTK, Qt and terminal apps and at the login screen: the session creates `~/.XCompose` with `include "%L"`, so the other accents keep working. A `~/.XCompose` of your own is never touched.
+- A system keyboard change (`localectl`, `dpkg-reconfigure keyboard-configuration`) now reaches existing accounts at their next login, as long as the keyboard block in `~/.config/sway/config.d/50-local.conf` hasn't been edited. The login screen and new accounts follow it too, including `localectl` on Arch and Ubuntu 26.04. On Debian and Ubuntu, `sudo dpkg-reconfigure keyboard-configuration` is the change that survives a reboot.
+- On Sway without an input method, the accents (`'` + `e`, `~` + `a`, `^` + `o`…) work again in GTK 4 apps such as Text Editor and GNOME Software: the session uses `GTK_IM_MODULE=simple` when no input method (ibus, fcitx) is set up. Anyone using an on-screen keyboard through the input method can put `export GTK_IM_MODULE=wayland` in `~/.profile`.
+- `~/.local/bin` is in the session's PATH on every distro (Arch has no `~/.profile`, and Debian's only adds it if the folder already exists), so scripts placed there run from rofi, the dock and the terminal. The folder is created at login. The PATH is not passed to systemd or D-Bus, so the next GDM login still reads `~/.profile`.
+
+### Install images
+
+- In the installer of every image, with the **English (US, intl., with dead keys)** layout, `'` + `c` now gives **ç** (and `'` + `C` gives **Ç**), as on Windows. Before, it gave ć, from the keyboard page's test field onwards. Other dead keys are unchanged.
+- Arch image: the installer no longer stops at once with "The source filesystem /run/archiso/bootmnt/arch/x86_64/airootfs.sfs does not exist" when the image was copied to RAM at boot, as on a USB stick in a PC with 4 GB or more free.
+- Arch image: the installer no longer writes Debian's `/etc/default/keyboard`, so a keyboard changed later with `localectl` now reaches the login screen. Systems already installed keep that file, and the package update above handles them.
+- Swap is zram, half the RAM with zstd, on all four images. The Arch image installed a system with no swap at all; on Debian and Ubuntu, zram was capped at 4 GiB with lz4 or lzo-rle. Ubuntu keeps its small swapfile as a fallback.
+- The Debian 13 and Debian testing live sessions boot about a minute faster: they no longer rebuild the library cache on every boot (the desktop came up in 141 s instead of 196 s from a USB stick).
+
 ## 0.1.3 — 2026-11-21
 
 The accent color now follows the wallpaper, the icon theme can be chosen, Swaydesk speaks Spanish, Debian testing gets packages and Arch gets its own update notice. The install images bring an app store.

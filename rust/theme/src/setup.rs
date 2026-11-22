@@ -3,7 +3,10 @@
 //! - só o que falta: um arquivo que já existe (mesmo um link quebrado) é do usuário e fica;
 //! - o `50-local.conf` ganha o teclado do sistema (`/etc/default/keyboard`), como o `keyboard_block`; sem esse
 //!   arquivo (Arch), o do systemd: o layout X11 do localectl, senão o mapa do console traduzido pelo
-//!   kbd-model-map;
+//!   kbd-model-map. A cada login, o bloco segue o teclado do sistema (localectl, dpkg-reconfigure), enquanto
+//!   for o que gravamos: um bloco mexido pelo usuário fica;
+//! - com a sessão no US internacional (o teclado que o Sway acaba usando, pelo `config.d`), o `~/.XCompose`
+//!   com ' + c dando ç, se não houver nada lá; ele sai quando a sessão muda, se ainda for igual ao nosso;
 //! - os fixados da dock trocam o Nemo do modelo pelo gerenciador de arquivos da config;
 //! - quem já tinha os fixados com o Nemo do modelo sem o Nemo instalado (a 0.1.0 e a 0.1.1 na ISO, onde o
 //!   swaydesk-pin-installer copiava o modelo cru) ganha a mesma troca, uma vez: depois dela não há mais "nemo".
@@ -17,6 +20,10 @@ use crate::desktop;
 const LOCAL_CONF: &str = ".config/sway/config.d/50-local.conf";
 const PINNED: &str = ".local/share/sway-dock/pinned";
 const CONFIG: &str = ".config/sway-desktop/config.toml";
+const XCOMPOSE: &str = ".XCompose";
+/// O último bloco do teclado que gravamos no `50-local.conf` (vazio: nenhum). Igual ao do arquivo: ninguém o
+/// mexeu, e ele pode seguir o teclado do sistema.
+const KEYBOARD_STAMP: &str = ".local/state/swaydesk/keyboard-block";
 
 /// O skel do pacote: SWAYDESK_SKEL, senão o swaydesk-desktop/skel ao lado do share/sway-desktop da instalação
 /// (/usr/share/swaydesk-desktop/skel, para o binário em /usr/bin).
@@ -135,7 +142,82 @@ pub fn setup(skel: &Path, home: &Path, keyboard: &Path) -> std::io::Result<Vec<P
         }
         copied.push(rel);
     }
+    // O teclado do sistema que mudou e o ç no US internacional: não impedem o resto do login
+    if let Err(err) = sync_keyboard(home, keyboard) {
+        eprintln!("swaydesk-desktop-config: {}: {err}", home.join(LOCAL_CONF).display());
+    }
+    let intl = kbd::is_us_intl(&kbd::session_keyboard(&sway_confs(home)));
+    if let Err(err) = sync_compose(home, intl) {
+        eprintln!("swaydesk-desktop-config: {}: {err}", home.join(XCOMPOSE).display());
+    }
     Ok(copied)
+}
+
+/// O bloco do teclado no `50-local.conf` segue o do sistema, se ainda for o que gravamos: igual ao carimbo
+/// ou, sem carimbo (a conta de antes dele), sem bloco ou com um bloco intocado. Um bloco mexido, ou tirado
+/// depois do carimbo, é do usuário e fica, e o carimbo também. Só num arquivo comum (um link é do usuário).
+fn sync_keyboard(home: &Path, keyboard: &Path) -> std::io::Result<()> {
+    let path = home.join(LOCAL_CONF);
+    if !path.symlink_metadata().is_ok_and(|m| m.file_type().is_file()) {
+        return Ok(());
+    }
+    let text = std::fs::read_to_string(&path)?;
+    let range = kbd::find_block(&text);
+    let current = range.clone().map(|r| &text[r]).unwrap_or("");
+    let stamp_path = home.join(KEYBOARD_STAMP);
+    let ours = match std::fs::read_to_string(&stamp_path) {
+        Ok(stamp) => stamp == current,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => current.is_empty() || kbd::is_pristine_block(current),
+        Err(err) => return Err(err),
+    };
+    if !ours {
+        return Ok(());
+    }
+    let new = kbd::system_keyboard(keyboard).map(|(source, text)| kbd::keyboard_block_text(&source, &text)).unwrap_or_default();
+    if new != current {
+        let updated = match range {
+            Some(r) => format!("{}{new}{}", &text[..r.start], &text[r.end..]),
+            None => text.clone() + &new,
+        };
+        let mode = std::fs::metadata(&path).map(|m| std::os::unix::fs::PermissionsExt::mode(&m.permissions()) & 0o7777).unwrap_or(0o644);
+        swaydesk_common::text::atomic_write(&path, updated.as_bytes(), mode)?;
+    }
+    if std::fs::read_to_string(&stamp_path).ok().as_deref() != Some(new.as_str()) {
+        swaydesk_common::text::atomic_write(&stamp_path, new.as_bytes(), 0o644)?;
+    }
+    Ok(())
+}
+
+/// Os arquivos do `~/.config/sway/config.d`, na ordem do `include` (a do nome), para saber o teclado da sessão.
+fn sway_confs(home: &Path) -> Vec<String> {
+    let dir = home.join(".config/sway/config.d");
+    let mut names: Vec<PathBuf> = std::fs::read_dir(&dir).map(|e| e.flatten().map(|e| e.path()).collect()).unwrap_or_default();
+    names.sort();
+    names.iter().filter_map(|p| std::fs::read_to_string(p).ok()).collect()
+}
+
+/// O `~/.XCompose` do US internacional: os apps GTK, Qt e os terminais usam a tabela do locale, que no en_US
+/// dá ć para ' + c. Com a sessão no US internacional, cria o nosso se não houver nada no caminho (nem um
+/// link, nem quebrado: create_new não segue nem troca). Fora dele, apaga só o que ainda é igual ao nosso: um
+/// arquivo mexido pelo usuário fica.
+fn sync_compose(home: &Path, intl: bool) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::os::unix::fs::OpenOptionsExt;
+    let path = home.join(XCOMPOSE);
+    let meta = path.symlink_metadata();
+    if intl {
+        if meta.is_ok() {
+            return Ok(());
+        }
+        let mut file = std::fs::OpenOptions::new().write(true).create_new(true).mode(0o644).open(&path)?;
+        return file.write_all(kbd::INTL_COMPOSE.as_bytes());
+    }
+    if meta.is_ok_and(|m| m.file_type().is_file())
+        && std::fs::read(&path).is_ok_and(|data| data == kbd::INTL_COMPOSE.as_bytes())
+    {
+        std::fs::remove_file(&path)?;
+    }
+    Ok(())
 }
 
 /// Aplica a migração no arquivo de fixados do usuário, se houver o que mudar.
@@ -157,6 +239,90 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn the_intl_compose_table_comes_and_goes_with_the_keyboard() {
+        let home = tempdir("compose");
+        let path = home.join(XCOMPOSE);
+        sync_compose(&home, false).unwrap();
+        assert!(path.symlink_metadata().is_err());
+        sync_compose(&home, true).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), kbd::INTL_COMPOSE);
+        sync_compose(&home, true).unwrap();
+        sync_compose(&home, false).unwrap();
+        assert!(path.symlink_metadata().is_err());
+        // O do usuário fica nos dois casos: um arquivo dele, um mexido, um link (mesmo quebrado)
+        std::fs::write(&path, "include \"%L\"\n").unwrap();
+        sync_compose(&home, true).unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "include \"%L\"\n");
+        std::fs::write(&path, format!("{}<Multi_key> <a> : \"á\"\n", kbd::INTL_COMPOSE)).unwrap();
+        sync_compose(&home, false).unwrap();
+        assert!(path.exists());
+        std::fs::remove_file(&path).unwrap();
+        std::os::unix::fs::symlink(home.join("nao-existe"), &path).unwrap();
+        sync_compose(&home, true).unwrap();
+        sync_compose(&home, false).unwrap();
+        assert!(path.symlink_metadata().unwrap().file_type().is_symlink());
+        assert!(home.join("nao-existe").symlink_metadata().is_err());
+        let _ = std::fs::remove_dir_all(&home);
+    }
+
+    #[test]
+    fn the_keyboard_block_follows_the_system_while_it_is_ours() {
+        let dir = tempdir("follow");
+        let (home, keyboard) = (dir.join("home"), dir.join("keyboard"));
+        let conf = home.join(LOCAL_CONF);
+        std::fs::create_dir_all(conf.parent().unwrap()).unwrap();
+        let intl = "XKBLAYOUT=\"us\"\nXKBVARIANT=\"intl\"\n";
+        let br = "XKBLAYOUT=\"br\"\nXKBVARIANT=\"abnt2\"\n";
+        let block = |text: &str| kbd::keyboard_block_text(&keyboard, text);
+        let session = |home: &Path| kbd::session_keyboard(&sway_confs(home));
+        let head = "# --- Mouse ---\n# input type:pointer {\n# }\n";
+        // A conta de antes do carimbo, com o bloco intocado: segue o sistema e ganha o carimbo
+        std::fs::write(&conf, format!("{head}{}", block(intl))).unwrap();
+        std::fs::write(&keyboard, br).unwrap();
+        sync_keyboard(&home, &keyboard).unwrap();
+        assert_eq!(std::fs::read_to_string(&conf).unwrap(), format!("{head}{}", block(br)));
+        assert_eq!(std::fs::read_to_string(home.join(KEYBOARD_STAMP)).unwrap(), block(br));
+        assert_eq!(session(&home), "XKBLAYOUT=\"br\"\nXKBVARIANT=\"abnt2\"\n");
+        // De volta ao us intl, e depois ao us sem nada: o bloco sai
+        std::fs::write(&keyboard, intl).unwrap();
+        sync_keyboard(&home, &keyboard).unwrap();
+        assert!(kbd::is_us_intl(&session(&home)));
+        std::fs::write(&keyboard, "XKBLAYOUT=\"us\"\n").unwrap();
+        sync_keyboard(&home, &keyboard).unwrap();
+        assert_eq!(std::fs::read_to_string(&conf).unwrap(), head);
+        assert_eq!(std::fs::read_to_string(home.join(KEYBOARD_STAMP)).unwrap(), "");
+        // Sem bloco e com o carimbo vazio: volta quando o sistema tem um teclado, no fim do arquivo
+        std::fs::write(&keyboard, intl).unwrap();
+        sync_keyboard(&home, &keyboard).unwrap();
+        assert_eq!(std::fs::read_to_string(&conf).unwrap(), format!("{head}{}", block(intl)));
+        // Um bloco mexido fica, e o carimbo também
+        let mine = format!("{head}{}", block(intl).replace("}\n", "    xkb_options caps:escape\n}\n"));
+        std::fs::write(&conf, &mine).unwrap();
+        std::fs::write(&keyboard, br).unwrap();
+        sync_keyboard(&home, &keyboard).unwrap();
+        assert_eq!(std::fs::read_to_string(&conf).unwrap(), mine);
+        assert_eq!(std::fs::read_to_string(home.join(KEYBOARD_STAMP)).unwrap(), block(intl));
+        assert!(kbd::is_us_intl(&session(&home)), "a sessão continua no intl, o ç fica");
+        // Tirado pelo usuário depois do carimbo: não volta
+        std::fs::write(&conf, head).unwrap();
+        sync_keyboard(&home, &keyboard).unwrap();
+        assert_eq!(std::fs::read_to_string(&conf).unwrap(), head);
+        // Sem carimbo e com um bloco mexido (a conta de antes dele): fica
+        std::fs::remove_file(home.join(KEYBOARD_STAMP)).unwrap();
+        std::fs::write(&conf, &mine).unwrap();
+        sync_keyboard(&home, &keyboard).unwrap();
+        assert_eq!(std::fs::read_to_string(&conf).unwrap(), mine);
+        assert!(home.join(KEYBOARD_STAMP).symlink_metadata().is_err());
+        // Um link no lugar do 50-local.conf é do usuário
+        std::fs::remove_file(&conf).unwrap();
+        std::fs::write(dir.join("real.conf"), block(intl)).unwrap();
+        std::os::unix::fs::symlink(dir.join("real.conf"), &conf).unwrap();
+        sync_keyboard(&home, &keyboard).unwrap();
+        assert_eq!(std::fs::read_to_string(dir.join("real.conf")).unwrap(), block(intl));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

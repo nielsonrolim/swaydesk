@@ -53,3 +53,7 @@ unicode-normalization = "0.1"
 [profile.release]
 lto = true
 strip = true
+
+[workspace.metadata.swaydesk]
+# The packages' version for the 0.1.3.1 patch release (Cargo stays semver at 0.1.3; see packaging/version.sh)
+release = "0.1.3.1"

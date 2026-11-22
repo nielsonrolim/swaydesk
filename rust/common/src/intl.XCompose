@@ -1,0 +1,5 @@
+# swaydesk: no teclado US internacional, ' + c dá ç (como no Windows e no pt_BR). Criado no primeiro login;
+# sai sozinho se a sessão deixar de usar o US internacional, enquanto este arquivo não mudar
+include "%L"
+<dead_acute> <c> : "ç" ccedilla
+<dead_acute> <C> : "Ç" Ccedilla

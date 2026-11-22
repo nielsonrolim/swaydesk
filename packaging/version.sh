@@ -16,14 +16,32 @@
 #   Uma revisão só do empacotamento é a tag v<versão>-N, num commit de uma branch de manutenção a partir da
 #   tag do lançamento (release/X.Y): o .deb sai <versão>-N e o pacote do Arch, pkgver <versão> e pkgrel N.
 #   Os nomes de arquivo mudam, o que importa no OBS: um CDN que guardou o -1 não serve o -2 velho.
+#   Uma correção com código (0.1.3.1) é a tag v<X.Y.Z.W> numa branch release/X.Y.Z: a versão vem da chave
+#   release do Cargo.toml (abaixo); o snapshot dela é 0.1.3.1~git… / 0.1.3.1git…, acima do 0.1.3 e abaixo
+#   da 0.1.4.
 # uso: packaging/version.sh [upstream|deb|arch|revision]   (padrão: upstream, a versão do Debian sem a
 #                                                  revisão; revision: o N do .deb e o pkgrel do Arch)
 #      packaging/version.sh changelog ARQUIVO      põe a entrada do snapshot no topo de um debian/changelog
 #                                                  (uma cópia: o do repositório fica com a próxima versão)
 set -euo pipefail
 root=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
-release=$(awk -F'"' '/^\[workspace.package\]/ { found = 1 } found && /^version/ { print $2; exit }' "$root/rust/Cargo.toml")
-[[ $release =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version: unexpected Cargo version: $release" >&2; exit 1; }
+# Uma versão de correção de quatro partes (0.1.3.1, numa branch release/X.Y.Z a partir da tag) não cabe no
+# semver do Cargo: o Cargo fica na X.Y.Z da tag e a versão dos pacotes vem de
+# [workspace.metadata.swaydesk] release = "X.Y.Z.W" (o Cargo ignora workspace.metadata). Sem essa chave, vale a
+# workspace.package.version. Nenhum binário mostra a versão do Cargo (tests/test_packaging.py confere)
+cargo=$root/rust/Cargo.toml
+release=$(awk -F'"' '/^\[/ { found = ($0 == "[workspace.metadata.swaydesk]") } found && /^release *=/ { print $2; exit }' "$cargo")
+if [[ -n $release ]]; then
+  [[ $release =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version: unexpected metadata release: $release" >&2; exit 1; }
+  # A correção é da versão do Cargo (a tag de onde a branch saiu): uma chave esquecida depois de subir o Cargo
+  # daria um pacote com outra versão
+  cargo_version=$(awk -F'"' '/^\[workspace.package\]/ { found = 1 } found && /^version/ { print $2; exit }' "$cargo")
+  [[ ${release%.*} == "$cargo_version" ]] || {
+    echo "version: metadata release $release is not a patch of the Cargo version $cargo_version" >&2; exit 1; }
+else
+  release=$(awk -F'"' '/^\[workspace.package\]/ { found = 1 } found && /^version/ { print $2; exit }' "$cargo")
+  [[ $release =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "version: unexpected Cargo version: $release" >&2; exit 1; }
+fi
 revision=1
 
 # A tag do lançamento no HEAD: v<versão> (a revisão 1) ou v<versão>-N (a revisão N, N >= 2)

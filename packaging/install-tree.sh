@@ -256,6 +256,8 @@ case $pkg in
     greeter_user=${SWAYDESK_GREETER_USER:-_greetd} greeter_vt=${SWAYDESK_GREETER_VT:-7}
     files=$root/packaging/files
     install -Dm644 "$files/greeter-sway.conf" "$dest/usr/share/swaydesk-greeter/sway.conf"
+    # O XDG_CONFIG_HOME da tela no US internacional: o GTK lê dele a tabela com ' + c dando ç (a do ~/.XCompose)
+    install -Dm644 "$root/rust/common/src/intl.XCompose" "$dest/usr/share/swaydesk-greeter/intl/gtk-4.0/Compose"
     install -d "$dest/usr/share/swaydesk-greeter" "$dest/usr/lib/systemd/system/greetd.service.d" "$dest/usr/lib/tmpfiles.d"
     # O serviço do PAM das sessões das pessoas: o pacote traz o próprio, o /etc/pam.d/swaydesk-greeter, sem
     # mexer no arquivo do greetd. No Arch (SWAYDESK_GREETER_PAM_STACK=arch, do PKGBUILD), o /etc/pam.d/greetd

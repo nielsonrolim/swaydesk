@@ -48,7 +48,7 @@ usage() {
 (($# >= 3)) || usage
 tag=$1 out=$2
 shift 2
-[[ $tag =~ ^v([0-9]+\.[0-9]+\.[0-9]+)$ ]] || { echo "release-isos: the tag must be vX.Y.Z, not $tag" >&2; exit 2; }
+[[ $tag =~ ^v([0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?)$ ]] || { echo "release-isos: the tag must be vX.Y.Z or vX.Y.Z.W, not $tag" >&2; exit 2; }
 version=${BASH_REMATCH[1]}
 
 declare -A suffix=([debian13]=debian13-amd64 [debiantesting]=debiantesting-amd64 [ubuntu2604]=ubuntu26.04-amd64
@@ -104,7 +104,7 @@ add_mode() {
   [[ -s $old && -z $(tail -c 1 "$old") ]] \
     || { echo "release-isos: --add: $tag's SHA256SUMS is empty or doesn't end in a newline" >&2; exit 1; }
   while IFS= read -r line; do
-    [[ $line =~ ^[0-9a-f]{64}\ \ (swaydesk-$version-[a-z0-9.-]+\.iso)$ ]] \
+    [[ $line =~ ^[0-9a-f]{64}\ \ (swaydesk-$version-[a-z0-9._-]+\.iso)$ ]] \
       || { echo "release-isos: --add: unexpected line in $tag's SHA256SUMS: $line" >&2; exit 1; }
     name=${BASH_REMATCH[1]}
     for f in "${files[@]}"; do

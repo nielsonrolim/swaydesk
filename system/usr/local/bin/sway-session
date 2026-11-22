@@ -29,13 +29,23 @@ case ":$PATH:" in
     fi
     ;;
 esac
+# O ~/.local/bin no PATH em toda distro: o ~/.profile do Debian e do Ubuntu só o põe se a pasta já existia
+# no login, e o do Arch nunca. Na frente, como o do Debian. Depois do bloco acima, que usa essa mesma pasta
+# no PATH como sinal de que a tela já leu o ~/.profile. Só no ambiente do Sway e dos filhos dele: no systemd
+# e no D-Bus, a limpeza da saída não teria como tirá-lo (vazio quebraria os serviços), e o GDM entrega esse
+# ambiente ao login seguinte, que o tomaria por sinal e pularia o ~/.profile
+mkdir -p "$HOME/.local/bin" 2>/dev/null
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) PATH="$HOME/.local/bin${PATH:+:$PATH}"; export PATH ;;
+esac
 
 # O sway-env-cleanup, ao sair do Sway, deixa estas variáveis vazias no D-Bus, que não sabe
 # removê-las, e o GDM as repassa ao login seguinte. Vazio não é o mesmo que ausente: com
 # SWAYSOCK vazio, o Sway abre o IPC num caminho vazio e o swaymsg para de funcionar
 for var in WAYLAND_DISPLAY SWAYSOCK I3SOCK DISPLAY XDG_SESSION_DESKTOP XDG_CURRENT_DESKTOP XDG_SESSION_TYPE \
            MOZ_ENABLE_WAYLAND QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME ELECTRON_OZONE_PLATFORM_HINT \
-           _JAVA_AWT_WM_NONREPARENTING DCONF_PROFILE XDG_MENU_PREFIX SWAYDESK_SESSION; do
+           _JAVA_AWT_WM_NONREPARENTING DCONF_PROFILE XDG_MENU_PREFIX SWAYDESK_SESSION GTK_IM_MODULE; do
   eval "[ -n \"\${$var-x}\" ] || unset $var"
 done
 
@@ -55,6 +65,15 @@ else
 fi
 export ELECTRON_OZONE_PLATFORM_HINT=auto   # Slack e VS Code (Electron) nativos em Wayland; o Chrome não lê esta variável
 export _JAVA_AWT_WM_NONREPARENTING=1
+# As teclas mortas nos apps GTK 4 (o Editor de Texto, a Loja): sem nada configurado, o GTK 4 recente (4.22
+# no Ubuntu, 4.24 no Arch) usa o método de entrada "wayland" (text-input-v3), que no Sway sem um input method
+# rodando perde o acento (' + e dava "e"). O "simple" compõe no próprio GTK, como o GTK 3 e os terminais, e
+# lê o ~/.XCompose. Só sem método de entrada configurado: quem usa o ibus, o fcitx ou outro define
+# GTK_IM_MODULE, QT_IM_MODULE ou XMODIFIERS (no ~/.profile, lido acima), e aí nada muda. Vai para o D-Bus
+# pelo config do Sway, para os apps abertos por ativação (o Editor de Texto e a Loja)
+if [ -z "${GTK_IM_MODULE-}" ] && [ -z "${QT_IM_MODULE-}" ] && [ -z "${XMODIFIERS-}" ]; then
+  export GTK_IM_MODULE=simple
+fi
 # O dconf do Sway grava numa base própria (~/.config/dconf/sway) e lê a normal por baixo: trocar
 # o tema aqui não muda o do GNOME nem o do KDE. Sem o arquivo, fica a base normal. O do pacote vem no
 # swaydesk-theme

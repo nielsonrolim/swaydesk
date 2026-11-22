@@ -9,8 +9,8 @@ import sys
 from pathlib import Path
 
 # As linhas do packaging/arch/PKGBUILD que mudam, como estão lá. O pkgver é o da próxima versão, que sobe a
-# cada lançamento: vale qualquer X.Y.Z, e só ele
-PKGVER = re.compile(r"pkgver=[0-9]+\.[0-9]+\.[0-9]+")
+# cada lançamento: vale qualquer X.Y.Z, ou X.Y.Z.W numa correção (release/X.Y.Z), e só eles
+PKGVER = re.compile(r"pkgver=[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?")
 LINES = {
     "pkgver": PKGVER,
     "pkgrel": "pkgrel=1",

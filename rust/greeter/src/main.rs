@@ -160,6 +160,10 @@ fn output_within(command: &mut Command, timeout: Duration) -> Option<Vec<u8>> {
     status.success().then_some(data)
 }
 
+/// A pasta que faz de XDG_CONFIG_HOME da tela no US internacional: só o gtk-4.0/Compose (install-tree.sh).
+/// Só leitura: a tela não grava configurações (GSettings, settings.ini); se um dia gravar, não pode ser aqui.
+const INTL_CONFIG_HOME: &str = "/usr/share/swaydesk-greeter/intl";
+
 /// Aplica o teclado do sistema no Sway da tela. Bloqueia: numa linha à parte.
 fn apply_system_keyboard() {
     let Some((_, text)) = keyboard::system_keyboard(Path::new("/etc/default/keyboard")) else { return };
@@ -944,6 +948,13 @@ fn main() -> ExitCode {
     // linha nova (o set_var não é seguro com outras linhas lendo o ambiente)
     if std::env::var_os("GTK_IM_MODULE").is_none_or(|v| v.is_empty()) {
         std::env::set_var("GTK_IM_MODULE", "simple");
+    }
+    // O ç no US internacional: o "simple" usa a tabela do locale, que no en_US dá ć para ' + c. O GTK só lê
+    // uma tabela própria do $XDG_CONFIG_HOME/gtk-4.0/Compose ou do ~/.XCompose, e o usuário da tela não tem
+    // um HOME nosso: a pasta do pacote, só com essa tabela (a da sessão das pessoas, a mesma do ~/.XCompose)
+    let intl = keyboard::system_keyboard(Path::new("/etc/default/keyboard")).is_some_and(|(_, text)| keyboard::is_us_intl(&text));
+    if intl && Path::new(INTL_CONFIG_HOME).join("gtk-4.0/Compose").is_file() {
+        std::env::set_var("XDG_CONFIG_HOME", INTL_CONFIG_HOME);
     }
     // O teclado e o cursor já, enquanto o GTK abre
     std::thread::spawn(|| {

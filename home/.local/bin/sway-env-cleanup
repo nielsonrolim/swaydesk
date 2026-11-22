@@ -8,7 +8,7 @@ set -uo pipefail
 # tentava abri-lo e morria
 vars=(WAYLAND_DISPLAY DISPLAY SWAYSOCK XDG_SESSION_DESKTOP XDG_CURRENT_DESKTOP XDG_SESSION_TYPE MOZ_ENABLE_WAYLAND
       QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME ELECTRON_OZONE_PLATFORM_HINT _JAVA_AWT_WM_NONREPARENTING XDG_MENU_PREFIX
-      SWAYDESK_SESSION)
+      SWAYDESK_SESSION GTK_IM_MODULE)
 # Os portais leem o dconf com o perfil do ambiente em que iniciaram, e podem ter sobrado de outra
 # sessão. try-restart só reinicia os que estão rodando
 portals=(xdg-desktop-portal-gtk xdg-desktop-portal-wlr xdg-desktop-portal-gnome xdg-desktop-portal-kde

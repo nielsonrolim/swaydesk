@@ -1,3 +1,22 @@
+swaydesk (0.1.3.1-1) unstable; urgency=medium
+
+  * Patch release of 0.1.3.
+  * With the US international keyboard, ' + c gives c-cedilla (and ' + C
+    the capital one) in the session and at the login screen: the session
+    creates ~/.XCompose with include "%L", and never touches one of your
+    own.
+  * A system keyboard change (localectl, dpkg-reconfigure
+    keyboard-configuration) reaches existing accounts at their next login,
+    unless their keyboard block in 50-local.conf was edited; the login
+    screen and new accounts follow it too. On Arch, a stale
+    /etc/default/keyboard left by the 0.1.3 installer no longer wins.
+  * Dead-key accents work again in GTK 4 apps on Sway without an input
+    method (GTK_IM_MODULE=simple when no ibus or fcitx is set up).
+  * ~/.local/bin is in the session's PATH on every distro and is created
+    at login; the PATH stays out of systemd and D-Bus.
+
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Sun, 22 Nov 2026 03:00:00 -0300
+
 swaydesk (0.1.3-1) unstable; urgency=medium
 
   * The accent color follows the wallpaper (accent_auto, on by default when

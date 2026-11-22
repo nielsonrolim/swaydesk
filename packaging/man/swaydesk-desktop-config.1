@@ -1,4 +1,4 @@
-.TH SWAYDESK-DESKTOP-CONFIG 1 2026-11-14 "swaydesk 0.1.3" "Sway desktop components"
+.TH SWAYDESK-DESKTOP-CONFIG 1 2026-11-14 "swaydesk 0.1.3.1" "Sway desktop components"
 .SH NAME
 swaydesk\-desktop\-config \- read the desktop configuration and apply the accent color
 .SH SYNOPSIS
@@ -42,7 +42,13 @@ Write the files and reload Sway.
 Print the accent colors as GTK CSS (@define\-color).
 .TP
 .B setup
-The first login in the packaged session: copy from the skeleton what is missing in the home folder, then generate.
+Run by the packaged session on every login, before Sway starts: copy from the skeleton what is missing in the home
+folder, update the system keyboard block in ~/.config/sway/config.d/50-local.conf while nobody has edited it, keep
+~/.XCompose (' + c gives \[,c]) while the session uses the US international layout, then generate. The system keyboard
+is whichever of /etc/default/keyboard, /etc/X11/xorg.conf.d/00-keyboard.conf and /etc/vconsole.conf changed last
+(vconsole.conf with its XKB* keys; one with only KEYMAP counts only when the other two are missing).
+On Debian and Ubuntu, localectl set\-x11\-keymap only writes /etc/vconsole.conf, which the boot rewrites from
+/etc/default/keyboard: there, sudo dpkg\-reconfigure keyboard\-configuration is the change that lasts.
 .TP
 .B enabled NAME
 Exit 0 if the component NAME is on in the [enabled] table of the configuration, 1 if it is off. NAME is a key of
