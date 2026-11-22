@@ -50,9 +50,30 @@ pub fn valid_username(name: &str) -> bool {
         && name.chars().all(|c| c.is_alphanumeric() || "._-@$".contains(c))
 }
 
+/// O texto de um erro do greetd para o log, sem o nome que a pessoa digitou: no campo "Outro usuário" ela pode
+/// ter digitado a senha por engano, e uma mensagem como "unable to look up user 'xyz'" (do greetd ou do PAM, a
+/// depender da versão) a levaria ao journal. A tela mostra o texto inteiro; só o log troca o nome por <user>.
+/// Limites conhecidos: um nome que o greetd ou o PAM devolva transformado (em minúsculas, cortado) escapa da
+/// troca, e com os caracteres do valid_username escapar não acontece; um nome curto ("a") troca também as letras
+/// iguais do resto da mensagem, o que só deixa o log feio.
+pub fn redact_user(text: &str, user: &str) -> String {
+    if user.is_empty() {
+        return text.to_string();
+    }
+    text.replace(user, "<user>")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_typed_name_never_reaches_the_log() {
+        assert_eq!(redact_user("unable to look up user 'Senha123x'", "Senha123x"), "unable to look up user '<user>'");
+        assert_eq!(redact_user("Senha123x: Senha123x not found", "Senha123x"), "<user>: <user> not found");
+        assert_eq!(redact_user("session start failed", "maria"), "session start failed");
+        assert_eq!(redact_user("anything", ""), "anything");
+    }
 
     #[test]
     fn people_with_a_login_shell_in_the_uid_range() {

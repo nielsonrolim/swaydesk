@@ -644,7 +644,8 @@ impl App {
                     message = format!("{note}\n{message}");
                 }
                 if !auth {
-                    log(&format!("login failed: {text}"));
+                    // Sem o nome digitado: no "Outro usuário", pode ser a senha por engano (a tela mostra o texto todo)
+                    log(&format!("login failed: {}", users::redact_user(&text, user)));
                 }
                 self.set_status(&form, &message, true);
                 shake(&form.password);
