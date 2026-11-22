@@ -28,15 +28,19 @@ rolling release, also its newer Rust and GTK.
 
 ## Using them
 
-The builds take several GB of memory: on a small machine, run one at a time (for example under a shared
-`flock` file). Large outputs (the cargo target, packages) are better kept outside `/tmp`.
+The builds take several GB of memory. Every build or test container runs with `--memory 10g --memory-swap 10g`
+and `CARGO_BUILD_JOBS=8`, or 4 for an Arch package build, whose LTO links went over 10 GB at 8 jobs. It also waits
+for a shared slot (for example a `flock` file), and at most 2 Rust builds run at once. Without the cap, cargo
+uses every core: an Arch `makepkg` at 16 jobs reached 19.6 GB. Large outputs (the cargo target, packages) are
+better kept outside `/tmp`.
 
 Rust on Debian 13, as your own user (so the target isn't root's), with the cargo cache outside the
 repository:
 
 ```sh
-docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$PWD":/repo -v CARGO_HOME_DIR:/cargo -e CARGO_HOME=/cargo \
-  -e CARGO_TARGET_DIR=/repo/rust/target/debian13 -w /repo/rust swaydesk-build:debian13 \
+docker run --rm --memory 10g --memory-swap 10g -e CARGO_BUILD_JOBS=8 -u "$(id -u):$(id -g)" -e HOME=/tmp \
+  -v "$PWD":/repo -v CARGO_HOME_DIR:/cargo -e CARGO_HOME=/cargo -e CARGO_TARGET_DIR=/repo/rust/target/debian13 \
+  -w /repo/rust swaydesk-build:debian13 \
   cargo build --release
 ```
 
@@ -46,8 +50,8 @@ locally, which is why `--skipchecksums` is fine here; never with a downloaded so
 ```sh
 git archive --prefix=sway-desktop-0.1.0/ -o BUILD_DIR/swaydesk-0.1.0.tar.gz HEAD
 cp packaging/arch/PKGBUILD packaging/arch/*.install BUILD_DIR/
-docker run --rm -u "$(id -u):$(id -g)" -v /etc/passwd:/etc/passwd:ro -e HOME=/tmp \
-  -v BUILD_DIR:/build -v CARGO_HOME_DIR:/cargo -e CARGO_HOME=/cargo -w /build \
+docker run --rm --memory 10g --memory-swap 10g -e CARGO_BUILD_JOBS=4 -u "$(id -u):$(id -g)" \
+  -v /etc/passwd:/etc/passwd:ro -e HOME=/tmp -v BUILD_DIR:/build -v CARGO_HOME_DIR:/cargo -e CARGO_HOME=/cargo -w /build \
   swaydesk-build:arch makepkg -fd --skipchecksums --noconfirm
 ```
 

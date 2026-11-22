@@ -3,7 +3,7 @@
 # contêiner swaydesk-smoke:debian13 com o qalc e o wl-clipboard instalados, com o repositório em /repo, o
 # binário da grade em /bin e uma pasta gravável em /out (as capturas):
 #
-#   docker run --rm -u $(id -u):$(id -g) --group-add $(getent group render | cut -d: -f3) --device /dev/dri \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) --group-add $(getent group render | cut -d: -f3) --device /dev/dri \
 #     -v $PWD:/repo:ro -v $PWD/rust/target/debian13/release/swaydesk-drawer:/bin/swaydesk-drawer:ro \
 #     -v /usr/share/icons:/usr/share/icons:ro -v /tmp/out:/out <imagem com qalc> \
 #     /repo/rust/scripts/headless-drawer-qalc.sh [rust|python]

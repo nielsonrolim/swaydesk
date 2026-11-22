@@ -2,7 +2,7 @@
 # O swaydesk-click-catcher num Sway headless com duas telas. Roda dentro do contêiner swaydesk-smoke:debian13, com o
 # repositório em /repo e o binário em /bin:
 #
-#   docker run --rm -u $(id -u):$(id -g) -v $PWD:/repo:ro \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) -v $PWD:/repo:ro \
 #     -v $PWD/rust/target/debian13/release/swaydesk-click-catcher:/bin/swaydesk-click-catcher:ro \
 #     swaydesk-smoke:debian13 /repo/rust/scripts/headless-click-catcher.sh
 #

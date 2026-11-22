@@ -2,7 +2,7 @@
 # Testa a Ajuda do Swaydesk (swaydesk-help) num Sway headless. Roda dentro do contêiner swaydesk-smoke:debian13,
 # com o repositório em /repo, o binário em /bin e uma pasta gravável em /out (as capturas):
 #
-#   docker run --rm -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro \
 #     -v $PWD:/repo:ro -v $PWD/rust/target/debian13/release/swaydesk-help:/bin/swaydesk-help:ro \
 #     -v /tmp/out:/out swaydesk-smoke:debian13 /repo/rust/scripts/headless-help.sh
 #

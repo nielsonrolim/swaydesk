@@ -3,7 +3,7 @@
 # do contêiner swaydesk-smoke:debian13, com o repositório em /repo, o binário em /bin, o wtype em /bin e uma
 # pasta gravável em /out (as capturas):
 #
-#   docker run --rm -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro -v $PWD:/repo:ro \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro -v $PWD:/repo:ro \
 #     -v $PWD/rust/target/debian13/release/swaydesk-displays:/bin/swaydesk-displays:ro \
 #     -v /caminho/do/wtype:/bin/wtype:ro -v /tmp/out:/out swaydesk-smoke:debian13 /repo/rust/scripts/headless-displays.sh
 #

@@ -4,7 +4,7 @@
 # Debian 13 tem o 1.0.4, sem o bloqueio). Roda num contêiner com o Sway e o grim, o repositório em /repo,
 # o binário em /bin/swaydesk-lock e uma pasta gravável em /out (as capturas):
 #
-#   docker run --rm -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro -v $PWD:/repo:ro \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro -v $PWD:/repo:ro \
 #     -v $PWD/rust/target/ubuntu2604/release/swaydesk-lock:/bin/swaydesk-lock:ro \
 #     -v /tmp/out:/out swaydesk-test:ubuntu2604 /repo/rust/scripts/headless-lock.sh
 #

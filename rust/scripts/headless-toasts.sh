@@ -3,7 +3,7 @@
 # (swaydesk-vpointer). Roda dentro do contêiner swaydesk-smoke:debian13, com o repositório em /repo, os
 # binários em /bin e a pasta das capturas em /out:
 #
-#   docker run --rm -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro --group-add $(getent group render | cut -d: -f3) \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro --group-add $(getent group render | cut -d: -f3) \
 #     --device /dev/dri -v $PWD:/repo:ro -v $PWD/rust/target/debian13/release/swaydesk-notifd:/bin/swaydesk-notifd:ro \
 #     -v $PWD/rust/target/debian13/release/swaydesk-vpointer:/bin/swaydesk-vpointer:ro -v /tmp/out:/out \
 #     -v /usr/share/icons:/usr/share/icons:ro swaydesk-smoke:debian13 /repo/rust/scripts/headless-toasts.sh

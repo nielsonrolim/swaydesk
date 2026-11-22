@@ -3,7 +3,7 @@
 # Roda dentro do contêiner swaydesk-smoke:debian13, com o repositório em /repo, os binários em /bin e uma
 # pasta gravável em /out (as capturas):
 #
-#   docker run --rm -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro \
 #     -v $PWD:/repo:ro -v $PWD/rust/target/debian13/release/swaydesk-theme-app:/bin/swaydesk-theme-app:ro \
 #     -v $PWD/rust/target/debian13/release/swaydesk-vpointer:/bin/swaydesk-vpointer:ro \
 #     -v /tmp/out:/out swaydesk-smoke:debian13 /repo/rust/scripts/headless-theme-app.sh [rust|python]

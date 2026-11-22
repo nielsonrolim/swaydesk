@@ -1,6 +1,6 @@
 #!/bin/bash
 # Roda dentro do contêiner swaydesk-smoke:debian13, com o repositório em /repo:
-#   docker run --rm -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro -v $PWD:/repo:ro \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro -v $PWD:/repo:ro \
 #     swaydesk-smoke:debian13 timeout 60 /repo/rust/scripts/headless-keys-dotfiles.sh
 # Espera: o 00-keys.conf com a pasta keys do repositório, o base.conf e o dwm.conf carregados, e um reload só
 # (o config principal carregado 3 vezes: o início e as duas passadas do reload).

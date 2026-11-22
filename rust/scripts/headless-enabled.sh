@@ -3,7 +3,7 @@
 # sozinha o app_grid e o sway-waybar com o config filtrado. Roda dentro do contêiner swaydesk-smoke:debian13,
 # com o repositório em /repo e os binários swaydesk-dock, swaydesk-drawer e swaydesk-desktop-config em /bins:
 #
-#   docker run --rm -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro -v $PWD:/repo:ro \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro -v $PWD:/repo:ro \
 #     -v $PWD/rust/target/debian13/release:/bins:ro swaydesk-smoke:debian13 timeout 240 /repo/rust/scripts/headless-enabled.sh
 #
 # A imagem não tem a Waybar: uma falsa registra o -c que o sway-waybar passa. Os casos: com dock e app_grid

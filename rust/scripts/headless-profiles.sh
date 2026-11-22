@@ -4,7 +4,7 @@
 # unbindsym de tecla que não existe, um nome de tecla errado). Roda dentro do contêiner swaydesk-smoke:debian13,
 # com o repositório em /repo:
 #
-#   docker run --rm -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro -v $PWD:/repo:ro \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) -v /etc/passwd:/etc/passwd:ro -v $PWD:/repo:ro \
 #     swaydesk-smoke:debian13 timeout 120 /repo/rust/scripts/headless-profiles.sh
 #
 # Sai com 1 se algum perfil falhar.

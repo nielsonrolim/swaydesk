@@ -2,7 +2,7 @@
 # O swaydesk-language e o waybar-language (Python) num Sway headless de verdade. Roda dentro do contêiner
 # swaydesk-smoke:debian13, com o repositório em /repo e o binário em /bin:
 #
-#   docker run --rm -u $(id -u):$(id -g) -v $PWD:/repo:ro \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) -v $PWD:/repo:ro \
 #     -v $PWD/rust/target/debian13/release/swaydesk-language:/bin/swaydesk-language:ro \
 #     swaydesk-smoke:debian13 /repo/rust/scripts/headless-language.sh
 #

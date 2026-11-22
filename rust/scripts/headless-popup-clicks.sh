@@ -4,7 +4,7 @@
 # a nenhum cliente. Roda dentro do contêiner swaydesk-smoke:debian13 (experiments/bench), com o
 # repositório em /repo e os binários em /bin:
 #
-#   docker run --rm -u $(id -u):$(id -g) --group-add $(getent group render | cut -d: -f3) --device /dev/dri \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) --group-add $(getent group render | cut -d: -f3) --device /dev/dri \
 #     -v $PWD:/repo:ro -v $PWD/rust/target/debian13/release/swaydesk-calendar:/bin/swaydesk-calendar:ro \
 #     -v $PWD/rust/target/debian13/release/swaydesk-vpointer:/bin/swaydesk-vpointer:ro \
 #     -v /usr/share/icons:/usr/share/icons:ro swaydesk-smoke:debian13 /repo/rust/scripts/headless-popup-clicks.sh

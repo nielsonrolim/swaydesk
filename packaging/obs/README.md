@@ -169,7 +169,7 @@ Os builds pesados vão um por vez, sob a trava. O `make-source.sh` precisa do ca
 ```sh
 src=$(mktemp -d) out=$(mktemp -d)
 git clone -q . "$src"
-flock /run/user/$UID/swaydesk-build.lock docker run --rm -v "$src:/src:ro" -v "$out:/out" debian:13 sh -c "
+flock /run/user/$UID/swaydesk-build.lock docker run --rm --memory 10g --memory-swap 10g -v "$src:/src:ro" -v "$out:/out" debian:13 sh -c "
   apt-get update -qq && apt-get install -y -qq --no-install-recommends git ca-certificates xz-utils dpkg-dev cargo python3 >/dev/null &&
   git config --global --add safe.directory '*' && /src/packaging/obs/make-source.sh /out; chown -R $(id -u):$(id -g) /out"
 packaging/obs/push.sh "$out"

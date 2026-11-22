@@ -3,7 +3,7 @@
 # do contêiner swaydesk-smoke:debian13, com o repositório em /repo, os binários em /bin e uma pasta
 # gravável em /out (as capturas):
 #
-#   docker run --rm -u $(id -u):$(id -g) --group-add $(getent group render | cut -d: -f3) --device /dev/dri \
+#   docker run --rm --memory 10g --memory-swap 10g -u $(id -u):$(id -g) --group-add $(getent group render | cut -d: -f3) --device /dev/dri \
 #     -v $PWD:/repo:ro -v $PWD/rust/target/debian13/release/swaydesk-dock:/bin/swaydesk-dock:ro \
 #     -v $PWD/rust/target/debian13/release/swaydesk-vpointer:/bin/swaydesk-vpointer:ro \
 #     -v /usr/share/icons:/usr/share/icons:ro -v /tmp/out:/out swaydesk-smoke:debian13 \
