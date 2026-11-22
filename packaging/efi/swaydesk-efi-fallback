@@ -28,6 +28,9 @@
 # BOOTX64.EFI last: until then the fallback still boots what it booted before. Nothing is deleted, NVRAM and
 # the other folders are never touched (except the rename of Ubuntu 0.1.3.x's own CSV, below), no network. Every change goes to the journal (swaydesk-efi), and it
 # always exits 0: APT runs it after every install.
+# Where it doesn't act, it says nothing: the hook runs after every apt run on every system with the repository.
+# For support, SWAYDESK_EFI_VERBOSE=1 (by hand; the hook and the postinst run it under env -i) says on stderr
+# which check stopped it, or what it changed; that never goes to the journal.
 # SWAYDESK_ESP, SWAYDESK_SHIM_DIR, SWAYDESK_ROOT (also for /etc/os-release), SWAYDESK_LOGGER and
 # SWAYDESK_FREE_KB change the paths, the logger and the free space in the tests (with SWAYDESK_ESP, the folder needn't be a mount point).
 esp=${SWAYDESK_ESP:-/boot/efi}
@@ -42,6 +45,17 @@ fi
 
 log() {
   ${SWAYDESK_LOGGER:-logger -t swaydesk-efi} "$*" 2>/dev/null || true
+  say "$*"
+}
+
+# SWAYDESK_EFI_VERBOSE=1: why it stops, on stderr only
+say() {
+  [ "${SWAYDESK_EFI_VERBOSE:-}" = 1 ] && echo "swaydesk-efi-fallback: $*" >&2
+  return 0
+}
+stop() {
+  say "$*"
+  exit 0
 }
 
 # A folder of EFI/ by name, in any case (the ESP is FAT: EFI/boot and EFI/BOOT are the same)
@@ -85,27 +99,27 @@ put() {
   return 1
 }
 
-[ "$(cat "$root/etc/swaydesk/efi-fallback" 2>/dev/null)" = off ] && exit 0
-[ -e "$root/usr/local/sbin/swaydesk-extras" ] || exit 0
-[ -n "${SWAYDESK_ESP:-}" ] || mountpoint -q "$esp" 2>/dev/null || exit 0
-ours=$(folder "$id") || exit 0
-boot=$(folder boot) || exit 0
-bootx=$(file_in "$boot" bootx64.efi) || exit 0
-oshim=$(file_in "$ours" shimx64.efi) || exit 0
-ogrub=$(file_in "$ours" grubx64.efi) || exit 0
-omm=$(file_in "$ours" mmx64.efi) || exit 0
+[ "$(cat "$root/etc/swaydesk/efi-fallback" 2>/dev/null)" = off ] && stop "turned off in $root/etc/swaydesk/efi-fallback"
+[ -e "$root/usr/local/sbin/swaydesk-extras" ] || stop "not installed from a Swaydesk image (no $root/usr/local/sbin/swaydesk-extras): nothing to do"
+[ -n "${SWAYDESK_ESP:-}" ] || mountpoint -q "$esp" 2>/dev/null || stop "$esp is not a mount point: nothing to do"
+ours=$(folder "$id") || stop "no EFI/$id folder on $esp (GRUB's next update or reinstall creates it): nothing to do"
+boot=$(folder boot) || stop "no EFI/BOOT folder on $esp: nothing to do"
+bootx=$(file_in "$boot" bootx64.efi) || stop "no BOOTX64.EFI in $boot: nothing to do"
+oshim=$(file_in "$ours" shimx64.efi) || stop "no shimx64.efi in $ours: nothing to do"
+ogrub=$(file_in "$ours" grubx64.efi) || stop "no grubx64.efi in $ours: nothing to do"
+omm=$(file_in "$ours" mmx64.efi) || stop "no mmx64.efi in $ours: nothing to do"
 # The folder's shim is one of this system's signed shims: Debian has shimx64.efi.signed; Ubuntu makes it an
 # alternative between .latest, .previous and the nx builds, so any of them counts
 signed=
 for s in "$shim"/shimx64*.efi.signed*; do
   [ -f "$s" ] && cmp -s "$oshim" "$s" && { signed=$s; break; }
 done
-[ -n "$signed" ] || exit 0
+[ -n "$signed" ] || stop "$oshim is not one of this system's signed shims ($shim/shimx64*.efi.signed*): nothing to do"
 
 # Ubuntu 0.1.3.x: EFI/ubuntu kept the CSV that its grub-install wrote with our label, so fbx64 also recreates
 # a "Swaydesk" entry for that old folder. Renamed (never deleted) only when it is byte for byte that line: a
 # real Ubuntu's says "ubuntu"
-old013=$(mktemp) || exit 0
+old013=$(mktemp) || stop "could not create a temporary file"
 trap 'rm -f "$old013"' EXIT
 if printf 'shimx64.efi,Swaydesk,,This is the boot entry for Swaydesk\n' | iconv -f UTF-8 -t UTF-16LE >"$old013" \
    && ubuntu=$(folder ubuntu) && ucsv=$(file_in "$ubuntu" bootx64.csv) && cmp -s "$ucsv" "$old013" \
@@ -138,7 +152,7 @@ elif [ -n "$(sha "$bootx")" ] && [ "$(sha "$bootx")" = "$(cat "$state" 2>/dev/nu
 elif cmp -s "$bootx" "$oshim" && { [ "${SWAYDESK_EFI_INSTALLED:-}" = 1 ] || ! other_shim; }; then
   :
 else
-  exit 0
+  stop "$bootx isn't ours (not this folder's grub, not what this script wrote last, nor this folder's shim with no other system's shim on the ESP): left alone"
 fi
 
 # What we wrote (or found already right): the next runs know the fallback path is ours
@@ -153,10 +167,10 @@ for f in "$shim/fbx64.efi.signed" "$shim/fbx64.efi"; do
 done
 cfg=$(file_in "$ours" grub.cfg) || cfg=
 
-want=$(mktemp) || exit 0
+want=$(mktemp) || stop "could not create a temporary file"
 trap 'rm -f "$old013" "$want"' EXIT
 # UCS-2 little-endian, without a BOM, as shim's own
-printf 'shimx64.efi,%s,,This is the boot entry for Swaydesk\n' "$label" | iconv -f UTF-8 -t UTF-16LE >"$want" || exit 0
+printf 'shimx64.efi,%s,,This is the boot entry for Swaydesk\n' "$label" | iconv -f UTF-8 -t UTF-16LE >"$want" || stop "could not write the CSV (iconv)"
 csv=$(target "$ours" bootx64.csv BOOTX64.CSV)
 
 # Room for every file that changes, plus its temporary copy
@@ -172,7 +186,7 @@ for pair in "$ogrub|$(target "$boot" grubx64.efi grubx64.efi)" "$omm|$(target "$
 done
 if [ "$need" = 0 ]; then
   cmp -s "$bootx" "$oshim" && remember
-  exit 0
+  stop "the fallback path in $boot is complete: nothing to change"
 fi
 free=${SWAYDESK_FREE_KB:-$(df -Pk "$esp" 2>/dev/null | awk 'NR == 2 { print $4 }')}
 if [ -z "$free" ] || [ "$free" -lt $((need + 64)) ]; then
@@ -195,4 +209,5 @@ if [ "$status" = 0 ]; then
   fi
 fi
 [ "$status" = 0 ] || echo "swaydesk-efi-fallback: could not update everything in $boot and $ours" >&2
+[ "$status" = 0 ] && say "the fallback path in $boot is complete"
 exit 0
