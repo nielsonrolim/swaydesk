@@ -63,7 +63,10 @@ pointer() { /bin/swaydesk-vpointer --size 1280x720 "$@"; }
 shot() { grim "/out/theme-app-$impl-$1.png" 2>/dev/null; }
 windows() { swaymsg -t get_tree | grep -c '"app_id": "org.swaydesktop.Theme"'; }
 # Os modelos do sway-desktop-config: o binário copiado não está ao lado de um share/ (o install.sh liga)
-app() { env G_DEBUG=fatal-criticals SWAY_DESKTOP_SHARE=/repo/home/.local/share/sway-desktop SWAY_THEME_APP_IMPL=$impl "$HOME/.local/bin/sway-theme-app" >> /tmp/app.log 2>&1 & }
+# A lista de ícones só com os dois falsos: o tests/run-all-tests.sh monta o /usr/share/icons do host, e com o
+# Papirus lá a lista ganha a linha da família no topo, e o clique na primeira linha cai nela
+mkdir -p /tmp/no-system-icons
+app() { env G_DEBUG=fatal-criticals SWAY_SYSTEM_ICONS=/tmp/no-system-icons SWAY_DESKTOP_SHARE=/repo/home/.local/share/sway-desktop SWAY_THEME_APP_IMPL=$impl "$HOME/.local/bin/sway-theme-app" >> /tmp/app.log 2>&1 & }
 
 app
 for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
