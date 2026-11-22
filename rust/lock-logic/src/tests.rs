@@ -92,7 +92,8 @@ fn photo_prefers_face_then_accounts_icon() {
 
 #[test]
 fn current_user_is_from_getpwuid() {
-    let me = current_user().unwrap();
+    // Num contêiner com -u UID sem a linha no /etc/passwd não há usuário: -v /etc/passwd:/etc/passwd:ro
+    let me = current_user().expect("no passwd entry for this UID (in a container, mount /etc/passwd)");
     assert!(!me.name.is_empty());
 }
 
@@ -290,4 +291,25 @@ fn art_bytes_only_accepted_formats_and_never_the_network() {
     assert_eq!(art_bytes("data:image/jpeg;base64,iVBORw0KGgpyZXN0bw==", &cache), Some((png, "png")));
     assert_eq!(art_bytes("https://example.com/capa.png", &cache), None);
     assert_eq!(art_bytes("", &cache), None);
+}
+
+#[test]
+fn the_first_generated_time_locale_wins() {
+    let names = |n: &[&str]| n.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+    // Um que nenhum sistema gera: a data fica no C, e a linha diz qual faltou
+    let (used, missing) = set_time_locale(&names(&["xx_XX"]));
+    assert_eq!((used.as_str(), missing.clone()), ("", names(&["xx_XX"])));
+    assert_eq!(missing_time_locale_line(&missing, &used).unwrap(), "xx_XX.UTF-8 is not generated: the date uses C");
+    // O C.UTF-8 existe em toda glibc atual: o segundo da lista entra
+    let (used, missing) = set_time_locale(&names(&["xx_XX", "C"]));
+    assert_eq!((used.as_str(), missing), ("C", names(&["xx_XX"])));
+    assert_eq!(
+        missing_time_locale_line(&names(&["xx_XX", "yy_YY"]), "C").unwrap(),
+        "xx_XX.UTF-8, yy_YY.UTF-8 are not generated: the date uses C.UTF-8"
+    );
+    assert_eq!(missing_time_locale_line(&[], "pt_BR"), None);
+    // O C escolhido (nenhum candidato): o C, sem linha no log
+    let (used, missing) = set_time_locale(&[]);
+    assert_eq!(missing_time_locale_line(&missing, &used), None);
+    unsafe { libc::setlocale(libc::LC_TIME, c"C".as_ptr()) };
 }

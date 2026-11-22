@@ -27,6 +27,10 @@ commands its tests call, checks the Dockerfiles against that list, and checks th
 test run. A Dockerfile that drops a package fails that check; an image built before a package was added
 fails the run until it's rebuilt.
 
+Running the containers with your own UID (`-u "$(id -u):$(id -g)"`, so the files they write stay yours) also needs
+`-v /etc/passwd:/etc/passwd:ro`: without a passwd line for that UID, the lock-logic test that reads the current
+user (`current_user_is_from_getpwuid`) fails.
+
 `--build-arg BASE=<tag>` gives the qalc image another smoke image to start from. The bases are the moving
 tags `debian:13` and `archlinux:latest`, so a rebuild picks up the distributions' updates; the Arch one, a
 rolling release, also its newer Rust and GTK.

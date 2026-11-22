@@ -968,15 +968,14 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
     let lang = system::system_lang(&system::LOCALE_FILES.map(Path::new));
-    let config = system::greeter_config(&env_path("SWAYDESK_GREETER_CONFIG", system::CONFIG_FILE), &lang);
+    let locale_env = system::system_locale_env(&system::LOCALE_FILES.map(Path::new));
+    let (config, time_locales) = system::greeter_setup(&env_path("SWAYDESK_GREETER_CONFIG", system::CONFIG_FILE), &locale_env);
     swaydesk_common::i18n::init(&config);
-    let mut time_locale = config.locale.clone();
-    if !time_locale.is_empty() {
-        let name = std::ffi::CString::new(format!("{time_locale}.UTF-8")).unwrap_or_default();
-        // Sem o locale gerado (o Arch sem locale-gen), a data fica no formato do C, sem quebrar
-        if unsafe { libc::setlocale(libc::LC_TIME, name.as_ptr()) }.is_null() {
-            time_locale.clear();
-        }
+    // A data no LC_TIME do sistema e, sem ele gerado (o Arch com o locale.conf mudado à mão, sem locale-gen),
+    // na língua dos textos; sem nenhum, no formato do C, sem quebrar
+    let (time_locale, missing) = sl::set_time_locale(&time_locales);
+    if let Some(line) = sl::missing_time_locale_line(&missing, &time_locale) {
+        log(&line);
     }
     let Some(display) = gdk::Display::default() else {
         log("no display");

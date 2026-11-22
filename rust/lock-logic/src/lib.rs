@@ -59,6 +59,31 @@ pub fn date_format(time_locale: &str) -> &'static str {
     }
 }
 
+/// Põe no LC_TIME do processo o primeiro destes locales (como "pt_BR") que estiver gerado, com o .UTF-8.
+/// Devolve o que ficou ("" se nenhum: o C, a data em inglês) e os que faltaram, para quem chama avisar.
+pub fn set_time_locale(candidates: &[String]) -> (String, Vec<String>) {
+    let mut missing = Vec::new();
+    for candidate in candidates {
+        let Ok(name) = CString::new(format!("{candidate}.UTF-8")) else { continue };
+        if !unsafe { libc::setlocale(libc::LC_TIME, name.as_ptr()) }.is_null() {
+            return (candidate.clone(), missing);
+        }
+        missing.push(candidate.clone());
+    }
+    (String::new(), missing)
+}
+
+/// A linha do log quando o locale da data não está gerado: "es_ES.UTF-8 is not generated: the date uses C".
+pub fn missing_time_locale_line(missing: &[String], used: &str) -> Option<String> {
+    if missing.is_empty() {
+        return None;
+    }
+    let names: Vec<String> = missing.iter().map(|m| format!("{m}.UTF-8")).collect();
+    let used = if used.is_empty() { "C".to_string() } else { format!("{used}.UTF-8") };
+    let verb = if names.len() == 1 { "is" } else { "are" };
+    Some(format!("{} {verb} not generated: the date uses {used}", names.join(", ")))
+}
+
 /// O strftime da libc, no LC_TIME do processo (quem chama faz o setlocale).
 pub fn strftime(format: &str, now: &libc::tm) -> String {
     let Ok(format) = CString::new(format) else { return String::new() };

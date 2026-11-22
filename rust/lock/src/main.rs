@@ -913,12 +913,11 @@ fn main() -> ExitCode {
     let config = config::load();
     swaydesk_common::i18n::init(&config);
     let env: HashMap<String, String> = std::env::vars().collect();
-    let mut time_locale = config::effective_locale(&config, &env);
-    if !time_locale.is_empty() {
-        let name = std::ffi::CString::new(format!("{time_locale}.UTF-8")).unwrap_or_default();
-        if unsafe { libc::setlocale(libc::LC_TIME, name.as_ptr()) }.is_null() {
-            time_locale.clear();
-        }
+    // A data no locale efetivo (o da config, LC_ALL, LC_TIME ou LANG) e, sem ele gerado, na língua dos textos
+    let interface = config::message_languages(&config, &env).into_iter().next().unwrap_or_default();
+    let (time_locale, missing) = sl::set_time_locale(&config::time_locales(&config, &env, &interface));
+    if let Some(line) = sl::missing_time_locale_line(&missing, &time_locale) {
+        log(&line);
     }
     let palette = config::palette(&config);
     let display = gdk::Display::default().expect("display");

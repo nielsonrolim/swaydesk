@@ -266,6 +266,22 @@ def effective_locale(config, env=os.environ):
     return ""
 
 
+def time_locales(config, env=os.environ, interface=""):
+    """Os locales da data, na ordem de tentar: o efetivo (effective_locale) e, se ele não estiver gerado, o da
+    língua dos textos (interface, como "es_ES"). Só nomes xx_YY, sem repetir. O C escolhido (LC_TIME=C.UTF-8
+    para a data ISO, LC_ALL=POSIX) fica no C: vazio; sem nada definido, a língua dos textos."""
+    out = []
+    first = effective_locale(config, env)
+    if first:
+        out.append(first)
+    elif any(env.get(name) for name in ("LC_ALL", "LC_TIME", "LANG")):
+        return out
+    m = LOCALE.match(interface or "")
+    if m and m.group() not in out:
+        out.append(m.group())
+    return out
+
+
 def message_languages(config, env=os.environ):
     """As línguas dos textos, em ordem, para o gettext: a do config ou, sem ela, a do ambiente
     (LANGUAGE, LC_ALL, LC_MESSAGES, LANG). C, POSIX ou nada: lista vazia, o inglês do código."""

@@ -1,6 +1,7 @@
 //! O que a tela de login tira do sistema, porque o greetd não passa: o idioma (o LANG do
 //! /etc/locale.conf ou do /etc/default/locale), a config própria (/etc/swaydesk-greeter/config.toml, no
 //! formato da config.toml de cada usuário: `accent` e `locale`) e o comando que aplica o teclado.
+use std::collections::HashMap;
 use std::path::Path;
 
 use swaydesk_common::config::{self, Config};
@@ -25,17 +26,50 @@ pub fn system_lang(files: &[&Path]) -> String {
     String::new()
 }
 
+/// As variáveis do idioma (LANG, LC_ALL, LC_TIME) do mesmo arquivo de onde vem o LANG (o primeiro que o
+/// tiver), sem aspas: a data da tela segue o LC_TIME, como o relógio da sessão. Como no system_lang, um
+/// arquivo sem LANG (só com o LC_TIME) é pulado: o systemd e o Debian sempre escrevem o LANG.
+pub fn system_locale_env(files: &[&Path]) -> HashMap<String, String> {
+    for file in files {
+        let Ok(text) = std::fs::read_to_string(file) else { continue };
+        let mut env = HashMap::new();
+        for line in text.lines() {
+            if let Some((key, value)) = line.trim().split_once('=') {
+                if matches!(key, "LANG" | "LC_ALL" | "LC_TIME") {
+                    let value = value.trim().trim_matches('"').trim_matches('\'');
+                    if !value.is_empty() {
+                        env.insert(key.to_string(), value.to_string());
+                    }
+                }
+            }
+        }
+        if env.contains_key("LANG") {
+            return env;
+        }
+    }
+    HashMap::new()
+}
+
 /// A config da tela: a do arquivo (avisos no stderr) e, sem `locale` nela, o idioma do sistema.
 pub fn greeter_config(file: &Path, lang: &str) -> Config {
+    let env = HashMap::from([("LANG".to_string(), lang.to_string())]);
+    greeter_setup(file, &env).0
+}
+
+/// A config da tela e os locales da data, na ordem de tentar. Os textos seguem o `locale` da config ou o
+/// LANG; a data, o `locale` da config ou o LC_ALL, o LC_TIME ou o LANG e, sem ele gerado, o dos textos.
+pub fn greeter_setup(file: &Path, env: &HashMap<String, String>) -> (Config, Vec<String>) {
     let (mut config, warnings) = config::load_config(file);
     for warning in warnings {
         eprintln!("{warning}");
     }
+    let from_file = config.clone();
     if config.locale.is_empty() {
-        let env = std::collections::HashMap::from([("LANG".to_string(), lang.to_string())]);
-        config.locale = config::effective_locale(&config, &env);
+        let lang = HashMap::from([("LANG".to_string(), env.get("LANG").cloned().unwrap_or_default())]);
+        config.locale = config::effective_locale(&config, &lang);
     }
-    config
+    let time = config::time_locales(&from_file, env, &config.locale);
+    (config, time)
 }
 
 /// O comando do swaymsg com o teclado do sistema, ou None se não há o que mudar. Os valores vão entre
@@ -70,6 +104,36 @@ mod tests {
         std::fs::write(dir.join("config.toml"), "accent = \"#8e44ad\"\nlocale = \"en_US\"\n").unwrap();
         let config = greeter_config(&dir.join("config.toml"), "pt_BR.UTF-8");
         assert_eq!((config.accent.as_str(), config.locale.as_str()), ("#8e44ad", "en_US"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_date_follows_the_system_lc_time() {
+        let dir = std::env::temp_dir().join(format!("swaydesk-greeter-time-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let (systemd, debian, toml) = (dir.join("locale.conf"), dir.join("locale"), dir.join("config.toml"));
+        assert!(system_locale_env(&[&systemd, &debian]).is_empty());
+        // O caso da VM: textos em espanhol, a data em português (o LC_TIME), e o espanhol se o pt_BR faltar
+        std::fs::write(&systemd, "LANG=es_ES.UTF-8\nLC_TIME=\"pt_BR.UTF-8\"\nLC_NUMERIC=pt_BR.UTF-8\n").unwrap();
+        let env = system_locale_env(&[&systemd, &debian]);
+        assert_eq!(env.get("LC_TIME").map(String::as_str), Some("pt_BR.UTF-8"));
+        assert!(!env.contains_key("LC_NUMERIC"));
+        let (config, time) = greeter_setup(&toml, &env);
+        assert_eq!((config.locale.as_str(), time), ("es_ES", vec!["pt_BR".to_string(), "es_ES".to_string()]));
+        // Só o LANG: um só, o mesmo dos textos
+        std::fs::write(&systemd, "LANG=es_ES.UTF-8\n").unwrap();
+        assert_eq!(greeter_setup(&toml, &system_locale_env(&[&systemd])).1, ["es_ES"]);
+        // A data ISO de propósito (LC_TIME=C.UTF-8): o C, não o espanhol dos textos
+        std::fs::write(&systemd, "LANG=es_ES.UTF-8\nLC_TIME=C.UTF-8\n").unwrap();
+        assert!(greeter_setup(&toml, &system_locale_env(&[&systemd])).1.is_empty());
+        // O Debian: o /etc/default/locale com LC_TIME
+        std::fs::remove_file(&systemd).unwrap();
+        std::fs::write(&debian, "LANG=\"pt_BR.UTF-8\"\nLC_TIME=\"en_GB.UTF-8\"\n").unwrap();
+        assert_eq!(greeter_setup(&toml, &system_locale_env(&[&systemd, &debian])).1, ["en_GB", "pt_BR"]);
+        // O `locale` da config da tela manda nos dois
+        std::fs::write(&toml, "locale = \"en_US\"\n").unwrap();
+        let (config, time) = greeter_setup(&toml, &system_locale_env(&[&systemd, &debian]));
+        assert_eq!((config.locale.as_str(), time), ("en_US", vec!["en_US".to_string()]));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

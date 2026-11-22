@@ -425,6 +425,28 @@ pub fn effective_locale(config: &Config, env: &HashMap<String, String>) -> Strin
     String::new()
 }
 
+/// Os locales da data, na ordem de tentar: o efetivo (o `locale` da config, LC_ALL, LC_TIME ou LANG) e, se
+/// ele não estiver gerado, o da língua dos textos (`interface`, como "es_ES"). Só nomes xx_YY, sem repetir.
+/// O C escolhido (LC_TIME=C.UTF-8 para a data ISO, LC_ALL=POSIX) fica no C: vazio; sem nada definido, a língua
+/// dos textos.
+pub fn time_locales(config: &Config, env: &HashMap<String, String>, interface: &str) -> Vec<String> {
+    let mut out = Vec::new();
+    let first = effective_locale(config, env);
+    if !first.is_empty() {
+        out.push(first);
+    } else if ["LC_ALL", "LC_TIME", "LANG"].iter().any(|name| env.get(*name).is_some_and(|v| !v.is_empty())) {
+        return out;
+    }
+    let b = interface.as_bytes();
+    if b.len() >= 5 && b[..2].iter().all(u8::is_ascii_lowercase) && b[2] == b'_' && b[3..5].iter().all(u8::is_ascii_uppercase) {
+        let interface = interface[..5].to_string();
+        if !out.contains(&interface) {
+            out.push(interface);
+        }
+    }
+    out
+}
+
 /// O país dos feriados e se ele veio da config: (país, explícito). Sem o holidays na config, o país do
 /// locale ("BR" em pt_BR); "none" desliga. C, POSIX ou nada: nenhum. O `holidays_country` do
 /// desktop_config.py.
@@ -683,6 +705,26 @@ mod tests {
         assert_eq!(language(&config, &env(&[("LANG", "pt_BR.UTF-8")])), "fr");
         let (parsed, warnings) = parse_config("weather_location = \"São Paulo\"\n");
         assert_eq!((parsed.weather_location.as_str(), warnings.len()), ("São Paulo", 0));
+    }
+
+    #[test]
+    fn the_date_follows_lc_time_then_the_interface_language() {
+        let env = |pairs: &[(&str, &str)]| pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect::<HashMap<_, _>>();
+        let mixed = env(&[("LANG", "es_ES.UTF-8"), ("LC_TIME", "pt_BR.UTF-8")]);
+        // A data no LC_TIME; sem ele gerado, a da língua dos textos
+        assert_eq!(time_locales(&Config::default(), &mixed, "es_ES"), ["pt_BR", "es_ES"]);
+        assert_eq!(time_locales(&Config::default(), &env(&[("LC_ALL", "de_DE.UTF-8"), ("LC_TIME", "pt_BR.UTF-8")]), "es_ES"), ["de_DE", "es_ES"]);
+        // O `locale` da config manda nos textos e na data
+        let fr = Config { locale: "fr_FR".into(), ..Config::default() };
+        assert_eq!(time_locales(&fr, &mixed, "fr_FR"), ["fr_FR"]);
+        // Sem repetir; a língua só com o idioma ("es", do LANGUAGE) ou o C não entram
+        assert_eq!(time_locales(&Config::default(), &env(&[("LANG", "es_ES.UTF-8")]), "es_ES.UTF-8"), ["es_ES"]);
+        assert_eq!(time_locales(&Config::default(), &env(&[("LANG", "C.UTF-8")]), "es"), Vec::<String>::new());
+        // O C escolhido para a data fica no C, sem ir para a língua dos textos
+        let none = Vec::<String>::new();
+        assert_eq!(time_locales(&Config::default(), &env(&[("LANG", "es_ES.UTF-8"), ("LC_TIME", "C.UTF-8")]), "es_ES"), none);
+        assert_eq!(time_locales(&Config::default(), &env(&[("LANG", "es_ES.UTF-8"), ("LC_ALL", "POSIX")]), "es_ES"), none);
+        assert_eq!(time_locales(&Config::default(), &env(&[]), "pt_BR"), ["pt_BR"]);
     }
 
     #[test]
