@@ -199,6 +199,14 @@ echo "a34f455e495c69a2c5dd94ff8ce6dd0618ec569d6b010010c2360432f6029020  $dir/$de
 sudo apt update && sudo apt install swaydesk-desktop
 ```
 
+Se o seu sistema não estiver em inglês, instale também as traduções do GTK para a sua língua. Sem elas, algumas janelas, como o seletor de arquivos, ficam em inglês. Para o português, por exemplo (es para o espanhol, de para o alemão, e assim por diante):
+
+```bash
+sudo apt install language-pack-gnome-pt
+```
+
+A sessão do Swaydesk avisa uma vez, com o comando da sua língua, quando elas faltam. O Debian não precisa disso: ele traz essas traduções junto com o GTK.
+
 ### Arch Linux
 
 1. Adicione o repositório ao fim do `/etc/pacman.conf` (uma vez só).

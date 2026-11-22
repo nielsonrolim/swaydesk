@@ -1965,6 +1965,16 @@ msgstr ""
 msgid "usage: sway-idle-suspend start|stop"
 msgstr ""
 
+#: home/.local/bin/sway-language-packs
+msgid "Translations for your language"
+msgstr ""
+
+#: home/.local/bin/sway-language-packs
+msgid ""
+"Some windows, such as the file chooser, are in English because the GTK translations for your language are not installed. To install them, run in a terminal:\n"
+"%s"
+msgstr ""
+
 #: home/.local/bin/sway-launcher
 msgid "The clipboard history is empty."
 msgstr ""

@@ -1,0 +1,55 @@
+#!/bin/sh
+# No Ubuntu (e no Mint), as traduções do próprio GTK (o seletor de arquivos do portal, os diálogos) vêm no
+# language-pack-gnome-<língua>. A ISO do Swaydesk o instala para a língua escolhida; uma instalação pelos
+# pacotes, não, e essas janelas ficam em inglês. Um pacote não instala outro sozinho, então a sessão avisa,
+# uma vez por língua, com o comando. Não avisa de novo depois de mostrar o aviso, nem com o pacote instalado.
+# Fora do Ubuntu e derivados, com a sessão em inglês ou sem o pacote no apt, não faz nada.
+# A língua é a do ambiente (a que o GTK usa), não a "locale" da config.toml, que só vale para o Swaydesk.
+set -u
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+
+os_release=${SWAY_DESKTOP_OS_RELEASE:-/etc/os-release}
+ids=$( . "$os_release" 2>/dev/null; printf ' %s %s ' "${ID:-}" "${ID_LIKE:-}")
+case $ids in *" ubuntu "*) ;; *) exit 0 ;; esac
+
+# A língua das mensagens do GTK: com o LC_ALL, LC_MESSAGES ou LANG em C (ou POSIX), o gettext fica em inglês e
+# ignora o LANGUAGE, e nenhum pacote muda isso. Fora disso, a primeira língua do LANGUAGE, senão a do locale
+locale=${LC_ALL:-${LC_MESSAGES:-${LANG:-}}}
+case $locale in '' | C | C.* | POSIX) exit 0 ;; esac
+lang=${LANGUAGE:-}
+lang=${lang%%:*}
+[ -n "$lang" ] || lang=$locale
+lang=${lang%%[.@]*}
+case $lang in
+  '' | C | POSIX | en | en_*) exit 0 ;;
+  zh_CN | zh_SG) pack=zh-hans ;;
+  zh_TW | zh_HK | zh_MO) pack=zh-hant ;;
+  *) pack=$(printf '%s' "${lang%%_*}" | tr '[:upper:]' '[:lower:]') ;;
+esac
+case $pack in *[!a-z-]* | '') exit 0 ;; esac
+package=language-pack-gnome-$pack-base
+
+state=${XDG_STATE_HOME:-$HOME/.local/state}/swaydesk/language-pack-notice
+grep -qxF -- "$pack" "$state" 2>/dev/null && exit 0
+[ "$(dpkg-query -W -f '${db:Status-Status}' "$package" 2>/dev/null)" = installed ] && exit 0
+apt-cache show -- "$package" >/dev/null 2>&1 || exit 0
+command -v notify-send >/dev/null 2>&1 || exit 0
+
+command="sudo apt install language-pack-gnome-$pack"
+title=$(t 'Translations for your language')
+# shellcheck disable=SC2059
+body=$(printf "$(t 'Some windows, such as the file chooser, are in English because the GTK translations for your language are not installed. To install them, run in a terminal:
+%s')" "$command")
+# O servidor de notificações pode ainda estar subindo no começo da sessão: espera até cerca de 1 min que alguém
+# tenha o nome no D-Bus (sem isso, o notify-send ativaria outro servidor instalado, como o mako), e cada envio
+# tem um limite. A língua só é marcada quando o aviso foi entregue: sem isso, tenta de novo no próximo login.
+# Entregue conta como visto, mesmo com o "não perturbe": o Guia diz como ver de novo
+tries=0
+until { ! command -v busctl >/dev/null 2>&1 || busctl --user status org.freedesktop.Notifications >/dev/null 2>&1; } &&
+  timeout 10 notify-send -a Swaydesk -i preferences-desktop-locale -t 0 -- "$title" "$body" 2>/dev/null; do
+  tries=$((tries + 1))
+  [ "$tries" -lt "${SWAY_LANGUAGE_PACKS_TRIES:-12}" ] || exit 0
+  sleep "${SWAY_LANGUAGE_PACKS_WAIT:-5}"
+done
+mkdir -p "${state%/*}" && printf '%s\n' "$pack" >>"$state"
+exit 0

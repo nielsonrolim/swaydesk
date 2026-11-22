@@ -1977,6 +1977,18 @@ msgstr "No hay ningún gestor de archivos instalado"
 msgid "usage: sway-idle-suspend start|stop"
 msgstr "uso: sway-idle-suspend start|stop"
 
+#: home/.local/bin/sway-language-packs
+msgid "Translations for your language"
+msgstr "Traducciones para tu idioma"
+
+#: home/.local/bin/sway-language-packs
+msgid ""
+"Some windows, such as the file chooser, are in English because the GTK translations for your language are not installed. To install them, run in a terminal:\n"
+"%s"
+msgstr ""
+"Algunas ventanas, como el selector de archivos, están en inglés porque las traducciones de GTK para tu idioma no están instaladas. Para instalarlas, ejecuta en una terminal:\n"
+"%s"
+
 #: home/.local/bin/sway-launcher
 msgid "The clipboard history is empty."
 msgstr "El historial del portapapeles está vacío."
