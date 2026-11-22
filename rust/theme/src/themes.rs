@@ -9,6 +9,7 @@ use std::time::Duration;
 use regex::Regex;
 use swaydesk_common::config::{self, contrast_with_white, is_accent, load_config, papirus_color, Config, Palette, DEFAULT_ACCENT};
 use swaydesk_common::i18n::tr;
+use swaydesk_common::resident::own_uid;
 
 use crate::desktop::{self as dc, ICONS_WRAPPER};
 use crate::families::{self as sf, Style};
@@ -560,7 +561,7 @@ fn update_kitty(colors: &Palette) -> Result<Option<bool>, std::io::Error> {
     let theme = base.join("current-theme.conf");
     backup_once(&theme, "kitty-current-theme.conf")?;
     dc::write_file(&dc::resolved(&theme), &dc::render_template("kitty-theme.conf", colors)?)?;
-    run(&["pkill", "-USR1", "-x", "kitty"], None);
+    run(&["pkill", "-USR1", "-u", &own_uid(), "-x", "kitty"], None);
     Ok(Some(true))
 }
 
@@ -587,9 +588,20 @@ fn update_herdr(colors: &Palette) -> Result<Option<bool>, std::io::Error> {
 
 /// Encerra o programa e espera ele sair. False: continuou rodando.
 fn stop(name: &str) -> bool {
-    run(&["pkill", "-x", name], None);
+    run(&["pkill", "-u", &own_uid(), "-x", name], None);
     for _ in 0..30 {
-        if run(&["pgrep", "-x", name], None) != 0 {
+        if run(&["pgrep", "-u", &own_uid(), "-x", name], None) != 0 {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    false
+}
+
+/// Espera o programa voltar sozinho, pelo laço do config do Sway (que espera 1 s antes de reabrir).
+fn came_back(name: &str) -> bool {
+    for _ in 0..30 {
+        if run(&["pgrep", "-u", &own_uid(), "-x", name], None) == 0 {
             return true;
         }
         std::thread::sleep(Duration::from_millis(100));
@@ -635,7 +647,7 @@ fn restart_desktop() -> Vec<String> {
         Some(_) => Some("~/.local/bin/sway-after-env ~/.local/bin/sway-waybar".to_string()),
         None => None,
     };
-    if let Some(command) = command.filter(|_| run(&["pgrep", "-x", "waybar"], None) == 0) {
+    if let Some(command) = command.filter(|_| run(&["pgrep", "-u", &own_uid(), "-x", "waybar"], None) == 0) {
         stop("waybar");
         if run(&["swaymsg", "exec", &command], None) != 0 {
             failures.push("Waybar".to_string());
@@ -643,22 +655,22 @@ fn restart_desktop() -> Vec<String> {
             wait_for_tray();
         }
     }
-    if run(&["pgrep", "-x", "sway-drawer"], None) == 0 {
+    if run(&["pgrep", "-u", &own_uid(), "-x", "sway-drawer"], None) == 0 {
         // O lançador dos dotfiles ou, instalada por pacote, o swaydesk-drawer
         let drawer = swaydesk_common::paths::component("sway-drawer", "swaydesk-drawer");
         let start = format!("{} start", shell_quote(&drawer));
-        if !stop("sway-drawer") || run(&["swaymsg", "exec", &start], None) != 0 {
+        // O laço do config do Sway a reabre (desde a 0.1.4). Uma sessão aberta antes, sem o laço, ou só com os
+        // componentes, não: aí o start vem daqui. Os dois juntos não abrem duas, pela trava
+        if !stop("sway-drawer") || !(came_back("sway-drawer") || run(&["swaymsg", "exec", &start], None) == 0) {
             failures.push(tr("drawer"));
         }
     }
     for name in ["sway-dock", "sway-osd-bar"] {
         if in_session_loop(name).is_some() {
-            run(&["pkill", "-x", name], None); // o laço do config do Sway o abre de novo
+            run(&["pkill", "-u", &own_uid(), "-x", name], None); // o laço do config do Sway o abre de novo
         }
     }
-    // SAFETY: o getuid não falha
-    let uid = unsafe { libc::getuid() }.to_string();
-    if run(&["pgrep", "-u", &uid, "-x", "wob"], None) == 0 {
+    if run(&["pgrep", "-u", &own_uid(), "-x", "wob"], None) == 0 {
         failures.push(tr("volume indicator (log in again)"));
     }
     failures

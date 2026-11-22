@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa a tela de login (swaydesk-greeter) num Sway headless com dois monitores. Roda dentro do contêiner
 # swaydesk-smoke:debian13 como root (para criar as contas), com o swaydesk-greeter e o wtype em /bin e a
 # Symbols Nerd Font em /fonts; as capturas e os registros vão para /out. O greetd é o fake-greetd.py.

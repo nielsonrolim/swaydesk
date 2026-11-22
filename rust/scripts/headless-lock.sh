@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa o bloqueio em Rust (swaydesk-lock) num Sway headless, pelo caminho de verdade: sway-lock →
 # sway-lock-watch → swaydesk-lock. Precisa do gtk4-layer-shell 1.2 ou mais novo (o Ubuntu 26.04; o
 # Debian 13 tem o 1.0.4, sem o bloqueio). Roda num contêiner com o Sway e o grim, o repositório em /repo,

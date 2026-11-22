@@ -20,7 +20,7 @@ snapshot() {
 
 # Os dois atalhos são --locked: sem isso, soltar na tela de bloqueio deixaria um estado velho,
 # e a grade abriria sozinha depois de desbloquear. Os três bloqueios do sway-lock
-locked() { pgrep -x 'swaylock|sway-lock-gtk|swaydesk-lock' >/dev/null; }
+locked() { pgrep -u "$UID" -x 'swaylock|sway-lock-gtk|swaydesk-lock' >/dev/null; }
 
 case "${1:-}" in
     press)

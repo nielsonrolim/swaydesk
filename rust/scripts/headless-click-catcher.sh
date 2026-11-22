@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # O swaydesk-click-catcher num Sway headless com duas telas. Roda dentro do contêiner swaydesk-smoke:debian13, com o
 # repositório em /repo e o binário em /bin:
 #

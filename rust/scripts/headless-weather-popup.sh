@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa o popup do tempo num Sway headless, sem rede: um cache fresco do wttr.in montado aqui (o mesmo
 # arquivo que o ícone e o popup dividem), e a captura (grim) de cada versão. Roda dentro do contêiner
 # swaydesk-smoke:debian13, como o headless-toasts.sh, com o swaydesk-weather-popup e o swaydesk-weather em

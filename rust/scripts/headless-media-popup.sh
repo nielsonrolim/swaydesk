@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa o popup de mídia num Sway headless, com players MPRIS de mentira (tests/fakes/mpris-player) num
 # barramento só do teste: a captura (grim) e os cliques, com o ponteiro virtual (swaydesk-vpointer). Roda
 # dentro do contêiner swaydesk-smoke:debian13, como o headless-toasts.sh, com o swaydesk-media-popup e o

@@ -473,7 +473,7 @@ fn main() -> ExitCode {
         }
     };
     // Gravando: o atalho de gravar para a gravação, como antes
-    if kind == Kind::Rec && Command::new("pgrep").args(["-x", "wf-recorder"]).stdout(Stdio::null()).status().is_ok_and(|s| s.success()) {
+    if kind == Kind::Rec && Command::new("pgrep").args(["-u", &swaydesk_common::resident::own_uid(), "-x", "wf-recorder"]).stdout(Stdio::null()).status().is_ok_and(|s| s.success()) {
         let _ = Command::new(bin("sway-rec")).arg("stop").status();
         return ExitCode::SUCCESS;
     }

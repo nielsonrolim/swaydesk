@@ -131,7 +131,7 @@ dbus-update-activation-environment "${empty[@]}" 2>/dev/null || true
 systemctl --user unset-environment "${vars[@]}" ${profile:+DCONF_PROFILE} 2>/dev/null || true
 # O serviço da GNOME Software foi aberto pelo Sway e sobrevive ao logout: entre as sessões, ele
 # reativava os portais com o ambiente que sobrou
-if command -v pgrep >/dev/null && pgrep -x gnome-software >/dev/null; then
+if command -v pgrep >/dev/null && pgrep -u "$(id -u)" -x gnome-software >/dev/null; then
   gnome-software --quit 2>/dev/null || true
 fi
 # Os outros avisos de atualização que o Sway abriu (sway-update-notifier), para um GNOME ou um KDE

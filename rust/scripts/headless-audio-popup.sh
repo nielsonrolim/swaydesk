@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa o popup de áudio num Sway headless, com pw-dump, wpctl e pactl falsos (o contêiner não tem
 # PipeWire): a captura (grim) e os cliques, com o ponteiro virtual (swaydesk-vpointer). Roda dentro do
 # contêiner swaydesk-smoke:debian13, como o headless-toasts.sh, com swaydesk-audio-popup e

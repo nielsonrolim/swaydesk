@@ -75,12 +75,12 @@ apply_cinnamon() {
 }
 
 apply_kde() {
-  pgrep -x plasmashell >/dev/null || return 3
+  pgrep -u "$UID" -x plasmashell >/dev/null || return 3
   plasma-apply-wallpaperimage "$1" >/dev/null
 }
 
 apply_xfce() {
-  pgrep -x xfdesktop >/dev/null || return 3
+  pgrep -u "$UID" -x xfdesktop >/dev/null || return 3
   local prop props
   # Sem nenhuma propriedade, nada mudaria: isso é falha, não "aplicado"
   props=$(xfconf-query -c xfce4-desktop -l | grep '/last-image$') || return 1
@@ -92,7 +92,7 @@ apply_xfce() {
 }
 
 apply_mango() {
-  pgrep -x mango >/dev/null || return 3
+  pgrep -u "$UID" -x mango >/dev/null || return 3
   # A Noctalia sobe junto no login: espera o IPC responder antes de aplicar.
   for _ in {1..30}; do
     noctalia msg status >/dev/null 2>&1 && break

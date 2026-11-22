@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa os painéis de captura e de gravação (sway-capture) num Sway headless. Roda dentro do contêiner
 # swaydesk-smoke:debian13, como o headless-toasts.sh, com o swaydesk-capture e o swaydesk-vpointer em /bin.
 #

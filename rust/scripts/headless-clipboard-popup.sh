@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa o popup de clipboard num Sway headless, com um cliphist e um wl-copy de mentira: a captura (grim)
 # e os cliques, com o ponteiro virtual (swaydesk-vpointer). Roda dentro do contêiner swaydesk-smoke:debian13,
 # como o headless-toasts.sh, com o swaydesk-clipboard-popup e o swaydesk-vpointer em /bin.

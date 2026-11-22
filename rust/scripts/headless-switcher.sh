@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa o seletor de janelas (sway-switcher) num Sway headless. Roda dentro do contêiner swaydesk-smoke:debian13,
 # como o headless-osd-bar.sh, com o swaydesk-switcher e o swaydesk-vpointer em /bin; as capturas vão para /out.
 #

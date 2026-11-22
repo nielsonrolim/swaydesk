@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa o [enabled] do config.toml numa sessão Sway headless: o sway-if-enabled nos exec, a grade que confere
 # sozinha o app_grid e o sway-waybar com o config filtrado. Roda dentro do contêiner swaydesk-smoke:debian13,
 # com o repositório em /repo e os binários swaydesk-dock, swaydesk-drawer e swaydesk-desktop-config em /bins:

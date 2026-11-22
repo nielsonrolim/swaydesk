@@ -91,8 +91,9 @@ exec $bin/sway-if-enabled displays $bin/sway-after-env sh -c 'while swaymsg -t g
 # A tampa: fechada com uma tela externa ligada no perfil, a do notebook desliga; aberta, volta como o perfil diz
 bindswitch --reload --locked lid:on exec $bin/sway-if-enabled displays $bin/sway-displays apply
 bindswitch --reload --locked lid:off exec $bin/sway-if-enabled displays $bin/sway-displays apply
-# Grade de apps (sway-drawer) residente e escondida; o Super e o botão da dock só a mostram
-exec $bin/sway-if-enabled app_grid $bin/sway-after-env $bin/sway-drawer start
+# Grade de apps (sway-drawer) residente e escondida; o Super e o botão da dock só a mostram. No laço, como a
+# dock: se ela sair, volta (o sway-theme a reabre só com pkill). O 3 é a grade desligada no [enabled]
+exec $bin/sway-if-enabled app_grid $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-drawer start; [ $? -eq 3 ] && break; sleep 1; done'
 # Dock (config em ~/.config/sway-dock/config.toml). O laço a reabre se cair
 # O laço termina junto com o Sway: sem isso sobreviveria ao logout e abriria um segundo dock
 exec $bin/sway-if-enabled dock $bin/sway-after-env sh -c 'while swaymsg -t get_version >/dev/null 2>&1; do $bin/sway-dock; sleep 1; done'

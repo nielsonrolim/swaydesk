@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa a calculadora da grade de apps com o qalc (Rust ou Python), num Sway headless. Roda dentro de um
 # contêiner swaydesk-smoke:debian13 com o qalc e o wl-clipboard instalados, com o repositório em /repo, o
 # binário da grade em /bin e uma pasta gravável em /out (as capturas):

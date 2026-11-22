@@ -56,4 +56,5 @@ docker run --rm --memory 10g --memory-swap 10g -e CARGO_BUILD_JOBS=4 -u "$(id -u
 ```
 
 A headless test, with the binaries built above: the header of each `rust/scripts/headless-*.sh` has its
-`docker run` line.
+`docker run` line. Keep each run short and let the container go (`--rm`): the host sees its processes, under
+your own UID, and a drawer, dock or lock left running there confuses your real session.

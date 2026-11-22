@@ -33,17 +33,17 @@ else
   args=(before-sleep "$lock")
 fi
 
-pkill -x swayidle 2>/dev/null || true
+pkill -u "$UID" -x swayidle 2>/dev/null || true
 for (( i = 0; i < 25; i++ )); do
-  pgrep -x swayidle >/dev/null || break
+  pgrep -u "$UID" -x swayidle >/dev/null || break
   sleep 0.1
 done
 # Com -w, ele só atende ao sinal depois do comando em andamento. Dois juntos fariam a tela
 # bloquear com a cafeína ligada, então o antigo não pode continuar
-if pgrep -x swayidle >/dev/null; then
-  pkill -KILL -x swayidle 2>/dev/null || true
+if pgrep -u "$UID" -x swayidle >/dev/null; then
+  pkill -KILL -u "$UID" -x swayidle 2>/dev/null || true
   for (( i = 0; i < 10; i++ )); do
-    pgrep -x swayidle >/dev/null || break
+    pgrep -u "$UID" -x swayidle >/dev/null || break
     sleep 0.1
   done
 fi
@@ -52,6 +52,6 @@ fi
 setsid swayidle -w "${args[@]}" </dev/null 9>&- &
 # Só libera quando ele já pode ser encontrado pela próxima troca
 for (( i = 0; i < 25; i++ )); do
-  pgrep -x swayidle >/dev/null && break
+  pgrep -u "$UID" -x swayidle >/dev/null && break
   sleep 0.1
 done

@@ -9,7 +9,7 @@ set -euo pipefail
 state="${XDG_RUNTIME_DIR:-/tmp}/sway-rec"
 if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
 
-recording() { pgrep -x wf-recorder >/dev/null; }
+recording() { pgrep -u "$UID" -x wf-recorder >/dev/null; }
 # Avisa o módulo da Waybar. Pelo PID, conferindo se é ele: um "pkill waybar" também
 # pegaria os scripts com waybar no nome, e o sinal os encerraria.
 refresh() {
@@ -87,7 +87,7 @@ check_size() { case $1 in *\ 0x*|*x0) nothing "$(t 'The region is too small.')" 
 
 case ${1:-} in
   stop)
-    pkill -INT -x wf-recorder || true
+    pkill -INT -u "$UID" -x wf-recorder || true
     exit ;;
   status)
     if recording && [ -f "$state/start" ]; then

@@ -240,7 +240,7 @@ pub fn bar_line(settings: &Settings, now: &Now, fetch: impl FnOnce(&Settings) ->
 /// Depois de uma busca do popup, o ícone não espera o próximo minuto para mostrar o mesmo valor.
 pub fn refresh_bar() {
     let _ = std::process::Command::new("pkill")
-        .args([&format!("-RTMIN+{BAR_SIGNAL}"), "-x", "waybar"])
+        .args([&format!("-RTMIN+{BAR_SIGNAL}"), "-u", &swaydesk_common::resident::own_uid(), "-x", "waybar"])
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::null())
         .status();

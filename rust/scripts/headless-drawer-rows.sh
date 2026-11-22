@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # A grade de apps (Rust ou Python) numa tela baixa, com mais apps do que cabem: a última linha à vista sai
 # inteira, com os nomes, e não cortada pelo rodapé. Roda dentro do contêiner swaydesk-smoke:debian13, com o
 # repositório em /repo, o binário da grade em /bin e uma pasta gravável em /out (as capturas):

@@ -8,6 +8,14 @@ use std::os::unix::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
+/// O UID deste processo, para o `-u` do pgrep e do pkill: sem ele, os dois veem e tentam os processos de
+/// todos os usuários (outra sessão aberta, uma sessão de teste num contêiner), e um "ainda roda" de outro
+/// usuário passa por nosso.
+pub fn own_uid() -> String {
+    // SAFETY: o getuid não falha
+    unsafe { libc::getuid() }.to_string()
+}
+
 pub fn runtime_dir() -> PathBuf {
     std::env::var_os("XDG_RUNTIME_DIR").filter(|d| !d.is_empty()).map(PathBuf::from).unwrap_or_else(|| "/tmp".into())
 }

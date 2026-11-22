@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa a dock com a grade de apps aberta (Rust ou Python), num Sway headless com o ponteiro virtual
 # (swaydesk-vpointer). Roda dentro do contêiner swaydesk-smoke:debian13, com o repositório em /repo, os
 # binários em /bin e uma pasta gravável em /out (as capturas):

@@ -20,6 +20,8 @@ use swaydesk_common::{config, i18n, resident};
 pub const PROGRAM: &str = "sway-drawer";
 /// O start espera o residente antigo, que pode estar saindo, soltar a trava.
 const START_WAIT: Duration = Duration::from_secs(3);
+/// O start com a grade desligada: o laço do config do Sway para de reabrir.
+const EXIT_DISABLED: u8 = 3;
 
 pub fn warn(message: &str) {
     eprintln!("{PROGRAM}: {message}"); // vai para o sway.log, junto com o resto da sessão
@@ -67,7 +69,12 @@ fn main() -> ExitCode {
     }
     // Com a grade desligada ([enabled] app_grid = false), nem o start nem o Super nem o botão da dock abrem
     // nada: o residente não sobe, e sem ele o toggle viraria o residente
+    // Cada saída do start deixa uma linha no sway.log: em 22/11 o residente sumiu no login sem rastro
     if !config::load().enabled("app_grid") {
+        if start {
+            warn("app_grid is off in [enabled]: not starting");
+            return ExitCode::from(EXIT_DISABLED);
+        }
         return ExitCode::SUCCESS;
     }
     let argv0 = std::env::args_os().next().unwrap_or_default();
@@ -79,6 +86,9 @@ fn main() -> ExitCode {
     swaydesk_common::renderer::use_cairo_renderer(); // a grade parada não precisa do GL; ~25 MB a menos
     let Some(_lock) = resident::take_lock(&resident::lockfile(PROGRAM), if start { START_WAIT } else { Duration::ZERO })
     else {
+        if start {
+            warn("another sway-drawer holds the lock: not starting");
+        }
         return ExitCode::SUCCESS; // outro está subindo ou já roda
     };
 
@@ -86,9 +96,10 @@ fn main() -> ExitCode {
     // padrão do SIGUSR1. O GLib guarda o sinal até o laço rodar, com a grade pronta
     let main_loop = glib::MainLoop::new(None, false);
     let holder: Rc<RefCell<Option<Rc<drawer::Drawer>>>> = Rc::new(RefCell::new(None));
-    for signal in [libc::SIGTERM, libc::SIGINT] {
+    for (signal, name) in [(libc::SIGTERM, "SIGTERM"), (libc::SIGINT, "SIGINT")] {
         let main_loop = main_loop.clone();
         glib::unix_signal_add_local(signal, move || {
+            warn(&format!("{name}: exiting"));
             main_loop.quit();
             glib::ControlFlow::Continue
         });

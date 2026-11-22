@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Confere cada perfil de atalhos (home/.config/sway/keys) com o próprio Sway: o config dos dotfiles com o
 # config.d/00-keys.conf de cada perfil passa no sway -C sem erro nem aviso (uma tecla repetida sem --no-warn, um
 # unbindsym de tecla que não existe, um nome de tecla errado). Roda dentro do contêiner swaydesk-smoke:debian13,

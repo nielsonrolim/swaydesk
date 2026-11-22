@@ -1,4 +1,6 @@
 #!/bin/bash
+# Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
+# seu UID (o pgrep -u da sessão também os acha): uma grade, uma dock ou um lock esquecido confunde a sua sessão.
 # Testa o app Telas (swaydesk-displays) e o serviço de perfis num Sway headless com dois monitores. Roda dentro
 # do contêiner swaydesk-smoke:debian13, com o repositório em /repo, o binário em /bin, o wtype em /bin e uma
 # pasta gravável em /out (as capturas):

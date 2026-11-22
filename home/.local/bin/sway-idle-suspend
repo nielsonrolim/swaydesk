@@ -33,7 +33,7 @@ on_battery() {
 }
 
 busy() {
-  pgrep -x wf-recorder >/dev/null && return 0
+  pgrep -u "$UID" -x wf-recorder >/dev/null && return 0
   pactl list short sinks 2>/dev/null | grep -q RUNNING
 }
 
