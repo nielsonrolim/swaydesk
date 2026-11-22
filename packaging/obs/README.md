@@ -43,6 +43,13 @@ Assim o apt e o pacman atualizam de um snapshot para o seguinte, e do último sn
 
 ### Lançar uma versão
 
+Antes de cada versão e de cada RC (também as revisões e correções abaixo), **todos os testes** numa worktree limpa
+do commit exato que sai: `tests/run-all-tests.sh SAÍDA` roda a suíte em Python com o Sway headless (nunca
+`SWAY_DESKTOP_TESTS_SWAY=0`, que pula os testes de GTK), o `cargo test` do workspace inteiro nos contêineres do
+Debian 13 e do Arch (com o limite de memória) e cada `rust/scripts/headless-*.sh` (nas duas implementações quando aceita `[rust|python]`), e imprime um
+resumo. O `headless-lock` sai como SKIP sem uma imagem com o gtk4-layer-shell 1.2+, e fica para a rodada de VM. Uma falha
+segura a versão até ser corrigida ou explicada; o resumo vai junto do pedido de ok ao usuário.
+
 1. O commit de lançamento, num PR que só é mesclado com o ok do usuário (o `mirror.sh` publica o `packaging/public` no espelho):
    - feche a entrada de cima do `debian/changelog`: a versão `X.Y.Z-1`, a distribuição `unstable` no lugar de `UNRELEASED`, a data e o resumo das mudanças;
    - a entrada `## X.Y.Z — AAAA-MM-DD` no topo do `packaging/public/CHANGELOG.md`, que é a nota do Release;
