@@ -59,6 +59,9 @@ SCRIPT
 cat > /tmp/fakebin/busctl <<'SCRIPT'
 #!/bin/sh
 case "$*" in
+  # Os perfis que o daemon oferece (o --json=short do get-property Profiles, aa{sv}; o nome do serviço,
+  # net.hadess.PowerProfiles, também tem "Profiles": só a propriedade no fim). Sem eles, os botões somem
+  *get-property*" Profiles") printf '{"type":"aa{sv}","data":[{"Profile":{"type":"s","data":"power-saver"},"Driver":{"type":"s","data":"placeholder"}},{"Profile":{"type":"s","data":"balanced"},"Driver":{"type":"s","data":"placeholder"}},{"Profile":{"type":"s","data":"performance"},"Driver":{"type":"s","data":"placeholder"}}]}\n' ;;
   *get-property*) cat /tmp/state/profile 2>/dev/null || echo 's "balanced"' ;;
   *set-property*) for a; do last=$a; done; echo "busctl set-property $last" >>/tmp/calls; echo "s \"$last\"" >/tmp/state/profile ;;
   *GetHistory*) now=$(date +%s); printf '{"type":"a(udu)","data":[[[%d,95.0,2],[%d,85.0,2],[%d,77.0,2]]]}\n' $((now-36000)) $((now-18000)) $((now-600)) ;;
