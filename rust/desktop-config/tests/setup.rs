@@ -20,10 +20,15 @@ fn setup(home: &Path, keyboard: &Path) -> std::process::Output {
 }
 
 fn setup_with_path(home: &Path, keyboard: &Path, path: &str) -> std::process::Output {
+    setup_with_env(home, keyboard, path, &[])
+}
+
+fn setup_with_env(home: &Path, keyboard: &Path, path: &str, env: &[(&str, &Path)]) -> std::process::Output {
     let repo = repo();
     Command::new(env!("CARGO_BIN_EXE_swaydesk-desktop-config"))
         .arg("setup")
         .env_clear()
+        .envs(env.iter().copied())
         .env("HOME", home)
         .env("PATH", path)
         .env("SWAYDESK_SKEL", repo.join("home-copy"))
@@ -131,4 +136,22 @@ fn an_old_pinned_file_with_nemo_not_installed_is_migrated_once() {
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
     assert_eq!(std::fs::read_to_string(&pinned).unwrap(), "nemo\nkitty\n");
     let _ = std::fs::remove_dir_all(&dir);
+}
+
+// O 50-local.conf de uma conta nova vem na língua da sessão: espanhol com o LANG es_ES, inglês sem língua
+#[test]
+fn the_local_file_comes_in_the_language_of_the_session() {
+    let base = std::env::temp_dir().join(format!("swaydesk-setup-lang-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&base);
+    let locale = repo().join("home/.local/share/locale");
+    for (lang, start) in [("es_ES.UTF-8", "# Ajustes solo de esta máquina"), ("C", "# Settings for this machine only")] {
+        let home = base.join(lang);
+        std::fs::create_dir_all(&home).unwrap();
+        let out = setup_with_env(&home, &base.join("sem-teclado"), "/usr/bin:/bin",
+                                 &[("LANG", Path::new(lang)), ("SWAY_I18N_LOCALEDIR", &locale)]);
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        let local = std::fs::read_to_string(home.join(".config/sway/config.d/50-local.conf")).unwrap();
+        assert!(local.starts_with(start), "{lang}: {local}");
+    }
+    let _ = std::fs::remove_dir_all(&base);
 }

@@ -43,7 +43,8 @@ Print the accent colors as GTK CSS (@define\-color).
 .TP
 .B setup
 Run by the packaged session on every login, before Sway starts: copy from the skeleton what is missing in the home
-folder, update the system keyboard block in ~/.config/sway/config.d/50-local.conf while nobody has edited it, keep
+folder (a new ~/.config/sway/config.d/50-local.conf is written with its comments in the session's language),
+update the system keyboard block in ~/.config/sway/config.d/50-local.conf while nobody has edited it, keep
 ~/.XCompose (' + c gives \[,c]) while the session uses the US international layout, then generate. The system keyboard
 is whichever of /etc/default/keyboard, /etc/X11/xorg.conf.d/00-keyboard.conf and /etc/vconsole.conf changed last
 (vconsole.conf with its XKB* keys; one with only KEYMAP counts only when the other two are missing).

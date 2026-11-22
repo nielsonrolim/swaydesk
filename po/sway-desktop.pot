@@ -3068,6 +3068,86 @@ msgstr ""
 msgid "No network service running"
 msgstr ""
 
+#: rust/theme/src/local_conf.rs
+msgid ""
+"Settings for this machine only: shortcuts, displays, keyboard, mouse and apps. Sway reads this file\n"
+"after the Swaydesk shortcuts (and the chosen shortcut profile), so what is here takes precedence."
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid ""
+"The file is yours: neither the installation nor the updates overwrite it. To go back to the template,\n"
+"delete it and log in again."
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid ""
+"Uncomment what you want and run swaymsg reload in a terminal. An error here shows up in a Sway bar at\n"
+"the top of the screen, with the line of the problem."
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid ""
+"The Swaydesk Help (Super+F1) shows the shortcuts in use, with the changes of this file already in. A\n"
+"\"##\" comment right above a shortcut is the description shown there."
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid "Shortcuts: change what a shortcut does"
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid "Use --no-warn: without it, Sway warns that the key already had a shortcut."
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid "Shortcuts: remove a shortcut"
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid ""
+"Only remove what the profile in use has (see the Help), written as it defines it, including options\n"
+"such as --locked (volume and brightness, which work with the screen locked). Removing a key with no\n"
+"shortcut, or without its option, is a config error. The Print key exists in every profile, with no options."
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid "Shortcuts: create a shortcut"
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid ""
+"Pick a free key (the Help shows the ones in use). Mod4 is the Super key. Super+F2 to F12 and\n"
+"Super+Ctrl+Alt+<letter> are free in every profile."
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid "Display: the output name comes from `swaymsg -t get_outputs`"
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid ""
+"The Displays app saves the displays in config.d/90-displays.conf, read after this file: what you\n"
+"choose there takes precedence over an output line here."
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid "Keyboard: two layouts (the switching shortcut is in the Help: Super+Space in the swaydesk profile)"
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid "Programs when the session starts"
+msgstr ""
+
+#. TRANSLATORS: the name of an example program in the 50-local.conf template (exec my-program), with no spaces
+#: rust/theme/src/local_conf.rs
+msgid "my-program"
+msgstr ""
+
+#: rust/theme/src/local_conf.rs
+msgid "Apps on workspaces"
+msgstr ""
+
 #: home/.config/sway/keys/base.conf
 msgid "Session and apps"
 msgstr ""

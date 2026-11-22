@@ -8,7 +8,7 @@ use std::fs::File;
 use std::path::PathBuf;
 use std::sync::OnceLock;
 
-use gettext::Catalog;
+pub use gettext::Catalog;
 
 use crate::config;
 
@@ -60,6 +60,11 @@ fn load(languages: &[String], dirs: &[PathBuf]) -> Catalog {
         }
     }
     Catalog::empty()
+}
+
+/// O catálogo da primeira destas línguas que tiver um, nestas pastas (os testes de quem usa os textos).
+pub fn load_catalog(languages: &[String], dirs: &[PathBuf]) -> Catalog {
+    load(languages, dirs)
 }
 
 /// Carrega o catálogo da língua da config ou do ambiente. Chamar uma vez, no começo; sem isso, o

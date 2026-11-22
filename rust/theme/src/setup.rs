@@ -1,7 +1,8 @@
 //! O primeiro login na sessão do pacote swaydesk-desktop: os arquivos de cada usuário (o `home-copy/` do
 //! repositório, que o pacote instala como `skel`) vão para o `~`, com as mesmas regras do `install.sh`:
 //! - só o que falta: um arquivo que já existe (mesmo um link quebrado) é do usuário e fica;
-//! - o `50-local.conf` ganha o teclado do sistema (`/etc/default/keyboard`), como o `keyboard_block`; sem esse
+//! - o `50-local.conf` sai do `local_conf::template`, na língua da sessão (o do skel é o mesmo em português), e
+//!   ganha o teclado do sistema (`/etc/default/keyboard`), como o `keyboard_block`; sem esse
 //!   arquivo (Arch), o do systemd: o layout X11 do localectl, senão o mapa do console traduzido pelo
 //!   kbd-model-map. A cada login, o bloco segue o teclado do sistema (localectl, dpkg-reconfigure), enquanto
 //!   for o que gravamos: um bloco mexido pelo usuário fica;
@@ -15,7 +16,7 @@ use std::path::{Path, PathBuf};
 use swaydesk_common::config;
 use swaydesk_common::keyboard as kbd;
 
-use crate::desktop;
+use crate::{desktop, local_conf};
 
 const LOCAL_CONF: &str = ".config/sway/config.d/50-local.conf";
 const PINNED: &str = ".local/share/sway-dock/pinned";
@@ -35,7 +36,8 @@ pub fn skel_dir() -> PathBuf {
     share.parent().map(|p| p.join("swaydesk-desktop/skel")).unwrap_or_else(|| share.join("../swaydesk-desktop/skel"))
 }
 
-/// Os arquivos do skel, relativos a ele e em ordem (a config.toml vem antes dos fixados da dock). Só arquivos
+/// Os arquivos do skel, relativos a ele e em ordem. O 50-local.conf do skel só marca que o arquivo vem: o
+/// conteúdo sai do `local_conf::template`, na língua da sessão (a config.toml vem antes dos fixados da dock). Só arquivos
 /// comuns: um link no skel (o home-copy/ não tem nenhum) ficaria de fora.
 fn skel_files(skel: &Path) -> Vec<PathBuf> {
     let mut files = Vec::new();
@@ -122,7 +124,12 @@ pub fn setup(skel: &Path, home: &Path, keyboard: &Path) -> std::io::Result<Vec<P
         if let Some(parent) = target.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        std::fs::copy(skel.join(&rel), &target)?;
+        if rel == Path::new(LOCAL_CONF) {
+            // O modelo na língua da sessão; o do skel é o mesmo em português (o do install.sh)
+            std::fs::write(&target, local_conf::template(&|msgid| swaydesk_common::i18n::tr(msgid)))?;
+        } else {
+            std::fs::copy(skel.join(&rel), &target)?;
+        }
         if rel == Path::new(CONFIG) {
             let text = std::fs::read_to_string(&target)?;
             std::fs::write(&target, with_installed_theme(&text, &desktop::theme_installed))?;

@@ -4,6 +4,7 @@
 pub mod desktop;
 pub mod families;
 pub mod icon_themes;
+pub mod local_conf;
 pub mod papirus;
 pub mod setup;
 pub mod themes;
