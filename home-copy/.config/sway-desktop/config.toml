@@ -66,6 +66,8 @@ update_notifier = true     # o aviso de atualizações da distro. No Arch, o do 
                            # firmware): desligado, a loja volta a cuidar das atualizações
 displays = true            # os perfis de telas ao plugar um monitor e na tampa, e o resgate quando
                            # nenhuma tela fica ligada (o app Telas continua)
+autostart = true           # os apps do autostart (~/.config/autostart e /etc/xdg/autostart), como os de
+                           # sincronização; o Swaydesk não abre os que ele já roda (Bluetooth, rede, polkit)
 
 # Os módulos da barra (os workspaces e a bandeja ficam sempre)
 [enabled.bar]

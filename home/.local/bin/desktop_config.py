@@ -144,7 +144,7 @@ POWER_IN_SYSTEM = ("auto", "always", "never")
 SHORTCUT_PROFILES = {"swaydesk": "Swaydesk", "i3": "i3", "hyprland": "Hyprland", "niri": "niri", "dwm": "dwm"}
 # As chaves do [enabled]: os componentes da sessão que podem ser desligados (o enabled() do Rust tem as mesmas)
 ENABLED_KEYS = ("dock", "app_grid", "switcher", "notifications", "osd", "clipboard_history", "nightlight",
-                "bing_wallpaper", "polkit_agent", "update_notifier", "displays")
+                "bing_wallpaper", "polkit_agent", "update_notifier", "displays", "autostart")
 # As do [enabled.bar], com o módulo da Waybar de cada uma. Os workspaces, o sway/mode e a bandeja ficam sempre
 BAR_MODULES = {
     "weather": "custom/weather", "clock": "custom/clock", "media": "custom/media", "recording": "custom/rec",

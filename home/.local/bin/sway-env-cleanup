@@ -109,6 +109,8 @@ other_sway() {
 next_login() { note "the next login has started: its environment and portals stay"; exit 0; }
 other_sway && next_login
 stop_session_clients
+# Os apps do autostart que esta sessão abriu (sway-autostart): as units deles não param sozinhas no logout
+[[ -x ${0%/*}/sway-autostart ]] && "${0%/*}/sway-autostart" stop
 other_sway && next_login
 # Os portais primeiro, enquanto o display ainda existe: o xdg-desktop-portal via o do gtk morrer com o
 # display e o reativava na hora, com o ambiente velho, e a ativação presa (120 s) travava o login seguinte.

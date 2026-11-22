@@ -1,0 +1,8 @@
+# Do Swaydesk: os apps do autostart do XDG (~/.config/autostart e /etc/xdg/autostart) na sessão dele. As units
+# vêm do systemd-xdg-autostart-generator, e o xdg-desktop-autostart.target que as junta recusa o start direto
+# (RefuseManualStart): este target o puxa. O sway-autostart o inicia depois que o ambiente da sessão chegou ao
+# systemd e o para no logout, com os apps desta sessão
+[Unit]
+Description=Swaydesk: XDG autostart applications
+Documentation=man:systemd-xdg-autostart-generator(8)
+Wants=xdg-desktop-autostart.target

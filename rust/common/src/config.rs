@@ -16,7 +16,7 @@ const KNOWN: &[&str] = &[
 /// As chaves do [enabled]: os componentes da sessão que podem ser desligados (o ENABLED_KEYS do Python).
 pub const ENABLED_KEYS: &[&str] = &[
     "dock", "app_grid", "switcher", "notifications", "osd", "clipboard_history", "nightlight", "bing_wallpaper",
-    "polkit_agent", "update_notifier", "displays",
+    "polkit_agent", "update_notifier", "displays", "autostart",
 ];
 /// As do [enabled.bar], com o módulo da Waybar de cada uma (o BAR_MODULES do Python). Os workspaces, o
 /// sway/mode e a bandeja ficam sempre.

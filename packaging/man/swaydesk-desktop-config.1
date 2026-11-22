@@ -75,8 +75,10 @@ The [enabled] table turns session components off with false: dock, app_grid, swi
 clipboard_history, nightlight, bing_wallpaper, polkit_agent, update_notifier (on Arch, also the background check for
 official, AUR, Flatpak and firmware updates, its notification and its bar icon; with it off, GNOME Software gets its
 updates page back, which the Arch package turns off by default with allow\-updates=false, and "gsettings set
-org.gnome.software allow\-updates true" does the same by hand) and displays (the automatic
-screen profiles and the rescue that turns the screens on when none is on; the Displays app stays). The [enabled.bar] table does
+org.gnome.software allow\-updates true" does the same by hand), displays (the automatic
+screen profiles and the rescue that turns the screens on when none is on; the Displays app stays). and autostart (the
+XDG autostart apps of ~/.config/autostart and /etc/xdg/autostart, started through systemd; the entries that
+duplicate what Swaydesk already runs, such as blueman, nm\-applet and the polkit agents, never start in its session). The [enabled.bar] table does
 the same for the Waybar modules: weather, clock, media, recording, notifications, clipboard, language, system,
 brightness, caffeine, bluetooth, network, volume, battery, power and updates (the Arch updates icon). A key that is absent is on. A change takes
 effect at the next login; for the bar, also when Waybar restarts.

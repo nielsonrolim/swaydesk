@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# Os apps do autostart do XDG (~/.config/autostart e /etc/xdg/autostart) na sessão do Swaydesk. Quem os abre é o
+# systemd: o systemd-xdg-autostart-generator faz uma unit app-<nome>@autostart.service de cada entrada, e já
+# respeita o OnlyShowIn/NotShowIn (com o XDG_CURRENT_DESKTOP=sway), o Hidden, o X-GNOME-Autostart-enabled e o
+# TryExec. As entradas que duplicam o que o Swaydesk já roda (o blueman, o nm-applet, os agentes do polkit, o
+# xapp-sn-watcher) têm drop-ins que as pulam nesta sessão (ConditionEnvironment=!SWAYDESK_SESSION).
+#   start  no login, pelo config do Sway (com o sway-if-enabled autostart e o sway-after-env): inicia o
+#          swaydesk-autostart.target, que puxa o xdg-desktop-autostart.target. O que já está rodando (aberto
+#          por uma sessão do GNOME ou do KDE em outro VT) não abre de novo
+#   stop   no logout, pelo sway-env-cleanup: para o target e as units do autostart com algum processo desta
+#          sessão. As units geradas são PartOf=graphical-session.target, que a sessão do Swaydesk não ativa:
+#          sem isso, os apps sobreviviam ao logout. Os de outra sessão do mesmo usuário ficam
+# uso: sway-autostart start|stop
+set -uo pipefail
+target=swaydesk-autostart.target
+proc=${SWAY_DESKTOP_PROC:-/proc}
+cgroot=${SWAY_DESKTOP_CGROUP:-/sys/fs/cgroup}
+
+note() {
+  echo "sway-autostart: $*" >&2
+  command -v logger >/dev/null && logger -t sway-autostart "$*" 2>/dev/null
+  return 0
+}
+
+# O processo é desta sessão: herdou o SWAYSOCK dela (do ambiente do systemd na hora do start, ou do Sway).
+# Lido inteiro antes: com o pipefail, um grep -q que sai cedo faria o tr falhar
+of_this_session() {
+  local environ
+  environ=$(tr '\0' '\n' <"$proc/$1/environ" 2>/dev/null) || return 1
+  grep -qxF "SWAYSOCK=$SWAYSOCK" <<<"$environ"
+}
+
+# Algum processo da unit, em qualquer cgroup abaixo do dela, é desta sessão. Pelo cgroup, e não só pelo
+# MainPID: um lançador que abre o app e sai deixa a unit ativa (ExitType=cgroup) sem MainPID
+unit_of_this_session() {
+  local cg file pid
+  cg=$(systemctl --user show -p ControlGroup --value "$1" 2>/dev/null) || return 1
+  [[ -n $cg && -d $cgroot$cg ]] || return 1
+  while IFS= read -r file; do
+    while IFS= read -r pid; do
+      [[ -n $pid ]] && of_this_session "$pid" && return 0
+    done <"$file"
+  done < <(find "$cgroot$cg" -name cgroup.procs 2>/dev/null)
+  return 1
+}
+
+case ${1-} in
+  start)
+    command -v systemctl >/dev/null || exit 0
+    # O OnlyShowIn e o NotShowIn são conferidos no start de cada unit, com o XDG_CURRENT_DESKTOP do systemd. Ele
+    # chega no mesmo dbus-update-activation-environment do SWAYSOCK, que o sway-after-env esperou; sem ele, uma
+    # entrada com NotShowIn=GNOME subiria em qualquer sessão
+    environ=$(systemctl --user show-environment 2>/dev/null) || environ=
+    if ! grep -qE '^XDG_CURRENT_DESKTOP=.' <<<"$environ"; then
+      note "XDG_CURRENT_DESKTOP is not in the systemd environment: autostart skipped"
+      exit 0
+    fi
+    # Os apps da bandeja (StatusNotifierItem) procuram o watcher ao abrir, e alguns não tentam de novo: espera a
+    # Waybar registrá-lo, até 10 s. Sem a Waybar ou sem o busctl, abre assim mesmo
+    if command -v busctl >/dev/null; then
+      for _ in $(seq "${SWAY_DESKTOP_TRAY_TRIES:-100}"); do
+        busctl --user status org.kde.StatusNotifierWatcher >/dev/null 2>&1 && break
+        sleep 0.1
+      done
+    fi
+    # O gerador roda quando o gerenciador do usuário sobe. Ele pode ter sobrevivido ao logout (um login rápido, outra
+    # sessão aberta, o linger): sem o reload, uma entrada nova no ~/.config/autostart ficaria para depois
+    systemctl --user daemon-reload 2>/dev/null || note "daemon-reload failed: new autostart entries wait for the next manager start"
+    systemctl --user start "$target" || note "could not start $target"
+    ;;
+  stop)
+    [[ -n ${SWAYSOCK:-} ]] && command -v systemctl >/dev/null || exit 0
+    # O start do próximo login puxa de novo os apps parados aqui (o systemd segue os Wants mesmo de um target ativo);
+    # parado, o target também diz no systemctl que a sessão do Swaydesk acabou
+    systemctl --user stop "$target" 2>/dev/null
+    mine=()
+    for unit in $(systemctl --user show -p Wants --value xdg-desktop-autostart.target 2>/dev/null); do
+      # O show põe entre aspas, com a barra dobrada, todo nome com escape: "app-nm\\x2dapplet@autostart.service".
+      # Sem desfazer isso, os nomes com hífen (quase todos) não casavam e ficavam rodando depois do logout
+      if [[ $unit == \"*\" ]]; then
+        unit=${unit:1:-1}
+        unit=${unit//\\\\/\\}
+      fi
+      [[ $unit == app-*@autostart.service ]] || continue
+      unit_of_this_session "$unit" && mine+=("$unit")
+    done
+    (( ${#mine[@]} )) || exit 0
+    note "stopping this session's autostart apps: ${mine[*]}"
+    systemctl --user stop "${mine[@]}" 2>/dev/null || true
+    ;;
+  *)
+    echo "usage: sway-autostart start|stop" >&2
+    exit 2
+    ;;
+esac
+exit 0

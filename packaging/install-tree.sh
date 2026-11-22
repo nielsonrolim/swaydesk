@@ -35,7 +35,7 @@ SESSION_SCRIPTS=(sway-after-env sway-if-enabled sway-waybar sway-env-cleanup swa
                  sway-language-packs
                  blueman-agent bing-wallpaper sway-osd sway-super sway-resize sway-master sway-ws waybar-clock
                  waybar-media waybar-volume waybar-battery waybar-brightness waybar-caffeine sway-launcher
-                 sway-portal-gtk sway-has-display sway-updates waybar-updates)
+                 sway-portal-gtk sway-has-display sway-updates waybar-updates sway-autostart)
 SESSION_MODULES=(waybar-icon-lib)  # incluído com "." pelos módulos da Waybar
 share=/usr/share/swaydesk-desktop
 
@@ -62,6 +62,10 @@ SESSION_CONFIGS=(sway/config waybar/config.jsonc waybar/style.css xdg-desktop-po
 # Os atalhos: o base.conf e um arquivo por perfil do shortcuts (sway/keys, ao lado do sway/config)
 KEY_PROFILES=(base swaydesk i3 hyprland niri dwm)
 SYSTEM_SCRIPTS=(sway-session sway-gpu)  # de system/usr/local/bin
+# O autostart do XDG (sway-autostart): o target e os drop-ins que pulam, na sessão do Swaydesk, as entradas que
+# duplicam o que ele já roda. De home/.config/systemd/user, onde os dotfiles os ligam
+AUTOSTART_TARGET=swaydesk-autostart.target
+autostart_dropins() { (cd "$root/home/.config/systemd/user" && printf '%s\n' app-*@autostart.service.d/swaydesk.conf); }
 
 if [[ ${1:-} == --sources ]]; then
   for name in "${SCRIPTS[@]}" "${MODULES[@]}" "${SESSION_SCRIPTS[@]}" "${SESSION_MODULES[@]}"; do
@@ -75,6 +79,8 @@ if [[ ${1:-} == --sources ]]; then
   for name in "${KEY_PROFILES[@]}"; do echo "home/.config/sway/keys/$name.conf"; done
   (cd "$root" && find home-copy -type f)
   for name in "${SYSTEM_SCRIPTS[@]}"; do echo "system/usr/local/bin/$name"; done
+  echo "home/.config/systemd/user/$AUTOSTART_TARGET"
+  autostart_dropins | sed 's|^|home/.config/systemd/user/|'
   exit 0
 fi
 
@@ -219,6 +225,11 @@ case $pkg in
     # A Waybar, além disso, só sobe nos compositores wlroots: o pacote waybar a liga para todos, e no Plasma
     # ela aparecia por cima do painel
     install -Dm644 "$root/packaging/files/waybar-only-on-wlroots.conf" "$dest/usr/lib/systemd/user/waybar.service.d/swaydesk.conf"
+    # O autostart do XDG: o target que o sway-autostart inicia e os drop-ins das entradas que o Swaydesk já roda
+    install -Dm644 "$root/home/.config/systemd/user/$AUTOSTART_TARGET" "$dest/usr/lib/systemd/user/$AUTOSTART_TARGET"
+    autostart_dropins | while IFS= read -r dropin; do
+      install -Dm644 "$root/home/.config/systemd/user/$dropin" "$dest/usr/lib/systemd/user/$dropin"
+    done
     # Os backends dos portais numa sessão sway (o dos dotfiles fica no ~/.config e vale mais)
     install -Dm644 "$root/home/.config/xdg-desktop-portal/sway-portals.conf" "$dest/etc/xdg/xdg-desktop-portal/sway-portals.conf"
     # O portal do gtk pelo sway-portal-gtk, que só o abre com uma tela viva. Os arquivos dos pacotes do portal
