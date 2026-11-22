@@ -149,7 +149,7 @@ package_swaydesk-desktop() {
   # ordem, perguntaria o provedor com o jack2 de padrão. O áudio da sessão é o PipeWire
   depends=(pipewire-jack swaydesk-common swaydesk-scripts swaydesk-notifd swaydesk-dock swaydesk-drawer swaydesk-widgets
            swaydesk-capture swaydesk-theme swaydesk-session sway swaybg swayidle swaylock waybar kitty rofi libqalculate jq curl
-           wl-clipboard cliphist xdg-desktop-portal-wlr xdg-desktop-portal-gtk dconf glib2 noto-fonts noto-fonts-emoji gnome-themes-extra systemd
+           wl-clipboard cliphist xdg-desktop-portal-wlr xdg-desktop-portal-gtk dconf glib2 noto-fonts noto-fonts-emoji gnome-themes-extra adw-gtk-theme systemd
            mate-polkit xorg-xwayland thunar blueman papirus-icon-theme grim slurp wf-recorder brightnessctl
            playerctl pavucontrol wireplumber libpulse networkmanager network-manager-applet bluez upower gammastep
            libnotify power-profiles-daemon xdg-user-dirs qt5ct qt6ct capitaine-cursors

@@ -37,7 +37,7 @@ impl Style {
 
 /// O Yaru e o Adwaita guardam o CSS dentro de um gresource: as cores ficam aqui.
 const FIXED_ACCENTS: &[(&str, &str)] = &[
-    ("Adwaita", "#3584e4"), ("Adwaita-dark", "#3584e4"), ("Yaru", "#e95420"), ("Yaru-bark", "#787859"),
+    ("Adwaita", "#3584e4"), ("Adwaita-dark", "#3584e4"), ("adw-gtk3", "#3584e4"), ("Yaru", "#e95420"), ("Yaru-bark", "#787859"),
     ("Yaru-sage", "#657b69"), ("Yaru-olive", "#4b8501"), ("Yaru-viridian", "#03875b"), ("Yaru-prussiangreen", "#308280"),
     ("Yaru-blue", "#0073e5"), ("Yaru-purple", "#7764d8"), ("Yaru-magenta", "#b34cb3"), ("Yaru-red", "#da3450"),
 ];
@@ -54,6 +54,8 @@ static FAMILIES: LazyLock<Vec<(&'static str, Regex)>> = LazyLock::new(|| {
         ("Mint-L Darker", r"^Mint-L-Darker(?:-(?P<color>[A-Z][a-z]+))?$"),
         ("Mint-X", r"^Mint-X(?:-(?P<color>[A-Z][a-z]+))?$"),
         ("Adwaita", r"^Adwaita(?:-(?P<dark>dark))?$"),
+        // O adw-gtk3 (pacote adw-gtk-theme) tira o azul da cor de destaque gerada (gtk.css), quando ela é gerada
+        ("adw-gtk3", r"^adw-gtk3(?:-(?P<dark>dark))?$"),
         ("Yaru", r"^Yaru(?:-(?P<color>[a-z]+))?(?:-(?P<dark>dark))?$"),
     ]
     .into_iter()
@@ -222,6 +224,9 @@ mod tests {
             ("Mint-L-Darker-Aqua", Some(("Mint-L Darker", Style::Light, "aqua"))),
             ("Mint-L-Darker", Some(("Mint-L Darker", Style::Light, "green"))),
             ("Adwaita-dark", Some(("Adwaita", Style::Dark, ""))),
+            ("adw-gtk3-dark", Some(("adw-gtk3", Style::Dark, ""))),
+            ("adw-gtk3", Some(("adw-gtk3", Style::Light, ""))),
+            ("adw-gtk3-darker", None),
             ("Yaru", Some(("Yaru", Style::Light, "orange"))),
             ("Yaru-dark", Some(("Yaru", Style::Dark, "orange"))),
             ("Yaru-blue-dark", Some(("Yaru", Style::Dark, "blue"))),

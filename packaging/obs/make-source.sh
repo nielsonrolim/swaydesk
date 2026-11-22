@@ -6,6 +6,8 @@
 #     (packaging/version.sh); servem ao Debian 13 e ao Ubuntu 26.04;
 #   - PKGBUILD e os .install: o packaging/arch/PKGBUILD com a mesma fonte (packaging/obs/pkgbuild.py).
 # Em SAÍDA/swaydesk-archive-keyring, o .dsc e o .tar.xz do packaging/obs/keyring (Debian e Ubuntu).
+# Em SAÍDA/adw-gtk-theme, o .dsc do packaging/obs/adw-gtk-theme (Debian e Ubuntu; o Arch o tem no extra), com o
+# tarball do upstream como orig: baixado da URL do arquivo upstream e conferido pelo sha256.
 # Precisa de git, cargo (o cargo vendor baixa os crates), dpkg-source, xz e python3: rode no contêiner,
 # como no packaging/obs/README.md. Depois, o push.sh envia a pasta ao OBS.
 # Numa revisão (vX.Y.Z-N, N >= 2), SWAYDESK_ORIG aponta o swaydesk_X.Y.Z.orig.tar.xz que já está no OBS (o
@@ -16,8 +18,8 @@ set -euo pipefail
 root=$(cd "$(dirname "$(readlink -f "$0")")/../.." && pwd)
 base=$(mkdir -p "${1:?uso: make-source.sh SAÍDA}" && cd "$1" && pwd)
 [[ -z $(find "$base" -mindepth 1 -maxdepth 1 -print -quit) ]] || { echo "make-source: $base is not empty" >&2; exit 1; }
-out=$base/swaydesk keyring=$base/swaydesk-archive-keyring
-mkdir "$out" "$keyring"
+out=$base/swaydesk keyring=$base/swaydesk-archive-keyring adw=$base/adw-gtk-theme
+mkdir "$out" "$keyring" "$adw"
 upstream=$("$root/packaging/version.sh")
 arch=$("$root/packaging/version.sh" arch)
 deb=$("$root/packaging/version.sh" deb)
@@ -51,4 +53,21 @@ mv "$tarball" "$work"/swaydesk_"$deb".dsc "$work"/swaydesk_"$deb".debian.tar.xz 
 
 git -C "$root" archive --format=tar HEAD packaging/obs/keyring | tar -x -C "$work"
 (cd "$work/packaging/obs" && dpkg-source --build keyring >/dev/null && mv swaydesk-archive-keyring_* "$keyring/")
+
+# O adw-gtk-theme: a versão do debian/changelog, o orig é o tarball do upstream (o mesmo sha256 sempre, então o
+# push.sh vê o mesmo conteúdo e não reenvia). Sem curl na imagem de build: o urllib do python3.
+git -C "$root" archive --format=tar HEAD packaging/obs/adw-gtk-theme | tar -x -C "$work"
+adw_src=$work/packaging/obs/adw-gtk-theme
+adw_version=$(dpkg-parsechangelog -l "$adw_src/debian/changelog" -S Version)
+adw_upstream=${adw_version%-*}
+adw_url=$(sed -n 's/^url=//p' "$adw_src/upstream") adw_sha=$(sed -n 's/^sha256=//p' "$adw_src/upstream")
+adw_orig=$work/adw-gtk-theme_$adw_upstream.orig.tar.xz
+python3 -I -c 'import shutil, sys, urllib.request
+with urllib.request.urlopen(sys.argv[1], timeout=60) as r, open(sys.argv[2], "wb") as f: shutil.copyfileobj(r, f)' "$adw_url" "$adw_orig"
+echo "$adw_sha  $adw_orig" | sha256sum --check --quiet - || { echo "make-source: $adw_url: wrong sha256" >&2; exit 1; }
+mkdir "$work/adw-gtk-theme-$adw_upstream"
+tar -xJf "$adw_orig" -C "$work/adw-gtk-theme-$adw_upstream"
+cp -r "$adw_src/debian" "$work/adw-gtk-theme-$adw_upstream/"
+(cd "$work" && dpkg-source --build "adw-gtk-theme-$adw_upstream" >/dev/null)
+mv "$adw_orig" "$work"/adw-gtk-theme_"$adw_version".dsc "$work"/adw-gtk-theme_"$adw_version".debian.tar.xz "$adw/"
 (cd "$base" && ls -- */)

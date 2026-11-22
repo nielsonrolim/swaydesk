@@ -8,9 +8,12 @@
 # saem só na base do dconf do Sway, a do DCONF_PROFILE que o sway-session exporta: o Cinnamon e o GNOME
 # leem a base normal e continuam com o ícone. Fora dessa base nunca se grava nada; o pior caso é o ícone
 # voltar à bandeja.
+# O KillSwitch também sai: a cada login ele restaura o rfkill pelo org.blueman.Mechanism, e no Debian e no Ubuntu
+# a política do blueman pede a senha de administrador (auth_admin_keep) a quem não está no grupo sudo ou netdev
+# (uma segunda conta, por exemplo). O liga e desliga do Bluetooth (popup da Waybar) vai pelo Powered do BlueZ.
 # uso: blueman-agent (no lugar do blueman-applet)
 set -u
-OFF=("'!StatusIcon'" "'!ShowConnected'")
+OFF=("'!StatusIcon'" "'!ShowConnected'" "'!KillSwitch'")
 if [[ ${DCONF_PROFILE:-} == */sway-desktop/dconf/sway ]] && command -v gsettings >/dev/null; then
   current=$(gsettings get org.blueman.general plugin-list 2>/dev/null) || current=
   if [[ -n $current ]]; then

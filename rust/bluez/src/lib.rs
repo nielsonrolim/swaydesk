@@ -6,6 +6,8 @@ use std::collections::BTreeMap;
 use gio::glib::{self, Variant};
 use swaydesk_common::i18n::tr;
 
+pub mod rfkill;
+
 pub const BLUEZ: &str = "org.bluez";
 pub const ADAPTER: &str = "org.bluez.Adapter1";
 pub const DEVICE: &str = "org.bluez.Device1";

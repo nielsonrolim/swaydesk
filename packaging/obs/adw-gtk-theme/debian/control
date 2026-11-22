@@ -1,0 +1,24 @@
+Source: adw-gtk-theme
+Section: gnome
+Priority: optional
+Maintainer: Nielson Rolim <nielsonrolim@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.7.0
+Homepage: https://github.com/lassekongo83/adw-gtk3
+Rules-Requires-Root: no
+
+Package: adw-gtk-theme
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}
+Provides: adw-gtk3
+Conflicts: adw-gtk3
+Replaces: adw-gtk3
+Description: libadwaita look for GTK 3 apps (adw-gtk3)
+ An unofficial GTK 3 port of the libadwaita style, in a light (adw-gtk3)
+ and a dark (adw-gtk3-dark) variant, so GTK 3 apps match the GTK 4 ones.
+ It follows the accent color set with GTK named colors (accent_bg_color),
+ which the Swaydesk Theme app uses.
+ .
+ Packaged for the Swaydesk repository from the upstream release, with the
+ same name as the Arch Linux package.

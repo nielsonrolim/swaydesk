@@ -1,0 +1,26 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: adw-gtk3
+Upstream-Contact: https://github.com/lassekongo83/adw-gtk3/issues
+Source: https://github.com/lassekongo83/adw-gtk3/releases
+
+Files: *
+Copyright: 2021-2026 lassekongo83 and the adw-gtk3 contributors
+           The GNOME Project (the libadwaita and Adwaita styles it ports)
+License: LGPL-2.1
+
+Files: debian/*
+Copyright: 2026 Nielson Rolim
+License: LGPL-2.1
+
+License: LGPL-2.1
+ This library is free software; you can redistribute it and/or modify it
+ under the terms of the GNU Lesser General Public License version 2.1 as
+ published by the Free Software Foundation.
+ .
+ This library is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser
+ General Public License for more details.
+ .
+ On Debian systems, the complete text of the GNU Lesser General Public
+ License version 2.1 can be found in "/usr/share/common-licenses/LGPL-2.1".

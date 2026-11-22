@@ -1,0 +1,4 @@
+# O tarball do adw-gtk3 (o tema já compilado), que vira o adw-gtk-theme_<versão>.orig.tar.xz byte a byte. A versão
+# sai do debian/changelog; o make-source.sh baixa a URL e confere o sha256 antes de montar o .dsc.
+url=https://github.com/lassekongo83/adw-gtk3/releases/download/v6.5/adw-gtk3v6.5.tar.xz
+sha256=a81780fadfc432be0fc3d89c4ebb41aa28e4f032d42c36f9789c57dd10cfa41c

@@ -17,10 +17,11 @@ Tudo em x86_64. Os pacotes do projeto:
 
 - `swaydesk`: um fonte para todos os alvos. O `.dsc` serve ao Debian e ao Ubuntu, e o `PKGBUILD` ao Arch. Os dois usam o mesmo `.orig.tar.xz`, que leva os crates em `rust/vendor`, porque o OBS compila sem rede.
 - `swaydesk-archive-keyring` (só Debian e Ubuntu): a chave do projeto e o `.sources` do APT (`keyring/`).
+- `adw-gtk-theme` (só Debian e Ubuntu; o Arch o tem no extra): o tema [adw-gtk3](https://github.com/lassekongo83/adw-gtk3) (LGPL-2.1), dependência do `swaydesk-desktop`. O orig é o tarball do Release do upstream, byte a byte: o `make-source.sh` o baixa da URL do `adw-gtk-theme/upstream` e confere o sha256. Para uma versão nova do upstream, troque a URL e o sha256, abra uma entrada no `debian/changelog` dele e o hash do conteúdo no `tests/test_obs.py`. Enviar antes do `swaydesk` que passou a pedi-lo, senão o `swaydesk-desktop` fica sem dependência.
 
 ## Arquivos
 
-- `make-source.sh SAÍDA`: os pacotes-fonte do commit atual, em `SAÍDA/swaydesk` e em `SAÍDA/swaydesk-archive-keyring`.
+- `make-source.sh SAÍDA`: os pacotes-fonte do commit atual, em `SAÍDA/swaydesk`, `SAÍDA/swaydesk-archive-keyring` e `SAÍDA/adw-gtk-theme`.
 - `pkgbuild.py`: o `PKGBUILD` do OBS, que é o `packaging/arch/PKGBUILD` com a versão do snapshot e o tarball local.
 - `push.sh SAÍDA [PACOTE...]`: envia as pastas ao OBS (`osc commit`).
 - `meta/repositories.xml`: os alvos. O `meta.py` põe esses alvos no meta do projeto sem mexer no resto.
@@ -186,6 +187,7 @@ osc meta prj home:nielsonrolim | packaging/obs/meta.py > /tmp/prj.xml && osc met
 osc meta prjconf home:nielsonrolim -F packaging/obs/meta/prjconf
 osc meta pkg home:nielsonrolim swaydesk -F packaging/obs/meta/swaydesk.xml
 osc meta pkg home:nielsonrolim swaydesk-archive-keyring -F packaging/obs/meta/swaydesk-archive-keyring.xml
+osc meta pkg home:nielsonrolim adw-gtk-theme -F packaging/obs/meta/adw-gtk-theme.xml
 ```
 
 ### Conferir depois do primeiro envio

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Envia ao OBS uma pasta do make-source.sh: cada subpasta (swaydesk, swaydesk-archive-keyring) vira o
+# Envia ao OBS uma pasta do make-source.sh: cada subpasta (swaydesk, swaydesk-archive-keyring, adw-gtk-theme) vira o
 # conteúdo do pacote de mesmo nome no projeto, num commit do osc. Os arquivos que saíram da pasta saem
 # também do pacote. Um pacote cujo .dsc (a mesma versão) já está no OBS fica como está. O osc usa a conta configurada (osc whois); a senha fica no chaveiro.
 # Até a 0.1.0, o projeto recebe snapshots do main (X.Y.Z~git…). Depois dela, só lançamentos: um snapshot
@@ -35,10 +35,13 @@ extract_dsc() {
       *.asc | *.debian.tar.*) ;;
       *.orig-*.tar.*) echo "push: $dsc: component tarballs are not supported ($name)" >&2; return 1 ;;
       *.tar.*)
-        # Uma pasta só no topo, como o dpkg-source exige: o --strip-components jogaria fora o que estivesse fora dela
-        [[ $(tar -tf "$from/$name" | sed 's|^\./||; s|/.*||' | sort -u | wc -l) == 1 ]] ||
-          { echo "push: $dsc: $name has no single top folder" >&2; return 1; }
-        tar -xf "$from/$name" -C "$dir" --strip-components=1 ;;
+        # Como o dpkg-source -x: com uma pasta só no topo, o conteúdo dela; com várias (o tarball do adw-gtk3 traz
+        # adw-gtk3 e adw-gtk3-dark), o tarball como está. O --strip-components com várias jogaria fora o resto
+        if [[ $(tar -tf "$from/$name" | sed 's|^\./||; s|/.*||' | sort -u | wc -l) == 1 ]]; then
+          tar -xf "$from/$name" -C "$dir" --strip-components=1
+        else
+          tar -xf "$from/$name" -C "$dir"
+        fi ;;
       *) echo "push: $dsc: unsupported file $name" >&2; return 1 ;;
     esac
   done

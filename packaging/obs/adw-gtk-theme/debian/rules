@@ -1,0 +1,12 @@
+#!/usr/bin/make -f
+# O tarball do upstream já traz o tema compilado (o sassc roda lá): só copia as duas variantes.
+%:
+	dh $@
+
+override_dh_auto_build:
+
+override_dh_auto_install:
+	for theme in adw-gtk3 adw-gtk3-dark; do \
+	  mkdir -p debian/adw-gtk-theme/usr/share/themes/$$theme && \
+	  cp -r --no-preserve=mode,ownership $$theme/. debian/adw-gtk-theme/usr/share/themes/$$theme/ || exit 1; \
+	done

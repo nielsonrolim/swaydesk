@@ -1068,6 +1068,15 @@ msgid "Could not change: %s"
 msgstr "Não foi possível alterar: %s"
 
 #: home/.local/bin/waybar-bluetooth-popup
+msgid "Bluetooth is turned off by a hardware switch or key"
+msgstr "O Bluetooth está desligado por um interruptor ou tecla do aparelho"
+
+#: home/.local/bin/waybar-bluetooth-popup
+#, python-format
+msgid "Could not unblock Bluetooth (rfkill): %s"
+msgstr "Não foi possível desbloquear o Bluetooth (rfkill): %s"
+
+#: home/.local/bin/waybar-bluetooth-popup
 #, python-format
 msgid "Could not search: %s"
 msgstr "Não foi possível procurar: %s"

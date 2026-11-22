@@ -12,7 +12,10 @@ use swaydesk_common::cursor::{cursor_theme, CURSOR_SIZE, CURSOR_THEMES};
 
 use crate::run_timeout;
 
-pub const FALLBACK_THEME: &str = "Adwaita-dark";
+/// O tema de reserva, quando o da config não está instalado: o adw-gtk3-dark (pacote adw-gtk-theme, dependência do
+/// swaydesk-desktop), que segue a cor de destaque; sem ele, o Adwaita-dark do gnome-themes-extra.
+pub const FALLBACK_THEME: &str = "adw-gtk3-dark";
+pub const LAST_FALLBACK_THEME: &str = "Adwaita-dark";
 /// Gerenciadores de arquivos conhecidos, na ordem da escolha automática, com o .desktop de cada um
 pub const FILE_MANAGERS: &[(&str, &str)] =
     &[("nemo", "nemo"), ("thunar", "thunar"), ("nautilus", "org.gnome.Nautilus"), ("dolphin", "org.kde.dolphin")];
@@ -82,8 +85,13 @@ pub fn is_dark(theme: &str) -> bool {
     DARK_NAME.is_match(theme)
 }
 
+/// O tema de reserva que existe: o adw-gtk3-dark ou, sem ele (os dotfiles, sem o pacote), o Adwaita-dark.
+pub fn fallback_theme() -> &'static str {
+    if theme_installed(FALLBACK_THEME) { FALLBACK_THEME } else { LAST_FALLBACK_THEME }
+}
+
 pub fn effective_gtk_theme(config: &Config) -> String {
-    if theme_installed(&config.gtk_theme) { config.gtk_theme.clone() } else { FALLBACK_THEME.to_string() }
+    if theme_installed(&config.gtk_theme) { config.gtk_theme.clone() } else { fallback_theme().to_string() }
 }
 
 /// O valor de `key=` no começo de uma linha, sem os espaços das pontas.

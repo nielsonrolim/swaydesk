@@ -14,13 +14,14 @@
 //! de 30 s, ao parear ou quando o popup fecha (o BlueZ a encerra com o cliente).
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::path::Path;
 use std::process::ExitCode;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use gtk4::prelude::*;
 use gtk4::{gio, glib, pango};
-use swaydesk_bluez::{self as bluez, Device, State, ADAPTER, BLUEZ, DEVICE};
+use swaydesk_bluez::{self as bluez, rfkill, Device, State, ADAPTER, BLUEZ, DEVICE};
 use swaydesk_common::i18n::tr;
 use swaydesk_common::resident;
 use swaydesk_ui::cmd::spawn_detached;
@@ -31,6 +32,8 @@ const PROGRAM: &str = "waybar-bluetooth-popup";
 const PROPS: &str = "org.freedesktop.DBus.Properties";
 const SCROLL_HEIGHT: i32 = 320;
 const SCAN_SECONDS: u32 = 30;
+/// Depois do desbloqueio do rfkill, o tempo para o bluetoothd ver o adaptador livre antes do Powered
+const RFKILL_SETTLE_MS: u64 = 600;
 const CONNECT_MS: i32 = 30_000;
 /// Tempo para a pessoa responder ao diálogo do agente
 const PAIR_MS: i32 = 90_000;
@@ -220,8 +223,10 @@ impl Popup {
             if !p.updating.get() {
                 if !sw.is_active() {
                     p.cancel_scan();
+                    p.bz_set(&adapter, ADAPTER, "Powered", false);
+                } else {
+                    p.power_on(&adapter);
                 }
-                p.bz_set(&adapter, ADAPTER, "Powered", sw.is_active());
             }
         });
         let me = Rc::downgrade(&this);
@@ -695,6 +700,33 @@ impl Popup {
                 p.set_status(&tr("Could not forget: %s").replace("%s", &error_text(&err)));
             }
             p.schedule();
+        });
+    }
+
+    /// Liga o adaptador. Bloqueado por software (rfkill), desbloqueia antes e espera o bluetoothd ver a mudança;
+    /// bloqueado por hardware, só avisa: o interruptor físico é o caminho.
+    fn power_on(self: &Rc<Self>, adapter: &str) {
+        let blocked = rfkill::bluetooth_blocked(Path::new(rfkill::SYS_RFKILL));
+        if blocked.hard {
+            self.set_status(&tr("Bluetooth is turned off by a hardware switch or key"));
+            self.schedule();
+            return;
+        }
+        if !blocked.soft {
+            self.bz_set(adapter, ADAPTER, "Powered", true);
+            return;
+        }
+        if let Err(err) = rfkill::unblock_bluetooth(Path::new(rfkill::DEV_RFKILL)) {
+            self.set_status(&tr("Could not unblock Bluetooth (rfkill): %s").replace("%s", &err.to_string()));
+            self.schedule();
+            return;
+        }
+        let me = Rc::downgrade(self);
+        let adapter = adapter.to_string();
+        glib::timeout_add_local_once(Duration::from_millis(RFKILL_SETTLE_MS), move || {
+            if let Some(p) = me.upgrade() {
+                p.bz_set(&adapter, ADAPTER, "Powered", true);
+            }
         });
     }
 

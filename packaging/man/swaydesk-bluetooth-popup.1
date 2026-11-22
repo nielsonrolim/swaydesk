@@ -6,7 +6,7 @@ swaydesk\-bluetooth\-popup \- Bluetooth popup for Waybar
 .SH DESCRIPTION
 Turns Bluetooth on and off, makes the computer visible, lists the paired devices, connects, disconnects, searches for and pairs new devices, shows details, forgets a device and sends files. It talks to BlueZ over D\-Bus. The search runs only on request and stops after 30 seconds.
 .PP
-It never reads or types pairing codes: the blueman agent answers them in its own dialog. While pairing, the popup stays open, because BlueZ cancels the pairing when the program that asked for it closes.
+Turning Bluetooth on first clears a software rfkill block (the airplane-mode key, \fBrfkill block\fR) through \fI/dev/rfkill\fR, like \fBrfkill unblock bluetooth\fR, without asking for a password; a hardware block is only reported. It never reads or types pairing codes: the blueman agent answers them in its own dialog. While pairing, the popup stays open, because BlueZ cancels the pairing when the program that asked for it closes.
 .PP
 Running it again while the popup is open closes it, and opening it closes the other popups of the bar. Esc, clicking outside or switching workspace also closes it.
 .PP

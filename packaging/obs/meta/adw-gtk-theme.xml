@@ -1,0 +1,7 @@
+<package name="adw-gtk-theme" project="home:nielsonrolim">
+  <title>adw-gtk3 - libadwaita look for GTK 3 apps</title>
+  <description>The adw-gtk3 theme from the upstream release (https://github.com/lassekongo83/adw-gtk3), for Debian and Ubuntu. Arch has it in extra, so the Arch repository doesn't build it.</description>
+  <build>
+    <disable repository="Arch"/>
+  </build>
+</package>

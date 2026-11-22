@@ -21,7 +21,10 @@ MIN_WHITE_CONTRAST = 2.4  # abaixo disso, texto preto: todas as cores do Mint-Y 
 TEMPLATES = Path(__file__).resolve().parents[1] / "share/sway-desktop/templates"
 TEMPLATE_NAMES = ("swaylock.conf", "kitty-theme.conf", "rofi.rasi")  # os que o render_template usa
 THEME_NAME = re.compile(r"[\w .+-]+")
-FALLBACK_THEME = "Adwaita-dark"  # vem com o GTK: é o que existe quando o tema pedido não está instalado
+# O tema de reserva, quando o pedido não está instalado: o adw-gtk3-dark (o pacote adw-gtk-theme), que segue a cor
+# de destaque; sem ele, o Adwaita-dark do gnome-themes-extra
+FALLBACK_THEME = "adw-gtk3-dark"
+LAST_FALLBACK_THEME = "Adwaita-dark"
 # Gerenciadores de arquivos conhecidos, na ordem da escolha automática, com o .desktop de cada um
 # (para a dock). O Nemo vem com o Mint; no Ubuntu e no Debian, o --deps instala o Thunar, mais leve
 FILE_MANAGERS = {"nemo": "nemo", "thunar": "thunar", "nautilus": "org.gnome.Nautilus", "dolphin": "org.kde.dolphin"}
@@ -395,8 +398,13 @@ def is_dark(theme):
     return re.search(r"-[Dd]ark(-|$)|Nokto", theme) is not None
 
 
+def fallback_theme():
+    """O tema de reserva que existe: o adw-gtk3-dark ou, sem ele (os dotfiles sem o pacote), o Adwaita-dark."""
+    return FALLBACK_THEME if theme_installed(FALLBACK_THEME) else LAST_FALLBACK_THEME
+
+
 def effective_gtk_theme(config):
-    return config.gtk_theme if theme_installed(config.gtk_theme) else FALLBACK_THEME
+    return config.gtk_theme if theme_installed(config.gtk_theme) else fallback_theme()
 
 
 def icons_wrapper_base():
