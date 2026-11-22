@@ -680,6 +680,16 @@ msgid "The GTK settings.ini files belong to another desktop (KDE, for example) a
 msgstr ""
 
 #: home/.local/bin/sway_themes.py
+#, python-format
+msgid "Another desktop is installed (%s), so the accent color is not written to ~/.config/gtk-3.0/gtk.css and gtk-4.0/gtk.css, which every desktop reads: in Sway, the libadwaita apps use the nearest of their own accent colors, and the GTK 3 apps keep the theme's color"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "%s is not from the Theme app and was left as it was: the GTK apps don't get the accent color from it"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
 msgid "theme in dconf (gsettings)"
 msgstr ""
 

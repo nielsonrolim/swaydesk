@@ -435,14 +435,22 @@ def effective_icon_theme(config):
     return ICONS_WRAPPER if icons_wrapper_base() == name else name
 
 
-def gtk_settings(config):
-    # prefer-dark sempre 0: os temas escuros já são escuros. O GTK só lê esse valor ao iniciar, e com 1
-    # uma janela aberta seguiria na variante escura depois da troca para um tema claro
+def gtk_settings(config, prefer_dark=False):
+    # O do GTK 3: prefer-dark sempre 0. Os temas escuros já são escuros, e o GTK só lê esse valor ao iniciar:
+    # com 1, uma janela aberta seguiria na variante escura depois da troca para um tema claro
     return (f"{GENERATED}: mude o tema com sway-theme\n"
             "[Settings]\n"
             f"gtk-theme-name={effective_gtk_theme(config)}\n"
-            "gtk-application-prefer-dark-theme=0\n"
+            f"gtk-application-prefer-dark-theme={int(prefer_dark)}\n"
             f"gtk-icon-theme-name={effective_icon_theme(config)}\n")
+
+
+def gtk4_settings(config):
+    """O do GTK 4: o mesmo, menos com o adw-gtk3 escuro. O CSS de GTK 4 dele só escurece dentro de
+    @media (prefers-color-scheme: dark), que o GTK 4.20 e o 4.22 (Ubuntu 26.04) seguem pelo prefer-dark. O mesmo
+    do gtk4_settings do rust/theme/src/desktop.rs."""
+    theme = effective_gtk_theme(config)
+    return gtk_settings(config, theme.startswith("adw-gtk3") and is_dark(theme))
 
 
 # Ordem dos papéis do QPalette nos esquemas do qt5ct e do qt6ct
@@ -697,7 +705,7 @@ def generated_files(colors, config=None, fonts=None):
         "waybar/fonts.css": fonts_css,
         "swaylock/config": render_template("swaylock.conf", colors),
         "gtk-3.0/settings.ini": settings,
-        "gtk-4.0/settings.ini": settings,
+        "gtk-4.0/settings.ini": gtk4_settings(config),
         "sway-mimeapps.list": mimeapps(config),
         # Usados pelo Sway quando o Plasma não está instalado (sway-session): QT_QPA_PLATFORMTHEME=qt5ct
         "qt5ct/qt5ct.conf": qt_settings(5, config, fonts),
@@ -710,6 +718,13 @@ def generated_files(colors, config=None, fonts=None):
 
 
 GENERATED = "# Gerado pelo sway-desktop-config"
+GENERATED_CSS = "/* Gerado pelo sway-desktop-config"  # o mesmo cabeçalho num CSS (os gtk.css da cor de destaque)
+# Os gtk.css da cor de destaque: o GTK os lê em toda sessão, não só no Sway. Só são gravados sem outro desktop
+# instalado (other_desktops) e só se não existem ou são daqui (um link é do usuário)
+GTK_CSS_FILES = ("gtk-3.0/gtk.css", "gtk-4.0/gtk.css")
+# Os desktops que têm a cor de destaque deles: o começo do nome do .desktop da sessão, ou um dos DesktopNames
+OTHER_DESKTOPS = ("gnome", "ubuntu", "plasma", "kde", "cinnamon", "xfce", "mate", "budgie", "lxqt", "lxde", "cosmic",
+                  "pantheon", "deepin", "unity", "enlightenment")
 # Só estes são regravados se já existirem sem o cabeçalho: outro desktop pode cuidar deles. O KDE
 # grava os settings.ini do GTK e, ao regravá-los, mantinha o tema do Sway no lugar do Breeze
 SHARED_FILES = ("gtk-3.0/settings.ini", "gtk-4.0/settings.ini", "sway-mimeapps.list", "qt5ct/qt5ct.conf",
@@ -803,6 +818,99 @@ def write_file(file, content):
         tmp.unlink(missing_ok=True)
 
 
+def gtk_css_files(colors):
+    """Os gtk.css da cor de destaque. O GTK 3 lê as cores com nome (o adw-gtk3 tira o destaque do accent_bg_color; o
+    Adwaita e o Mint-Y não o usam). O GTK 4 lê as variáveis do libadwaita 1.6 em diante, e o adw-gtk3 do GTK 4
+    também. O GTK 3 não entende o :root: os dois são diferentes. O gtk_css_files do desktop.rs.
+    Mudar o formato? O gtk_css_ours só reconhece o atual: aceite lá também o antigo, senão os gerados pela versão
+    anterior viram do usuário para sempre."""
+    head = f"{GENERATED_CSS}: a cor de destaque do app Tema. Mudar este arquivo desliga a geração */\n"
+    named = f"@define-color accent_bg_color {colors.accent};\n@define-color accent_fg_color {colors.on_accent};\n"
+    return {
+        "gtk-3.0/gtk.css": head + named,
+        "gtk-4.0/gtk.css": (f"{head}:root {{\n  --accent-bg-color: {colors.accent};\n"
+                            f"  --accent-fg-color: {colors.on_accent};\n}}\n{named}"),
+    }
+
+
+def session_dirs():
+    """As pastas das sessões instaladas: wayland-sessions e xsessions de cada XDG_DATA_DIRS."""
+    dirs = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
+    return [Path(d) / kind for d in dirs.split(":") if d for kind in ("wayland-sessions", "xsessions")]
+
+
+def is_other_desktop(stem, desktop_names):
+    """A sessão é de um desktop com a própria cor de destaque: pelo nome do arquivo ou pelos DesktopNames."""
+    stem = stem.lower()
+    tokens = {token.strip().lower() for token in re.split(r"[;:]", desktop_names)}
+    return any(stem.startswith(name) for name in OTHER_DESKTOPS) or bool(tokens & set(OTHER_DESKTOPS))
+
+
+def other_desktops_in(dirs):
+    """Os outros desktops instalados (o nome do .desktop de cada sessão), em ordem e sem repetir."""
+    found = set()
+    for folder in dirs:
+        try:
+            entries = list(Path(folder).iterdir())
+        except OSError:
+            continue
+        for entry in entries:
+            if entry.suffix != ".desktop":
+                continue
+            try:
+                text = entry.read_bytes().decode("utf-8", errors="replace")
+            except OSError:
+                text = ""
+            match = re.search(r"(?m)^DesktopNames=(.*)$", text)
+            if is_other_desktop(entry.stem, match.group(1).strip() if match else ""):
+                found.add(entry.stem)
+    return sorted(found)
+
+
+def other_desktops():
+    return other_desktops_in(session_dirs())
+
+
+def gtk_css_ours(file, name):
+    """O gtk.css não existe ou é, byte a byte, o que geramos com alguma cor: qualquer mudança (uma regra a mais
+    embaixo do cabeçalho) o faz ser do usuário. Um link também é dele: o projeto nunca ligou estes arquivos."""
+    file = Path(file)
+    if file.is_symlink():
+        return False
+    try:
+        text = file.read_bytes().decode("utf-8")
+    except FileNotFoundError:
+        return True
+    except (OSError, UnicodeDecodeError):
+        return False
+    colors = {}
+    for line in text.splitlines():
+        for key in ("accent_bg_color", "accent_fg_color"):
+            prefix = f"@define-color {key} "
+            if key not in colors and line.startswith(prefix) and line.endswith(";"):
+                colors[key] = line[len(prefix):-1]
+    if len(colors) != 2:
+        return False
+    generated = gtk_css_files(Palette(accent=colors["accent_bg_color"], hover="", bright="", soft="",
+                                      on_accent=colors["accent_fg_color"]))
+    return generated.get(name) == text
+
+
+def sync_gtk_css(base, colors, others):
+    """Grava os gtk.css da cor de destaque, ou tira os daqui com outro desktop instalado: um gravado antes de o GNOME
+    chegar não pode ficar mandando a cor nele. Devolve os que são de outro e ficaram como estavam."""
+    kept = []
+    for name, content in gtk_css_files(colors).items():
+        file = Path(base) / name
+        if not gtk_css_ours(file, name):
+            kept.append(name)
+        elif not others:
+            write_file(file, content)
+        elif file.is_file():
+            file.unlink()
+    return kept
+
+
 def generate(config):
     """Grava os arquivos. Devolve os compartilhados que ficaram como estavam, por serem de outro."""
     colors = palette(config)
@@ -813,6 +921,7 @@ def generate(config):
             kept.append(name)
             continue
         write_file(base / name, content)
+    kept += sync_gtk_css(base, colors, other_desktops())
     # O tema do rofi do sway-launcher (Alt+Espaço)
     write_file(data_home() / ROFI_THEME, render_template("rofi.rasi", colors))
     # A Waybar sem os módulos desligados. Sem o modelo, ou com ele quebrado, o sway-waybar usa o modelo

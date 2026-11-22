@@ -25,6 +25,16 @@ pub const FALLBACK_ICON_THEMES: &[&str] = &["Papirus-Dark", "Papirus", "Mint-Y",
 pub const ICONS_WRAPPER: &str = "sway-desktop-icons";
 pub const ICONS_BASE_KEY: &str = "X-SwayDesktop-Base";
 pub const GENERATED: &str = "# Gerado pelo sway-desktop-config";
+/// O mesmo cabeçalho num CSS (os gtk.css da cor de destaque)
+pub const GENERATED_CSS: &str = "/* Gerado pelo sway-desktop-config";
+/// Os gtk.css da cor de destaque: o GTK os lê em toda sessão, não só no Sway. Só são gravados sem outro desktop
+/// instalado (other_desktops) e, como os settings.ini, só se não existem ou são daqui.
+pub const GTK_CSS_FILES: &[&str] = &["gtk-3.0/gtk.css", "gtk-4.0/gtk.css"];
+/// Os desktops que têm a cor de destaque deles: o começo do nome do .desktop da sessão, ou um dos DesktopNames
+const OTHER_DESKTOPS: &[&str] = &[
+    "gnome", "ubuntu", "plasma", "kde", "cinnamon", "xfce", "mate", "budgie", "lxqt", "lxde", "cosmic", "pantheon", "deepin",
+    "unity", "enlightenment",
+];
 /// Só estes são regravados se já existirem sem o cabeçalho: outro desktop pode cuidar deles.
 const SHARED_FILES: &[&str] =
     &["gtk-3.0/settings.ini", "gtk-4.0/settings.ini", "sway-mimeapps.list", "qt5ct/qt5ct.conf", "qt6ct/qt6ct.conf"];
@@ -169,11 +179,29 @@ pub fn render_template(name: &str, colors: &Palette) -> std::io::Result<String> 
     Ok(text)
 }
 
+/// O settings.ini do GTK 3. prefer-dark sempre 0: os temas escuros já são escuros, e o GTK só lê esse valor ao
+/// iniciar (com 1, uma janela aberta seguiria escura depois da troca para um tema claro).
 pub fn gtk_settings(config: &Config) -> String {
+    gtk_settings_with(config, false)
+}
+
+/// O do GTK 4: o mesmo, menos com o adw-gtk3 escuro. O CSS de GTK 4 dele é o mesmo nas duas variantes e só escurece
+/// dentro de `@media (prefers-color-scheme: dark)`, que o GTK 4.20 e o 4.22 (Ubuntu 26.04) seguem pelo prefer-dark,
+/// não pelo color-scheme (o 4.24, do Arch, segue os dois): com 0, os apps GTK 4 sem libadwaita ficavam claros.
+pub fn gtk4_settings(config: &Config) -> String {
+    gtk_settings_with(config, gtk4_prefers_dark(&effective_gtk_theme(config)))
+}
+
+fn gtk4_prefers_dark(theme: &str) -> bool {
+    theme.starts_with("adw-gtk3") && is_dark(theme)
+}
+
+fn gtk_settings_with(config: &Config, prefer_dark: bool) -> String {
     format!(
-        "{GENERATED}: mude o tema com sway-theme\n[Settings]\ngtk-theme-name={}\ngtk-application-prefer-dark-theme=0\n\
+        "{GENERATED}: mude o tema com sway-theme\n[Settings]\ngtk-theme-name={}\ngtk-application-prefer-dark-theme={}\n\
          gtk-icon-theme-name={}\n",
         effective_gtk_theme(config),
+        u8::from(prefer_dark),
         effective_icon_theme(config)
     )
 }
@@ -476,8 +504,8 @@ pub fn generated_files(colors: &Palette, config: &Config, fonts: &Fonts) -> std:
         ("sway/config.d/10-effects.conf", sway_effects(&config.effects, is_swayfx())),
         ("waybar/fonts.css", fonts_css),
         ("swaylock/config", render_template("swaylock.conf", colors)?),
-        ("gtk-3.0/settings.ini", settings.clone()),
-        ("gtk-4.0/settings.ini", settings),
+        ("gtk-3.0/settings.ini", settings),
+        ("gtk-4.0/settings.ini", gtk4_settings(config)),
         ("sway-mimeapps.list", mimeapps(config)),
         ("qt5ct/qt5ct.conf", qt_settings(5, config, fonts)),
         ("qt6ct/qt6ct.conf", qt_settings(6, config, fonts)),
@@ -486,6 +514,103 @@ pub fn generated_files(colors: &Palette, config: &Config, fonts: &Fonts) -> std:
         // Sempre, mesmo no modo dotfiles: a sessão do pacote pode ser a próxima a abrir
         ("swaydesk-desktop/waybar/style.css", waybar_wrapper()),
     ])
+}
+
+/// Os gtk.css da cor de destaque. O GTK 3 lê as cores com nome (o adw-gtk3 tira o destaque do accent_bg_color; o
+/// Adwaita e o Mint-Y não o usam, e ficam como são). O GTK 4 lê as variáveis do libadwaita 1.6 em diante, que deriva
+/// o --accent-color delas, e o adw-gtk3 do GTK 4 também; o @define-color fica para os temas que usam as cores com
+/// nome. O GTK 3 não entende o :root: os dois arquivos são diferentes.
+/// Mudar o formato (o cabeçalho, uma propriedade)? O gtk_css_ours só reconhece o atual: aceite lá também o antigo,
+/// senão os gerados pela versão anterior viram do usuário para sempre e a geração para.
+pub fn gtk_css_files(colors: &Palette) -> [(&'static str, String); 2] {
+    let head = format!("{GENERATED_CSS}: a cor de destaque do app Tema. Mudar este arquivo desliga a geração */\n");
+    let named = format!("@define-color accent_bg_color {};\n@define-color accent_fg_color {};\n", colors.accent, colors.on_accent);
+    [
+        ("gtk-3.0/gtk.css", format!("{head}{named}")),
+        ("gtk-4.0/gtk.css", format!("{head}:root {{\n  --accent-bg-color: {};\n  --accent-fg-color: {};\n}}\n{named}", colors.accent, colors.on_accent)),
+    ]
+}
+
+/// As pastas das sessões instaladas: wayland-sessions e xsessions de cada XDG_DATA_DIRS (padrão /usr/local/share:/usr/share).
+pub fn session_dirs() -> Vec<PathBuf> {
+    let dirs = std::env::var("XDG_DATA_DIRS").ok().filter(|v| !v.is_empty()).unwrap_or_else(|| "/usr/local/share:/usr/share".into());
+    dirs.split(':')
+        .filter(|d| !d.is_empty())
+        .flat_map(|d| ["wayland-sessions", "xsessions"].map(|kind| Path::new(d).join(kind)))
+        .collect()
+}
+
+/// A sessão é de um desktop com a própria cor de destaque: pelo nome do arquivo ou pelos DesktopNames.
+fn is_other_desktop(stem: &str, desktop_names: &str) -> bool {
+    let stem = stem.to_lowercase();
+    OTHER_DESKTOPS.iter().any(|name| stem.starts_with(name))
+        || desktop_names.split([';', ':']).any(|token| OTHER_DESKTOPS.contains(&token.trim().to_lowercase().as_str()))
+}
+
+/// Os outros desktops instalados (o nome do .desktop de cada sessão), em ordem e sem repetir.
+pub fn other_desktops_in(dirs: &[PathBuf]) -> Vec<String> {
+    let mut found: Vec<String> = Vec::new();
+    for dir in dirs {
+        let Ok(entries) = std::fs::read_dir(dir) else { continue };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().is_none_or(|e| e != "desktop") {
+                continue;
+            }
+            let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+            let text = std::fs::read(&path).map(|b| String::from_utf8_lossy(&b).into_owned()).unwrap_or_default();
+            let names = ini_value(&text, "DesktopNames").unwrap_or_default();
+            if is_other_desktop(&stem, &names) && !found.contains(&stem) {
+                found.push(stem);
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
+pub fn other_desktops() -> Vec<String> {
+    other_desktops_in(&session_dirs())
+}
+
+/// O gtk.css não existe ou é, byte a byte, o que geramos com alguma cor: qualquer mudança (uma regra a mais
+/// embaixo do cabeçalho, que é o lugar natural do CSS do usuário) o faz ser do usuário. Um link também é dele (os
+/// dotfiles): o projeto nunca ligou estes arquivos, ao contrário dos settings.ini.
+pub fn gtk_css_ours(file: &Path, name: &str) -> bool {
+    if file.is_symlink() {
+        return false;
+    }
+    let text = match std::fs::read(file) {
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return true,
+        Err(_) => return false,
+        Ok(bytes) => match String::from_utf8(bytes) {
+            Ok(text) => text,
+            Err(_) => return false,
+        },
+    };
+    let color = |key: &str| {
+        text.lines().find_map(|l| l.strip_prefix(&format!("@define-color {key} "))?.strip_suffix(';').map(str::to_string))
+    };
+    let (Some(accent), Some(on_accent)) = (color("accent_bg_color"), color("accent_fg_color")) else { return false };
+    let colors = Palette { accent, hover: String::new(), bright: String::new(), soft: String::new(), on_accent };
+    gtk_css_files(&colors).iter().any(|(n, content)| *n == name && *content == text)
+}
+
+/// Grava os gtk.css da cor de destaque, ou os tira (os daqui) com outro desktop instalado: um gravado antes de o
+/// GNOME chegar não pode ficar mandando a cor nele. Devolve os que são de outro e ficaram como estavam.
+pub fn sync_gtk_css(base: &Path, colors: &Palette, others: &[String]) -> std::io::Result<Vec<String>> {
+    let mut kept = Vec::new();
+    for (name, content) in gtk_css_files(colors) {
+        let file = base.join(name);
+        if !gtk_css_ours(&file, name) {
+            kept.push(name.to_string());
+        } else if others.is_empty() {
+            write_file(&file, &content)?;
+        } else if file.is_file() {
+            std::fs::remove_file(&file)?;
+        }
+    }
+    Ok(kept)
 }
 
 /// Troca o caminho de uma vez, sem escrever através de um link para o repositório.
@@ -521,6 +646,7 @@ pub fn generate_with(config: &Config, fonts: &Fonts) -> std::io::Result<Vec<Stri
         }
         write_file(&base.join(name), &content)?;
     }
+    kept.extend(sync_gtk_css(&base, &colors, &other_desktops())?);
     // O tema do rofi do sway-launcher (Alt+Espaço)
     write_file(&data_home().join(ROFI_THEME), &render_template("rofi.rasi", &colors)?)?;
     Ok(kept)
@@ -590,6 +716,116 @@ pub fn reload_sway() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn only_the_dark_adw_gtk3_asks_gtk_4_for_the_dark_variant() {
+        // Os mesmos casos do test_gtk4_settings do tests/test_sway_theme.py
+        let with = |theme: &str| Config { gtk_theme: theme.into(), ..Config::default() };
+        for theme in ["adw-gtk3-dark", "adw-gtk3", "Mint-Y-Dark-Teal"] {
+            assert!(gtk_settings(&with(theme)).contains("prefer-dark-theme=0\n"), "{theme}");
+        }
+        assert!(gtk4_prefers_dark("adw-gtk3-dark"));
+        for theme in ["adw-gtk3", "Mint-Y-Dark-Teal", "Adwaita-dark"] {
+            assert!(!gtk4_prefers_dark(theme), "{theme}");
+        }
+        assert!(gtk_settings_with(&with("adw-gtk3-dark"), true).contains("prefer-dark-theme=1\n"));
+    }
+
+    fn tempdir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("swaydesk-desktop-{name}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    // Os mesmos casos do test_other_desktops do tests/test_desktop_config.py
+    #[test]
+    fn other_desktops_are_found_by_file_name_or_desktop_names() {
+        let dir = tempdir("sessions");
+        let (wayland, x) = (dir.join("wayland-sessions"), dir.join("xsessions"));
+        std::fs::create_dir_all(&wayland).unwrap();
+        std::fs::create_dir_all(&x).unwrap();
+        for (folder, name, text) in [
+            (&wayland, "sway.desktop", "[Desktop Entry]\nName=Sway\nDesktopNames=sway\n"),
+            (&wayland, "swaydesk.desktop", "[Desktop Entry]\nName=Swaydesk\nDesktopNames=sway\n"),
+            (&x, "i3.desktop", "[Desktop Entry]\nName=i3\n"),
+            (&x, "lightdm-xsession.desktop", "[Desktop Entry]\nName=Default\n"),
+            (&wayland, "notes.txt", "DesktopNames=GNOME\n"),
+        ] {
+            std::fs::write(folder.join(name), text).unwrap();
+        }
+        let dirs = [wayland.clone(), x.clone(), dir.join("nao-existe")];
+        assert!(other_desktops_in(&dirs).is_empty());
+        for (folder, name, text) in [
+            (&wayland, "gnome-wayland.desktop", "[Desktop Entry]\nDesktopNames=GNOME\n"),
+            (&x, "gnome-xorg.desktop", "[Desktop Entry]\nDesktopNames=GNOME\n"),
+            (&wayland, "plasma.desktop", "[Desktop Entry]\nDesktopNames=KDE\n"),
+            // O do Ubuntu: o nome não diz, os DesktopNames dizem
+            (&x, "default-session.desktop", "[Desktop Entry]\nDesktopNames=ubuntu:GNOME\n"),
+            (&x, "Cinnamon.desktop", "[Desktop Entry]\nDesktopNames=X-Cinnamon\n"),
+        ] {
+            std::fs::write(folder.join(name), text).unwrap();
+        }
+        assert_eq!(other_desktops_in(&dirs), ["Cinnamon", "default-session", "gnome-wayland", "gnome-xorg", "plasma"]);
+        assert!(is_other_desktop("xfce", ""));
+        assert!(!is_other_desktop("hyprland", "Hyprland"));
+        assert!(is_other_desktop("niri", "niri;GNOME"));
+    }
+
+    #[test]
+    fn the_gtk_css_files_carry_the_accent() {
+        let colors = Palette { accent: "#e01b24".into(), hover: String::new(), bright: String::new(), soft: String::new(), on_accent: "#ffffff".into() };
+        let [(gtk3, css3), (gtk4, css4)] = gtk_css_files(&colors);
+        assert_eq!((gtk3, gtk4), ("gtk-3.0/gtk.css", "gtk-4.0/gtk.css"));
+        for css in [&css3, &css4] {
+            assert!(css.starts_with(GENERATED_CSS));
+            assert!(css.contains("\n@define-color accent_bg_color #e01b24;\n@define-color accent_fg_color #ffffff;\n"));
+        }
+        // O GTK 3 não entende o :root (um erro de CSS no log de cada app)
+        assert!(!css3.contains(":root"));
+        assert!(css4.contains(":root {\n  --accent-bg-color: #e01b24;\n  --accent-fg-color: #ffffff;\n}\n"));
+    }
+
+    #[test]
+    fn the_gtk_css_files_are_written_only_without_other_desktops_and_only_if_ours() {
+        let base = tempdir("gtk-css");
+        let colors = palette(&Config::default());
+        let none: Vec<String> = Vec::new();
+        assert!(sync_gtk_css(&base, &colors, &none).unwrap().is_empty());
+        let gtk3 = base.join("gtk-3.0/gtk.css");
+        assert!(std::fs::read_to_string(&gtk3).unwrap().starts_with(GENERATED_CSS));
+        // O GNOME chegou depois: os nossos saem, para a cor não ir para ele
+        assert!(sync_gtk_css(&base, &colors, &["gnome".to_string()]).unwrap().is_empty());
+        assert!(!gtk3.exists() && !base.join("gtk-4.0/gtk.css").exists());
+        // O nosso com uma regra a mais embaixo é do usuário: fica, com ou sem outro desktop, e uma cor nova não o apaga
+        sync_gtk_css(&base, &colors, &none).unwrap();
+        let edited = format!("{}.minha {{ color: red; }}\n", std::fs::read_to_string(&gtk3).unwrap());
+        std::fs::write(&gtk3, &edited).unwrap();
+        let red = palette(&Config { accent: "#e01b24".into(), ..Config::default() });
+        for others in [none.clone(), vec!["gnome".to_string()]] {
+            assert_eq!(sync_gtk_css(&base, &red, &others).unwrap(), ["gtk-3.0/gtk.css"]);
+            assert_eq!(std::fs::read_to_string(&gtk3).unwrap(), edited);
+        }
+        // O nosso de outra cor (a cor mudou desde a última geração) continua nosso
+        std::fs::write(&gtk3, &gtk_css_files(&red)[0].1).unwrap();
+        assert!(gtk_css_ours(&gtk3, "gtk-3.0/gtk.css"));
+        assert!(!gtk_css_ours(&gtk3, "gtk-4.0/gtk.css"));
+        // O do usuário (ou o do KDE, que importa o colors.css) fica, com ou sem outro desktop
+        std::fs::create_dir_all(gtk3.parent().unwrap()).unwrap();
+        std::fs::write(&gtk3, "@import 'colors.css';\n").unwrap();
+        for others in [none.clone(), vec!["plasma".to_string()]] {
+            assert_eq!(sync_gtk_css(&base, &colors, &others).unwrap(), ["gtk-3.0/gtk.css"]);
+            assert_eq!(std::fs::read_to_string(&gtk3).unwrap(), "@import 'colors.css';\n");
+        }
+        // Um link (um gtk.css dos dotfiles do usuário) fica, com ou sem outro desktop
+        std::fs::remove_file(&gtk3).unwrap();
+        std::os::unix::fs::symlink(base.join("meu.css"), &gtk3).unwrap();
+        for others in [none.clone(), vec!["gnome".to_string()]] {
+            assert_eq!(sync_gtk_css(&base, &colors, &others).unwrap(), ["gtk-3.0/gtk.css"]);
+            assert!(gtk3.symlink_metadata().unwrap().file_type().is_symlink());
+        }
+        let _ = std::fs::remove_dir_all(&base);
+    }
 
     #[test]
     fn wallpaper_comes_back_only_when_missing() {

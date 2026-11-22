@@ -155,6 +155,23 @@ pub fn missing_note(config: &Config) -> Option<String> {
     Some(fill(&tr("%(wanted)s is not installed: using %(used)s"), &[("wanted", &config.gtk_theme), ("used", &dc::effective_gtk_theme(config))]))
 }
 
+/// Por que a cor de destaque não foi para os gtk.css: outro desktop instalado (o GTK os lê em toda sessão), ou um
+/// gtk.css que não é daqui. Os mesmos textos do gtk_css_notes do sway_themes.py.
+pub fn gtk_css_notes(kept: &[String], others: &[String]) -> Vec<String> {
+    let mut notes = Vec::new();
+    if !others.is_empty() {
+        notes.push(fill_one(
+            &tr("Another desktop is installed (%s), so the accent color is not written to ~/.config/gtk-3.0/gtk.css and gtk-4.0/gtk.css, which every desktop reads: in Sway, the libadwaita apps use the nearest of their own accent colors, and the GTK 3 apps keep the theme's color"),
+            &others.join(", "),
+        ));
+    }
+    let css: Vec<String> = kept.iter().filter(|n| n.ends_with("gtk.css")).map(|n| format!("~/.config/{n}")).collect();
+    if !css.is_empty() {
+        notes.push(fill_one(&tr("%s is not from the Theme app and was left as it was: the GTK apps don't get the accent color from it"), &css.join(", ")));
+    }
+    notes
+}
+
 static KDE_IMPORT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"@import\s+(url\()?['"]?colors\.css"#).unwrap());
 
 /// O aviso para um Breeze com o esquema de cores do KDE. None: sem o problema.
@@ -815,9 +832,11 @@ pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: O
     let colors = config::palette(&config);
     // Antes de gerar os settings.ini e o qt5ct: eles usam o tema gerado, se ele existir
     let icon_name = config_icon_theme(&config, true);
-    if dc::generate(&config)?.iter().any(|name| name.ends_with("settings.ini")) {
+    let kept = dc::generate(&config)?;
+    if kept.iter().any(|name| name.ends_with("settings.ini")) {
         notes.push(tr("The GTK settings.ini files belong to another desktop (KDE, for example) and were left as they were: the X11 apps in Sway follow their theme"));
     }
+    notes.extend(gtk_css_notes(&kept, &dc::other_desktops()));
     if let Some(note) = kde_colors_note(theme) {
         notes.push(note);
     }
@@ -886,6 +905,18 @@ pub fn accent_auto() -> Result<Auto, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // Os mesmos casos do test_gtk_css_notes do tests/test_sway_theme.py
+    #[test]
+    fn gtk_css_notes_say_why_the_accent_is_missing() {
+        assert!(gtk_css_notes(&[], &[]).is_empty());
+        assert!(gtk_css_notes(&["gtk-3.0/settings.ini".into()], &[]).is_empty());
+        let notes = gtk_css_notes(&[], &["gnome-wayland".into(), "plasma".into()]);
+        assert_eq!(notes.len(), 1);
+        assert!(notes[0].starts_with("Another desktop is installed (gnome-wayland, plasma), so the accent color"));
+        let notes = gtk_css_notes(&["gtk-3.0/gtk.css".into(), "gtk-4.0/gtk.css".into()], &[]);
+        assert_eq!(notes, ["~/.config/gtk-3.0/gtk.css, ~/.config/gtk-4.0/gtk.css is not from the Theme app and was left as it was: the GTK apps don't get the accent color from it"]);
+    }
 
     #[test]
     fn config_values_go_before_the_tables() {
