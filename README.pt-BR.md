@@ -201,6 +201,8 @@ echo "a34f455e495c69a2c5dd94ff8ce6dd0618ec569d6b010010c2360432f6029020  $dir/$de
 sudo apt update && sudo apt install swaydesk-desktop
 ```
 
+Num Ubuntu minimizado, como as imagens de servidor e de nuvem, o dpkg deixa de fora as traduções e os manuais de todos os pacotes, inclusive os pacotes de idioma. O Swaydesk mantém as traduções dele; para o resto, rode `sudo unminimize` antes de instalar um pacote de idioma.
+
 Se o seu sistema não estiver em inglês, instale também as traduções do GTK para a sua língua. Sem elas, algumas janelas, como o seletor de arquivos, ficam em inglês. Para o português, por exemplo (es para o espanhol, de para o alemão, e assim por diante):
 
 ```bash

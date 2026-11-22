@@ -1,0 +1,12 @@
+# Swaydesk: keeps its own translations on minimized systems. The Ubuntu server and cloud images ship
+# /etc/dpkg/dpkg.cfg.d/excludes, which drops every .mo file at unpack, so the whole Swaydesk interface came
+# out in English there. dpkg reads this folder in alphabetical order and the last matching filter wins: the
+# "zz-" makes this file sort after "excludes" and any other file there. swaydesk-common, which carries the
+# translations, pre-depends on this package, so the filter is in place before it unpacks.
+#
+# One exact path per language, with no wildcard: dpkg also keeps every folder and symlink whose path starts
+# with the text before an include's first wildcard, so "/usr/share/locale/*/..." would bring back the other
+# packages' symlinked translations too. The man pages stay excluded: on a minimized system the man command
+# itself only works after unminimize, which brings them back.
+path-include=/usr/share/locale/es/LC_MESSAGES/sway-desktop.mo
+path-include=/usr/share/locale/pt_BR/LC_MESSAGES/sway-desktop.mo

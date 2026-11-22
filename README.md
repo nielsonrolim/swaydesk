@@ -201,6 +201,8 @@ echo "a34f455e495c69a2c5dd94ff8ce6dd0618ec569d6b010010c2360432f6029020  $dir/$de
 sudo apt update && sudo apt install swaydesk-desktop
 ```
 
+On a minimized Ubuntu, such as the server and cloud images, dpkg leaves out every package's translations and manuals, the language packs' included. Swaydesk keeps its own translations; for the rest, run `sudo unminimize` before installing a language pack.
+
 If your system isn't in English, also install the GTK translations for your language. Without them, some windows, such as the file chooser, stay in English. For Portuguese, for example (es for Spanish, de for German, and so on):
 
 ```bash

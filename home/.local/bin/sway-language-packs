@@ -36,6 +36,12 @@ apt-cache show -- "$package" >/dev/null 2>&1 || exit 0
 command -v notify-send >/dev/null 2>&1 || exit 0
 
 command="sudo apt install language-pack-gnome-$pack"
+# Num Ubuntu minimizado (servidor, nuvem), o excludes do dpkg tira os .mo de todos os pacotes, os do pacote de
+# idioma também: o comando passa pelo unminimize antes
+excludes=${SWAY_LANGUAGE_PACKS_EXCLUDES:-/etc/dpkg/dpkg.cfg.d/excludes}
+if grep -qs '^path-exclude=/usr/share/locale/\*/LC_MESSAGES/\*\.mo' "$excludes"; then
+  command="sudo unminimize && $command"
+fi
 title=$(t 'Translations for your language')
 # shellcheck disable=SC2059
 body=$(printf "$(t 'Some windows, such as the file chooser, are in English because the GTK translations for your language are not installed. To install them, run in a terminal:

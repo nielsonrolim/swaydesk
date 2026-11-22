@@ -15,6 +15,7 @@ Rules-Requires-Root: no
 
 Package: swaydesk-common
 Architecture: all
+Pre-Depends: ${misc:Pre-Depends}, swaydesk-dpkg-includes (= ${source:Version})
 Depends: ${misc:Depends}
 Description: Sway desktop components - shared data
  The translations and the Symbols Nerd Font (the icons) shared by the
@@ -22,6 +23,16 @@ Description: Sway desktop components - shared data
  notification daemon, Waybar popups and icons, an app grid and the theme
  tools, written in Rust and GTK 4 for wlroots compositors with
  layer-shell (Sway, Hyprland, river, niri).
+
+Package: swaydesk-dpkg-includes
+Architecture: all
+Multi-Arch: foreign
+Depends: ${misc:Depends}
+Description: Sway desktop components - keep translations on minimized systems
+ A dpkg filter that keeps the swaydesk translations on minimized systems,
+ such as the Ubuntu server and cloud images, whose dpkg configuration
+ drops every translation. It only brings back the swaydesk files; the
+ other packages are left as they are.
 
 Package: swaydesk-scripts
 Architecture: all
