@@ -182,6 +182,24 @@ fn slide_eases_and_reverses_from_where_it_is() {
     assert_eq!(ease_out(1.0), 1.0);
 }
 
+#[test]
+fn slide_margin_keeps_a_strip_on_screen_while_mapped() {
+    // 70 pixels: 12% are 9 (8.4 rounded up), so at most 61 hidden
+    assert_eq!(slide_margin(0.0, 70), 0);
+    assert_eq!(slide_margin(0.5, 70), -35);
+    assert_eq!(slide_margin(1.0, 70), -61);
+    assert_eq!(slide_margin(0.99, 70), -61);
+    // At least the 10% below which SwayFX sends no frame callbacks, at any height
+    for size in 1..400 {
+        let visible = size + slide_margin(1.0, size);
+        assert!(visible >= 1 && visible * 10 >= size, "size {size}: {visible} visible");
+    }
+    assert_eq!(slide_margin(1.0, 1), 0);
+    assert_eq!(slide_margin(1.0, 0), 0);
+    assert_eq!(slide_margin(-1.0, 70), 0);
+    assert_eq!(slide_margin(2.0, 70), -61);
+}
+
 fn entries() -> Vec<AppEntry> {
     vec![
         AppEntry { id: "org.mozilla.firefox".into(), wm_class: "".into() },

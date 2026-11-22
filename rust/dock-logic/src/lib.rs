@@ -321,6 +321,25 @@ impl Slide {
     }
 }
 
+/// A parte da dock que fica na tela enquanto ela está mapeada, em porcentagem da altura.
+pub const SLIDE_MIN_VISIBLE_PERCENT: i32 = 12;
+
+/// A margem de baixo que esconde `progress` (0 a 1) de uma dock com `size` pixels de altura, enquanto ela está
+/// mapeada. Pelo menos SLIDE_MIN_VISIBLE_PERCENT da altura fica na tela (no mínimo 1 pixel):
+/// - o SwayFX 0.6 para de mandar os frame callbacks a uma layer surface com menos de 10% da área na saída
+///   (num contêiner: 6 de 70 pixels, nenhum; 7, normal). Sem eles o GTK não faz commit da margem seguinte, e a
+///   dock que nascia com 1 pixel na tela nunca subia;
+/// - o Sway não volta a mostrar uma layer surface que ficou inteira fora da tela.
+/// O fim da descida tira a janela do mapa (finish_slide): a faixa que sobra não fica.
+pub fn slide_margin(progress: f64, size: i32) -> i32 {
+    if size <= 0 {
+        return 0;
+    }
+    let min_visible = ((size * SLIDE_MIN_VISIBLE_PERCENT + 99) / 100).max(1);
+    let hidden = (progress.clamp(0.0, 1.0) * size as f64).round() as i32;
+    -hidden.min(size - min_visible).max(0)
+}
+
 // --- Apps e itens ---
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -54,9 +54,11 @@ class Effects:
     layer_blur: bool = False  # o blur atrás da Waybar, da dock, da grade, dos popups, das notificações, do OSD e do
     # switcher; desligado por padrão
     dim_inactive: int = 0  # o escurecimento das janelas sem o foco, em centésimos (0.15 na config: 15); 0 desliga
+    animation_duration_ms: int = 0  # as animações do SwayFX 0.6 (abrir e fechar janelas), em ms; 0 desliga
 
 
 MAX_CORNER_RADIUS = 30  # mais que isso, os cantos comem o conteúdo das janelas
+MAX_ANIMATION_DURATION_MS = 5000  # o limite do animation_duration_ms do SwayFX (5 segundos)
 
 
 def parse_effects(data, warnings):
@@ -78,6 +80,11 @@ def parse_effects(data, warnings):
                 effects = replace(effects, dim_inactive=value * 100)
             else:
                 warnings.append("config: invalid effects.dim_inactive (use 0.0 to 1.0)")
+        elif key == "animation_duration_ms":
+            if type(value) is int and 0 <= value <= MAX_ANIMATION_DURATION_MS:
+                effects = replace(effects, animation_duration_ms=value)
+            else:
+                warnings.append(f"config: invalid effects.animation_duration_ms (use 0 to {MAX_ANIMATION_DURATION_MS})")
         elif type(value) is bool:
             effects = replace(effects, **{key: value})
         else:
@@ -592,7 +599,8 @@ KEYS_HEAD = "# Gerado pelo sway-desktop-config: os atalhos do perfil; mude o sho
 
 def sway_effects(effects, swayfx):
     """O config.d/10-effects.conf: no SwayFX, os efeitos do [effects]; no Sway puro, só um comentário (as
-    diretivas do SwayFX dariam erro de config)."""
+    diretivas do SwayFX dariam erro de config). O animation_duration_ms só entra quando não é 0: o SwayFX 0.5
+    não conhece a diretiva, e 0 já é o padrão do 0.6."""
     if not swayfx:
         return (f"{GENERATED}: o Sway sem os efeitos; com o SwayFX (no Arch, pelo AUR), o [effects] de\n"
                 "# ~/.config/sway-desktop/config.toml vale aqui\n")
@@ -605,6 +613,8 @@ def sway_effects(effects, swayfx):
     if effects.shadows:
         text += "shadow_blur_radius 20\nshadow_color #0000004D\n"  # uma sombra leve: preta a 30%
     text += f"default_dim_inactive {effects.dim_inactive // 100}.{effects.dim_inactive % 100:02d}\n"
+    if effects.animation_duration_ms:
+        text += f"animation_duration_ms {effects.animation_duration_ms}\n"
     if effects.layer_blur:
         # O blur só onde a camada desenha: as margens transparentes dos popups ficam limpas
         text += "".join(f'layer_effects "{layer}" blur enable; blur_ignore_transparent enable; '

@@ -261,6 +261,7 @@ sudo pacman -Syu swaydesk-desktop
 - It's third-party software, outside the project's support, and an update that brings a new wlroots can break it until the AUR catches up. If the session doesn't start after an update, go back to Sway from a text console (Ctrl+Alt+F2).
 - Swaydesk turns the effects on by itself at the next login, from the `[effects]` section of `~/.config/sway-desktop/config.toml`.
 - The blur behind the bar, the dock and the popups (`layer_blur`) is off by default, since it showed visual glitches in a VM; turn it on with `layer_blur = true`.
+- Window animations are off by default; turn them on with `animation_duration_ms = 250` (in milliseconds, up to 5000) in the same section. They need SwayFX 0.6 or newer: on 0.5, a value above 0 is a config error (swaynag shows it, and the rest loads).
 
 ### Requirements
 

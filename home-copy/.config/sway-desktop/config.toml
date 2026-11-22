@@ -97,3 +97,5 @@ blur = true          # o blur atrás das janelas transparentes
 shadows = true       # uma sombra leve nas janelas
 layer_blur = false   # o blur atrás da Waybar, da dock, da grade, dos popups, das notificações e do OSD
 dim_inactive = 0.0   # escurecer as janelas sem o foco, de 0.0 (nada) a 1.0
+animation_duration_ms = 0  # as animações ao abrir e fechar janelas, em ms (0 desliga; 250 é um bom começo); só no
+                           # SwayFX 0.6 ou mais novo: no 0.5, um valor acima de 0 dá erro de config

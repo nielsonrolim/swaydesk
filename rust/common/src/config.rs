@@ -28,9 +28,11 @@ pub const BAR_MODULES: &[(&str, &str)] = &[
     ("battery", "custom/battery"), ("power", "custom/power"), ("updates", "custom/updates"),
 ];
 // As chaves do [effects] (o Effects do desktop_config.py)
-const EFFECT_KEYS: &[&str] = &["corner_radius", "blur", "shadows", "layer_blur", "dim_inactive"];
+const EFFECT_KEYS: &[&str] = &["corner_radius", "blur", "shadows", "layer_blur", "dim_inactive", "animation_duration_ms"];
 /// O maior corner_radius aceito: mais que isso, os cantos comem o conteúdo das janelas
 pub const MAX_CORNER_RADIUS: i64 = 30;
+/// O limite do animation_duration_ms do SwayFX (5 segundos)
+pub const MAX_ANIMATION_DURATION_MS: i64 = 5000;
 
 /// As cores do papirus-folders, com a cor da frente da pasta (48x48/places/folder-<cor>.svg). A adwaita e
 /// a yaru são o destaque padrão desses temas, e não a cor da pasta. Na ordem do desktop_config.py.
@@ -150,11 +152,13 @@ pub struct Effects {
     pub layer_blur: bool,
     /// O escurecimento das janelas sem o foco, em centésimos (0.15 na config: 15); 0 desliga
     pub dim_inactive: u32,
+    /// A duração das animações do SwayFX 0.6 (abrir e fechar janelas), em milissegundos; 0 (o padrão) desliga
+    pub animation_duration_ms: u32,
 }
 
 impl Default for Effects {
     fn default() -> Self {
-        Effects { corner_radius: 10, blur: true, shadows: true, layer_blur: false, dim_inactive: 0 }
+        Effects { corner_radius: 10, blur: true, shadows: true, layer_blur: false, dim_inactive: 0, animation_duration_ms: 0 }
     }
 }
 
@@ -185,6 +189,12 @@ fn parse_effects(table: &toml::Table, warnings: &mut Vec<String>) -> Effects {
             }
             ("dim_inactive", toml::Value::Integer(n)) if (0..=1).contains(n) => effects.dim_inactive = *n as u32 * 100,
             ("dim_inactive", _) => warnings.push("config: invalid effects.dim_inactive (use 0.0 to 1.0)".to_string()),
+            ("animation_duration_ms", toml::Value::Integer(n)) if (0..=MAX_ANIMATION_DURATION_MS).contains(n) => {
+                effects.animation_duration_ms = *n as u32
+            }
+            ("animation_duration_ms", _) => warnings.push(format!(
+                "config: invalid effects.animation_duration_ms (use 0 to {MAX_ANIMATION_DURATION_MS})"
+            )),
             _ => {}
         }
     }
@@ -626,12 +636,17 @@ mod tests {
     #[test]
     fn effects_like_python() {
         // Os mesmos casos do EffectsTests do tests/test_desktop_config.py
-        assert_eq!(Config::default().effects, Effects { corner_radius: 10, blur: true, shadows: true, layer_blur: false, dim_inactive: 0 });
+        assert_eq!(
+            Config::default().effects,
+            Effects { corner_radius: 10, blur: true, shadows: true, layer_blur: false, dim_inactive: 0, animation_duration_ms: 0 }
+        );
         assert_eq!(parse_config("[effects]\n"), (Config::default(), vec![]));
         let (config, warnings) = parse_config("[effects]\nblur = false\ndim_inactive = 0.15\n");
         assert_eq!(config.effects, Effects { blur: false, dim_inactive: 15, ..Effects::default() });
         assert!(warnings.is_empty());
         assert_eq!(parse_config("[effects]\ndim_inactive = 1\n").0.effects.dim_inactive, 100);
+        assert_eq!(parse_config("[effects]\nanimation_duration_ms = 250\n").0.effects.animation_duration_ms, 250);
+        assert_eq!(parse_config("[effects]\nanimation_duration_ms = 5000\n").0.effects.animation_duration_ms, 5000);
         for (text, warning) in [
             ("corner_radius = 31", "effects.corner_radius"),
             ("corner_radius = -1", "effects.corner_radius"),
@@ -642,6 +657,10 @@ mod tests {
             ("dim_inactive = 1.5", "effects.dim_inactive"),
             ("dim_inactive = 2", "effects.dim_inactive"),
             ("dim_inactive = true", "effects.dim_inactive"),
+            ("animation_duration_ms = 5001", "effects.animation_duration_ms"),
+            ("animation_duration_ms = -1", "effects.animation_duration_ms"),
+            ("animation_duration_ms = 0.5", "effects.animation_duration_ms"),
+            ("animation_duration_ms = true", "effects.animation_duration_ms"),
             ("wobble = true", "unknown option: effects.wobble"),
         ] {
             let (config, warnings) = parse_config(&format!("[effects]\n{text}\n"));

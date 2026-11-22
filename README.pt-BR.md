@@ -261,6 +261,7 @@ O [SwayFX](https://github.com/WillPower3309/swayfx) é o Sway com cantos arredon
 - É mantido por terceiros, fora do suporte do projeto, e uma atualização que traga um wlroots novo pode quebrá-lo até o AUR acompanhar. Se a sessão não abrir depois de uma atualização, volte ao Sway num console de texto (Ctrl+Alt+F2).
 - O Swaydesk liga os efeitos sozinho no próximo login, pela seção `[effects]` do `~/.config/sway-desktop/config.toml`.
 - O blur atrás da barra, da dock e dos popups (`layer_blur`) vem desligado por padrão, porque apareceu lixo visual numa VM; ligue com `layer_blur = true`.
+- As animações das janelas vêm desligadas; ligue com `animation_duration_ms = 250` (em milissegundos, até 5000) na mesma seção. Precisam do SwayFX 0.6 ou mais novo: no 0.5, um valor acima de 0 dá erro de config (o swaynag avisa, e o resto carrega).
 
 ### Requisitos
 

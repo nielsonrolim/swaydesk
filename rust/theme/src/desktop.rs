@@ -346,7 +346,8 @@ pub fn sway_keys(config: &Config, keys: &Path) -> String {
 
 /// O config.d/10-effects.conf. No SwayFX, os efeitos do [effects]; no Sway puro, só um comentário: as diretivas
 /// do SwayFX dariam erro de config. O generate roda a cada sessão, então trocar um pelo outro (pacman) vale no
-/// próximo login.
+/// próximo login. O animation_duration_ms só entra quando não é 0: o SwayFX 0.5 não conhece a diretiva, e 0 já
+/// é o padrão do 0.6.
 pub fn sway_effects(effects: &Effects, swayfx: bool) -> String {
     if !swayfx {
         return format!(
@@ -370,6 +371,9 @@ pub fn sway_effects(effects: &Effects, swayfx: bool) -> String {
         text.push_str("shadow_blur_radius 20\nshadow_color #0000004D\n");
     }
     text.push_str(&format!("default_dim_inactive {}.{:02}\n", effects.dim_inactive / 100, effects.dim_inactive % 100));
+    if effects.animation_duration_ms > 0 {
+        text.push_str(&format!("animation_duration_ms {}\n", effects.animation_duration_ms));
+    }
     if effects.layer_blur {
         // O blur só onde a camada desenha (blur_ignore_transparent): as margens transparentes dos popups ficam limpas
         for layer in BLUR_LAYERS {
@@ -639,8 +643,11 @@ mod tests {
             .collect();
         assert_eq!(sway_effects(&Effects::default(), true), default);
         assert_eq!(sway_effects(&Effects { layer_blur: true, ..Effects::default() }, true), format!("{default}{layers}"));
-        let off = Effects { corner_radius: 0, blur: false, shadows: false, layer_blur: false, dim_inactive: 15 };
+        let off = Effects { corner_radius: 0, blur: false, shadows: false, layer_blur: false, dim_inactive: 15, animation_duration_ms: 0 };
         assert_eq!(sway_effects(&off, true), format!("{head}corner_radius 0\nblur disable\nshadows disable\ndefault_dim_inactive 0.15\n"));
+        let animated = Effects { animation_duration_ms: 250, ..Effects::default() };
+        assert_eq!(sway_effects(&animated, true), format!("{default}animation_duration_ms 250\n"));
+        assert!(!sway_effects(&animated, false).contains("animation"));
         let plain = sway_effects(&Effects::default(), false);
         assert_eq!(
             plain,

@@ -899,12 +899,11 @@ impl Bar {
         self.config.animation_ms > 0 && gtk4::Settings::default().is_none_or(|s| s.is_gtk_enable_animations())
     }
 
-    /// Margem negativa: a dock desce até quase sumir. Nunca fica 100% fora da tela: o Sway não volta a
-    /// mostrar uma layer surface que ficou inteira fora.
+    /// Margem negativa: a dock desce até sobrar uma faixa na tela (dl::slide_margin diz por que), e o fim da
+    /// descida a tira do mapa.
     fn apply_slide(&self) {
-        let size = self.slide_size.get();
-        let hidden = ((self.slide.borrow().progress * size as f64).round() as i32).min((size - 1).max(0));
-        self.window.set_margin(Edge::Bottom, -hidden);
+        let margin = dl::slide_margin(self.slide.borrow().progress, self.slide_size.get());
+        self.window.set_margin(Edge::Bottom, margin);
     }
 
     fn sliding(&self) -> bool {
