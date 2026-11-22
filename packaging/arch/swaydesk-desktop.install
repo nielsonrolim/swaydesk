@@ -8,7 +8,49 @@ _swaydesk_service() { # serviço, explicação
   fi
 }
 
+# O idioma do sistema (LANG e LC_* do /etc/locale.conf) gerado pela glibc: no Arch, um locale só existe depois
+# de habilitado no /etc/locale.gen e do locale-gen. Sem ele, o rofi não abre ("Failed to set locale."), a
+# data do greeter e da barra fica no formato do C e os apps em inglês. Por decisão do usuário, o pacote
+# habilita a linha comentada do idioma e roda o locale-gen ele mesmo, só quando falta: um idioma já gerado não
+# muda nada. Os caminhos mudam nos testes (SWAYDESK_LOCALE_CONF, SWAYDESK_LOCALE_GEN).
+_swaydesk_norm() { printf '%s\n' "$1" | tr 'A-Z' 'a-z' | sed 's/-//g'; }
+_swaydesk_awk_norm='function norm(s) { s = tolower(s); gsub(/-/, "", s); return s }'
+
+_swaydesk_locale() {
+  local conf=${SWAYDESK_LOCALE_CONF:-/etc/locale.conf} gen=${SWAYDESK_LOCALE_GEN:-/etc/locale.gen}
+  local value name want have line run=
+  [ -r "$conf" ] && [ -f "$gen" ] || return 0
+  have=$(locale -a 2>/dev/null | while read -r name; do _swaydesk_norm "$name"; done)
+  # Linha a linha, sem o shell expandir um * ou ? do arquivo em nomes de arquivo (o pacman roda isto em bash)
+  while read -r value; do
+    case $value in C|C.*|POSIX|*[!A-Za-z0-9_.@-]*) continue ;; esac
+    want=$(_swaydesk_norm "$value")
+    printf '%s\n' "$have" | grep -qxF "$want" && continue
+    # A linha do locale.gen cujo primeiro campo é o idioma: habilitada já, ou comentada (# e espaços). Das
+    # comentadas, a última: o cabeçalho do arquivo traz exemplos ("#  en_US.UTF-8 UTF-8") antes da lista. O nome
+    # compara como o locale -a (pt_BR.utf8 é o pt_BR.UTF-8)
+    if ! awk -v v="$want" "$_swaydesk_awk_norm"' !/^#/ && norm($1) == v { found = 1 } END { exit !found }' "$gen"; then
+      line=$(awk -v v="$want" "$_swaydesk_awk_norm"' /^#/ { l = $0; sub(/^#[ \t]*/, "", l); split(l, f, /[ \t]+/)
+                                if (norm(f[1]) == v) n = NR } END { print n + 0 }' "$gen")
+      if [ "$line" -gt 0 ]; then
+        awk -v n="$line" 'NR == n { sub(/^#[ \t]*/, "") } 1' "$gen" > "$gen.swaydesk" &&
+          cat "$gen.swaydesk" > "$gen" && rm -f "$gen.swaydesk"
+        echo ":: Enabled $value in $gen (the system language, from $conf)"
+      else
+        echo ":: $value (from $conf) is not in $gen: generate it yourself (see locale-gen(8))"
+        continue
+      fi
+    fi
+    run=1
+  done < <(sed -n 's/^\(LANG\|LC_[A-Z]*\)=["'"'"']\{0,1\}\([^"'"'"' ]*\).*/\2/p' "$conf" | sort -u)
+  if [ -n "$run" ]; then
+    echo ':: Generating locales (locale-gen)'
+    locale-gen || echo ':: locale-gen failed: run it yourself, as root'
+  fi
+}
+
 post_install() {
+  _swaydesk_locale
   _swaydesk_service bluetooth.service 'Bluetooth'
   # Energia: o depends power-profiles-daemon também é satisfeito pelo tlp-pd, do TLP, que tem a mesma interface
   # no D-Bus. Quem usa o tlp sem o tlp-pd recebeu o power-profiles-daemon: os dois brigam pela energia
@@ -29,4 +71,8 @@ post_install() {
     _swaydesk_service NetworkManager.service 'Network'
   fi
   echo ':: Choose "Sway Desktop" in your login manager, or run /usr/lib/swaydesk/sway-session --package from a tty.'
+}
+
+post_upgrade() {
+  _swaydesk_locale
 }

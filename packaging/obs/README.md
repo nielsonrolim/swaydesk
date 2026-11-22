@@ -59,6 +59,19 @@ segura a versão até ser corrigida ou explicada; o resumo vai junto do pedido d
 2. `git tag -a vX.Y.Z -m "Swaydesk X.Y.Z"` nesse commit e `git push origin vX.Y.Z`.
 3. Gere e envie os pacotes desse commit, como em "Enviar ao OBS" abaixo.
 4. Rode o `packaging/obs/check-keyring.sh`: o `.deb` do keyring publicado ainda tem o hash dos READMEs.
+   Confira também que o `paku` (a dependência do `swaydesk-desktop` no Arch, desde a 0.1.4) continua sendo só o
+   nosso: as três buscas têm de dar `[]`, e o pacote do BlackArch, `404`. Um erro do `curl` (o `-f` o mostra) não é
+   um "vazio": repita. Um outro repositório com esse nome faria o pacman escolher pelo primeiro do `pacman.conf`
+   (ou pela versão mais alta), como acontece com o "pacu" do BlackArch, que é outro programa. A busca por nome
+   do AUR é por trecho (acha o `monkey-island-pakutils-git`), daí o `select`; a por `provides` é exata, e o nosso
+   paku nunca está no AUR: qualquer resultado nela é um problema.
+
+   ```sh
+   curl -fsS "https://aur.archlinux.org/rpc/v5/search/paku?by=name" | jq -c '[.results[].Name | select(. == "paku")]'
+   curl -fsS "https://aur.archlinux.org/rpc/v5/search/paku?by=provides" | jq -c '.results | map(.Name)'
+   curl -fsS "https://archlinux.org/packages/search/json/?name=paku" | jq -c '.results | map(.pkgname)'
+   curl -s -o /dev/null -w '%{http_code}\n' https://raw.githubusercontent.com/BlackArch/blackarch/master/packages/paku/PKGBUILD
+   ```
 5. Publique o espelho com a tag (`packaging/mirror.sh --tag vX.Y.Z`, antes com `--dry-run`) e crie o Release no espelho público com a entrada do `packaging/public/CHANGELOG.md`.
 6. **Logo em seguida**, no próximo commit do `main`, suba a versão:
    - a `workspace.package.version` do `rust/Cargo.toml` (e o `Cargo.lock`);
