@@ -8,6 +8,8 @@ A documentação completa, com capturas de tela e os atalhos de teclado, está e
 
 **Versão atual: 0.1.3.1.** O que muda em cada versão está no [CHANGELOG.md](CHANGELOG.md) (em inglês) e na [página de lançamentos](https://github.com/nielsonrolim/swaydesk/releases). Depois de instalado, as atualizações chegam com o `apt upgrade` ou o `pacman -Syu` de sempre.
 
+O Swaydesk é um projeto independente, construído sobre o [Sway](https://swaywm.org). Ele não é afiliado ao projeto Sway nem aos seus desenvolvedores, nem endossado por eles.
+
 > **Este repositório é um espelho somente leitura.** O desenvolvimento acontece num repositório privado, e cada mudança mesclada lá é publicada aqui como um commit. Issues e pull requests ainda não estão abertos.
 
 ## O que vem nele

@@ -8,6 +8,8 @@ Full documentation, with screenshots and the keyboard shortcuts: **https://swayd
 
 **Current release: 0.1.3.1.** What changes in each release is in [CHANGELOG.md](CHANGELOG.md) and on the [releases page](https://github.com/nielsonrolim/swaydesk/releases). Once installed, updates arrive with your usual `apt upgrade` or `pacman -Syu`.
 
+Swaydesk is an independent project built on top of [Sway](https://swaywm.org). It is not affiliated with, or endorsed by, the Sway project or its developers.
+
 > **This repository is a read-only mirror.** Development happens in a private repository, and every change merged there is published here as one commit. Issues and pull requests are not open yet.
 
 ## What's in it
