@@ -2268,6 +2268,22 @@ msgstr[0] "y %d más"
 msgstr[1] "y %d más"
 
 #: home/.local/bin/sway-updates
+msgid "Maintaining the system with paku maintain: the Arch news, the updates (Flatpak too) and the cleanup, each step asking first. sudo asks for your password."
+msgstr "Manteniendo el sistema con paku maintain: las noticias de Arch, las actualizaciones (también Flatpak) y la limpieza, cada paso preguntando antes. sudo pide tu contraseña."
+
+#: home/.local/bin/sway-updates
+msgid "Another paku maintain is already running."
+msgstr "Ya hay otro paku maintain en ejecución."
+
+#: home/.local/bin/sway-updates
+msgid "paku maintain was stopped."
+msgstr "paku maintain se interrumpió."
+
+#: home/.local/bin/sway-updates
+msgid "paku maintain ended; see above."
+msgstr "paku maintain terminó; mira arriba."
+
+#: home/.local/bin/sway-updates
 msgid "Updating the system and the AUR with %s -Syu. sudo asks for your password."
 msgstr "Actualizando el sistema y el AUR con %s -Syu. sudo pide tu contraseña."
 

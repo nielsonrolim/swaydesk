@@ -148,7 +148,9 @@ package_swaydesk-desktop() {
   # O paku (github.com/nielsonrolim/paku, do repositório do projeto no OBS, como estes pacotes): o pacman e um
   # helper do AUR, se houver, num comando só. Vai como ferramenta para o usuário (decisão do usuário, 0.1.4), e a
   # janela de atualização (sway-updates) o usa. Sem helper, ele roda o pacman com sudo. O >= é a versão com o
-  # "upgrade --no-flatpak" de que o sway-updates precisa; o nome não é de nenhum pacote oficial, do AUR ou do
+  # "maintain" que o sway-updates chama (a manutenção do arch-update, decisão do usuário, 0.1.4); o archlinux-contrib
+  # traz o checkservices do passo dos serviços (o paccache e o pacdiff do cache e dos .pacnew vêm do pacman-contrib).
+  # O nome paku não é de nenhum pacote oficial, do AUR ou do
   # BlackArch (conferido em 22/11/2026: o BlackArch tem um "pacu", outro programa, e o pacman resolve um nome pelo
   # primeiro repositório do pacman.conf que o tem; o passo 4 do packaging/obs/README.md confere a cada versão)
   # O pipewire-jack em primeiro: a waybar e o ffmpeg (do wf-recorder) pedem um jack, e o pacman, que resolve em
@@ -159,7 +161,7 @@ package_swaydesk-desktop() {
            mate-polkit xorg-xwayland thunar blueman papirus-icon-theme grim slurp wf-recorder brightnessctl
            playerctl pavucontrol wireplumber libpulse networkmanager network-manager-applet bluez upower gammastep
            libnotify power-profiles-daemon xdg-user-dirs qt5ct qt6ct capitaine-cursors
-           gnome-keyring pacman-contrib fakeroot 'paku>=0.2.0')
+           gnome-keyring pacman-contrib archlinux-contrib fakeroot 'paku>=0.3.0')
   optdepends=("gnome-text-editor: the Help's Open button, for 50-local.conf"
               'nano: the same in the terminal, without a graphical editor')
   # O portal do gtk por um drop-in na unit: o dbus-broker avisa de um segundo .service com o mesmo nome

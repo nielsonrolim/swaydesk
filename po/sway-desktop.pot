@@ -2254,6 +2254,22 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: home/.local/bin/sway-updates
+msgid "Maintaining the system with paku maintain: the Arch news, the updates (Flatpak too) and the cleanup, each step asking first. sudo asks for your password."
+msgstr ""
+
+#: home/.local/bin/sway-updates
+msgid "Another paku maintain is already running."
+msgstr ""
+
+#: home/.local/bin/sway-updates
+msgid "paku maintain was stopped."
+msgstr ""
+
+#: home/.local/bin/sway-updates
+msgid "paku maintain ended; see above."
+msgstr ""
+
+#: home/.local/bin/sway-updates
 msgid "Updating the system and the AUR with %s -Syu. sudo asks for your password."
 msgstr ""
 

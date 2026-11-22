@@ -33,8 +33,10 @@ _swaydesk_locale() {
       line=$(awk -v v="$want" "$_swaydesk_awk_norm"' /^#/ { l = $0; sub(/^#[ \t]*/, "", l); split(l, f, /[ \t]+/)
                                 if (norm(f[1]) == v) n = NR } END { print n + 0 }' "$gen")
       if [ "$line" -gt 0 ]; then
+        # A cópia some mesmo se o cat falhar no meio (um disco cheio): nada fica em /etc
         awk -v n="$line" 'NR == n { sub(/^#[ \t]*/, "") } 1' "$gen" > "$gen.swaydesk" &&
-          cat "$gen.swaydesk" > "$gen" && rm -f "$gen.swaydesk"
+          cat "$gen.swaydesk" > "$gen"
+        rm -f "$gen.swaydesk"
         echo ":: Enabled $value in $gen (the system language, from $conf)"
       else
         echo ":: $value (from $conf) is not in $gen: generate it yourself (see locale-gen(8))"

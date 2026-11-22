@@ -8,8 +8,10 @@
 #                            e ele termina com a sessão. Não roda na ISO live
 #      sway-updates check    confere agora: a lista vai para o cache que o ícone da Waybar (waybar-updates) lê,
 #                            e uma notificação vem quando a lista tem algo novo
-#      sway-updates upgrade  abre o kitty com o paru -Syu, o yay -Syu ou o sudo pacman -Syu, o flatpak update e
-#                            o fwupdmgr update e, no fim, confere de novo. Com um já aberto, traz esse para a frente
+#      sway-updates upgrade  abre o kitty com o paku maintain (a manutenção inteira, com o Flatpak), senão o paru
+#                            -Syu, o yay -Syu ou o sudo pacman -Syu seguidos do flatpak update; depois, o fwupdmgr
+#                            update e, no fim, confere de novo. Com um já aberto, traz esse para a frente. Fora do
+#                            Arch (sem o pacman), não abre nada
 #
 # O cache, em ~/.cache/swaydesk: updates (as linhas do checkupdates, "nome antiga -> nova"), updates.aur,
 # updates.flatpak, updates.firmware e updates.notified (as linhas "fonte nome nova" da última notificação). Sem o checkupdates, nada acontece: no Debian e no Ubuntu a loja
@@ -28,6 +30,7 @@ notify_id=$run/sway-updates-notify.id
 # Os testes trocam estes
 pacman_lock=${SWAY_UPDATES_PACMAN_LOCK:-/var/lib/pacman/db.lck}
 live_mark=${SWAY_UPDATES_LIVE:-/run/archiso}
+pacman_cmd=${SWAY_UPDATES_PACMAN:-pacman}  # a atualização é do Arch: sem o pacman (Debian, Ubuntu, Mint), nada abre
 first=${SWAY_UPDATES_FIRST:-300}       # a primeira verificação depois do login
 every=${SWAY_UPDATES_EVERY:-21600}     # depois, a cada 6 horas
 retry=${SWAY_UPDATES_RETRY:-900}       # sem rede: 15 minutos
@@ -388,31 +391,72 @@ store() {
   exit 0
 }
 
+# O paku (o pacman e um ajudante do AUR num comando, dependência do swaydesk-desktop no Arch): o "paku maintain" é
+# a manutenção inteira, como a do arch-update (decisão do usuário, 0.1.4): as notícias do Arch, o -Syu do ajudante
+# que ele escolhe (paru, yay ou pikaur, ou o da config dele; sem nenhum, o sudo pacman -Syu) com o Flatpak junto,
+# depois órfãos, Flatpaks sem uso, o cache, os .pacnew, o reinício por um kernel novo e os serviços, cada passo que
+# apaga ou reinicia com a sua pergunta y/N. Sem argumentos: com o cachy-update instalado, o paku passa tudo a ele,
+# que não conhece as nossas opções. O firmware fica com o passo de baixo. Só a partir da versão com o maintain, a
+# que o swaydesk-desktop pede: nos dotfiles (o install.sh), um paku mais velho fica de fora e nada muda
+paku_min=0.3.0
+use_paku() {
+  command -v paku >/dev/null 2>&1 || return 1
+  local version
+  version=$(paku --version 2>/dev/null </dev/null 9>&-) || return 1
+  version=${version#paku }
+  [[ $version =~ ^[0-9]+(\.[0-9]+)*$ ]] || return 1
+  [[ $(printf '%s\n%s\n' "$paku_min" "$version" | sort -V | head -n 1) == "$paku_min" ]]
+}
+
 # Dentro do kitty: a atualização, uma verificação nova e uma tecla para fechar
 run_upgrade() {
+  command -v "$pacman_cmd" >/dev/null 2>&1 || { log "no pacman: the update window is only for Arch"; exit 0; }
+  # A trava fica só com este shell: cada filho roda com o fd 9 fechado (9>&-). Um filho que deixasse algo rodando
+  # (um hook do pacman, um daemon) seguraria a trava depois da janela fechar: o clique seguinte só tentaria
+  # focar uma janela que não existe mais, e o aviso ficaria quieto
   exec 9>"$upgrade_lock"
   flock -n 9 || exit 0
-  local helper
-  # O ajudante do AUR atualiza também os repositórios oficiais, e chama o sudo sozinho: roda como o usuário
-  if helper=$(aur_helper); then
-    printf '%s\n\n' "$(printf "$(t 'Updating the system and the AUR with %s -Syu. sudo asks for your password.')" "$helper")"
-    "$helper" -Syu
-  else
-    printf '%s\n\n' "$(t 'Updating the system with sudo pacman -Syu. sudo asks for your password.')"
-    sudo pacman -Syu
-  fi
-  echo
-  # Os apps Flatpak, do sistema e do usuário: o polkit libera os do sistema para quem está na sessão
-  if command -v flatpak >/dev/null 2>&1; then
-    printf '%s\n\n' "$(t 'Updating the Flatpak apps with flatpak update.')"
-    flatpak update
+  local helper rc=0
+  if use_paku; then
+    printf '%s\n\n' "$(t 'Maintaining the system with paku maintain: the Arch news, the updates (Flatpak too) and the cleanup, each step asking first. sudo asks for your password.')"
+    # O Ctrl-C vai ao grupo todo do terminal. Numa pergunta do paku, ele morre do SIGINT (não sai com 130), e o
+    # bash, que também recebeu o sinal, sairia junto e fecharia a janela sem o Enter. Com um trap (não o
+    # ignorar: o paku herdaria o sinal ignorado), o bash fica, e o paku morto pelo sinal dá o 130 do "stopped"
+    trap : INT
+    paku maintain 9>&- || rc=$?
+    trap - INT
     echo
+    # A última linha do paku já diz o que houve: aqui só uma linha neutra. O 2 nem sempre é erro (um "não" no
+    # "Proceed with installation?" do pacman também dá 2), então nada de janela de erro
+    case $rc in
+      0) ;;
+      17) printf '%s\n\n' "$(t 'Another paku maintain is already running.')" ;;
+      130) printf '%s\n\n' "$(t 'paku maintain was stopped.')" ;;
+      *) printf '%s\n\n' "$(t 'paku maintain ended; see above.')" ;;
+    esac
+  else
+    # O ajudante do AUR atualiza também os repositórios oficiais, e chama o sudo sozinho: roda como o usuário
+    if helper=$(aur_helper); then
+      printf '%s\n\n' "$(printf "$(t 'Updating the system and the AUR with %s -Syu. sudo asks for your password.')" "$helper")"
+      "$helper" -Syu 9>&-
+    else
+      printf '%s\n\n' "$(t 'Updating the system with sudo pacman -Syu. sudo asks for your password.')"
+      sudo pacman -Syu 9>&-
+    fi
+    echo
+    # Os apps Flatpak, do sistema e do usuário: o polkit libera os do sistema para quem está na sessão. Cada fonte
+    # falha sozinha: um -Syu que falhou ou foi cancelado não segura os apps nem o firmware
+    if command -v flatpak >/dev/null 2>&1; then
+      printf '%s\n\n' "$(t 'Updating the Flatpak apps with flatpak update.')"
+      flatpak update 9>&-
+      echo
+    fi
   fi
   # O firmware por último, só com uma atualização na lista: numa máquina sem nada a atualizar, o fwupdmgr só
   # diria que não há o que fazer. Ele pede a senha pelo polkit e, se precisar, o reinício
   if command -v fwupdmgr >/dev/null 2>&1 && [[ -s $(source_file firmware) ]]; then
     printf '%s\n\n' "$(t 'Updating the firmware with fwupdmgr update.')"
-    fwupdmgr update
+    fwupdmgr update 9>&-
     echo
   fi
   exec 9>&-
@@ -424,6 +468,8 @@ run_upgrade() {
 }
 
 upgrade() {
+  # Fora do Arch (os dotfiles no Mint, no Debian), nenhum terminal: lá a loja e o apt cuidam das atualizações
+  command -v "$pacman_cmd" >/dev/null 2>&1 || { log "no pacman: the update window is only for Arch"; exit 0; }
   if [[ -e $upgrade_lock ]] && ! flock -n "$upgrade_lock" true 2>/dev/null; then
     swaymsg '[app_id="^swaydesk-updates$"] focus' >/dev/null 2>&1
     exit 0
