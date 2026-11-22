@@ -199,7 +199,7 @@ packaging/obs/push.sh "$out"
 
 O clone leva o commit atual (HEAD). O que não estiver commitado fica de fora.
 
-O `push.sh` roda fora do contêiner, com o `osc` configurado (`osc whois` responde e a senha fica no chaveiro). Ele não precisa do dpkg, e roda também num PC Arch: compara as versões com o `debversion.py` (a ordem do `dpkg --compare-versions`) e extrai os fontes com o `tar` (precisa de `python3`, `tar` e `xz`). Ele mostra o `osc status` de cada pacote antes do commit. Os resultados aparecem em `osc results home:nielsonrolim swaydesk`.
+O `push.sh` roda fora do contêiner, com o `osc` configurado (`osc whois` responde e a senha fica no chaveiro). Ele não precisa do dpkg, e roda também num PC Arch: compara as versões com o `debversion.py` (a ordem do `dpkg --compare-versions`) e extrai os fontes com o `tar` (precisa de `python3`, `tar` e `xz`). Ele mostra o `osc status` de cada pacote antes do commit. Com `PUSH_DRY_RUN=1`, faz tudo isso e para antes do `osc commit`: o ensaio do envio de um lançamento, que só lê do OBS. No ensaio, uma recusa não para os outros pacotes: todos são conferidos, e as falhas saem no fim (saída 1). Outro valor que não 0 ou 1 (como `true`) para o script antes de qualquer envio. Os resultados aparecem em `osc results home:nielsonrolim swaydesk`.
 
 Na primeira vez, e só quando os alvos mudarem, o meta:
 

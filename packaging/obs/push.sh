@@ -9,10 +9,19 @@
 # pelo tar, a partir da lista Files: do .dsc.
 # uso: packaging/obs/push.sh SAÍDA [PACOTE...]   (padrão: todos os da pasta)
 #      OBS_PROJECT=home:outro packaging/obs/push.sh ...   (padrão: home:nielsonrolim)
+#      PUSH_DRY_RUN=1 packaging/obs/push.sh ...   (faz tudo, com o osc status de cada pacote, menos o osc commit:
+#      o ensaio do lançamento; só lê do OBS. Confere todos os pacotes e lista no fim os que falharam, saindo com 1.
+#      Só 0 ou 1: outro valor, como true, para o script com 2)
 set -euo pipefail
 base=$(cd "${1:?uso: push.sh SAÍDA [PACOTE...]}" && pwd)
 shift
 project=${OBS_PROJECT:-home:nielsonrolim}
+# Só 1 (ensaio) ou 0/vazio (envio): qualquer outro valor (true, yes) para aqui, em vez de virar um envio de verdade
+case ${PUSH_DRY_RUN:-0} in
+  0) dry_run= ;;
+  1) dry_run=1; echo "push: dry run: nothing will be committed to $project" ;;
+  *) echo "push: PUSH_DRY_RUN must be 1 (dry run) or 0 (push), not '$PUSH_DRY_RUN'" >&2; exit 2 ;;
+esac
 if (($#)); then packages=("$@"); else mapfile -t packages < <(cd "$base" && ls -d -- */ | tr -d /); fi
 here=$(cd "$(dirname "$0")" && pwd)
 work=$(mktemp -d)
@@ -51,11 +60,19 @@ extract_dsc() {
   [[ ! -e $dir/debian/patches/series ]] || { echo "push: $dsc: patches are not supported" >&2; return 1; }
 }
 
+failed=()
 for pkg in "${packages[@]}"; do
   src=$base/$pkg
-  [[ -d $src ]] || { echo "push: no folder $src" >&2; exit 1; }
-  dsc=$(cd "$src" && ls -- *.dsc)
+  if ! dsc=$(cd "$src" 2>/dev/null && ls -- *.dsc 2>/dev/null); then
+    echo "push: no .dsc in $src" >&2
+    [[ -n $dry_run ]] || exit 1
+    failed+=("$pkg")
+    continue
+  fi
+  # No ensaio, uma recusa (ou erro) não para os outros pacotes: todos são conferidos, e as recusas saem no fim
+  ${dry_run:+set +e}
   (
+    set -e  # dentro de cada pacote, um erro para o pacote, como sempre
     cd "$work"
     osc checkout --output-dir "$pkg" "$project" "$pkg" >/dev/null
     cd "$pkg"
@@ -95,10 +112,16 @@ for pkg in "${packages[@]}"; do
     find . -maxdepth 1 -type f ! -name '_*' -delete
     cp -- "$src"/* .
     osc addremove >/dev/null
-    if [[ -z $(osc status) ]]; then
+    # Numa linha à parte: dentro do [[ ]], uma falha do osc status passaria por "nada mudou"
+    status=$(osc status)
+    if [[ -z $status ]]; then
       echo "push: $project/$pkg: nothing changed"
     else
-      osc status
+      echo "$status"
+      if [[ -n $dry_run ]]; then
+        echo "push: $project/$pkg: dry run: would commit ${dsc%.dsc}"
+        exit 0
+      fi
       osc commit --message "${dsc%.dsc}"
       if [[ $pkg == swaydesk-archive-keyring ]]; then
         echo "push: the keyring .deb gets a new sha256 when the OBS builds it: update keyring-published.sha256," >&2
@@ -106,4 +129,14 @@ for pkg in "${packages[@]}"; do
       fi
     fi
   )
+  rc=$?
+  set -e
+  ((rc == 0)) || failed+=("$pkg")
 done
+if [[ -n $dry_run ]]; then
+  if ((${#failed[@]})); then
+    echo "push: dry run: failed: ${failed[*]} (see above; nothing was committed)" >&2
+    exit 1
+  fi
+  echo "push: dry run: every package passed; nothing was committed"
+fi
