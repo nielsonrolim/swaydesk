@@ -52,7 +52,8 @@ segura a versão até ser corrigida ou explicada; o resumo vai junto do pedido d
 
 1. O commit de lançamento, num PR que só é mesclado com o ok do usuário (o `mirror.sh` publica o `packaging/public` no espelho):
    - feche a entrada de cima do `debian/changelog`: a versão `X.Y.Z-1`, a distribuição `unstable` no lugar de `UNRELEASED`, a data e o resumo das mudanças;
-   - a entrada `## X.Y.Z — AAAA-MM-DD` no topo do `packaging/public/CHANGELOG.md`, que é a nota do Release;
+   - a entrada `## X.Y.Z — AAAA-MM-DD` no topo do `packaging/public/CHANGELOG.md`, que é a nota do Release, e a
+     mesma entrada em português no `CHANGELOG.pt-BR.md` (desde a 0.1.4), sem nenhum `TODO(` nem data de exemplo;
    - a linha "Current release" / "Versão atual" do `packaging/public/README.md` e do `README.pt-BR.md`. O `tests/test_mirror.py` confere que ela é a versão de cima do `CHANGELOG.md`;
    - o rodapé do site (no repositório do site), junto com a publicação;
    - se o [adw-gtk3](https://github.com/lassekongo83/adw-gtk3/releases) tem versão nova: atualize o `adw-gtk-theme` (a URL e o sha256 do `upstream`, conferido contra o `digest` do Release no GitHub, uma entrada no `debian/changelog` dele e o hash no `tests/test_obs.py`) e envie-o ao OBS antes do `swaydesk`.
@@ -173,8 +174,8 @@ e no pacman (`tests/test_version.py`), e tem um orig próprio.
 4. O espelho: `packaging/mirror.sh --branch release/X.Y.Z --tag vX.Y.Z.1` (HEAD = `origin/release/X.Y.Z`).
    Publica na branch `release/X.Y.Z` do espelho, criada na primeira vez a partir da tag `vX.Y.Z` de lá, e a
    `main` do espelho fica como está. As ISOs vão com `release-isos.sh vX.Y.Z.1` (do `main`).
-5. No `main`, depois: a entrada `X.Y.Z.1` do CHANGELOG público, a linha de versão atual dos READMEs e a
-   entrada do `debian/changelog`, e o `mirror.sh` de sempre.
+5. No `main`, depois: a entrada `X.Y.Z.1` do CHANGELOG público (e do `CHANGELOG.pt-BR.md`), a linha de versão
+   atual dos READMEs e a entrada do `debian/changelog`, e o `mirror.sh` de sempre.
 
 O OBS não recompila sozinho: os repositórios têm `rebuild="local"` (`meta/repositories.xml`), e só uma
 mudança da nossa fonte gera pacotes. Se uma atualização da distro quebrar uma ABI (no Arch, um soname novo),

@@ -1,8 +1,37 @@
-swaydesk (0.1.4-1) UNRELEASED; urgency=medium
+swaydesk (0.1.4-1) unstable; urgency=medium
 
-  * Development after 0.1.3.
+  * Release 0.1.4.
+  * The accent color reaches GTK 3 and GTK 4 apps through gtk.css (only
+    when no other desktop is installed), and swaydesk-desktop brings
+    adw-gtk-theme (Debian, Ubuntu). New accounts get adw-gtk3-dark when
+    Mint-Y is missing; with snapd-desktop-integration (Ubuntu Desktop),
+    Adwaita-dark, as in 0.1.3.1. Existing accounts keep their theme.
+  * Apps in ~/.config/autostart and /etc/xdg/autostart start in the
+    session through systemd and close at logout; what Swaydesk already
+    runs (blueman, nm-applet, polkit agents, im-launch, update-notifier,
+    touchegg) is skipped. autostart = false in [enabled] turns it off.
+  * The settings folders are now called swaydesk (~/.config,
+    ~/.local/share, ~/.local/state), moved at the first login with the
+    old names left as links; when both exist, the old one stays in use
+    and sway.log says so.
+  * Power profiles in the System popup on computers without a battery;
+    SwayFX 0.6 window animations (animation_duration_ms in [effects]).
+  * Arch: swaydesk-desktop depends on paku (>= 0.3.0), and the update
+    window runs paku maintain.
+  * Login screen and lock: the layout name and the date follow the system
+    language and LC_TIME; the login screen logs to the journal
+    (journalctl -t swaydesk-greeter), never names or passwords.
+  * Ubuntu: a one-time notice with the language-pack command; minimized
+    systems keep Swaydesk's translations (swaydesk-dpkg-includes).
+  * A new account's 50-local.conf comes in the session's language.
+  * Window borders are 3 px; the lock's password field and rofi's search
+    take the components' entry style.
+  * Fixed: the dock under SwayFX 0.6; the app grid or Super broken by
+    another user's session; blueman asking for the admin password at
+    login (Debian, Ubuntu); Desktop Theme losing outside changes; no boot
+    under Secure Boot after losing the boot entry (swaydesk-efi).
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Sun, 22 Nov 2026 06:46:38 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Mon, 23 Nov 2026 04:58:14 -0300
 
 swaydesk (0.1.3.1-1) unstable; urgency=medium
 
