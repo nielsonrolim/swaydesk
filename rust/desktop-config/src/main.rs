@@ -70,6 +70,17 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     resident::set_process_name(PROGRAM);
+    // As pastas sway-desktop → swaydesk: só no login (o setup antes do Sway, o sway-session) e no install.sh,
+    // antes de ler a config; nunca no generate, no keys (o exec_always de cada reload) nem nos apps. O migrate
+    // fica fora do usage, de propósito: não é para o usuário
+    if matches!(args.as_slice(), [c] if c == "setup" || c == "migrate") {
+        for message in swaydesk_common::dirs::migrate() {
+            eprintln!("{PROGRAM}: {message}");
+        }
+        if args[0] == "migrate" {
+            return ExitCode::SUCCESS;
+        }
+    }
     let config = config::load();
     match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
         ["get", key] => match dc::get(&config, key) {

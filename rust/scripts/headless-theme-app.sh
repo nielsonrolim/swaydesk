@@ -19,7 +19,7 @@
 set -u
 impl=${1:-rust}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
-mkdir -p "$HOME/.local/bin" "$HOME/.config/sway-desktop" "$HOME/.local/share/wallpaper" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" "$HOME/.local/share/wallpaper" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
 for f in /bin/swaydesk-*; do [ "${f##*/}" = swaydesk-vpointer ] || cp "$f" "$HOME/.local/bin/"; done
 theme() {  # nome, fundo, texto, destaque
@@ -40,7 +40,7 @@ icons() {  # nome, cor da pasta
 }
 icons Adwaita "#3584e4"
 icons Yaru "#e95420"
-printf 'gtk_theme = "Mint-Y-Dark-Teal"\n' > "$HOME/.config/sway-desktop/config.toml"
+printf 'gtk_theme = "Mint-Y-Dark-Teal"\n' > "$HOME/.config/swaydesk/config.toml"
 # O papel de parede: um PPM vermelho (#e25252, o red do Papirus) com o nome de sempre; o GdkPixbuf lê pelo conteúdo
 python3 -c "import sys; sys.stdout.buffer.write(b'P6\n64 64\n255\n' + bytes([0xe2, 0x52, 0x52]) * 4096)" \
   > "$HOME/.local/share/wallpaper/current.jpg"
@@ -102,17 +102,17 @@ echo "janela: $wx $wy $ww $wh"
 pointer move $((wx + 100)) $((wy + 235)) sleep 100 click sleep 500
 shot 2-arc
 pointer move $((wx + ww - 171)) $((wy + 22)) sleep 100 click sleep 100  # o Aplicar, à esquerda dos botões da janela
-for _ in $(seq 100); do grep -q 'gtk_theme = "Arc-Dark"' "$HOME/.config/sway-desktop/config.toml" && break; sleep 0.1; done
+for _ in $(seq 100); do grep -q 'gtk_theme = "Arc-Dark"' "$HOME/.config/swaydesk/config.toml" && break; sleep 0.1; done
 sleep 1
 shot 3-aplicado
-if grep -q 'gtk_theme = "Arc-Dark"' "$HOME/.config/sway-desktop/config.toml"; then
+if grep -q 'gtk_theme = "Arc-Dark"' "$HOME/.config/swaydesk/config.toml"; then
   ok "Aplicar grava o tema no config.toml"
 else
-  fail "o tema não foi gravado: $(cat "$HOME/.config/sway-desktop/config.toml")"
+  fail "o tema não foi gravado: $(cat "$HOME/.config/swaydesk/config.toml")"
 fi
 [ "$(windows)" = 1 ] && ok "a janela continua aberta depois de aplicar" || fail "a janela fechou ao aplicar"
 
-config() { cat "$HOME/.config/sway-desktop/config.toml"; }
+config() { cat "$HOME/.config/swaydesk/config.toml"; }
 # Os casos da cor do papel só na versão em Rust: os cliques são posições na janela, e o layout do GTK 3 é outro (o
 # app em Python é testado na VM)
 if [ "$impl" = rust ]; then
@@ -154,7 +154,7 @@ fi
 # em vez de gravar a amostra mais perto (darkcyan)
 kill "$pid" 2>/dev/null
 for _ in $(seq 50); do [ "$(windows)" = 0 ] && break; sleep 0.1; done
-printf 'gtk_theme = "Mint-Y-Dark-Teal"\naccent = "#199ca8"\nfolder_color = ""\naccent_auto = false\n' > "$HOME/.config/sway-desktop/config.toml"
+printf 'gtk_theme = "Mint-Y-Dark-Teal"\naccent = "#199ca8"\nfolder_color = ""\naccent_auto = false\n' > "$HOME/.config/swaydesk/config.toml"
 app
 for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
 sleep 1.5

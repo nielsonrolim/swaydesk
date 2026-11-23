@@ -196,7 +196,7 @@ impl Card {
             badge.add_css_class("help-badge");
             head.append(&badge);
             let turn_on = format!("[enabled] {key} = true");
-            let hint = tr("Turned off. To turn it on: %s in ~/.config/sway-desktop/config.toml, then log in again");
+            let hint = tr("Turned off. To turn it on: %s in ~/.config/swaydesk/config.toml, then log in again");
             let hint = gtk4::Label::new(Some(&hint.replace("%s", &turn_on)));
             hint.add_css_class("help-dim");
             hint.set_wrap(true);

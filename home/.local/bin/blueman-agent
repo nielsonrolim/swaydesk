@@ -14,7 +14,8 @@
 # uso: blueman-agent (no lugar do blueman-applet)
 set -u
 OFF=("'!StatusIcon'" "'!ShowConnected'" "'!KillSwitch'")
-if [[ ${DCONF_PROFILE:-} == */sway-desktop/dconf/sway ]] && command -v gsettings >/dev/null; then
+if [[ ${DCONF_PROFILE:-} == */sway-desktop/dconf/sway || ${DCONF_PROFILE:-} == */swaydesk/dconf/sway ]] \
+   && command -v gsettings >/dev/null; then
   current=$(gsettings get org.blueman.general plugin-list 2>/dev/null) || current=
   if [[ -n $current ]]; then
     # "@as []" ou "['A', '!B']": acrescenta só o que falta, sem perder o que já está lá

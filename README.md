@@ -36,7 +36,7 @@ Swaydesk is an independent project built on top of [Sway](https://swaywm.org). I
 - `swaydesk-desktop` installs the **Sway Desktop** session, which you pick in your display manager (or in `swaydesk-greeter`), and depends on all of the above.
 - At login, the session starts Sway with Swaydesk's config. That config applies the theme and starts Waybar, the dock, the notification daemon, the on-screen display, the Alt+Tab switcher, the clipboard history and the session services (idle, lock, keyring). Popups, the app grid and the capture panels open on demand.
 - The theme tool writes one set of colors for every component, so changing the accent recolors the whole desktop.
-- Your own settings live in `~/.config/sway-desktop/` and are never overwritten by package updates.
+- Your own settings live in `~/.config/swaydesk/` and are never overwritten by package updates.
 
 ## Install
 
@@ -271,7 +271,7 @@ sudo pacman -Syu swaydesk-desktop
 [SwayFX](https://github.com/WillPower3309/swayfx) is Sway with rounded corners, blur and shadows, and on Arch it can replace Sway with the same configuration. It comes from the AUR, through an AUR helper: `yay -S swayfx` (or `paru -S swayfx`); pacman replaces `sway` with it, and `swaydesk-desktop` stays installed, since `swayfx` provides `sway`. To go back, `sudo pacman -S sway`.
 
 - It's third-party software, outside the project's support, and an update that brings a new wlroots can break it until the AUR catches up. If the session doesn't start after an update, go back to Sway from a text console (Ctrl+Alt+F2).
-- Swaydesk turns the effects on by itself at the next login, from the `[effects]` section of `~/.config/sway-desktop/config.toml`.
+- Swaydesk turns the effects on by itself at the next login, from the `[effects]` section of `~/.config/swaydesk/config.toml`.
 - The blur behind the bar, the dock and the popups (`layer_blur`) is off by default, since it showed visual glitches in a VM; turn it on with `layer_blur = true`.
 - Window animations are off by default; turn them on with `animation_duration_ms = 250` (in milliseconds, up to 5000) in the same section. They need SwayFX 0.6 or newer: on 0.5, a value above 0 is a config error (swaynag shows it, and the rest loads).
 

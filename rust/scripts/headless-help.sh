@@ -53,14 +53,14 @@ cat > "$HOME/.config/sway/config.d/50-local.conf" <<'EOF'
 bindsym --no-warn Ctrl+Alt+t exec foot
 EOF
 if [ "$mode" = profiles ]; then
-  mkdir -p "$HOME/.config/sway/keys" "$HOME/.config/sway-desktop"
+  mkdir -p "$HOME/.config/sway/keys" "$HOME/.config/swaydesk"
   for p in swaydesk i3 dwm; do printf '### Windows\n## Close the window\nbindsym $mod+q kill\n' > "$HOME/.config/sway/keys/$p.conf"; done
-  printf 'accent = "#199ca8"\nshortcuts = "dwm"\n' > "$HOME/.config/sway-desktop/config.toml"
+  printf 'accent = "#199ca8"\nshortcuts = "dwm"\n' > "$HOME/.config/swaydesk/config.toml"
 fi
 if [ "$mode" = repo ]; then
   { echo 'output HEADLESS-1 resolution 1280x2000'; grep -v '^exec' /repo/home/.config/sway/config; } > "$HOME/.config/sway/config"
   rm "$HOME/.config/sway/config.d/50-local.conf"
-  mkdir -p "$HOME/.config/sway-desktop" && printf 'locale = "pt_BR"\n[enabled]\ndock = false\n' > "$HOME/.config/sway-desktop/config.toml"
+  mkdir -p "$HOME/.config/swaydesk" && printf 'locale = "pt_BR"\n[enabled]\ndock = false\n' > "$HOME/.config/swaydesk/config.toml"
   mkdir -p "$HOME/.local/share" && ln -s /repo/home/.local/share/locale "$HOME/.local/share/locale"
 fi
 
@@ -101,7 +101,7 @@ fi
 if [ "$mode" = profiles ]; then
   # Sem ponteiro no headless, o seletor não é clicado aqui (a troca, a confirmação do dwm e o Cancelar são
   # da VM): só a abertura com cada perfil em uso. O nome no seletor e o aviso do dwm vêm do config.toml
-  conf=$HOME/.config/sway-desktop/config.toml
+  conf=$HOME/.config/swaydesk/config.toml
   for profile in dwm i3; do
     printf 'accent = "#199ca8"\nshortcuts = "%s"\n' "$profile" > "$conf"
     swaymsg 'exec ~/.local/bin/sway-help >> /tmp/app.log 2>&1' > /dev/null

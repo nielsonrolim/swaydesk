@@ -10,11 +10,11 @@
 # nem 00-keys.conf, e só os links que existiam antes dos perfis. A sessão tem de ganhar os atalhos sozinha (o
 # exec_always do config, com o sway-desktop-config keys)
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 LANG=C.UTF-8
-mkdir -p $HOME/.config/sway/config.d $HOME/.local/bin $HOME/.local/share/wallpaper $HOME/.config/sway-desktop && mkdir -m 700 $XDG_RUNTIME_DIR
+mkdir -p $HOME/.config/sway/config.d $HOME/.local/bin $HOME/.local/share/wallpaper $HOME/.config/swaydesk && mkdir -m 700 $XDG_RUNTIME_DIR
 : > $HOME/.local/share/wallpaper/current.jpg
 ln -s /repo/home/.config/sway/config $HOME/.config/sway/config
 for f in sway-desktop-config desktop_config.py sway_i18n.py sway_rust.py; do [ -e /repo/home/.local/bin/$f ] && ln -s /repo/home/.local/bin/$f $HOME/.local/bin/; done
-printf 'shortcuts = "dwm"\n' > $HOME/.config/sway-desktop/config.toml
+printf 'shortcuts = "dwm"\n' > $HOME/.config/swaydesk/config.toml
 eval "$(dbus-daemon --session --fork --print-address=1 | sed 's/^/export DBUS_SESSION_BUS_ADDRESS=/')"
 sway -d -c $HOME/.config/sway/config > /tmp/sway.log 2>&1 &
 sleep 6

@@ -11,7 +11,7 @@
 # abaixo do cartão, que tem de passar para o clique fora e fechar o popup. Sai com 1 se algo falhar.
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
-mkdir -p "$HOME/.local/bin" "$HOME/.config/sway-desktop" /tmp/fakebin && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" /tmp/fakebin && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do [ -f "$f" ] && ln -sf "$f" "$HOME/.local/bin/"; done
 for f in /bin/swaydesk-*; do [ "${f##*/}" = swaydesk-vpointer ] || cp "$f" "$HOME/.local/bin/"; done
 # Com /tmp/lineout, a placa ganha uma terceira porta (a lista cresce com o popup aberto)

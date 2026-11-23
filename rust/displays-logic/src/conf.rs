@@ -26,7 +26,7 @@ fn quotable(identity: &str) -> bool {
 pub fn render(items: &[(String, String, OutputConfig)]) -> String {
     let mut text = String::from(
         "# Gerado pelo app Telas (swaydesk-displays): mude pelo app, não à mão, ou a próxima gravação\n\
-         # desfaz. Os outros conjuntos de monitores ficam em ~/.config/sway-desktop/displays.json.\n",
+         # desfaz. Os outros conjuntos de monitores ficam em ~/.config/swaydesk/displays.json.\n",
     );
     // Só as ligadas: o arquivo vale no login para qualquer conjunto, e um "disable" da tela do notebook
     // apagaria a única tela de quem liga sem o monitor externo. Desligar é do serviço, que sabe o conjunto

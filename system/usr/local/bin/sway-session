@@ -82,7 +82,25 @@ share="${here%/*/*}/share"
 if [ "$mode" = package ]; then
   dconf_profile="$share/sway-desktop/dconf/sway"
 else
+  # Nos dotfiles, as pastas sway-desktop → swaydesk antes de qualquer leitura (no pacote, o setup lá embaixo
+  # faz, antes do Sway). Primeiro o Python, que é o código do repositório (um swaydesk-desktop-config antigo
+  # não conhece o comando: sai com o usage); sem ele (só Rust), o que estiver lá. Os avisos (uma pasta que
+  # ficou) vão para o log. O prazo só existe para nunca prender o login: a migração leva milissegundos
+  config_cmd="$HOME/.local/bin/sway-desktop-config"
+  if [ -x "$config_cmd" ]; then
+    migrated=0
+    for impl in python ""; do
+      if migrate_out=$(SWAY_DESKTOP_CONFIG_IMPL=$impl timeout 20 "$config_cmd" migrate 2>&1); then
+        migrated=1
+        break
+      fi
+    done
+    [ -n "$migrate_out" ] && printf '%s\n' "$migrate_out"
+    [ "$migrated" = 1 ] || echo "sway-session: sway-desktop-config migrate failed: the old folders stay in use"
+  fi
+  # A velha (o link da migração, ou a pasta que ficou) ou, numa conta nova, a swaydesk
   dconf_profile="$HOME/.local/share/sway-desktop/dconf/sway"
+  [ -e "$HOME/.local/share/sway-desktop" ] || dconf_profile="$HOME/.local/share/swaydesk/dconf/sway"
 fi
 [ -f "$dconf_profile" ] && export DCONF_PROFILE="$dconf_profile"
 export SWAYDESK_SESSION=$mode
@@ -174,7 +192,7 @@ fi
 # O cache do KService (ksycoca) montado antes, sem o prefixo, não se refaz sozinho: o nome do arquivo
 # só depende das pastas XDG. Refaz uma vez, em segundo plano, quando o prefixo muda
 if [ -n "${XDG_MENU_PREFIX-}" ]; then
-  stamp="${XDG_CACHE_HOME:-$HOME/.cache}/sway-desktop/ksycoca-menu-prefix"
+  stamp="${XDG_CACHE_HOME:-$HOME/.cache}/swaydesk/ksycoca-menu-prefix"
   if [ "$(cat "$stamp" 2>/dev/null)" != "$XDG_MENU_PREFIX" ]; then
     for build in kbuildsycoca6 kbuildsycoca5; do
       if command -v "$build" >/dev/null 2>&1; then

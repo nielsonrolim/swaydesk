@@ -8,8 +8,11 @@ fn repo() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..").canonicalize().unwrap()
 }
 
+/// Uma pasta por teste: os testes rodam em paralelo no mesmo processo
 fn tempdir() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("swaydesk-setup-cli-{}", std::process::id()));
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    let dir = std::env::temp_dir().join(format!("swaydesk-setup-cli-{}-{n}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
@@ -61,9 +64,15 @@ fn first_login_copies_the_skel_and_generates() {
 
     let out = setup(&home, &keyboard);
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-    for rel in [".config/sway-desktop/config.toml", ".config/gammastep/config.ini", ".local/share/wallpaper/current.jpg"] {
-        assert_eq!(std::fs::read(home.join(rel)).unwrap(), std::fs::read(repo().join("home-copy").join(rel)).unwrap(), "{rel}");
+    // Conta nova: a config.toml do skel (.config/sway-desktop no repositório) vai para a pasta nova, sem o link
+    for (rel, skel) in [
+        (".config/swaydesk/config.toml", ".config/sway-desktop/config.toml"),
+        (".config/gammastep/config.ini", ".config/gammastep/config.ini"),
+        (".local/share/wallpaper/current.jpg", ".local/share/wallpaper/current.jpg"),
+    ] {
+        assert_eq!(std::fs::read(home.join(rel)).unwrap(), std::fs::read(repo().join("home-copy").join(skel)).unwrap(), "{rel}");
     }
+    assert!(std::fs::symlink_metadata(home.join(".config/sway-desktop")).is_err());
     let local = std::fs::read_to_string(home.join(".config/sway/config.d/50-local.conf")).unwrap();
     assert!(local.ends_with("input type:keyboard {\n    xkb_layout   br\n    xkb_variant  abnt2\n}\n"), "{local}");
     let pinned = std::fs::read_to_string(home.join(".local/share/sway-dock/pinned")).unwrap();
@@ -71,17 +80,40 @@ fn first_login_copies_the_skel_and_generates() {
     // O generate: as cores da Waybar e a folha da sessão do pacote, que as importa
     assert!(home.join(".config/waybar/accent.css").is_file());
     assert!(home.join(".config/waybar/fonts.css").is_file());
-    let wrapper = std::fs::read_to_string(home.join(".config/swaydesk-desktop/waybar/style.css")).unwrap();
+    let wrapper = std::fs::read_to_string(home.join(".config/swaydesk/waybar/style.css")).unwrap();
     assert!(wrapper.contains("@import url(\"../../waybar/accent.css\");\n@import url(\"../../waybar/fonts.css\");\n@import url(\"/usr/share/swaydesk-desktop/waybar/style.css\");\n"), "{wrapper}");
 
     // O segundo login: o que o usuário mudou fica
-    std::fs::write(home.join(".config/sway-desktop/config.toml"), "accent = \"#7c3aed\"\n").unwrap();
+    std::fs::write(home.join(".config/swaydesk/config.toml"), "accent = \"#7c3aed\"\n").unwrap();
     std::fs::remove_file(home.join(".config/gammastep/config.ini")).unwrap();
     let out = setup(&home, &keyboard);
     assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
-    assert_eq!(std::fs::read_to_string(home.join(".config/sway-desktop/config.toml")).unwrap(), "accent = \"#7c3aed\"\n");
+    assert_eq!(std::fs::read_to_string(home.join(".config/swaydesk/config.toml")).unwrap(), "accent = \"#7c3aed\"\n");
     assert!(home.join(".config/gammastep/config.ini").is_file(), "o que falta volta");
     assert!(std::fs::read_to_string(home.join(".config/waybar/accent.css")).unwrap().contains("7c3aed"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn the_login_after_0_1_3_moves_the_folders_and_keeps_the_config() {
+    let dir = tempdir();
+    let home = dir.join("home");
+    let keyboard = dir.join("sem-teclado");
+    std::fs::create_dir_all(home.join(".config/sway-desktop")).unwrap();
+    std::fs::write(home.join(".config/sway-desktop/config.toml"), "accent = \"#7c3aed\"\n").unwrap();
+    std::fs::create_dir_all(home.join(".config/swaydesk-desktop/waybar")).unwrap();
+    std::fs::write(home.join(".config/swaydesk-desktop/waybar/config.jsonc"), "{}").unwrap();
+    std::fs::create_dir_all(home.join(".local/state/sway-desktop")).unwrap();
+    std::fs::write(home.join(".local/state/sway-desktop/accent-auto"), "#abcdef").unwrap();
+    let out = setup(&home, &keyboard);
+    assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+    assert_eq!(std::fs::read_link(home.join(".config/sway-desktop")).unwrap(), PathBuf::from("swaydesk"));
+    assert_eq!(std::fs::read_to_string(home.join(".config/swaydesk/config.toml")).unwrap(), "accent = \"#7c3aed\"\n");
+    assert_eq!(std::fs::read_link(home.join(".config/swaydesk-desktop/waybar")).unwrap(), PathBuf::from("../swaydesk/waybar"));
+    assert_eq!(std::fs::read_to_string(home.join(".local/state/swaydesk/accent-auto")).unwrap(), "#abcdef");
+    // O generate do setup já usa a config migrada e grava a folha da Waybar na pasta nova
+    assert!(std::fs::read_to_string(home.join(".config/waybar/accent.css")).unwrap().contains("7c3aed"));
+    assert!(home.join(".config/swaydesk/waybar/style.css").is_file());
     let _ = std::fs::remove_dir_all(&dir);
 }
 

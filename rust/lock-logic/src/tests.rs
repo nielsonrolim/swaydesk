@@ -151,7 +151,7 @@ fn missing_wallpaper_and_cached_blur_never_generates() {
     assert_eq!(cached_blur(&image, 800, 600, &env), None);
     assert!(!dir.join("cache").exists());
     let path = blur_path(&image, 800, 600, &env).unwrap();
-    assert!(path.starts_with(dir.join("cache/sway-desktop")));
+    assert!(path.starts_with(dir.join("cache/swaydesk")));
     write(&path, b"png");
     assert_eq!(cached_blur(&image, 800, 600, &env), Some(path));
 }
@@ -159,7 +159,7 @@ fn missing_wallpaper_and_cached_blur_never_generates() {
 #[test]
 fn cache_dir_without_xdg() {
     let env: HashMap<String, String> = [("HOME".to_string(), "/home/ana".to_string())].into();
-    assert_eq!(cache_dir(&env), PathBuf::from("/home/ana/.cache/sway-desktop"));
+    assert_eq!(cache_dir(&env), PathBuf::from("/home/ana/.cache/swaydesk"));
 }
 
 #[test]

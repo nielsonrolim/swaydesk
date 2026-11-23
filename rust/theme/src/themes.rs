@@ -233,12 +233,10 @@ pub fn locked<T>(change: impl FnOnce() -> T) -> Result<T, Error> {
     Ok(change()) // a trava sai ao fechar o arquivo
 }
 
+/// A pasta de estado do que veio da sway-desktop (accent-auto, icon-theme, as cópias de antes do tema): a nova
+/// ou a velha, pelo `swaydesk_common::dirs`. Os marcadores que sempre foram da swaydesk/ não passam por aqui.
 pub fn state_dir() -> PathBuf {
-    match std::env::var_os("XDG_STATE_HOME").filter(|d| !d.is_empty()) {
-        Some(dir) => PathBuf::from(dir),
-        None => dc::home().join(".local/state"),
-    }
-    .join("sway-desktop")
+    swaydesk_common::dirs::state_dir()
 }
 
 /// Guarda o arquivo do usuário antes da primeira alteração. Depois, ele já é nosso.
@@ -470,11 +468,11 @@ pub fn profiles() -> PathBuf {
 }
 
 /// Se a sessão do Sway lê o banco próprio. Quem o liga é o sway-session dos dotfiles, que exporta o
-/// DCONF_PROFILE quando ~/.local/share/sway-desktop/dconf/sway existe. Só com os pacotes, nada o exporta: os
+/// DCONF_PROFILE quando ~/.local/share/sway-desktop/dconf/sway (ou a da swaydesk) existe. Só com os pacotes, nada o exporta: os
 /// apps leem a base normal, e gravar no banco do Sway não mudaria nada (visto na VM, Sway aberto pelo tty).
 fn sway_profile_in_use() -> bool {
     std::env::var_os("DCONF_PROFILE").is_some_and(|v| !v.is_empty())
-        || config::data_home().join("sway-desktop/dconf/sway").is_file()
+        || swaydesk_common::dirs::data_dir().join("dconf/sway").is_file()
 }
 
 /// O DCONF_PROFILE da base do Sway, de onde quer que se rode. Numa sessão antiga, ou sem o banco próprio em

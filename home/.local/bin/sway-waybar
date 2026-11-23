@@ -13,7 +13,7 @@
 # restart reabre pelos programas ao lado deste script (/usr/libexec/swaydesk), não pelo ~/.local/bin.
 #
 # Nos dois modos, a cada subida, o sway-desktop-config waybar grava o config sem os módulos desligados no
-# [enabled.bar] (~/.config/swaydesk-desktop/waybar/config.jsonc), a partir do modelo da sessão: o do pacote ou
+# [enabled.bar] (~/.config/swaydesk/waybar/config.jsonc), a partir do modelo da sessão: o do pacote ou
 # o ~/.config/waybar/config.jsonc. Se ele falhar, a Waybar sobe com o modelo e um aviso vai para o log: a
 # barra nunca some por causa do [enabled]. O restart aplica uma mudança da barra.
 set -u
@@ -47,7 +47,18 @@ waybar_args() {
     echo "sway-waybar: the Waybar config without the modules off in [enabled.bar] was not generated; using $template" >&2
     args=(-c "$template")
   fi
-  ((package)) && args+=(-s "${XDG_CONFIG_HOME:-$HOME/.config}/swaydesk-desktop/waybar/style.css")
+  if ((package)); then
+    # A pasta da Waybar do pacote, a mesma do desktop_config.waybar_dir: a velha (o link da migração, ou a que
+    # ficou) ou a de dentro da pasta de config que vale
+    local cfg=${XDG_CONFIG_HOME:-$HOME/.config} dir
+    dir=$cfg/swaydesk-desktop/waybar
+    if [[ ! -e $dir ]]; then
+      dir=$cfg/sway-desktop
+      [[ -e $dir ]] || dir=$cfg/swaydesk
+      dir=$dir/waybar
+    fi
+    args+=(-s "$dir/style.css")
+  fi
 }
 
 # pgrep e pkill só deste usuário: com outro logado, a Waybar dele faria esperar à toa

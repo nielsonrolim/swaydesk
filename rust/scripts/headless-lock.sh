@@ -16,7 +16,7 @@
 # Digitar a senha fica para as VMs: o Sway headless não tem teclado virtual. Sai com 1 se algum falhar.
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
-mkdir -p "$HOME/.local/bin" "$HOME/.config/sway-desktop" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
 cp /bin/swaydesk-lock "$HOME/.local/bin/"
 # Um swaylock falso: anota que foi chamado e fica, como o de verdade
@@ -100,7 +100,7 @@ grep -q "panicked" "$XDG_RUNTIME_DIR/sway-lock.log" && fail "pânico no log"
 # Os CRITICAL de dentro do gtk4-layer-shell (o locker recusado e a troca de monitor) aparecem, sem falhar
 criticals=$(grep -c "CRITICAL" "$XDG_RUNTIME_DIR/sway-lock.log")
 [ "$criticals" = 0 ] || printf 'aviso   %s CRITICAL no log (veja abaixo)\n' "$criticals"
-blurs=$(ls "$HOME/.cache/sway-desktop"/lock-*.png 2>/dev/null | wc -l)
+blurs=$(ls "$HOME/.cache/swaydesk"/lock-*.png 2>/dev/null | wc -l)
 [ "$blurs" = 2 ] && ok "o desfoque dos dois tamanhos no cache" || fail "$blurs fundos no cache (esperava 2)"
 [ "$(grep -c "background 1024x768" "$XDG_RUNTIME_DIR/sway-lock.log")" = 2 ] && ok "o monitor religado também ganha o fundo" || fail "o monitor religado ficou sem o fundo"
 grep -q "monitor HEADLESS-2 gone" "$XDG_RUNTIME_DIR/sway-lock.log" && ok "o monitor desligado sai da lista" || fail "o monitor desligado ficou na lista"

@@ -36,7 +36,7 @@ input type:touchpad {
 }
 
 # --- Autostart ---
-# Os componentes passam pelo sway-if-enabled: com false no [enabled] do ~/.config/sway-desktop/config.toml,
+# Os componentes passam pelo sway-if-enabled: com false no [enabled] do ~/.config/swaydesk/config.toml,
 # não sobem (vale ao entrar de novo). Os atalhos deles não precisam: quem eles chamam confere sozinho
 exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE MOZ_ENABLE_WAYLAND QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME ELECTRON_OZONE_PLATFORM_HINT _JAVA_AWT_WM_NONREPARENTING DCONF_PROFILE SWAYDESK_SESSION GTK_IM_MODULE
 # Só onde o sway-session o definiu (Kubuntu): o menu dos apps do KDE abertos pelo D-Bus
@@ -124,7 +124,7 @@ for_window [app_id="^be\.alexandervanhee\.gradia$"] floating enable, resize set 
 for_window [app_id="^org\.swaydesktop\.Help$"] floating enable, resize set 960 680, move position center
 
 # Atalhos: o keys/base.conf (os de todos os perfis) e o keys/<perfil>.conf do shortcuts do
-# ~/.config/sway-desktop/config.toml (swaydesk, i3, hyprland, niri ou dwm), na pasta keys ao lado deste config
+# ~/.config/swaydesk/config.toml (swaydesk, i3, hyprland, niri ou dwm), na pasta keys ao lado deste config
 # (no repositório, nos dotfiles; em /usr/share/swaydesk-desktop/sway, no pacote). O config.d/00-keys.conf tem os
 # dois include, lido no include do config.d abaixo; o 50-local.conf vem depois e vale mais. O exec_always o
 # regrava para esta sessão (sway-desktop-config keys) a cada início e reload, e recarrega se ele mudou: um config

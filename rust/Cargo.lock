@@ -1380,6 +1380,7 @@ name = "swaydesk-displays-logic"
 version = "0.1.4"
 dependencies = [
  "serde_json",
+ "swaydesk-common",
 ]
 
 [[package]]

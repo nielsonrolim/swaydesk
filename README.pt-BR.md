@@ -36,7 +36,7 @@ O `swaydesk-common` traz os dados e as fontes em comum, e o `swaydesk-scripts` o
 - O `swaydesk-desktop` instala a sessão **Sway Desktop**, que você escolhe no gerenciador de login (ou no `swaydesk-greeter`), e depende de todos os pacotes acima.
 - No login, a sessão abre o Sway com a configuração do Swaydesk. Ela aplica o tema e inicia a Waybar, a dock, o serviço de notificações, o indicador na tela, a troca de janelas, o histórico da área de transferência e os serviços da sessão (inatividade, bloqueio, chaveiro). Os popups, a grade de apps e os painéis de captura abrem quando chamados.
 - O app Tema grava um só conjunto de cores para todos os componentes: trocar a cor de destaque muda o desktop inteiro.
-- As suas configurações ficam em `~/.config/sway-desktop/`, e as atualizações dos pacotes nunca as sobrescrevem.
+- As suas configurações ficam em `~/.config/swaydesk/`, e as atualizações dos pacotes nunca as sobrescrevem.
 
 ## Instalação
 
@@ -271,7 +271,7 @@ sudo pacman -Syu swaydesk-desktop
 O [SwayFX](https://github.com/WillPower3309/swayfx) é o Sway com cantos arredondados, blur e sombras, e no Arch pode substituir o Sway com o mesmo config. Ele vem do AUR, por um AUR helper: `yay -S swayfx` (ou `paru -S swayfx`); o pacman troca o `sway` por ele, e o `swaydesk-desktop` continua instalado, porque o `swayfx` provê o `sway`. Para voltar, `sudo pacman -S sway`.
 
 - É mantido por terceiros, fora do suporte do projeto, e uma atualização que traga um wlroots novo pode quebrá-lo até o AUR acompanhar. Se a sessão não abrir depois de uma atualização, volte ao Sway num console de texto (Ctrl+Alt+F2).
-- O Swaydesk liga os efeitos sozinho no próximo login, pela seção `[effects]` do `~/.config/sway-desktop/config.toml`.
+- O Swaydesk liga os efeitos sozinho no próximo login, pela seção `[effects]` do `~/.config/swaydesk/config.toml`.
 - O blur atrás da barra, da dock e dos popups (`layer_blur`) vem desligado por padrão, porque apareceu lixo visual numa VM; ligue com `layer_blur = true`.
 - As animações das janelas vêm desligadas; ligue com `animation_duration_ms = 250` (em milissegundos, até 5000) na mesma seção. Precisam do SwayFX 0.6 ou mais novo: no 0.5, um valor acima de 0 dá erro de config (o swaynag avisa, e o resto carrega).
 

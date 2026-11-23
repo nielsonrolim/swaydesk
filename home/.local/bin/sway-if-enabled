@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Roda o comando só se o componente estiver ligado no [enabled] do ~/.config/sway-desktop/config.toml (a chave
+# Roda o comando só se o componente estiver ligado no [enabled] do ~/.config/swaydesk/config.toml (a chave
 # ausente liga). O config do Sway embrulha com ele os exec dos componentes do início da sessão:
 #   exec $bin/sway-if-enabled dock sh -c 'while …; do (a dock); sleep 1; done'
 # O laço fica dentro do comando: desligado, o componente nem entra nele. A leitura é a do sway-desktop-config

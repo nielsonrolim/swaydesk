@@ -41,7 +41,7 @@ wait_layout() {  # espera até 5 s pelo layout
   for _ in $(seq 50); do [ "$(layout)" = "$1" ] && break; sleep 0.1; done
   layout
 }
-profiles=$HOME/.config/sway-desktop/displays.json
+profiles=$HOME/.config/swaydesk/displays.json
 # Um perfil: pares "chave x y" das ligadas
 write_profile() {
   python3 - "$profiles" "$@" <<'EOF'

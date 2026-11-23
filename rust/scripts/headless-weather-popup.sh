@@ -8,10 +8,10 @@
 # algo falhar.
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
-mkdir -p "$HOME/.local/bin" "$HOME/.config/sway-desktop" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do [ -f "$f" ] && ln -sf "$f" "$HOME/.local/bin/"; done
 for f in /bin/swaydesk-*; do [ "${f##*/}" = swaydesk-vpointer ] || cp "$f" "$HOME/.local/bin/"; done
-printf 'weather_location = "Teste"\n' > "$HOME/.config/sway-desktop/config.toml"
+printf 'weather_location = "Teste"\n' > "$HOME/.config/swaydesk/config.toml"
 python3 - <<'PY'
 import json, time
 from datetime import date, timedelta

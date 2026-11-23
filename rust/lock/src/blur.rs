@@ -73,7 +73,7 @@ mod tests {
             make_blur(&image, width, 100, &env, 3).unwrap();
             std::thread::sleep(std::time::Duration::from_millis(10));
         }
-        let names: Vec<String> = std::fs::read_dir(dir.join("cache/sway-desktop")).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+        let names: Vec<String> = std::fs::read_dir(dir.join("cache/swaydesk")).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
         assert_eq!(names.iter().filter(|n| n.starts_with("lock-")).count(), 3);
         assert!(!names.iter().any(|n| n.starts_with(".lock-")));
     }

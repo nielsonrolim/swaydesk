@@ -51,22 +51,27 @@ pub fn home() -> PathBuf {
     config::home()
 }
 
-/// A pasta de config do usuário (a mãe da sway-desktop/config.toml).
+/// A pasta de config do usuário (a mãe da swaydesk/config.toml).
 pub fn config_home() -> PathBuf {
     config::path().parent().and_then(Path::parent).map(Path::to_path_buf).unwrap_or_else(|| home().join(".config"))
 }
 
 /// O share/sway-desktop da instalação, ao lado da pasta do binário (~/.local/bin → ~/.local/share), como
 /// o Python usa o da pasta do script. SWAY_DESKTOP_SHARE troca, para os testes rodarem o binário compilado.
+/// No pacote, /usr/share/sway-desktop (o nome fica). Nos dotfiles, ~/.local/share/sway-desktop é o link da
+/// migração ou a pasta velha; numa conta nova, só existe a ~/.local/share/swaydesk.
 pub fn share_dir() -> PathBuf {
     if let Some(dir) = std::env::var_os("SWAY_DESKTOP_SHARE").filter(|d| !d.is_empty()) {
         return PathBuf::from(dir);
     }
-    let beside = std::env::current_exe().ok().and_then(|exe| Some(exe.parent()?.parent()?.join("share/sway-desktop")));
-    match beside {
-        Some(dir) if dir.is_dir() => dir,
-        _ => data_home().join("sway-desktop"),
+    let prefix = std::env::current_exe().ok().and_then(|exe| Some(exe.parent()?.parent()?.join("share")));
+    for name in [swaydesk_common::dirs::OLD, swaydesk_common::dirs::NEW] {
+        match &prefix {
+            Some(share) if share.join(name).is_dir() => return share.join(name),
+            _ => {}
+        }
     }
+    swaydesk_common::dirs::data_dir()
 }
 
 pub fn templates() -> PathBuf {
@@ -165,8 +170,8 @@ pub fn get(config: &Config, key: &str) -> Option<String> {
 
 /// Os modelos que o render_template usa
 pub const TEMPLATE_NAMES: &[&str] = &["swaylock.conf", "kitty-theme.conf", "rofi.rasi"];
-/// O tema do rofi do sway-launcher, no XDG_DATA_HOME
-pub const ROFI_THEME: &str = "sway-desktop/rofi/sway-desktop.rasi";
+/// O tema do rofi do sway-launcher, na pasta de dados (`swaydesk_common::dirs::data_dir`)
+pub const ROFI_THEME: &str = "rofi/sway-desktop.rasi";
 
 /// O modelo com as cores, em hexadecimal sem o #. O erro diz o caminho, como o do Python.
 pub fn render_template(name: &str, colors: &Palette) -> std::io::Result<String> {
@@ -374,7 +379,7 @@ fn program_is_swayfx(program: impl AsRef<std::ffi::OsStr>) -> bool {
 pub fn sway_keys(config: &Config, keys: &Path) -> String {
     let keys = keys.display();
     format!(
-        "# Gerado pelo sway-desktop-config: os atalhos do perfil; mude o shortcuts em ~/.config/sway-desktop/config.toml\n\
+        "# Gerado pelo sway-desktop-config: os atalhos do perfil; mude o shortcuts em ~/.config/swaydesk/config.toml\n\
          include \"{keys}/base.conf\"\ninclude \"{keys}/{}.conf\"\n",
         config.shortcuts
     )
@@ -388,12 +393,12 @@ pub fn sway_effects(effects: &Effects, swayfx: bool) -> String {
     if !swayfx {
         return format!(
             "{GENERATED}: o Sway sem os efeitos; com o SwayFX (no Arch, pelo AUR), o [effects] de\n\
-             # ~/.config/sway-desktop/config.toml vale aqui\n"
+             # ~/.config/swaydesk/config.toml vale aqui\n"
         );
     }
     let on = |flag: bool| if flag { "enable" } else { "disable" };
     let mut text = format!(
-        "{GENERATED}: os efeitos do SwayFX; mude em ~/.config/sway-desktop/config.toml ([effects])\n\
+        "{GENERATED}: os efeitos do SwayFX; mude em ~/.config/swaydesk/config.toml ([effects])\n\
          corner_radius {}\n",
         effects.corner_radius
     );
@@ -460,7 +465,7 @@ pub fn qt_settings(version: u8, config: &Config, fonts: &Fonts) -> String {
 pub fn mimeapps(config: &Config) -> String {
     let desktop = get(config, "file_manager_desktop").unwrap_or_default();
     format!(
-        "{GENERATED}: mude o gerenciador em ~/.config/sway-desktop/config.toml (file_manager)\n\
+        "{GENERATED}: mude o gerenciador em ~/.config/swaydesk/config.toml (file_manager)\n\
          [Default Applications]\ninode/directory={desktop}.desktop\n"
     )
 }
@@ -469,7 +474,8 @@ pub fn mimeapps(config: &Config) -> String {
 pub const PACKAGE_WAYBAR_STYLE: &str = "/usr/share/swaydesk-desktop/waybar/style.css";
 
 /// A folha da Waybar na sessão do pacote: as cores e as fontes geradas, depois a do pacote. Os caminhos das
-/// duas primeiras são relativos a este arquivo (~/.config/swaydesk-desktop/waybar/style.css).
+/// duas primeiras são relativos a este arquivo (~/.config/swaydesk/waybar/style.css, ou a pasta velha: a
+/// profundidade é a mesma).
 /// SWAYDESK_WAYBAR_STYLE troca a do pacote, para os testes.
 pub fn waybar_wrapper() -> String {
     let base = std::env::var("SWAYDESK_WAYBAR_STYLE").ok().filter(|v| !v.is_empty()).unwrap_or_else(|| PACKAGE_WAYBAR_STYLE.into());
@@ -486,7 +492,7 @@ pub fn waybar_wrapper() -> String {
 pub fn generated_files(colors: &Palette, config: &Config, fonts: &Fonts) -> std::io::Result<Vec<(&'static str, String)>> {
     let css = config::css_colors(colors);
     let sway = format!(
-        "# Gerado pelo sway-desktop-config: mude a cor em ~/.config/sway-desktop/config.toml\n\
+        "# Gerado pelo sway-desktop-config: mude a cor em ~/.config/swaydesk/config.toml\n\
          client.focused {a} {a} {} {} {a}\n",
         colors.on_accent,
         colors.bright,
@@ -630,6 +636,18 @@ pub fn resolved(file: &Path) -> PathBuf {
     if file.is_symlink() { file.canonicalize().unwrap_or_else(|_| file.to_path_buf()) } else { file.to_path_buf() }
 }
 
+/// Onde vai um dos generated_files: na pasta de config, menos os da Waybar do pacote, que vão para a
+/// `swaydesk_common::dirs::waybar_dir` (a nova ou a velha).
+pub fn generated_path(base: &Path, name: &str) -> PathBuf {
+    match name.strip_prefix(WAYBAR_PREFIX) {
+        Some(rest) => swaydesk_common::dirs::waybar_dir().join(rest),
+        None => base.join(name),
+    }
+}
+
+/// O prefixo dos generated_files que vão para a pasta da Waybar do pacote.
+pub const WAYBAR_PREFIX: &str = "swaydesk-desktop/waybar/";
+
 /// Grava os arquivos. Devolve os compartilhados que ficaram como estavam, por serem de outro.
 pub fn generate(config: &Config) -> std::io::Result<Vec<String>> {
     generate_with(config, &gtk_fonts())
@@ -644,11 +662,11 @@ pub fn generate_with(config: &Config, fonts: &Fonts) -> std::io::Result<Vec<Stri
             kept.push(name.to_string());
             continue;
         }
-        write_file(&base.join(name), &content)?;
+        write_file(&generated_path(&base, name), &content)?;
     }
     kept.extend(sync_gtk_css(&base, &colors, &other_desktops())?);
     // O tema do rofi do sway-launcher (Alt+Espaço)
-    write_file(&data_home().join(ROFI_THEME), &render_template("rofi.rasi", &colors)?)?;
+    write_file(&swaydesk_common::dirs::data_dir().join(ROFI_THEME), &render_template("rofi.rasi", &colors)?)?;
     Ok(kept)
 }
 
@@ -867,7 +885,7 @@ mod tests {
         let config = Config { shortcuts: "dwm".into(), ..Config::default() };
         assert_eq!(
             sway_keys(&config, Path::new("/k")),
-            "# Gerado pelo sway-desktop-config: os atalhos do perfil; mude o shortcuts em ~/.config/sway-desktop/config.toml\n\
+            "# Gerado pelo sway-desktop-config: os atalhos do perfil; mude o shortcuts em ~/.config/swaydesk/config.toml\n\
              include \"/k/base.conf\"\ninclude \"/k/dwm.conf\"\n"
         );
         assert!(sway_keys(&Config::default(), Path::new("/k")).ends_with("include \"/k/swaydesk.conf\"\n"));
@@ -876,7 +894,7 @@ mod tests {
     #[test]
     fn sway_effects_like_python() {
         // Os mesmos textos do EffectsTests do tests/test_desktop_config.py
-        let head = "# Gerado pelo sway-desktop-config: os efeitos do SwayFX; mude em ~/.config/sway-desktop/config.toml ([effects])\n";
+        let head = "# Gerado pelo sway-desktop-config: os efeitos do SwayFX; mude em ~/.config/swaydesk/config.toml ([effects])\n";
         let default = format!(
             "{head}corner_radius 10\nblur enable\nblur_passes 2\nblur_radius 5\nshadows enable\nshadow_blur_radius 20\n\
              shadow_color #0000004D\ndefault_dim_inactive 0.00\n"
@@ -896,7 +914,7 @@ mod tests {
         assert_eq!(
             plain,
             "# Gerado pelo sway-desktop-config: o Sway sem os efeitos; com o SwayFX (no Arch, pelo AUR), o [effects] de\n\
-             # ~/.config/sway-desktop/config.toml vale aqui\n"
+             # ~/.config/swaydesk/config.toml vale aqui\n"
         );
         assert!(plain.lines().all(|l| l.starts_with('#')));
         assert!(!BLUR_LAYERS.contains(&"popup-click-catcher") && !BLUR_LAYERS.contains(&"sway-capture"));

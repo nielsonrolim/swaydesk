@@ -1,4 +1,4 @@
-//! A config do desktop (`~/.config/sway-desktop/config.toml`), as cores e as fontes: o porte do que
+//! A config do desktop (`~/.config/swaydesk/config.toml`, ou a pasta velha: veja `dirs`), as cores e as fontes: o porte do que
 //! os componentes usam de `desktop_config.py`. Um valor ruim vira aviso e não invalida os outros.
 use std::collections::{BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
@@ -280,7 +280,7 @@ pub fn shortcut_keys_file(profile: &str) -> Option<PathBuf> {
 }
 
 pub fn path() -> PathBuf {
-    env_dir("XDG_CONFIG_HOME", ".config").join("sway-desktop").join("config.toml")
+    crate::dirs::config_dir().join("config.toml")
 }
 
 pub fn data_home() -> PathBuf {

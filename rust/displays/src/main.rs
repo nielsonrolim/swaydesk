@@ -7,7 +7,7 @@
 //!      swaydesk-displays --check   só confere que o binário carrega
 //!
 //! Aplicar muda as telas na hora e pergunta se mantém; sem resposta em 15 s, volta ao que era. Manter
-//! guarda o perfil do conjunto (~/.config/sway-desktop/displays.json) e o arquivo que o Sway lê no login
+//! guarda o perfil do conjunto (~/.config/swaydesk/displays.json) e o arquivo que o Sway lê no login
 //! (~/.config/sway/config.d/90-displays.conf).
 mod daemon;
 mod identify;

@@ -2997,7 +2997,7 @@ msgid "Off"
 msgstr ""
 
 #: rust/help/src/cards.rs
-msgid "Turned off. To turn it on: %s in ~/.config/sway-desktop/config.toml, then log in again"
+msgid "Turned off. To turn it on: %s in ~/.config/swaydesk/config.toml, then log in again"
 msgstr ""
 
 #: rust/help/src/cards.rs

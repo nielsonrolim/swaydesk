@@ -1,4 +1,4 @@
-"""A config única do desktop (~/.config/sway-desktop/config.toml), sem GTK.
+"""A config única do desktop (~/.config/swaydesk/config.toml), sem GTK.
 
 Arquivo ausente ou inválido usa os padrões: nenhum widget pode deixar de abrir por causa dele.
 """
@@ -133,7 +133,7 @@ def config_home():
 
 
 def path():
-    return config_home() / "sway-desktop" / "config.toml"
+    return config_dir() / "config.toml"
 
 
 COMPONENTS = ("auto", "python", "rust")
@@ -393,6 +393,180 @@ def cache_home():
     return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache")
 
 
+def state_home():
+    return _xdg("XDG_STATE_HOME", ".local/state")
+
+
+def _xdg(name, fallback):
+    """Um XDG_* absoluto, ou o padrão: um relativo é ignorado, como pede a especificação (os caminhos e os links
+    da migração dependeriam do cwd)."""
+    value = os.environ.get(name) or ""
+    return Path(value) if os.path.isabs(value) else Path.home() / fallback
+
+
+# As pastas com o nome novo (swaydesk) e a migração das velhas (sway-desktop): o mesmo que o
+# swaydesk_common::dirs do Rust, com os mesmos casos (a explicação completa está lá).
+# Leitura e escrita: vale a velha enquanto ela existe e não é o nosso link (uma pasta de verdade ou um link do
+# usuário); senão, a nova. A migração só roda no login (setup, sway-session) e no install.sh, nunca no meio da
+# sessão.
+NEW_DIR = "swaydesk"
+OLD_DIR = "sway-desktop"
+
+
+def dir_pairs():
+    """Os pares (velho, novo) na ordem da migração: as pastas-mãe antes da aninhada da Waybar."""
+    config, data, state = _xdg("XDG_CONFIG_HOME", ".config"), _xdg("XDG_DATA_HOME", ".local/share"), state_home()
+    return [
+        (config / OLD_DIR, config / NEW_DIR),
+        (data / OLD_DIR, data / NEW_DIR),
+        (state / OLD_DIR, state / NEW_DIR),
+        (config / "swaydesk-desktop/waybar", config / NEW_DIR / "waybar"),
+    ]
+
+
+def link_target(old, new):
+    """O caminho de new relativo à pasta de old: o alvo do link que fica no lugar do velho."""
+    return Path(os.path.relpath(new, old.parent))
+
+
+def _is_our_link(old, new):
+    try:
+        target = Path(os.readlink(old))
+    except OSError:
+        return False
+    return target in (link_target(old, new), new)
+
+
+def _is_real_dir(path):
+    return path.is_dir() and not path.is_symlink()
+
+
+def pick_dir(old, new):
+    """A pasta que vale para o par: a velha enquanto existe e não é o nosso link; senão, a nova."""
+    return old if old.is_dir() and not _is_our_link(old, new) else new
+
+
+def config_dir():
+    config = _xdg("XDG_CONFIG_HOME", ".config")
+    return pick_dir(config / OLD_DIR, config / NEW_DIR)
+
+
+def data_dir():
+    data = _xdg("XDG_DATA_HOME", ".local/share")
+    return pick_dir(data / OLD_DIR, data / NEW_DIR)
+
+
+def state_dir():
+    return pick_dir(state_home() / OLD_DIR, state_home() / NEW_DIR)
+
+
+def waybar_dir():
+    """Para onde o nosso link aponta (mesmo que o par da config tenha ficado no velho); senão, a velha de verdade;
+    senão, a de dentro da config em uso."""
+    config = _xdg("XDG_CONFIG_HOME", ".config")
+    old, new = config / "swaydesk-desktop/waybar", config / NEW_DIR / "waybar"
+    if _is_our_link(old, new):
+        return new
+    if old.is_dir():
+        return old
+    return config_dir() / "waybar"
+
+
+def cache_dir():
+    """O cache não migra: recomeça vazio no novo."""
+    return _xdg("XDG_CACHE_HOME", ".cache") / NEW_DIR
+
+
+MAX_ROUNDS = 2  # quantas vezes o velho pode ser recriado por fora entre o esvaziar e o link
+CONFIG_PAIR, WAYBAR_PAIR = 0, 3  # os índices em dir_pairs()
+
+
+def _symlink_or_merge(old, new, round_=0):
+    try:
+        os.symlink(link_target(old, new), old)
+        return "moved"
+    except FileExistsError as err:
+        # Alguém de fora da trava recriou o velho entre o rename e o link: os itens dele vão para o novo
+        if round_ < MAX_ROUNDS:
+            return _merge(old, new, round_ + 1)
+        return f"failed: {old}: {err}"
+    except OSError as err:
+        return f"failed: {old}: {err}"
+
+
+def _merge(old, new, round_=0):
+    try:
+        names = sorted(p.name for p in old.iterdir())
+    except OSError as err:
+        return f"failed: {old}: {err}"
+    both = [n for n in names if os.path.lexists(new / n)]
+    if both:
+        return both
+    for moved, name in enumerate(names):
+        try:
+            os.rename(old / name, new / name)
+        except OSError as err:
+            # Desfaz o que já foi: com o velho ainda pasta, o helper continua nele, e os itens movidos sumiriam
+            message = f"failed: {old / name}: {err}"
+            for back in reversed(names[:moved]):
+                try:
+                    os.rename(new / back, old / back)
+                except OSError as err2:
+                    message += f"; and {new / back} could not go back: {err2}"
+            return message
+    try:
+        old.rmdir()
+    except OSError as err:
+        return f"failed: {old}: {err}"
+    return _symlink_or_merge(old, new, round_)
+
+
+def migrate_pair(old, new):
+    """Migra um par: "nothing", "moved", a lista dos itens que existem nos dois, ou "failed: …"."""
+    if not _is_real_dir(old):
+        return "nothing"
+    if not os.path.lexists(new):
+        try:
+            new.parent.mkdir(parents=True, exist_ok=True)
+            os.rename(old, new)
+        except OSError as err:
+            return f"failed: {old} → {new}: {err}"
+        return _symlink_or_merge(old, new)
+    if not _is_real_dir(new):
+        return f"failed: {new}: not a folder"
+    return _merge(old, new)
+
+
+def migrate_dirs():
+    """Migra todos os pares sob a trava (a mesma do Rust) e devolve uma linha por par que não migrou de vez."""
+    import fcntl
+    lock = _xdg("XDG_CACHE_HOME", ".cache") / "swaydesk-migrate.lock"
+    try:
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        handle = open(lock, "a")
+        fcntl.flock(handle, fcntl.LOCK_EX)
+    except OSError as err:
+        return [f"folders not migrated: lock {lock}: {err}"]
+    messages = []
+    config_in_use = True
+    with handle:
+        for index, (old, new) in enumerate(dir_pairs()):
+            # A pasta da Waybar só vai para dentro da config nova se a config nova é a que vale
+            if index == WAYBAR_PAIR and not config_in_use:
+                if _is_real_dir(old):
+                    messages.append(f"{old} kept: {dir_pairs()[CONFIG_PAIR][0]} stays in use")
+                continue
+            result = migrate_pair(old, new)
+            if index == CONFIG_PAIR:
+                config_in_use = result in ("nothing", "moved") and not _is_real_dir(old)
+            if isinstance(result, list):
+                messages.append(f"{old} kept: {', '.join(result)} also exists in {new}; the old folder stays in use"
+                                f" until you merge them by hand")
+            elif result.startswith("failed: "):
+                messages.append(f"{old} not migrated: {result.removeprefix('failed: ')}")
+    return messages
+
+
 def icon_dirs():
     """Onde ficam os temas de ícones, do que vence para o que perde. SWAY_SYSTEM_ICONS troca o do
     sistema: os testes não dependem do que está instalado em quem os roda."""
@@ -626,7 +800,7 @@ def sway_keys(config, keys=None):
     return f'{KEYS_HEAD}\ninclude "{keys}/base.conf"\ninclude "{keys}/{config.shortcuts}.conf"\n'
 
 
-KEYS_HEAD = "# Gerado pelo sway-desktop-config: os atalhos do perfil; mude o shortcuts em ~/.config/sway-desktop/config.toml"
+KEYS_HEAD = "# Gerado pelo sway-desktop-config: os atalhos do perfil; mude o shortcuts em ~/.config/swaydesk/config.toml"
 
 
 def sway_effects(effects, swayfx):
@@ -635,9 +809,9 @@ def sway_effects(effects, swayfx):
     não conhece a diretiva, e 0 já é o padrão do 0.6."""
     if not swayfx:
         return (f"{GENERATED}: o Sway sem os efeitos; com o SwayFX (no Arch, pelo AUR), o [effects] de\n"
-                "# ~/.config/sway-desktop/config.toml vale aqui\n")
+                "# ~/.config/swaydesk/config.toml vale aqui\n")
     on = lambda flag: "enable" if flag else "disable"  # noqa: E731
-    text = (f"{GENERATED}: os efeitos do SwayFX; mude em ~/.config/sway-desktop/config.toml ([effects])\n"
+    text = (f"{GENERATED}: os efeitos do SwayFX; mude em ~/.config/swaydesk/config.toml ([effects])\n"
             f"corner_radius {effects.corner_radius}\nblur {on(effects.blur)}\n")
     if effects.blur:
         text += "blur_passes 2\nblur_radius 5\n"
@@ -688,8 +862,8 @@ PACKAGE_WAYBAR_STYLE = "/usr/share/swaydesk-desktop/waybar/style.css"
 
 def waybar_wrapper():
     """A folha da Waybar na sessão do pacote: as cores e as fontes geradas, depois a do pacote. Os caminhos
-    das duas primeiras são relativos a este arquivo (~/.config/swaydesk-desktop/waybar/style.css).
-    SWAYDESK_WAYBAR_STYLE troca a do pacote, para os testes."""
+    das duas primeiras são relativos a este arquivo (~/.config/swaydesk/waybar/style.css, ou a pasta velha: a
+    profundidade é a mesma). SWAYDESK_WAYBAR_STYLE troca a do pacote, para os testes."""
     base = os.environ.get("SWAYDESK_WAYBAR_STYLE") or PACKAGE_WAYBAR_STYLE
     base = base.replace("\\", "\\\\").replace('"', '\\"')
     return ("/* Gerado pelo sway-desktop-config: a Waybar da sessão do pacote (swaydesk-desktop) */\n"
@@ -698,13 +872,13 @@ def waybar_wrapper():
             f'@import url("{base}");\n')
 
 
-ROFI_THEME = "sway-desktop/rofi/sway-desktop.rasi"  # no XDG_DATA_HOME; o sway-launcher o lê
+ROFI_THEME = "rofi/sway-desktop.rasi"  # na data_dir(); o sway-launcher o lê
 
 
 def generated_files(colors, config=None, fonts=None):
     """O que depende do tema e não pode lê-lo: {caminho relativo à pasta de config: conteúdo}."""
     css = css_colors(colors)
-    sway = (f"# Gerado pelo sway-desktop-config: mude a cor em ~/.config/sway-desktop/config.toml\n"
+    sway = (f"# Gerado pelo sway-desktop-config: mude a cor em ~/.config/swaydesk/config.toml\n"
             f"client.focused {colors.accent} {colors.accent} {colors.on_accent} {colors.bright} {colors.accent}\n")
     config = config or Config()
     settings = gtk_settings(config)
@@ -754,11 +928,17 @@ def mimeapps(config):
     Só vale com XDG_CURRENT_DESKTOP=sway: o GNOME e o KDE continuam com o deles. Sem isso, no Kubuntu
     as pastas abriam no Dolphin, que vence pela ordem."""
     desktop = get(config, "file_manager_desktop")
-    return (f"{GENERATED}: mude o gerenciador em ~/.config/sway-desktop/config.toml (file_manager)\n"
+    return (f"{GENERATED}: mude o gerenciador em ~/.config/swaydesk/config.toml (file_manager)\n"
             f"[Default Applications]\ninode/directory={desktop}.desktop\n")
 
 
-WAYBAR_GENERATED = "swaydesk-desktop/waybar/config.jsonc"  # na pasta de config, como o style.css do pacote
+WAYBAR_GENERATED = "config.jsonc"  # na waybar_dir(), como o style.css do pacote
+WAYBAR_PREFIX = "swaydesk-desktop/waybar/"  # os generated_files que vão para a waybar_dir()
+
+
+def generated_path(base, name):
+    """Onde vai um dos generated_files: na pasta de config, menos os da Waybar do pacote (a waybar_dir())."""
+    return waybar_dir() / name.removeprefix(WAYBAR_PREFIX) if name.startswith(WAYBAR_PREFIX) else base / name
 
 
 def strip_jsonc(text):
@@ -818,7 +998,7 @@ def waybar_template():
 def write_waybar(config, template=None):
     """Grava o config da Waybar filtrado e devolve o caminho. OSError ou ValueError se não deu."""
     template = Path(template) if template else waybar_template()
-    out = config_home() / WAYBAR_GENERATED
+    out = waybar_dir() / WAYBAR_GENERATED
     write_file(out, waybar_config(template.read_text(encoding="utf-8"), config))
     return out
 
@@ -936,10 +1116,10 @@ def generate(config):
         if name in SHARED_FILES and not ours(base / name):
             kept.append(name)
             continue
-        write_file(base / name, content)
+        write_file(generated_path(base, name), content)
     kept += sync_gtk_css(base, colors, other_desktops())
     # O tema do rofi do sway-launcher (Alt+Espaço)
-    write_file(data_home() / ROFI_THEME, render_template("rofi.rasi", colors))
+    write_file(data_dir() / ROFI_THEME, render_template("rofi.rasi", colors))
     # A Waybar sem os módulos desligados. Sem o modelo, ou com ele quebrado, o sway-waybar usa o modelo
     try:
         write_waybar(config)

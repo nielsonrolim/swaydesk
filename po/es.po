@@ -3011,8 +3011,8 @@ msgid "Off"
 msgstr "Desactivado"
 
 #: rust/help/src/cards.rs
-msgid "Turned off. To turn it on: %s in ~/.config/sway-desktop/config.toml, then log in again"
-msgstr "Desactivado. Para activarlo: %s en ~/.config/sway-desktop/config.toml y vuelve a iniciar sesión"
+msgid "Turned off. To turn it on: %s in ~/.config/swaydesk/config.toml, then log in again"
+msgstr "Desactivado. Para activarlo: %s en ~/.config/swaydesk/config.toml y vuelve a iniciar sesión"
 
 #: rust/help/src/cards.rs
 msgid "No shortcut"

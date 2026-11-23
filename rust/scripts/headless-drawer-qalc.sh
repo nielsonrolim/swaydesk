@@ -21,7 +21,7 @@ if ! command -v qalc >/dev/null || ! command -v wl-paste >/dev/null; then
   exit 1
 fi
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
-mkdir -p "$HOME/.local/bin" "$HOME/.config/sway-desktop" "$HOME/.local/share/applications" /tmp/fake \
+mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" "$HOME/.local/share/applications" /tmp/fake \
   && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
 for f in /bin/swaydesk-*; do cp "$f" "$HOME/.local/bin/"; done

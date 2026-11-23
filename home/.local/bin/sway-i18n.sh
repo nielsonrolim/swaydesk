@@ -13,8 +13,11 @@ _sway_i18n_dir=${SWAY_I18N_LOCALEDIR:-${_sway_i18n_self%/*}/../share/locale}
 # Instalado por pacote (swaydesk-scripts), este arquivo fica em /usr/libexec/swaydesk, e as traduções em
 # /usr/share/locale (swaydesk-common)
 [ -d "$_sway_i18n_dir" ] || _sway_i18n_dir=/usr/share/locale
+# A pasta velha (o link da migração, ou a que ficou) ou a swaydesk
+_sway_i18n_conf=${XDG_CONFIG_HOME:-$HOME/.config}/sway-desktop
+[ -e "$_sway_i18n_conf" ] || _sway_i18n_conf=${XDG_CONFIG_HOME:-$HOME/.config}/swaydesk
 _sway_i18n_lang=$(sed -n 's/^[[:space:]]*locale[[:space:]]*=[[:space:]]*"\([a-z][a-z]_[A-Z][A-Z]\)".*/\1/p' \
-  "${XDG_CONFIG_HOME:-$HOME/.config}/sway-desktop/config.toml" 2>/dev/null) || _sway_i18n_lang=
+  "$_sway_i18n_conf/config.toml" 2>/dev/null) || _sway_i18n_lang=
 _sway_i18n_lang=${_sway_i18n_lang%%"
 "*}
 if [ -z "$_sway_i18n_lang" ]; then

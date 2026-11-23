@@ -17,7 +17,8 @@ pub mod pam;
 
 pub const WALLPAPER: &str = ".local/share/wallpaper/current.jpg";
 pub const ACCOUNTS: &str = "/var/lib/AccountsService";
-const CACHE_NAME: &str = "sway-desktop";
+/// O cache não migra da sway-desktop: recomeça vazio na swaydesk (o mesmo do Python)
+const CACHE_NAME: &str = "swaydesk";
 /// O desfoque: reduz a 1/BLUR_FACTOR, amplia de novo, e escurece com preto a DARKEN (0 a 255)
 pub const BLUR_FACTOR: i32 = 24;
 pub const DARKEN: u32 = 110;
@@ -147,7 +148,7 @@ pub fn initials(name: &str) -> String {
     letters.to_uppercase()
 }
 
-/// A pasta do cache: $XDG_CACHE_HOME/sway-desktop ou ~/.cache/sway-desktop.
+/// A pasta do cache: $XDG_CACHE_HOME/swaydesk ou ~/.cache/swaydesk.
 pub fn cache_dir(env: &HashMap<String, String>) -> PathBuf {
     let base = match env.get("XDG_CACHE_HOME").filter(|v| !v.is_empty()) {
         Some(value) => PathBuf::from(value),

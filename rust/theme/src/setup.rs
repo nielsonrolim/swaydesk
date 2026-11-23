@@ -20,6 +20,7 @@ use crate::{desktop, local_conf};
 
 const LOCAL_CONF: &str = ".config/sway/config.d/50-local.conf";
 const PINNED: &str = ".local/share/sway-dock/pinned";
+/// No skel, com o nome velho; no home, vai para a pasta de config que vale (`target`)
 const CONFIG: &str = ".config/sway-desktop/config.toml";
 const XCOMPOSE: &str = ".XCompose";
 /// O último bloco do teclado que gravamos no `50-local.conf` (vazio: nenhum). Igual ao do arquivo: ninguém o
@@ -108,11 +109,21 @@ fn with_installed_theme(text: &str, installed: &dyn Fn(&str) -> bool) -> String 
         .collect()
 }
 
+/// Onde um arquivo do skel vai no home: o que está em .config/sway-desktop vai para a pasta de config que vale
+/// (a nova, ou a velha enquanto ela é uma pasta de verdade ou um link do usuário).
+fn target(home: &Path, rel: &Path) -> PathBuf {
+    let config = home.join(".config");
+    match rel.strip_prefix(".config/sway-desktop") {
+        Ok(rest) => swaydesk_common::dirs::pick(&config.join(swaydesk_common::dirs::OLD), &config.join(swaydesk_common::dirs::NEW)).join(rest),
+        Err(_) => home.join(rel),
+    }
+}
+
 /// Copia do skel para o home o que falta. Devolve os caminhos copiados, relativos ao home.
 pub fn setup(skel: &Path, home: &Path, keyboard: &Path) -> std::io::Result<Vec<PathBuf>> {
     let mut copied = Vec::new();
     for rel in skel_files(skel) {
-        let target = home.join(&rel);
+        let target = target(home, &rel);
         // symlink_metadata: um link quebrado também é do usuário
         if let Ok(meta) = target.symlink_metadata() {
             // Os fixados de antes: só um arquivo comum (um link é do usuário)
@@ -387,6 +398,24 @@ mod tests {
         assert_eq!(std::fs::read_to_string(home.join(".local/b/three")).unwrap(), "3\n");
         // De novo: nada a copiar
         assert!(setup(&skel, &home, &dir.join("sem-teclado")).unwrap().is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn the_desktop_config_goes_to_the_folder_in_use() {
+        let dir = tempdir("config-dir");
+        let home = dir.join("home");
+        // Conta nova: a pasta nova
+        assert_eq!(target(&home, Path::new(CONFIG)), home.join(".config/swaydesk/config.toml"));
+        // A velha de verdade (antes da migração, ou com o rename que falhou) vale
+        std::fs::create_dir_all(home.join(".config/sway-desktop")).unwrap();
+        assert_eq!(target(&home, Path::new(CONFIG)), home.join(".config/sway-desktop/config.toml"));
+        // Migrada: a nova, não pelo link
+        std::fs::remove_dir(home.join(".config/sway-desktop")).unwrap();
+        std::fs::create_dir_all(home.join(".config/swaydesk")).unwrap();
+        std::os::unix::fs::symlink("swaydesk", home.join(".config/sway-desktop")).unwrap();
+        assert_eq!(target(&home, Path::new(CONFIG)), home.join(".config/swaydesk/config.toml"));
+        assert_eq!(target(&home, Path::new(PINNED)), home.join(PINNED));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

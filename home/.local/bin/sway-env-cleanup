@@ -125,7 +125,10 @@ empty=()
 for v in "${vars[@]}"; do empty+=("$v="); done
 # Menos o DCONF_PROFILE: vazio, ele faz o dconf ignorar as configurações do usuário. Vai para o perfil padrão
 default=/etc/dconf/profile/user
-[[ -f $default ]] || default=$HOME/.local/share/sway-desktop/dconf/default
+# A pasta velha (o link da migração, ou a que ficou) ou a swaydesk
+data=$HOME/.local/share/sway-desktop
+[[ -e $data ]] || data=$HOME/.local/share/swaydesk
+[[ -f $default ]] || default=$data/dconf/default
 [[ -n $profile ]] && empty+=("DCONF_PROFILE=$default")
 dbus-update-activation-environment "${empty[@]}" 2>/dev/null || true
 # Só depois: o dbus-daemon repassa ao systemd o que recebe, inclusive os vazios, e o GDM entrega o

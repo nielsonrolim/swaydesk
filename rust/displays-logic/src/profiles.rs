@@ -1,5 +1,5 @@
 //! Os perfis: cada conjunto de monitores (as identidades de [`crate::outputs::keys`]) lembra o seu layout,
-//! em `~/.config/sway-desktop/displays.json`. O app grava ao "Manter"; o serviço só lê.
+//! em `~/.config/swaydesk/displays.json` (ou na pasta velha, pelo `swaydesk_common::dirs`). O app grava ao "Manter"; o serviço só lê.
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -12,11 +12,7 @@ const VERSION: i64 = 1;
 
 /// O arquivo dos perfis, ao lado do config.toml do desktop
 pub fn path() -> PathBuf {
-    let base = std::env::var_os("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .filter(|p| p.is_absolute())
-        .unwrap_or_else(|| PathBuf::from(std::env::var_os("HOME").unwrap_or_else(|| "/".into())).join(".config"));
-    base.join("sway-desktop").join("displays.json")
+    swaydesk_common::dirs::config_dir().join("displays.json")
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]

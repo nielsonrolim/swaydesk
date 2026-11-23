@@ -8,7 +8,7 @@
 # - tudo menos os apps são modos de script deste script (o rofi chama "sway-launcher windows-mode" e os
 #   outros), iguais nos dois rofi, sem plugins: o 1.7 do Debian 13 roda pelo Xwayland e não vê as janelas
 #   Wayland, e o 2.0 do Ubuntu só as vê com o protocolo do wlroots;
-# - as buscas da web ficam no ~/.config/sway-desktop/launcher.conf (veja o read_config);
+# - as buscas da web ficam no ~/.config/swaydesk/launcher.conf (veja o read_config);
 # - o tema é o gerado pelo sway-desktop-config, nas cores do destaque, nunca o ~/.config/rofi de quem usa.
 #
 # uso: sway-launcher toggle    apps, janelas e área de transferência
@@ -19,8 +19,13 @@ self=$(readlink -f "$0")
 # O rofi separa os modos por vírgula e o comando por espaço: com um desses no caminho, pelo PATH
 mode_cmd=$self
 [[ $self == *[\ ,]* ]] && mode_cmd=sway-launcher
-theme=${XDG_DATA_HOME:-$HOME/.local/share}/sway-desktop/rofi/sway-desktop.rasi
-config=${XDG_CONFIG_HOME:-$HOME/.config}/sway-desktop/launcher.conf
+# As pastas velhas (o link da migração, ou as que ficaram) ou as swaydesk
+data=${XDG_DATA_HOME:-$HOME/.local/share}/sway-desktop
+[[ -e $data ]] || data=${XDG_DATA_HOME:-$HOME/.local/share}/swaydesk
+conf=${XDG_CONFIG_HOME:-$HOME/.config}/sway-desktop
+[[ -e $conf ]] || conf=${XDG_CONFIG_HOME:-$HOME/.config}/swaydesk
+theme=$data/rofi/sway-desktop.rasi
+config=$conf/launcher.conf
 
 # O ícone de uma janela: o Icon= do .desktop do app (pelo nome do app_id, sem diferenciar maiúsculas, ou pelo
 # StartupWMClass). O app_id nem sempre é nome de ícone (org.kde.kcalc é accessories-calculator), e a caixa

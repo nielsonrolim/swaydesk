@@ -85,14 +85,14 @@ for impl in ${IMPLS:-rust python}; do
   /bin/swaydesk-vpointer --size 1280x720 move 640 360 click sleep 300
   expect "$impl: o clique foca a usada antes" "B" "$(focused)"
   # A cor de destaque muda com o residente no ar: a próxima abertura já usa a nova
-  mkdir -p "$HOME/.config/sway-desktop"
-  printf 'accent = "#c03030"\n' > "$HOME/.config/sway-desktop/config.toml"
+  mkdir -p "$HOME/.config/swaydesk"
+  printf 'accent = "#c03030"\n' > "$HOME/.config/swaydesk/config.toml"
   SWAY_SWITCHER_IMPL=$impl "$HOME/.local/bin/sway-switcher" next
   sleep 0.5
   grim "/out/switcher-$impl-2.png"
   n=$(accent_pixels '#c03030')
   expect "$impl: a cor de destaque nova sem reiniciar" yes "$([ "${n:-0}" -gt 100 ] && echo yes || echo "no ($n px)")"
-  rm -f "$HOME/.config/sway-desktop/config.toml"
+  rm -f "$HOME/.config/swaydesk/config.toml"
   /bin/swaydesk-vpointer --size 1280x720 move 640 360 click sleep 300
   expect "$impl: a ordem segue o foco (de B volta para C)" "C" "$(focused)"
   # Sem o teclado e sem clique, o cartão fecha no prazo e o foco fica

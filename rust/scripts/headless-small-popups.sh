@@ -13,7 +13,7 @@
 # aberto. Sai com 1 se algo falhar.
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
-mkdir -p "$HOME/.local/bin" "$HOME/.config/sway-desktop" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 # Cópias, não links: o Python chama os vizinhos pelo caminho real (o BIN do waybar_popup.py), e os
 # falsos abaixo precisam estar ao lado dele
 cp /repo/home/.local/bin/* "$HOME/.local/bin/"

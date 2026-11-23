@@ -1,7 +1,8 @@
 //! O config da Waybar sem os módulos desligados no [enabled.bar]: o `waybar_config` do desktop_config.py.
 //!
 //! O modelo é o config.jsonc do pacote ou o dos dotfiles. O resultado vai para
-//! ~/.config/swaydesk-desktop/waybar/config.jsonc, que o sway-waybar usa; se a geração falhar, ele sobe a
+//! ~/.config/swaydesk/waybar/config.jsonc (ou a pasta velha: `swaydesk_common::dirs::waybar_dir`), que o
+//! sway-waybar usa; se a geração falhar, ele sobe a
 //! Waybar com o modelo (a barra nunca some por causa do [enabled]).
 use std::path::{Path, PathBuf};
 
@@ -9,8 +10,8 @@ use serde_json::Value;
 use swaydesk_common::config::{Config, BAR_MODULES};
 use swaydesk_theme::desktop as dc;
 
-/// Na pasta de config, como o style.css do pacote.
-pub const GENERATED: &str = "swaydesk-desktop/waybar/config.jsonc";
+/// Na pasta da Waybar do pacote, como o style.css.
+pub const GENERATED: &str = "config.jsonc";
 const HEADER: &str = "// Gerado pelo sway-desktop-config a partir do modelo, sem os módulos desligados no [enabled.bar]\n";
 
 /// O JSONC sem os comentários (// e /* */ fora das strings).
@@ -97,7 +98,7 @@ pub fn write(config: &Config, template: Option<&Path>) -> Result<PathBuf, String
         }
     };
     let text = std::fs::read_to_string(&template).map_err(|e| format!("{}: {e}", template.display()))?;
-    let out = config_home.join(GENERATED);
+    let out = swaydesk_common::dirs::waybar_dir().join(GENERATED);
     dc::write_file(&out, &filtered(&text, config, swaydesk_theme::which("checkupdates"))?).map_err(|e| format!("{}: {e}", out.display()))?;
     Ok(out)
 }

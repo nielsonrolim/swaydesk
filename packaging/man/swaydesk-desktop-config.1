@@ -24,7 +24,7 @@ enabled NAME
 waybar
 [TEMPLATE]
 .SH DESCRIPTION
-Reads ~/.config/sway\-desktop/config.toml for the shell scripts and writes the files that depend on the accent color.
+Reads ~/.config/swaydesk/config.toml for the shell scripts and writes the files that depend on the accent color.
 .PP
 The session runs it under the name sway\-desktop\-config (a link in the package's helper directory to /usr/bin/swaydesk\-desktop\-config); the process name is sway\-desktop\-config too.
 .SH OPTIONS
@@ -68,7 +68,7 @@ template when it fails. generate writes it too.
 Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
 .SH FILES
 .TP
-.I ~/.config/sway\-desktop/config.toml
+.I ~/.config/swaydesk/config.toml
 The desktop configuration: language (locale), accent color (accent), GTK and icon themes (gtk_theme, icon_theme), folder color (folder_color), file manager (file_manager), weather location (weather_location) and holidays (holidays). The fonts come from the GTK system font.
 .IP
 The [enabled] table turns session components off with false: dock, app_grid, switcher, notifications, osd,

@@ -14,7 +14,7 @@
 # exec, a dock e a grade sobem. Sai com 1 se algum caso falhar.
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
-mkdir -p "$HOME/.local/bin" "$HOME/.config/sway-desktop" "$HOME/.config/waybar" /tmp/fake && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" "$HOME/.config/waybar" /tmp/fake && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
 for b in dock drawer desktop-config; do cp "/bins/swaydesk-$b" "$HOME/.local/bin/"; done
 cp /repo/home/.config/waybar/config.jsonc "$HOME/.config/waybar/config.jsonc"
@@ -27,7 +27,7 @@ chmod +x /tmp/fake/waybar
 export PATH=/tmp/fake:$PATH
 
 config() {  # dock app_grid weather
-  printf '[enabled]\ndock = %s\napp_grid = %s\n[enabled.bar]\nweather = %s\n' "$1" "$2" "$3" > "$HOME/.config/sway-desktop/config.toml"
+  printf '[enabled]\ndock = %s\napp_grid = %s\n[enabled.bar]\nweather = %s\n' "$1" "$2" "$3" > "$HOME/.config/swaydesk/config.toml"
 }
 config false false false
 
@@ -66,7 +66,7 @@ sleep 1
 # A barra: o config sem o módulo do tempo, a partir do modelo dos dotfiles
 "$HOME/.local/bin/sway-waybar" > /tmp/waybar.log 2>&1 & loop=$!
 for _ in $(seq 50); do [ -s /tmp/waybar-args ] && break; sleep 0.1; done
-gen=$HOME/.config/swaydesk-desktop/waybar/config.jsonc
+gen=$HOME/.config/swaydesk/waybar/config.jsonc
 if grep -qx -- "-c $gen" /tmp/waybar-args; then ok "a Waybar sobe com o config filtrado"; else fail "a Waybar subiu com: $(cat /tmp/waybar-args)"; fi
 python3 - "$gen" <<'PY' && ok "o filtrado não tem o custom/weather e tem o resto" || fail "o filtrado está errado"
 import json, re, sys
