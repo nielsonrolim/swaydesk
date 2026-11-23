@@ -118,6 +118,7 @@ Package: swaydesk-desktop
 Architecture: all
 Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), swaydesk-notifd (>= ${source:Version}), swaydesk-notifd (<< ${source:Version}.1~), swaydesk-dock (>= ${source:Version}), swaydesk-dock (<< ${source:Version}.1~), swaydesk-drawer (>= ${source:Version}), swaydesk-drawer (<< ${source:Version}.1~), swaydesk-widgets (>= ${source:Version}), swaydesk-widgets (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-theme (>= ${source:Version}), swaydesk-theme (<< ${source:Version}.1~), swaydesk-session (>= ${source:Version}), swaydesk-session (<< ${source:Version}.1~), swaydesk-efi (>= ${source:Version}), swaydesk-efi (<< ${source:Version}.1~), ${misc:Depends}, sway, swaybg, swayidle, swaylock, waybar, kitty, rofi, qalc, jq, curl, wl-clipboard, cliphist, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, dconf-cli, libglib2.0-bin, fonts-noto-core, fonts-noto-color-emoji, gnome-themes-extra, adw-gtk-theme, systemd, mate-polkit | lxpolkit
 Recommends: papirus-icon-theme, thunar | file-manager, grim, slurp, wf-recorder, brightnessctl, playerctl, pavucontrol, gammastep, blueman, network-manager-applet | network-manager-gnome, libnotify-bin, power-profiles-daemon, xwayland, qt5ct, qt6ct, gnome-text-editor
+Suggests: fcitx5
 Description: Sway desktop - the full session
  The "Sway Desktop" session for the display manager: the Sway and Waybar
  configuration, the session scripts and the first-login setup, using

@@ -16,8 +16,16 @@ const KNOWN: &[&str] = &[
 /// As chaves do [enabled]: os componentes da sessão que podem ser desligados (o ENABLED_KEYS do Python).
 pub const ENABLED_KEYS: &[&str] = &[
     "dock", "app_grid", "switcher", "notifications", "osd", "clipboard_history", "nightlight", "bing_wallpaper",
-    "polkit_agent", "update_notifier", "displays", "autostart",
+    "polkit_agent", "update_notifier", "displays", "autostart", "input_method",
 ];
+/// As chaves do [enabled] que vêm desligadas: só um `true` (do usuário ou da camada do sistema) liga. O
+/// input_method (o fcitx5, para o ç no Chromium e no Electron) muda a digitação de todos os apps: num sistema que já
+/// existe, os pacotes não o ligam sozinhos; as ISOs ligam pelo SYSTEM_PATH. O DEFAULT_OFF do Python.
+pub const DEFAULT_OFF: &[&str] = &["input_method"];
+/// A camada do sistema: só o [enabled] dela é lido, por baixo do config do usuário (a chave do usuário vence).
+/// Nenhum pacote a traz; as ISOs a trazem com os padrões delas. O SWAYDESK_SYSTEM_CONFIG troca o caminho nos
+/// testes.
+pub const SYSTEM_PATH: &str = "/etc/swaydesk/config.toml";
 /// As do [enabled.bar], com o módulo da Waybar de cada uma (o BAR_MODULES do Python). Os workspaces, o
 /// sway/mode e a bandeja ficam sempre.
 pub const BAR_MODULES: &[(&str, &str)] = &[
@@ -84,8 +92,10 @@ pub struct Config {
     /// "always" ou "never"; "auto" sem a chave ou com um valor inválido
     pub power_profiles_in_system: String,
     /// Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui
-    /// está ligado: a chave ausente liga, para um config antigo continuar como era
+    /// está ligado: a chave ausente liga, para um config antigo continuar como era (menos as do DEFAULT_OFF)
     pub disabled: BTreeSet<String>,
+    /// Os ligados com true no [enabled]: só contam para as chaves do DEFAULT_OFF
+    pub turned_on: BTreeSet<String>,
     /// Os efeitos do SwayFX ([effects]); o Sway puro os ignora
     pub effects: Effects,
 }
@@ -93,7 +103,20 @@ pub struct Config {
 impl Config {
     /// Se o componente está ligado. Um nome desconhecido conta como ligado.
     pub fn enabled(&self, name: &str) -> bool {
-        !self.disabled.contains(name)
+        if self.disabled.contains(name) {
+            return false;
+        }
+        !DEFAULT_OFF.contains(&name) || self.turned_on.contains(name)
+    }
+
+    /// Põe por baixo o [enabled] da camada do sistema: cada chave que o usuário não deu fica com o valor dela.
+    pub fn with_system(mut self, system: &Config) -> Config {
+        let given = |name: &String| self.disabled.contains(name) || self.turned_on.contains(name);
+        let off: Vec<String> = system.disabled.iter().filter(|n| !given(n)).cloned().collect();
+        let on: Vec<String> = system.turned_on.iter().filter(|n| !given(n)).cloned().collect();
+        self.disabled.extend(off);
+        self.turned_on.extend(on);
+        self
     }
 }
 
@@ -102,13 +125,14 @@ pub fn known_component(name: &str) -> bool {
     ENABLED_KEYS.contains(&name) || name.strip_prefix("bar.").is_some_and(|m| BAR_MODULES.iter().any(|(k, _)| *k == m))
 }
 
-/// Os nomes desligados do [enabled]. Um valor que não é true nem false, ou um nome desconhecido, avisa e
-/// deixa ligado: um erro no arquivo nunca desliga nada. O parse_enabled do Python.
-fn parse_enabled(value: &toml::Value, warnings: &mut Vec<String>) -> BTreeSet<String> {
+/// Os nomes desligados (false) e os ligados (true) do [enabled]. Um valor que não é true nem false, ou um nome
+/// desconhecido, avisa e fica com o padrão: um erro no arquivo nunca muda nada. O parse_enabled do Python.
+fn parse_enabled(value: &toml::Value, warnings: &mut Vec<String>) -> (BTreeSet<String>, BTreeSet<String>) {
     let mut off = BTreeSet::new();
+    let mut on = BTreeSet::new();
     let Some(table) = value.as_table() else {
         warnings.push("config: invalid value in enabled".to_string());
-        return off;
+        return (off, on);
     };
     for (key, value) in table {
         if let (true, Some(bar)) = (key == "bar", value.as_table()) {
@@ -125,15 +149,13 @@ fn parse_enabled(value: &toml::Value, warnings: &mut Vec<String>) -> BTreeSet<St
             }
         } else if !ENABLED_KEYS.contains(&key.as_str()) {
             warnings.push(format!("config: unknown option: enabled.{key}"));
-        } else if let Some(on) = value.as_bool() {
-            if !on {
-                off.insert(key.clone());
-            }
+        } else if let Some(value) = value.as_bool() {
+            if value { &mut on } else { &mut off }.insert(key.clone());
         } else {
             warnings.push(format!("config: invalid value in enabled.{key} (use true or false)"));
         }
     }
-    off
+    (off, on)
 }
 
 /// Os efeitos do SwayFX, do [effects] da config. Cantos, sombras e o blur das janelas vêm ligados e discretos; o
@@ -217,6 +239,7 @@ impl Default for Config {
             shortcuts: "swaydesk".to_string(),
             power_profiles_in_system: "auto".to_string(),
             disabled: BTreeSet::new(),
+            turned_on: BTreeSet::new(),
             effects: Effects::default(),
         }
     }
@@ -316,7 +339,7 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
             continue;
         }
         if key == "enabled" {
-            config.disabled = parse_enabled(value, &mut warnings);
+            (config.disabled, config.turned_on) = parse_enabled(value, &mut warnings);
             continue;
         }
         if key == "effects" {
@@ -399,13 +422,40 @@ pub fn load_config(file: &Path) -> (Config, Vec<String>) {
     }
 }
 
-/// A config do usuário; os avisos vão para o stderr (o sway.log).
+/// O caminho da camada do sistema (o SYSTEM_PATH, ou o SWAYDESK_SYSTEM_CONFIG dos testes).
+pub fn system_path() -> PathBuf {
+    std::env::var_os("SWAYDESK_SYSTEM_CONFIG").filter(|v| !v.is_empty()).map(PathBuf::from).unwrap_or_else(|| SYSTEM_PATH.into())
+}
+
+/// A camada do sistema: só o [enabled]; outra chave avisa e é ignorada. Sem o arquivo, vazia.
+pub fn load_system(file: &Path) -> (Config, Vec<String>) {
+    let table = match std::fs::read_to_string(file).map(|text| text.parse::<toml::Table>()) {
+        Ok(Ok(table)) => table,
+        Ok(Err(err)) => return (Config::default(), vec![format!("config: could not read {}: {}", file.display(), err.message())]),
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return (Config::default(), vec![]),
+        Err(err) => return (Config::default(), vec![format!("config: could not read {}: {err}", file.display())]),
+    };
+    let mut warnings: Vec<String> = table
+        .keys()
+        .filter(|k| *k != "enabled")
+        .map(|key| format!("config: {}: only [enabled] is read, not {key}", file.display()))
+        .collect();
+    let mut system = Config::default();
+    if let Some(enabled) = table.get("enabled") {
+        (system.disabled, system.turned_on) = parse_enabled(enabled, &mut warnings);
+    }
+    (system, warnings)
+}
+
+/// A config do usuário, com a camada do sistema por baixo do [enabled]; os avisos vão para o stderr (o sway.log).
 pub fn load() -> Config {
-    let (config, warnings) = load_config(&path());
+    let (config, mut warnings) = load_config(&path());
+    let (system, system_warnings) = load_system(&system_path());
+    warnings.extend(system_warnings);
     for warning in warnings {
         eprintln!("{warning}");
     }
-    config
+    config.with_system(&system)
 }
 
 /// O locale da config ou, sem ele, o de LC_ALL, LC_TIME ou LANG, nessa ordem (o primeiro que existir);
@@ -615,6 +665,43 @@ mod tests {
         let (config, warnings) = parse_config("enabled = false\n");
         assert!(config.disabled.is_empty());
         assert_eq!(warnings, ["config: invalid value in enabled"]);
+    }
+
+    #[test]
+    fn a_default_off_key_needs_a_true() {
+        assert!(!Config::default().enabled("input_method"));
+        let (config, warnings) = parse_config("[enabled]\ninput_method = true\ndock = true\n");
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert!(config.enabled("input_method") && config.enabled("dock"));
+        assert!(!parse_config("[enabled]\ninput_method = false\n").0.enabled("input_method"));
+        // Um valor ruim fica com o padrão, que aqui é desligado
+        assert!(!parse_config("[enabled]\ninput_method = \"yes\"\n").0.enabled("input_method"));
+    }
+
+    #[test]
+    fn the_system_layer_only_fills_the_keys_the_user_left_out() {
+        let system = parse_config("[enabled]\ninput_method = true\nbing_wallpaper = false\n").0;
+        let merged = Config::default().with_system(&system);
+        assert!(merged.enabled("input_method") && !merged.enabled("bing_wallpaper") && merged.enabled("dock"));
+        // A chave do usuário vence, nos dois sentidos
+        let user = parse_config("[enabled]\ninput_method = false\nbing_wallpaper = true\n").0;
+        let merged = user.with_system(&system);
+        assert!(!merged.enabled("input_method") && merged.enabled("bing_wallpaper"));
+    }
+
+    #[test]
+    fn the_system_file_gives_only_its_enabled_table() {
+        let dir = std::env::temp_dir().join(format!("swaydesk-system-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("config.toml");
+        std::fs::write(&file, "accent = \"#ff0000\"\n[enabled]\ninput_method = true\n").unwrap();
+        let (system, warnings) = load_system(&file);
+        assert!(system.enabled("input_method"));
+        assert_eq!(system.accent, DEFAULT_ACCENT, "only [enabled] comes from the system file");
+        assert_eq!(warnings, [format!("config: {}: only [enabled] is read, not accent", file.display())]);
+        let (empty, warnings) = load_system(&dir.join("missing.toml"));
+        assert!(warnings.is_empty() && !empty.enabled("input_method") && empty.enabled("dock"));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

@@ -35,7 +35,8 @@ SESSION_SCRIPTS=(sway-after-env sway-if-enabled sway-waybar sway-env-cleanup swa
                  sway-language-packs
                  blueman-agent bing-wallpaper sway-osd sway-super sway-resize sway-master sway-ws waybar-clock
                  waybar-media waybar-volume waybar-battery waybar-brightness waybar-caffeine sway-launcher
-                 sway-portal-gtk sway-has-display sway-updates waybar-updates sway-autostart)
+                 sway-portal-gtk sway-has-display sway-updates waybar-updates sway-autostart
+                 sway-input-method)
 SESSION_MODULES=(waybar-icon-lib)  # incluído com "." pelos módulos da Waybar
 share=/usr/share/swaydesk-desktop
 

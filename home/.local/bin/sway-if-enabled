@@ -5,7 +5,8 @@
 # O laço fica dentro do comando: desligado, o componente nem entra nele. A leitura é a do sway-desktop-config
 # enabled (o binário em Rust no pacote, o lançador nos dotfiles), na hora: mudar e entrar de novo já vale.
 # Os atalhos não passam por aqui (cada toque custaria a leitura): quem eles chamam confere sozinho.
-# Se o sway-desktop-config não rodar, o comando roda: um erro nunca desliga nada.
+# Se o sway-desktop-config não rodar, o comando roda: um erro nunca desliga nada (menos nas chaves que vêm
+# desligadas, como o input_method: nelas, um erro nunca liga).
 # uso: sway-if-enabled NOME COMANDO [ARG...]
 self=$(readlink -f "$0")
 # O irmão: o de ~/.local/bin (os dotfiles, onde o install.sh liga os binários em Rust) ou, na sessão do pacote,
@@ -23,6 +24,17 @@ if (($# < 2)); then
 fi
 name=$1
 shift
+# As chaves que vêm desligadas (o DEFAULT_OFF do desktop_config.py e do swaydesk_common::config): nelas, o erro
+# não liga. Só um 0 sem o aviso de nome desconhecido conta: um sway-desktop-config de antes da chave (um binário
+# velho em ~/.local/bin depois de um git pull) diz 0 com o aviso, e um que quebra sai com 2 ou 127
+DEFAULT_OFF=(input_method)
+if [[ " ${DEFAULT_OFF[*]} " == *" $name "* ]]; then
+  if err=$("$(sibling sway-desktop-config)" enabled "$name" 2>&1 >/dev/null) && [[ $err != *"unknown component"* ]]; then
+    exec "$@"
+  fi
+  echo "sway-if-enabled: $name is off (it needs $name = true in [enabled])" >&2
+  exit 0
+fi
 "$(sibling sway-desktop-config)" enabled "$name"
 if (($? != 1)); then
   exec "$@"

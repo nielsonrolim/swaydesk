@@ -110,6 +110,9 @@ exec $bin/sway-if-enabled nightlight $bin/sway-nightlight restore
 # Os apps do autostart do XDG (~/.config/autostart e /etc/xdg/autostart), pelo systemd (sway-autostart). Os que o
 # Swaydesk já roda (o blueman, o nm-applet, o agente do polkit) ficam de fora; no logout, o sway-env-cleanup os fecha
 exec $bin/sway-if-enabled autostart $bin/sway-after-env $bin/sway-autostart start
+# O fcitx5 como método de entrada ([enabled] input_method, desligado por padrão; as ISOs ligam): o ç e os acentos
+# no Chromium, no Chrome, no Vivaldi e no Electron, que no Wayland ignoram o ~/.XCompose (sway-input-method)
+exec $bin/sway-if-enabled input_method $bin/sway-after-env $bin/sway-input-method
 
 # --- Regras de janela ---
 for_window [app_id="^(pavucontrol|blueman-manager|nm-connection-editor|org.gnome.Weather)$"] floating enable

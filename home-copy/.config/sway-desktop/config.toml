@@ -68,6 +68,9 @@ displays = true            # os perfis de telas ao plugar um monitor e na tampa,
                            # nenhuma tela fica ligada (o app Telas continua)
 autostart = true           # os apps do autostart (~/.config/autostart e /etc/xdg/autostart), como os de
                            # sincronização; o Swaydesk não abre os que ele já roda (Bluetooth, rede, polkit)
+# input_method = true      # o fcitx5 como método de entrada, para o ç e os acentos no Chromium, no Chrome,
+                           # no Vivaldi e nos apps Electron. Desligado por padrão (as ISOs ligam): sem a
+                           # linha, vale o padrão do sistema (/etc/swaydesk/config.toml); com ela, o seu valor
 
 # Os módulos da barra (os workspaces e a bandeja ficam sempre)
 [enabled.bar]

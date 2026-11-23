@@ -114,8 +114,10 @@ class Config:
     # ou "never"
     power_profiles_in_system: str = "auto"
     # Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui está
-    # ligado: a chave ausente liga, para um config antigo continuar como era
+    # ligado: a chave ausente liga, para um config antigo continuar como era (menos as do DEFAULT_OFF)
     enabled: frozenset = frozenset()
+    # Os ligados com true no [enabled]: só contam para as chaves do DEFAULT_OFF. Não é uma chave do arquivo
+    turned_on: frozenset = frozenset()
     effects: Effects = Effects()  # os efeitos do SwayFX ([effects])
 
 
@@ -144,7 +146,14 @@ POWER_IN_SYSTEM = ("auto", "always", "never")
 SHORTCUT_PROFILES = {"swaydesk": "Swaydesk", "i3": "i3", "hyprland": "Hyprland", "niri": "niri", "dwm": "dwm"}
 # As chaves do [enabled]: os componentes da sessão que podem ser desligados (o enabled() do Rust tem as mesmas)
 ENABLED_KEYS = ("dock", "app_grid", "switcher", "notifications", "osd", "clipboard_history", "nightlight",
-                "bing_wallpaper", "polkit_agent", "update_notifier", "displays", "autostart")
+                "bing_wallpaper", "polkit_agent", "update_notifier", "displays", "autostart", "input_method")
+# As que vêm desligadas: só um true (do usuário ou da camada do sistema) liga. O input_method (o fcitx5, para o ç
+# no Chromium e no Electron) muda a digitação de todos os apps: num sistema que já existe, nada o liga sozinho; as
+# ISOs ligam pelo SYSTEM_PATH. O DEFAULT_OFF do swaydesk_common::config
+DEFAULT_OFF = ("input_method",)
+# A camada do sistema: só o [enabled] dela é lido, por baixo do config do usuário (a chave do usuário vence).
+# Nenhum pacote a traz; as ISOs a trazem. O SWAYDESK_SYSTEM_CONFIG troca o caminho nos testes
+SYSTEM_PATH = "/etc/swaydesk/config.toml"
 # As do [enabled.bar], com o módulo da Waybar de cada uma. Os workspaces, o sway/mode e a bandeja ficam sempre
 BAR_MODULES = {
     "weather": "custom/weather", "clock": "custom/clock", "media": "custom/media", "recording": "custom/rec",
@@ -156,28 +165,28 @@ BAR_MODULES = {
 
 
 def parse_enabled(table, warnings):
-    """Os nomes desligados do [enabled]. Um valor que não é true nem false, ou um nome desconhecido, avisa
-    e deixa ligado: um erro no arquivo nunca desliga nada."""
-    off = set()
+    """Os nomes desligados (false) e os ligados (true) do [enabled]. Um valor que não é true nem false, ou um
+    nome desconhecido, avisa e fica com o padrão: um erro no arquivo nunca muda nada."""
+    off, on = set(), set()
     if not isinstance(table, dict):
         warnings.append("config: invalid value in enabled")
-        return frozenset()
+        return frozenset(), frozenset()
     for key, value in table.items():
         if key == "bar" and isinstance(value, dict):
-            for module, on in value.items():
+            for module, shown in value.items():
                 if module not in BAR_MODULES:
                     warnings.append(f"config: unknown option: enabled.bar.{module}")
-                elif not isinstance(on, bool):
+                elif not isinstance(shown, bool):
                     warnings.append(f"config: invalid value in enabled.bar.{module} (use true or false)")
-                elif not on:
+                elif not shown:
                     off.add(f"bar.{module}")
         elif key not in ENABLED_KEYS:
             warnings.append(f"config: unknown option: enabled.{key}")
         elif not isinstance(value, bool):
             warnings.append(f"config: invalid value in enabled.{key} (use true or false)")
-        elif not value:
-            off.add(key)
-    return frozenset(off)
+        else:
+            (on if value else off).add(key)
+    return frozenset(off), frozenset(on)
 
 
 def known_component(name):
@@ -187,19 +196,29 @@ def known_component(name):
 
 def enabled(config, name):
     """Se o componente está ligado. Um nome desconhecido conta como ligado."""
-    return name not in config.enabled
+    if name in config.enabled:
+        return False
+    return name not in DEFAULT_OFF or name in config.turned_on
+
+
+def with_system(config, system):
+    """Põe por baixo o [enabled] da camada do sistema: cada chave que o usuário não deu fica com o valor dela."""
+    given = config.enabled | config.turned_on
+    return replace(config, enabled=config.enabled | (system.enabled - given),
+                   turned_on=config.turned_on | (system.turned_on - given))
 
 
 def parse_config(data):
     """Devolve a config e os avisos: um valor ruim não invalida os outros."""
     config, warnings = Config(), []
     auto_given = False
-    known = {f.name for f in fields(Config)}
+    known = {f.name for f in fields(Config)} - {"turned_on"}
     for key, value in data.items():
         if key not in known:
             warnings.append(f"config: unknown option: {key}")
         elif key == "enabled":
-            config = replace(config, enabled=parse_enabled(value, warnings))
+            off, on = parse_enabled(value, warnings)
+            config = replace(config, enabled=off, turned_on=on)
         elif key == "effects" and isinstance(value, dict):
             config = replace(config, effects=parse_effects(value, warnings))
         elif key == "effects":
@@ -248,11 +267,34 @@ def load_config(file):
         return Config(), [f"config: could not read {file}: {err}"]
 
 
+def system_path():
+    """O caminho da camada do sistema (o SYSTEM_PATH, ou o SWAYDESK_SYSTEM_CONFIG dos testes)."""
+    return Path(os.environ.get("SWAYDESK_SYSTEM_CONFIG") or SYSTEM_PATH)
+
+
+def load_system(file):
+    """A camada do sistema: só o [enabled]; outra chave avisa e é ignorada. Sem o arquivo, vazia."""
+    try:
+        with open(file, "rb") as f:
+            data = tomllib.load(f)
+    except FileNotFoundError:
+        return Config(), []
+    except (OSError, tomllib.TOMLDecodeError, UnicodeDecodeError) as err:
+        return Config(), [f"config: could not read {file}: {err}"]
+    warnings = [f"config: {file}: only [enabled] is read, not {key}" for key in data if key != "enabled"]
+    if "enabled" not in data:
+        return Config(), warnings
+    off, on = parse_enabled(data["enabled"], warnings)
+    return Config(enabled=off, turned_on=on), warnings
+
+
 def load():
+    """A config do usuário, com a camada do sistema por baixo do [enabled]; os avisos vão para o stderr."""
     config, warnings = load_config(path())
-    for warning in warnings:
+    system, system_warnings = load_system(system_path())
+    for warning in warnings + system_warnings:
         print(warning, file=sys.stderr)
-    return config
+    return with_system(config, system)
 
 
 def effective_locale(config, env=os.environ):

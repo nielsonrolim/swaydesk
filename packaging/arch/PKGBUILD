@@ -162,8 +162,11 @@ package_swaydesk-desktop() {
            playerctl pavucontrol wireplumber libpulse networkmanager network-manager-applet bluez upower gammastep
            libnotify power-profiles-daemon xdg-user-dirs qt5ct qt6ct capitaine-cursors
            gnome-keyring pacman-contrib archlinux-contrib fakeroot 'paku>=0.3.0')
+  # O fcitx5 só com o [enabled] input_method ligado (o ç no Chromium e no Electron): opcional, como no Suggests do
+  # Debian; a ISO o instala e liga
   optdepends=("gnome-text-editor: the Help's Open button, for 50-local.conf"
-              'nano: the same in the terminal, without a graphical editor')
+              'nano: the same in the terminal, without a graphical editor'
+              'fcitx5: dead keys and ç in Chromium and Electron apps, with input_method = true')
   # O portal do gtk por um drop-in na unit: o dbus-broker avisa de um segundo .service com o mesmo nome
   SWAYDESK_LIBEXEC=/usr/lib SWAYDESK_PORTAL_GTK=systemd _install swaydesk-desktop
   # A GNOME Software sem a parte de atualizações: o sway-updates avisa de tudo no Arch. O hook do glib2 compila

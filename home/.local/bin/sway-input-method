@@ -1,0 +1,230 @@
+#!/usr/bin/env bash
+# O fcitx5 como método de entrada da sessão, com o [enabled] input_method ligado (desligado por padrão; as ISOs o
+# ligam em /etc/swaydesk/config.toml). No Wayland, o Chromium (Chrome, Vivaldi, Brave) e o Electron ignoram o
+# ~/.XCompose e compõem com uma tabela própria, a do en_US: ' + c dá ć. Com o fcitx5 rodando e o navegador aberto
+# com --enable-wayland-ime, a composição passa pelo fcitx5, que lê o ~/.XCompose: dá ç. Os apps GTK continuam no
+# GTK_IM_MODULE=simple do sway-session, e o QT_IM_MODULE fica como está.
+# O config do Sway o chama no login, pelo sway-if-enabled:
+#   - sem o fcitx5 instalado, ou com outro método de entrada já configurado (o ibus que o im-config do Mint
+#     exporta), só avisa no sway.log;
+#   - o ~/.config/fcitx5/config (atalhos e complementos desligados) e os arquivos de opções dos navegadores só
+#     são criados quando não existem: os do usuário nunca são mexidos;
+#   - o ~/.config/fcitx5/profile segue o teclado da sessão (o dos ~/.config/sway/config.d), e só é reescrito
+#     enquanto ainda tem os métodos que este script escreveu (o estado guarda quais): uma troca pelo
+#     fcitx5-configtool fica.
+# uso: sway-input-method
+set -u
+log() { printf 'sway-input-method: %s\n' "$*" >&2; }
+
+if ! command -v fcitx5 >/dev/null 2>&1; then
+  log "fcitx5 is not installed: input_method = true does nothing (install the fcitx5 package)"
+  exit 0
+fi
+
+# Outro método de entrada configurado (no ~/.profile, no environment.d ou pelo im-config): não briga com ele. O
+# fcitx escolhido no im-config conta como este; o "simple" e o "compose" são os nossos, sem daemon
+# (o wayland é o protocolo que o fcitx5 serve). O QT_IM_MODULES do Qt 6.7+ é uma lista ("wayland;ibus")
+other=
+case ${GTK_IM_MODULE-} in "" | simple | wayland | fcitx | fcitx5) ;; *) other="GTK_IM_MODULE=$GTK_IM_MODULE" ;; esac
+case ${QT_IM_MODULE-} in "" | compose | wayland | fcitx | fcitx5) ;; *) other="QT_IM_MODULE=$QT_IM_MODULE" ;; esac
+IFS=';' read -r -a qt_modules <<<"${QT_IM_MODULES-}"
+for module in "${qt_modules[@]}"; do
+  case $module in "" | compose | wayland | fcitx | fcitx5) ;; *) other="QT_IM_MODULES=$QT_IM_MODULES" ;; esac
+done
+case ${XMODIFIERS-} in "" | @im=fcitx | @im=fcitx5 | @im=none) ;; *) other="XMODIFIERS=$XMODIFIERS" ;; esac
+# Um ibus-daemon (ou o fcitx 4) que o usuário sobe no 50-local.conf não põe variável nenhuma: os dois brigariam
+# pelo input method do Sway. Só os deste usuário; o exec do 50-local.conf pode vir depois deste (o Guia avisa)
+for daemon in ibus-daemon fcitx; do
+  if pgrep -u "$(id -u)" -x "$daemon" >/dev/null 2>&1; then
+    other="$daemon running"
+  fi
+done
+if [[ -n $other ]]; then
+  log "another input method is set up ($other): fcitx5 not started"
+  exit 0
+fi
+
+config=${XDG_CONFIG_HOME:-$HOME/.config}
+state=${XDG_STATE_HOME:-$HOME/.local/state}/swaydesk
+mark=$state/fcitx5-profile
+dir=$config/fcitx5
+
+# Cria o arquivo só se não houver nada no caminho: nem um link (quebrado ou não), nem um FIFO; o noclobber cobre
+# a corrida entre o teste e a escrita
+create() {
+  [[ -e $1 || -L $1 ]] && return 0
+  mkdir -p "${1%/*}" || return 1
+  (set -o noclobber; printf '%s' "$2" >"$1") 2>/dev/null
+}
+
+# O teclado da sessão: o último xkb_layout e o último xkb_variant de um "input type:keyboard" ou "input *" dos
+# config.d, na ordem do include (o session_keyboard do swaydesk_common::keyboard, que o setup usa no ~/.XCompose).
+# Sai "layout variant", com as listas do Sway (br,us e ,intl)
+session_keyboard() {
+  local files=()
+  shopt -s nullglob
+  files=("$config"/sway/config.d/*)
+  shopt -u nullglob
+  ((${#files[@]})) || return 0
+  awk '
+    FNR == 1 { inside = 0; opening = 0 }
+    {
+      sub(/#.*/, ""); gsub(/"/, ""); n = split($0, w, " ")
+      was = opening; opening = 0
+      if (n == 1 && w[1] == "{" && was) { inside = 1; next }
+      if (w[1] == "input" && (w[2] == "type:keyboard" || w[2] == "*")) {
+        if (n == 2) { opening = 1; next }
+        if (n == 3 && w[3] == "{") { inside = 1; next }
+        key = w[3]; value = w[4]; count = n - 2
+      } else if (n == 1 && w[1] == "}") { inside = 0; next }
+      else if (inside) { key = w[1]; value = w[2]; count = n }
+      else next
+      if (count == 2 && key == "xkb_layout") layout = value
+      if (count == 2 && key == "xkb_variant") variant = value
+    }
+    END { if (layout != "") print layout, variant }
+  ' "${files[@]}"
+}
+
+# O método do fcitx5 para o teclado: keyboard-<layout> ou keyboard-<layout>-<variante>, só o do primeiro layout do
+# Sway. No Sway, quem decide o layout é o Sway: na VM (br,us com Super+Espaço), a saída seguiu o layout ativo do
+# Sway com um método ou com dois; com dois, um atalho do fcitx5 (o Ctrl+Espaço padrão) forçava o outro layout por
+# cima do Sway. Um só não deixa o que trocar. Sem layout, o us, como o Sway
+input_methods() {
+  local layout variant i
+  read -r layout variant <<<"$(session_keyboard)"
+  [[ -n $layout ]] || layout=us
+  local -a layouts variants
+  IFS=, read -r -a layouts <<<"$layout"
+  IFS=, read -r -a variants <<<"${variant-}"
+  for i in "${!layouts[@]}"; do
+    [[ ${layouts[i]} =~ ^[a-z0-9_]+$ ]] || continue
+    # Com hífen também: altgr-intl, dvorak-intl, nativo-us (o fcitx5 tem keyboard-us-altgr-intl)
+    if [[ ${variants[i]-} =~ ^[A-Za-z0-9_][A-Za-z0-9_-]*$ ]]; then
+      printf 'keyboard-%s-%s\n' "${layouts[i]}" "${variants[i]}"
+    else
+      printf 'keyboard-%s\n' "${layouts[i]}"
+    fi
+    return 0
+  done
+}
+
+# Os métodos de um profile (o padrão e os itens, na ordem), para comparar com o que este script escreveu: o fcitx5
+# regrava o arquivo do jeito dele ao sair, então o texto muda, mas os métodos não
+profile_methods() {
+  awk -F= '
+    /^\[/ { section = $0; next }
+    section == "[Groups/0]" && $1 == "DefaultIM" { print "default " $2 }
+    section ~ /^\[Groups\/0\/Items\/[0-9]+\]$/ && $1 == "Name" { print $2 }
+  ' "$1" 2>/dev/null
+}
+
+# Se o profile ainda é um dos nossos: o do último login ou o de antes dele. O de antes cobre a corrida com o
+# autostart do pacote fcitx5: uma instância que sobe entre o pkill e o --replace sai com o profile que leu, o
+# do login anterior, e grava-o por cima do novo
+ours() {
+  local current
+  current=$(profile_methods "$1")
+  [[ -f $mark && $current == "$(cat "$mark")" ]] || [[ -f $mark.previous && $current == "$(cat "$mark.previous")" ]]
+}
+
+write_profile() {
+  local profile=$dir/profile methods first i=0 text
+  mapfile -t methods < <(input_methods)
+  ((${#methods[@]})) || return 0
+  first=${methods[0]}
+  # Mexido pelo usuário (ou pelo fcitx5-configtool): fica
+  if [[ -e $profile || -L $profile ]]; then
+    ours "$profile" || return 0
+  fi
+  local layout=${first#keyboard-}
+  text=$'[Groups/0]\nName=Default\nDefault Layout='"$layout"$'\nDefaultIM='"$first"$'\n'
+  for i in "${!methods[@]}"; do
+    text+=$'\n[Groups/0/Items/'"$i"$']\nName='"${methods[i]}"$'\nLayout=\n'
+  done
+  text+=$'\n[GroupOrder]\n0=Default\n'
+  mkdir -p "$dir" "$state" || return 0
+  local tmp
+  tmp=$(mktemp "$dir/.profile.XXXXXX") || return 0
+  printf '%s' "$text" >"$tmp" && mv -f "$tmp" "$profile" || { rm -f "$tmp"; return 0; }
+  [[ -f $mark ]] && ! cmp -s <(profile_methods "$profile") "$mark" && cp -f "$mark" "$mark.previous"
+  profile_methods "$profile" >"$mark.tmp" && mv -f "$mark.tmp" "$mark"
+}
+
+# Os atalhos do fcitx5 brigariam com o Sway e com os apps: o Ctrl+Espaço (nos apps), o Super+Espaço (a troca de
+# layout do Sway nos perfis swaydesk, hyprland e niri, a grade no dwm), o Ctrl+; (o histórico da área de
+# transferência), o Super+` e o Ctrl+Shift+U. As seções vazias valem "nenhum" (visto na VM). Os complementos que
+# os trazem saem, e também o da bandeja (um ícone "pt" que não seguia o layout do Sway), os avisos e o painel do
+# KDE. As listas do fcitx5 são chaves numeradas numa subseção: um DisabledAddons=a;b é ignorado
+FCITX_CONFIG='[Hotkey]
+EnumerateWithTriggerKeys=False
+EnumerateSkipFirst=False
+
+[Hotkey/TriggerKeys]
+
+[Hotkey/AltTriggerKeys]
+
+[Hotkey/EnumerateForwardKeys]
+
+[Hotkey/EnumerateBackwardKeys]
+
+[Hotkey/EnumerateGroupForwardKeys]
+
+[Hotkey/EnumerateGroupBackwardKeys]
+
+[Hotkey/ActivateKeys]
+
+[Hotkey/DeactivateKeys]
+
+[Behavior]
+ShowInputMethodInformation=False
+
+[Behavior/DisabledAddons]
+0=clipboard
+1=quickphrase
+2=unicode
+3=notificationitem
+4=cloudpinyin
+5=notifications
+6=kimpanel
+'
+
+# As opções que fazem o Chromium e o Electron usarem o método de entrada do Wayland (o text-input-v3 do Sway).
+# Sem o fcitx5 rodando elas não mudam nada (o navegador digita como antes)
+FLAGS=$'--enable-wayland-ime\n--wayland-text-input-version=3\n'
+# O arquivo que o lançador de cada um lê (os pacotes do Arch e do AUR), criado só com o programa instalado e só
+# onde há o pacman: o chromium do Debian não lê o ~/.config/chromium-flags.conf (visto na VM), e lá o fcitx5
+# chega ao navegador pelo GTK_IM_MODULE=fcitx que o im-config exporta
+flag_files() {
+  local program file
+  command -v pacman >/dev/null 2>&1 || return 0
+  while read -r program file; do
+    command -v "$program" >/dev/null 2>&1 && printf '%s\n' "$file"
+  done <<'EOF'
+chromium chromium-flags.conf
+google-chrome-stable chrome-flags.conf
+vivaldi-stable vivaldi-stable.conf
+brave brave-flags.conf
+electron electron-flags.conf
+code-oss code-flags.conf
+code code-flags.conf
+EOF
+}
+
+# Uma instância de antes (a do autostart do pacote fcitx5, ou a de um login anterior) gravaria o profile dela ao
+# sair, por cima do nosso: sai primeiro, e só então os arquivos são escritos. Só os processos deste usuário
+if pkill -u "$(id -u)" -x fcitx5 2>/dev/null; then
+  for _ in $(seq 20); do
+    pgrep -u "$(id -u)" -x fcitx5 >/dev/null 2>&1 || break
+    sleep 0.1
+  done
+fi
+
+create "$dir/config" "$FCITX_CONFIG" || true
+write_profile
+while read -r file; do
+  [[ -n $file ]] && create "$config/$file" "$FLAGS" || true
+done < <(flag_files | sort -u)
+
+log "starting fcitx5"
+exec fcitx5 -d --replace

@@ -78,7 +78,12 @@ updates page back, which the Arch package turns off by default with allow\-updat
 org.gnome.software allow\-updates true" does the same by hand), displays (the automatic
 screen profiles and the rescue that turns the screens on when none is on; the Displays app stays). and autostart (the
 XDG autostart apps of ~/.config/autostart and /etc/xdg/autostart, started through systemd; the entries that
-duplicate what Swaydesk already runs, such as blueman, nm\-applet and the polkit agents, never start in its session). The [enabled.bar] table does
+duplicate what Swaydesk already runs, such as blueman, nm\-applet and the polkit agents, never start in its session). One key is off
+unless set to true: input_method (fcitx5 as the session's input method, so dead keys and \(,c work in Chromium, Chrome,
+Vivaldi and Electron apps, which ignore ~/.XCompose on Wayland; it needs the fcitx5 package, and writes
+~/.config/fcitx5/config, ~/.config/fcitx5/profile from the session keyboard and the browsers' flag files only when they
+are missing). The system file /etc/swaydesk/config.toml, which no package installs (the ISOs do), gives defaults for
+the [enabled] table only: a key in the user's file wins. The [enabled.bar] table does
 the same for the Waybar modules: weather, clock, media, recording, notifications, clipboard, language, system,
 brightness, caffeine, bluetooth, network, volume, battery, power and updates (the Arch updates icon). A key that is absent is on. A change takes
 effect at the next login; for the bar, also when Waybar restarts.
