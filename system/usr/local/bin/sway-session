@@ -16,6 +16,7 @@ mode=dotfiles
 # Lido num processo à parte: um erro de sintaxe ou um "exit" lá não derruba a sessão.
 # Só o ambiente exportado volta para cá (um umask definido lá, por exemplo, não).
 profile_failed=
+migrate_msg=
 case ":$PATH:" in
   *":$HOME/.local/bin:"*) ;;
   *)
@@ -85,7 +86,8 @@ else
   # Nos dotfiles, as pastas sway-desktop → swaydesk antes de qualquer leitura (no pacote, o setup lá embaixo
   # faz, antes do Sway). Primeiro o Python, que é o código do repositório (um swaydesk-desktop-config antigo
   # não conhece o comando: sai com o usage); sem ele (só Rust), o que estiver lá. Os avisos (uma pasta que
-  # ficou) vão para o log. O prazo só existe para nunca prender o login: a migração leva milissegundos
+  # ficou) vão para o log: guardados aqui e escritos depois do exec para o sway.log (antes dele, a saída é a
+  # da tela de login, que ninguém vê). O prazo só existe para nunca prender o login: a migração leva milissegundos
   config_cmd="$HOME/.local/bin/sway-desktop-config"
   if [ -x "$config_cmd" ]; then
     migrated=0
@@ -95,8 +97,9 @@ else
         break
       fi
     done
-    [ -n "$migrate_out" ] && printf '%s\n' "$migrate_out"
-    [ "$migrated" = 1 ] || echo "sway-session: sway-desktop-config migrate failed: the old folders stay in use"
+    migrate_msg=$migrate_out
+    [ "$migrated" = 1 ] || migrate_msg="${migrate_msg:+$migrate_msg
+}sway-session: sway-desktop-config migrate failed: the old folders stay in use"
   fi
   # A velha (o link da migração, ou a pasta que ficou) ou, numa conta nova, a swaydesk
   dconf_profile="$HOME/.local/share/sway-desktop/dconf/sway"
@@ -143,6 +146,8 @@ if [ -n "$log_ok" ] && command exec >>"$log" 2>&1; then
     done
   ) </dev/null >/dev/null 2>&1 &
 fi
+# Os avisos da migração (dotfiles): no sway.log, ou na saída de antes, se não houver log
+[ -n "$migrate_msg" ] && printf '%s\n' "$migrate_msg"
 
 # Fixa o Sway na placa da sessão (sway-gpu card, ao lado deste arquivo): num notebook híbrido, a
 # integrada, mesmo que o módulo da NVIDIA carregue depois do login e o Sway tente usar a placa nova.
