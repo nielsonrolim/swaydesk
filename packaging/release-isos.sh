@@ -5,7 +5,8 @@
 # uma assinatura (decisão do usuário: sem GPG).
 #
 # Cada ISO entra com o nome swaydesk-X.Y.Z-<distro>.iso (debian13-amd64, debiantesting-amd64, ubuntu26.04-amd64,
-# arch-x86_64). O
+# arch-x86_64). Desde a 0.1.4 as ISOs são só Debian 13 e Arch (decisão do usuário): a de Debian Testing é
+# opcional, e ubuntu2604 fica para os Releases até a v0.1.3.1 (um --replace); o Ubuntu segue pelos pacotes. O
 # GitHub não aceita um arquivo de Release com mais de 2 GiB: uma ISO acima disso NÃO é publicada (nem aqui nem
 # na página de download do site; decisão do usuário: nada de dividir, enxugar ou outro servidor). O script
 # avisa qual ficou de fora e com que tamanho, e segue com as outras.
@@ -13,7 +14,7 @@
 # Depois do envio, baixa do Release o que acabou de subir e confere com o SHA256SUMS: o que o usuário baixa é
 # o que foi conferido aqui. Um Release que já tem um desses arquivos não é sobrescrito (nada de --clobber).
 #
-# uso: packaging/release-isos.sh [--dry-run] vX.Y.Z PASTA debian13=ISO [debiantesting=ISO] ubuntu2604=ISO arch=ISO
+# uso: packaging/release-isos.sh [--dry-run] vX.Y.Z PASTA debian13=ISO [debiantesting=ISO] [ubuntu2604=ISO] arch=ISO
 #      packaging/release-isos.sh [--dry-run] --add vX.Y.Z PASTA arch=ISO
 #      packaging/release-isos.sh [--dry-run] --replace vX.Y.Z PASTA arch=ISO [ubuntu2604=ISO ...]
 #      PASTA recebe os nomes finais (links físicos ou cópias), o SHA256SUMS e a conferência do download: fica
@@ -53,7 +54,7 @@ while [[ ${1:-} == --* ]]; do
   shift
 done
 usage() {
-  echo "uso: packaging/release-isos.sh [--dry-run] vX.Y.Z PASTA debian13=ISO [debiantesting=ISO] ubuntu2604=ISO arch=ISO" >&2
+  echo "uso: packaging/release-isos.sh [--dry-run] vX.Y.Z PASTA debian13=ISO [debiantesting=ISO] [ubuntu2604=ISO] arch=ISO" >&2
   echo "     packaging/release-isos.sh [--dry-run] --add vX.Y.Z PASTA DISTRO=ISO" >&2
   echo "     packaging/release-isos.sh [--dry-run] --replace vX.Y.Z PASTA DISTRO=ISO [DISTRO=ISO ...]" >&2
   exit 2

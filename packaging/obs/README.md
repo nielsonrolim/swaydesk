@@ -84,9 +84,12 @@ segura a versão até ser corrigida ou explicada; o resumo vai junto do pedido d
 
 7. As ISOs, quando as versões finais estiverem prontas e testadas (pode ser dias depois, com o `main`
    já adiante: o script não depende do commit): `packaging/release-isos.sh vX.Y.Z PASTA
-   debian13=… [debiantesting=…] ubuntu2604=… arch=…` (antes com `--dry-run`; a de Debian Testing é opcional). Ele as
+   debian13=… arch=…` (antes com `--dry-run`). Desde a 0.1.4 as ISOs são só Debian 13 e Arch: a de Debian Testing
+   (`debiantesting=…`) é opcional, e o Ubuntu segue só pelos pacotes (o `ubuntu2604=…` serve aos Releases até a
+   v0.1.3.1). Ele as
    anexa ao Release do espelho com os nomes `swaydesk-X.Y.Z-debian13-amd64.iso`,
-   `swaydesk-X.Y.Z-debiantesting-amd64.iso`, `swaydesk-X.Y.Z-ubuntu26.04-amd64.iso` e `swaydesk-X.Y.Z-arch-x86_64.iso`
+   `swaydesk-X.Y.Z-arch-x86_64.iso` (e `swaydesk-X.Y.Z-debiantesting-amd64.iso`, quando houver; até a v0.1.3.1, também
+   `swaydesk-X.Y.Z-ubuntu26.04-amd64.iso`)
    e um `SHA256SUMS` (só SHA-256, sem GPG), baixa de volta e confere, e põe uma seção "ISOs" no fim do texto do
    Release. Uma ISO com mais de 2 GiB (o limite de um arquivo de Release no GitHub) **não é publicada**, nem no
    Release nem na página de download do site: o script avisa qual ficou de fora, com o tamanho, e segue com as
