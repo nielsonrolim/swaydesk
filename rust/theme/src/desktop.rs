@@ -100,9 +100,38 @@ pub fn is_dark(theme: &str) -> bool {
     DARK_NAME.is_match(theme)
 }
 
-/// O tema de reserva que existe: o adw-gtk3-dark ou, sem ele (os dotfiles, sem o pacote), o Adwaita-dark.
+/// Onde os snaps ficam montados: /snap (Ubuntu, Debian) ou /var/lib/snapd/snap (Arch, Fedora).
+/// SWAY_SNAP_ROOTS (separados por ':') troca, nos testes.
+fn snap_roots() -> Vec<PathBuf> {
+    match std::env::var_os("SWAY_SNAP_ROOTS") {
+        Some(roots) => std::env::split_paths(&roots).filter(|r| !r.as_os_str().is_empty()).collect(),
+        None => vec![PathBuf::from("/snap"), PathBuf::from("/var/lib/snapd/snap")],
+    }
+}
+
+/// Se o snapd-desktop-integration está instalado (o Ubuntu Desktop). Ele lê o gtk-theme do dconf e, com um tema que
+/// os snaps não têm (o adw-gtk3-dark), avisa "Some required themes are missing" a cada login e abre o polkit ao abrir
+/// um snap, para instalar o snap de terceiros do tema. O Adwaita-dark vem com o gtk-common-themes, e não pede nada.
+/// Só o snapd não basta: sem o snapd-desktop-integration, ninguém pede o tema. Vale para o que ainda não foi gravado:
+/// uma conta que já tem o adw-gtk3-dark na config e no dconf fica com ele se o snap vier depois, de propósito (não dá
+/// para distinguir de uma escolha no app Tema).
+pub fn snap_theme_prompt() -> bool {
+    snap_integration_in(&snap_roots())
+}
+
+fn snap_integration_in(roots: &[PathBuf]) -> bool {
+    roots.iter().any(|root| root.join("snapd-desktop-integration").is_dir())
+}
+
+/// O tema de reserva, dado o que está instalado: o adw-gtk3-dark; o Adwaita-dark sem ele (os dotfiles, sem o pacote)
+/// ou com o snapd-desktop-integration (como na 0.1.3.1).
+pub fn fallback_with(installed: &dyn Fn(&str) -> bool, snaps: bool) -> &'static str {
+    if !snaps && installed(FALLBACK_THEME) { FALLBACK_THEME } else { LAST_FALLBACK_THEME }
+}
+
+/// O tema de reserva que existe (fallback_with).
 pub fn fallback_theme() -> &'static str {
-    if theme_installed(FALLBACK_THEME) { FALLBACK_THEME } else { LAST_FALLBACK_THEME }
+    fallback_with(&theme_installed, snap_theme_prompt())
 }
 
 pub fn effective_gtk_theme(config: &Config) -> String {
@@ -734,6 +763,20 @@ pub fn reload_sway() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn with_snapd_desktop_integration_the_fallback_is_one_the_snaps_have() {
+        let dir = tempdir("snaps");
+        let roots = [dir.join("snap"), dir.join("var-lib-snapd-snap")];
+        std::fs::create_dir_all(dir.join("snap/snapd")).unwrap();
+        assert!(!snap_integration_in(&roots), "só o snapd não pede o tema");
+        std::fs::create_dir_all(dir.join("var-lib-snapd-snap/snapd-desktop-integration")).unwrap();
+        assert!(snap_integration_in(&roots));
+        assert_eq!(fallback_with(&|_| true, false), FALLBACK_THEME);
+        assert_eq!(fallback_with(&|_| false, false), LAST_FALLBACK_THEME);
+        assert_eq!(fallback_with(&|_| true, true), LAST_FALLBACK_THEME);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn only_the_dark_adw_gtk3_asks_gtk_4_for_the_dark_variant() {

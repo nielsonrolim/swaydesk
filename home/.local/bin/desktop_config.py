@@ -588,9 +588,30 @@ def is_dark(theme):
     return re.search(r"-[Dd]ark(-|$)|Nokto", theme) is not None
 
 
+def snap_roots():
+    """Onde os snaps ficam montados: /snap (Ubuntu, Debian) ou /var/lib/snapd/snap (Arch, Fedora).
+    SWAY_SNAP_ROOTS (separados por ':') troca, nos testes."""
+    roots = os.environ.get("SWAY_SNAP_ROOTS")
+    if roots is None:
+        return [Path("/snap"), Path("/var/lib/snapd/snap")]
+    return [Path(root) for root in roots.split(":") if root]
+
+
+def snap_theme_prompt():
+    """Se o snapd-desktop-integration está instalado (o Ubuntu Desktop). Ele lê o gtk-theme do dconf e, com um tema
+    que os snaps não têm (o adw-gtk3-dark), avisa "Some required themes are missing" a cada login e abre o polkit ao
+    abrir um snap, para instalar o snap de terceiros do tema. O Adwaita-dark vem com o gtk-common-themes. Só o snapd
+    não basta: sem o snapd-desktop-integration, ninguém pede o tema. Uma conta que já tem o adw-gtk3-dark gravado fica
+    com ele se o snap vier depois, de propósito (não dá para distinguir de uma escolha no app Tema)."""
+    return any((root / "snapd-desktop-integration").is_dir() for root in snap_roots())
+
+
 def fallback_theme():
-    """O tema de reserva que existe: o adw-gtk3-dark ou, sem ele (os dotfiles sem o pacote), o Adwaita-dark."""
-    return FALLBACK_THEME if theme_installed(FALLBACK_THEME) else LAST_FALLBACK_THEME
+    """O tema de reserva que existe: o adw-gtk3-dark; o Adwaita-dark sem ele (os dotfiles sem o pacote) ou com o
+    snapd-desktop-integration (como na 0.1.3.1)."""
+    if not snap_theme_prompt() and theme_installed(FALLBACK_THEME):
+        return FALLBACK_THEME
+    return LAST_FALLBACK_THEME
 
 
 def effective_gtk_theme(config):

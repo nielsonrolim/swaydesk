@@ -98,9 +98,10 @@ fn migrated_pins(text: &str, nemo_installed: bool, file_manager: &str) -> Option
 
 /// A config.toml do skel com um tema GTK que exista: o padrão é o Mint-Y-Dark-Teal, que só o Mint tem. No
 /// Debian, no Ubuntu e no Arch, fica o tema de reserva (o adw-gtk3-dark), em vez de o app Tema avisar que o
-/// tema da config não está instalado. No Mint, nada muda.
-fn with_installed_theme(text: &str, installed: &dyn Fn(&str) -> bool) -> String {
-    let fallback = if installed(desktop::FALLBACK_THEME) { desktop::FALLBACK_THEME } else { desktop::LAST_FALLBACK_THEME };
+/// tema da config não está instalado. Com o snapd-desktop-integration (snaps), o Adwaita-dark (desktop::fallback_with).
+/// No Mint, nada muda.
+fn with_installed_theme(text: &str, installed: &dyn Fn(&str) -> bool, snaps: bool) -> String {
+    let fallback = desktop::fallback_with(installed, snaps);
     text.lines()
         .map(|line| match line.strip_prefix("gtk_theme = \"").and_then(|rest| rest.strip_suffix('"')) {
             Some(theme) if !installed(theme) => format!("gtk_theme = \"{fallback}\"\n"),
@@ -143,7 +144,7 @@ pub fn setup(skel: &Path, home: &Path, keyboard: &Path) -> std::io::Result<Vec<P
         }
         if rel == Path::new(CONFIG) {
             let text = std::fs::read_to_string(&target)?;
-            std::fs::write(&target, with_installed_theme(&text, &desktop::theme_installed))?;
+            std::fs::write(&target, with_installed_theme(&text, &desktop::theme_installed, desktop::snap_theme_prompt()))?;
         } else if rel == Path::new(LOCAL_CONF) {
             let block = kbd::system_keyboard(keyboard)
                 .map(|(source, text)| kbd::keyboard_block_text(&source, &text))
@@ -372,11 +373,15 @@ mod tests {
     #[test]
     fn a_missing_gtk_theme_becomes_the_fallback() {
         let text = "# o tema\ngtk_theme = \"Mint-Y-Dark-Teal\"\nicon_theme = \"Papirus-Dark\"\n";
-        assert_eq!(with_installed_theme(text, &|_| true), text);
+        assert_eq!(with_installed_theme(text, &|_| true, false), text);
+        assert_eq!(with_installed_theme(text, &|_| true, true), text);
         // Sem o Mint-Y: o adw-gtk3-dark; sem ele também (os dotfiles, sem o pacote), o Adwaita-dark
-        assert_eq!(with_installed_theme(text, &|t| t == "adw-gtk3-dark"),
+        assert_eq!(with_installed_theme(text, &|t| t == "adw-gtk3-dark", false),
                    "# o tema\ngtk_theme = \"adw-gtk3-dark\"\nicon_theme = \"Papirus-Dark\"\n");
-        assert_eq!(with_installed_theme(text, &|_| false),
+        assert_eq!(with_installed_theme(text, &|_| false, false),
+                   "# o tema\ngtk_theme = \"Adwaita-dark\"\nicon_theme = \"Papirus-Dark\"\n");
+        // Com o snapd-desktop-integration, o Adwaita-dark mesmo com o adw-gtk3-dark instalado: os snaps o têm
+        assert_eq!(with_installed_theme(text, &|t| t != "Mint-Y-Dark-Teal", true),
                    "# o tema\ngtk_theme = \"Adwaita-dark\"\nicon_theme = \"Papirus-Dark\"\n");
     }
 
