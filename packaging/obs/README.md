@@ -73,7 +73,7 @@ segura a versão até ser corrigida ou explicada; o resumo vai junto do pedido d
    curl -fsS "https://archlinux.org/packages/search/json/?name=paku" | jq -c '.results | map(.pkgname)'
    curl -s -o /dev/null -w '%{http_code}\n' https://raw.githubusercontent.com/BlackArch/blackarch/master/packages/paku/PKGBUILD
    ```
-5. Publique o espelho com a tag (`packaging/mirror.sh --tag vX.Y.Z`, antes com `--dry-run`) e crie o Release no espelho público com a entrada do `packaging/public/CHANGELOG.md`.
+5. Publique o espelho com a tag (`packaging/mirror.sh --tag vX.Y.Z`, antes com `--dry-run`) e crie o Release no espelho público com a entrada do `packaging/public/CHANGELOG.md`. Pode ser depois do passo 6: com a `main` já adiante da tag, o `mirror.sh` (de uma worktree em `origin/main`) monta a árvore da tag e põe a tag no commit do espelho que tem exatamente essa árvore, o publicado no merge do commit da tag; sem um (ou com mais de um) desses commits, ele recusa e nada é enviado.
 6. **Logo em seguida**, no próximo commit do `main`, suba a versão:
    - a `workspace.package.version` do `rust/Cargo.toml` (e o `Cargo.lock`);
    - uma entrada `X.Y.(Z+1)-1 UNRELEASED` no `debian/changelog`;
