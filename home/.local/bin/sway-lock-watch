@@ -6,28 +6,32 @@
 # O locker recebe --notify-fd N e escreve no fd N: "L" ao receber locked do ext-session-lock, "F" se
 # recebeu finished (outro já bloqueou) e "U" só depois do unlock_and_destroy e de um roundtrip com o
 # Sway. Este script repassa "L" ou "F" ao sway-lock pela saída padrão e depois espera o "U". Se o
-# locker sair sem "U", mesmo com código 0, abre o swaylock, que assume o bloqueio abandonado.
+# locker sair sem "U", mesmo com código 0, chama o sway-lock de novo (o takeover): o ext-session-lock deixa
+# um cliente novo assumir o bloqueio abandonado, e a tela nunca fica desbloqueada no meio. O locker que caiu
+# vai para o fim da fila (SWAY_LOCK_CRASHED), e depois de 5 takeovers seguidos desiste, para não girar.
 set -uo pipefail
 if [[ $# -ne 1 ]]; then
   echo "usage: sway-lock-watch LOCKER" >&2
   exit 2
 fi
+bin=$(dirname "$(readlink -f "$0")")
 locker_pid=
 # Antes do bloqueio, o sway-lock pode desistir (prazo): o locker sai junto
 trap '[[ -n $locker_pid ]] && kill -TERM "$locker_pid" 2>/dev/null; exit 1' TERM INT HUP
 # O sway-lock pode já ter fechado o pipe: escrever nele não pode derrubar o supervisor
 trap '' PIPE
 
-# A saída do locker vai para a de erros (o log); o fd 5 dele é o pipe deste script
-exec 4< <(exec "$1" --notify-fd 5 5>&1 1>&2)
+# A saída do locker vai para a de erros (o log); o fd 5 dele é o pipe deste script. O campo de senha usa o IM
+# "simple" do GTK (as teclas mortas pelo ~/.XCompose), nunca um método de entrada: no Debian, o im-config
+# exporta GTK_IM_MODULE=fcitx, e o fcitx5 (ou o ibus) receberia as teclas da senha
+exec 4< <(GTK_IM_MODULE=simple exec "$1" --notify-fd 5 5>&1 1>&2)
 locker_pid=$!
 
 code=
 read -r -n 1 code <&4
 case $code in
   L)
-    # Daqui em diante, o supervisor fica até o desbloqueio: o sinal não o encerra mais. O swaylock do
-    # fim herda o sinal ignorado, o que também o protege
+    # Daqui em diante, o supervisor fica até o desbloqueio: o sinal não o encerra mais
     trap '' TERM INT HUP
     printf L
     exec 1>/dev/null
@@ -44,11 +48,19 @@ esac
 while read -r -n 1 code <&4; do
   [[ $code == U ]] && exit 0
 done
-logger -t sway-lock "the locker exited without unlocking; swaylock takes over" 2>/dev/null
-echo "sway-lock-watch: the locker exited without unlocking; swaylock takes over" >&2
-# Sem o papel de parede (só os pacotes), a cor dos popups: com um -i que não existe, a tela ficava branca
-wallpaper=$HOME/.local/share/wallpaper/current.jpg
-if [[ -r $wallpaper ]]; then
-  exec swaylock -f -s fill -i "$wallpaper"
+taken=${SWAY_LOCK_TAKEOVER:-0}
+[[ $taken =~ ^[0-9]+$ ]] || taken=0
+if (( taken >= 5 )); then
+  logger -t sway-lock -p user.crit "the locker exited without unlocking $taken times in a row; giving up" 2>/dev/null
+  echo "sway-lock-watch: the locker exited without unlocking $taken times in a row; giving up" >&2
+  exit 1
 fi
-exec swaylock -f -c 2e2e33
+logger -t sway-lock "the locker exited without unlocking; another one takes over" 2>/dev/null
+echo "sway-lock-watch: ${1##*/} exited without unlocking; another locker takes over" >&2
+# Um locker que cai logo de novo não gira sem pausa
+(( taken == 0 )) || sleep 1
+# O sinal volta ao padrão (um sinal ignorado na entrada não se arma de novo no bash): o supervisor novo
+# precisa do seu trap para encerrar um locker travado
+trap - TERM INT HUP
+exec 1>/dev/null 4<&-
+SWAY_LOCK_CRASHED=${1##*/} SWAY_LOCK_TAKEOVER=$(( taken + 1 )) exec "$bin/sway-lock"

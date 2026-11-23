@@ -1,8 +1,8 @@
 //! Confere a senha do usuário pelo PAM: o porte do `sway_pam.py`.
 //!
 //! A libpam.so.0 é aberta na hora (dlopen): sem o pacote -dev para compilar, e sem ligar o binário a
-//! ela. O serviço é o do swaylock (/etc/pam.d/swaylock, só "auth include login"), que continua instalado
-//! como reserva.
+//! ela. O serviço é o próprio, /etc/pam.d/swaydesk-lock (só "auth include login", como o do swaylock), que o
+//! swaydesk-session traz; sem ele (os dotfiles sem o install.sh --system), o do swaylock ([`service`]).
 //!
 //! Só pam_authenticate e, depois de acertar, pam_setcred(PAM_REFRESH_CRED), como o swaylock. Nunca o
 //! pam_acct_mgmt: o arquivo do swaylock só tem "auth", e a conta cairia na pilha "other" da distro, que
@@ -14,7 +14,25 @@
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::panic::AssertUnwindSafe;
 
-pub const SERVICE: &str = "swaylock";
+pub const SERVICE: &str = "swaydesk-lock";
+/// O de antes, para quem não tem o próprio: os dotfiles sem o install.sh --system, que usam o swaylock da distro.
+pub const LEGACY_SERVICE: &str = "swaylock";
+/// Onde o Linux-PAM procura os serviços: a pasta do admin e a dos pacotes (vendordir).
+pub const PAM_DIRS: &[&str] = &["/etc/pam.d", "/usr/lib/pam.d"];
+
+/// O serviço a usar: o próprio, se o arquivo existir numa das pastas; senão o do swaylock, se existir; sem
+/// nenhum dos dois, o próprio, e o PAM cai na pilha "other" da distro, como cairia com o do swaylock.
+pub fn service() -> &'static str {
+    service_in(PAM_DIRS.iter().map(std::path::Path::new))
+}
+
+pub fn service_in<'a>(dirs: impl Iterator<Item = &'a std::path::Path> + Clone) -> &'static str {
+    let has = |name: &str| dirs.clone().any(|dir| dir.join(name).is_file());
+    if !has(SERVICE) && has(LEGACY_SERVICE) {
+        return LEGACY_SERVICE;
+    }
+    SERVICE
+}
 
 pub const PAM_SUCCESS: c_int = 0;
 pub const PAM_BUF_ERR: c_int = 5;
@@ -47,6 +65,17 @@ pub struct Outcome {
     pub status: Status,
     pub code: c_int,
     pub messages: Vec<String>,
+}
+
+/// O que mostrar de uma tentativa recusada: todas as mensagens do PAM, na ordem (o faillock do Arch manda duas,
+/// "The account is locked due to 3 failed logins." e "(10 minutes left to unlock)"), ou o texto próprio.
+pub fn failure_text(messages: &[String], fallback: String) -> String {
+    let said: Vec<&str> = messages.iter().map(|m| m.trim()).filter(|m| !m.is_empty()).collect();
+    if said.is_empty() {
+        fallback
+    } else {
+        said.join(" ")
+    }
 }
 
 pub fn status_of(code: c_int) -> Status {
@@ -246,6 +275,17 @@ fn run(pam: &dyn Pam, talk: &mut Talk, user: &str, service: &str) -> Outcome {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_pam_message_is_shown_and_without_any_our_own_text() {
+        let locked = vec!["The account is locked due to 3 failed logins.".to_string(), "(10 minutes left to unlock)".to_string()];
+        assert_eq!(
+            failure_text(&locked, "Wrong password".into()),
+            "The account is locked due to 3 failed logins. (10 minutes left to unlock)"
+        );
+        assert_eq!(failure_text(&[], "Wrong password".into()), "Wrong password");
+        assert_eq!(failure_text(&[" ".into()], "Wrong password".into()), "Wrong password");
+    }
     use std::cell::RefCell;
 
     /// Um PAM falso: na autenticação, faz as perguntas `styles` pela conversa, guarda as respostas e
@@ -371,7 +411,7 @@ mod tests {
     fn user_and_service() {
         let fake = FakePam::new(PAM_SUCCESS);
         auth(&fake);
-        assert_eq!(*fake.start_args.borrow(), Some(("swaylock".to_string(), "ana".to_string())));
+        assert_eq!(*fake.start_args.borrow(), Some((SERVICE.to_string(), "ana".to_string())));
     }
 
     #[test]
@@ -394,5 +434,20 @@ mod tests {
     fn the_real_library_opens() {
         // O dlopen e os quatro símbolos; nada de autenticar
         assert!(LibPam::open().is_ok());
+    }
+
+    #[test]
+    fn the_own_service_comes_first_and_swaylock_only_without_it() {
+        let dir = std::env::temp_dir().join(format!("pam-service-{}", std::process::id()));
+        let (etc, vendor) = (dir.join("etc"), dir.join("lib"));
+        std::fs::create_dir_all(&etc).unwrap();
+        std::fs::create_dir_all(&vendor).unwrap();
+        let dirs = [etc.as_path(), vendor.as_path()];
+        assert_eq!(service_in(dirs.iter().copied()), SERVICE, "neither: ours, and the distro's other stack");
+        std::fs::write(etc.join(LEGACY_SERVICE), "auth include login\n").unwrap();
+        assert_eq!(service_in(dirs.iter().copied()), LEGACY_SERVICE);
+        std::fs::write(vendor.join(SERVICE), "auth include login\n").unwrap();
+        assert_eq!(service_in(dirs.iter().copied()), SERVICE, "in the vendor dir too");
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

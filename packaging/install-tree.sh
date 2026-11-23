@@ -24,9 +24,11 @@ bin=$root/home/.local/bin
 # Os scripts auxiliares: o Debian os põe em /usr/libexec, e o Arch em /usr/lib (SWAYDESK_LIBEXEC=/usr/lib)
 libexec=${SWAYDESK_LIBEXEC:-/usr/libexec}/swaydesk
 SCRIPTS=(session-action sway-brightness sway-caffeine sway-nightlight waybar-notify sway-idle sway-idle-suspend sway-lock
-         sway-lock-watch sway-files sway-shot sway-rec)
+         sway-lock-watch sway-gtklock sway-files sway-shot sway-rec)
 # Os módulos em Python: o calendário roda o waybar_holidays.py com o python3, e ele importa os outros dois da
 # própria pasta. Sem o bit de execução (o debian/rules os tira do dh_fixperms)
+# O bloqueio em Python, no swaydesk-session do Debian e do Ubuntu (o waybar_media, para a mídia na tela)
+PYTHON_LOCK=(sway-lock-gtk sway_lock.py sway_pam.py waybar_media.py)
 MODULES=(waybar_holidays.py sway_i18n.py desktop_config.py sway-i18n.sh)  # o sway-i18n.sh é incluído com "."
 # O swaydesk-desktop: os scripts que o config do Sway e o da Waybar do pacote chamam, além dos do
 # swaydesk-scripts, e a sessão (o sway-session e o sway-gpu, que no --system vão para /usr/local/bin). O
@@ -69,7 +71,7 @@ AUTOSTART_TARGET=swaydesk-autostart.target
 autostart_dropins() { (cd "$root/home/.config/systemd/user" && printf '%s\n' app-*@autostart.service.d/swaydesk.conf); }
 
 if [[ ${1:-} == --sources ]]; then
-  for name in "${SCRIPTS[@]}" "${MODULES[@]}" "${SESSION_SCRIPTS[@]}" "${SESSION_MODULES[@]}"; do
+  for name in "${SCRIPTS[@]}" "${MODULES[@]}" "${SESSION_SCRIPTS[@]}" "${SESSION_MODULES[@]}" "${PYTHON_LOCK[@]}"; do
     echo "home/.local/bin/$name"
   done
   (cd "$root" && printf '%s\n' home/.local/share/locale/*/LC_MESSAGES/sway-desktop.mo)
@@ -261,6 +263,21 @@ case $pkg in
         exit 2
         ;;
     esac
+    ;;
+  swaydesk-session)
+    # O serviço do PAM do bloqueio (o swaydesk-lock e o sway-lock-gtk): o próprio, sem depender do do swaylock
+    install -Dm644 "$root/packaging/files/swaydesk-lock-pam" "$dest/etc/pam.d/swaydesk-lock"
+    # O bloqueio em Python (GTK 3 + gtk-session-lock), o segundo do sway-lock: no Debian 13, o gtk4-layer-shell
+    # 1.0 não tem o bloqueio, e ele é o bloqueio de fato. Ao lado dos módulos do swaydesk-scripts
+    # (desktop_config, sway_i18n), que ele importa da própria pasta. O Arch não o leva (SWAYDESK_PYTHON_LOCK=0,
+    # do PKGBUILD): lá o gtk4-layer-shell tem o bloqueio
+    if [[ ${SWAYDESK_PYTHON_LOCK:-1} == 1 ]]; then
+      for name in "${PYTHON_LOCK[@]}"; do
+        mode=644
+        [[ $name == *.py ]] || mode=755
+        install -Dm"$mode" "$bin/$name" "$dest$libexec/$name"
+      done
+    fi
     ;;
   swaydesk-greeter)
     # O greetd abre o Sway da tela pelo drop-in, com o greetd.toml do pacote: o /etc/greetd/config.toml da

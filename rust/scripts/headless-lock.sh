@@ -12,14 +12,15 @@
 #
 # Os casos: o --check aceita a biblioteca; o sway-lock volta 0 com a tela bloqueada pelo swaydesk-lock (e
 # não pelo Python nem pelo swaylock); um segundo sway-lock volta 0 ("F") sem abrir outro; dois monitores
-# ganham a sua superfície; o locker encerrado deixa a tela para o swaylock (o supervisor tenta abri-lo).
+# ganham a sua superfície; o locker encerrado é substituído por outro (o takeover do supervisor, que chama o
+# sway-lock de novo), e o swaylock nunca é chamado.
 # Digitar a senha fica para as VMs: o Sway headless não tem teclado virtual. Sai com 1 se algum falhar.
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
 cp /bin/swaydesk-lock "$HOME/.local/bin/"
-# Um swaylock falso: anota que foi chamado e fica, como o de verdade
+# Um swaylock falso: anota se alguém o chamar (ninguém pode)
 printf '#!/bin/sh\necho "$@" >> /tmp/swaylock.calls\nexec sleep 3600\n' > /tmp/fakebin-swaylock
 mkdir -p /tmp/fakebin && mv /tmp/fakebin-swaylock /tmp/fakebin/swaylock && chmod +x /tmp/fakebin/swaylock
 # Um swaymsg que, com /tmp/hang, trava o get_inputs num neto (o sh fica esperando o sleep): o caso de um
@@ -93,16 +94,25 @@ grim -o HEADLESS-2 /out/lock-2-de-novo.png 2>/dev/null
 touch /tmp/hang
 sleep 2.5
 pgrep -f "sleep 30" >/dev/null && ok "um get_inputs preso no ar" || fail "o get_inputs falso não travou"
+first=$(pgrep -x swaydesk-lock)
 pkill -KILL -x swaydesk-lock
-for _ in $(seq 15); do [ -e /tmp/swaylock.calls ] && break; sleep 0.1; done
-[ -e /tmp/swaylock.calls ] && ok "o locker morto passa a tela ao swaylock, mesmo com um filho preso" || fail "o supervisor não chamou o swaylock (o pipe vazou para um filho?)"
+second=
+for _ in $(seq 40); do
+  second=$(pgrep -x swaydesk-lock | grep -vx "$first")
+  [ -n "$second" ] && break
+  sleep 0.1
+done
+[ -n "$second" ] && ok "o locker morto é substituído por outro (o takeover), mesmo com um filho preso" || fail "o supervisor não passou o bloqueio a outro locker (o pipe vazou para um filho?)"
+grep -q "takes over" "$XDG_RUNTIME_DIR/sway-lock.log" && ok "o takeover no log" || fail "o takeover não está no log"
+[ -e /tmp/swaylock.calls ] && fail "o swaylock foi chamado: $(cat /tmp/swaylock.calls)" || ok "o swaylock não foi chamado no takeover"
+rm -f /tmp/hang
 grep -q "panicked" "$XDG_RUNTIME_DIR/sway-lock.log" && fail "pânico no log"
 # Os CRITICAL de dentro do gtk4-layer-shell (o locker recusado e a troca de monitor) aparecem, sem falhar
 criticals=$(grep -c "CRITICAL" "$XDG_RUNTIME_DIR/sway-lock.log")
 [ "$criticals" = 0 ] || printf 'aviso   %s CRITICAL no log (veja abaixo)\n' "$criticals"
 blurs=$(ls "$HOME/.cache/swaydesk"/lock-*.png 2>/dev/null | wc -l)
 [ "$blurs" = 2 ] && ok "o desfoque dos dois tamanhos no cache" || fail "$blurs fundos no cache (esperava 2)"
-[ "$(grep -c "background 1024x768" "$XDG_RUNTIME_DIR/sway-lock.log")" = 2 ] && ok "o monitor religado também ganha o fundo" || fail "o monitor religado ficou sem o fundo"
+[ "$(grep -c "background 1024x768" "$XDG_RUNTIME_DIR/sway-lock.log")" -ge 2 ] && ok "o monitor religado também ganha o fundo" || fail "o monitor religado ficou sem o fundo"
 grep -q "monitor HEADLESS-2 gone" "$XDG_RUNTIME_DIR/sway-lock.log" && ok "o monitor desligado sai da lista" || fail "o monitor desligado ficou na lista"
 echo "--- sway-lock.log"; cat "$XDG_RUNTIME_DIR/sway-lock.log" 2>/dev/null
 exit $failed

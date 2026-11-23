@@ -3,7 +3,7 @@
 set $mod  Mod4
 set $term kitty
 set $bin  ~/.local/bin
-# Bloqueio pelo sway-lock: o bloqueio próprio, ou o swaylock como reserva
+# Bloqueio pelo sway-lock: o bloqueio próprio (Rust, depois Python), ou o gtklock como reserva
 set $lock $bin/sway-lock
 
 include /etc/sway/config.d/*

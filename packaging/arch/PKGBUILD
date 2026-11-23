@@ -66,7 +66,7 @@ package_swaydesk-scripts() {
   arch=(any)
   license=(MIT)
   depends=(bash)
-  optdepends=('brightnessctl: brightness' 'swayidle: idle and caffeine' 'swaylock: lock fallback'
+  optdepends=('brightnessctl: brightness' 'swayidle: idle and caffeine' 'gtklock: lock fallback'
               'gammastep: night light' 'libnotify: session notices' 'python: calendar holidays')
   # O Python só serve aos feriados do calendário, que também precisam do python-holidays. Ele só existe no
   # AUR e fica fora, por decisão do usuário: sem ele, o calendário abre sem a caixa dos feriados
@@ -122,9 +122,11 @@ package_swaydesk-theme() {
 
 package_swaydesk-session() {
   pkgdesc="Sway desktop components - session menu, lock screen and services (SessionManager, keyring fix)"
-  # O bloqueio abre a libpam na hora e usa o serviço PAM do swaylock (/etc/pam.d/swaylock)
-  depends=(swaydesk-common swaydesk-scripts gtk4 gtk4-layer-shell glib2 systemd pam swaylock)
-  _install swaydesk-session
+  # O bloqueio abre a libpam na hora e usa o serviço PAM próprio (/etc/pam.d/swaydesk-lock); o gtklock (extra)
+  # é a reserva do sway-lock, no lugar do swaylock, que não tem teclas mortas
+  depends=(swaydesk-common swaydesk-scripts gtk4 gtk4-layer-shell glib2 systemd pam gtklock)
+  backup=(etc/pam.d/swaydesk-lock)
+  SWAYDESK_PYTHON_LOCK=0 _install swaydesk-session
 }
 
 package_swaydesk-desktop() {
@@ -156,7 +158,7 @@ package_swaydesk-desktop() {
   # O pipewire-jack em primeiro: a waybar e o ffmpeg (do wf-recorder) pedem um jack, e o pacman, que resolve em
   # ordem, perguntaria o provedor com o jack2 de padrão. O áudio da sessão é o PipeWire
   depends=(pipewire-jack swaydesk-common swaydesk-scripts swaydesk-notifd swaydesk-dock swaydesk-drawer swaydesk-widgets
-           swaydesk-capture swaydesk-theme swaydesk-session sway swaybg swayidle swaylock waybar kitty rofi libqalculate jq curl
+           swaydesk-capture swaydesk-theme swaydesk-session sway swaybg swayidle waybar kitty rofi libqalculate jq curl
            wl-clipboard cliphist xdg-desktop-portal-wlr xdg-desktop-portal-gtk dconf glib2 noto-fonts noto-fonts-emoji gnome-themes-extra adw-gtk-theme systemd
            mate-polkit xorg-xwayland thunar blueman papirus-icon-theme grim slurp wf-recorder brightnessctl
            playerctl pavucontrol wireplumber libpulse networkmanager network-manager-applet bluez upower gammastep

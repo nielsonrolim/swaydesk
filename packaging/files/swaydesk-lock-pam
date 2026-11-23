@@ -1,0 +1,5 @@
+#%PAM-1.0
+# O serviço do PAM do bloqueio de tela do Sway Desktop (swaydesk-lock e sway-lock-gtk): o mesmo do
+# /etc/pam.d/swaylock do Debian, do Ubuntu e do Arch, só a senha pela pilha do login. O bloqueio chama só o
+# pam_authenticate e o pam_setcred, nunca o pam_acct_mgmt: daí só a linha "auth"
+auth include login

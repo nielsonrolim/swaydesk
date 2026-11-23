@@ -389,6 +389,8 @@ struct App {
     attempt: Cell<u64>,
     failures: Cell<u32>,
     wait_until: Cell<Option<Instant>>,
+    /// O aviso do PAM da tentativa que abriu a espera (a conta travada pelo faillock): fica na tela depois dela
+    pam_notice: RefCell<Option<String>>,
     /// Na ordem em que os monitores chegaram: o primeiro é o principal (o canto e a mídia)
     windows: RefCell<Vec<Rc<LockWindow>>>,
     name: String,
@@ -574,10 +576,17 @@ impl App {
         for window in self.windows.borrow().iter() {
             window.refresh_clock(&self.time_locale);
         }
-        if self.wait_until.get().is_some_and(|until| Instant::now() >= until) {
-            self.wait_until.set(None);
-            self.set_sensitive(true);
-            self.show_caps();
+        match self.wait_until.get() {
+            Some(until) if Instant::now() >= until => {
+                self.wait_until.set(None);
+                self.set_sensitive(true);
+                match self.pam_notice.borrow().as_deref() {
+                    Some(notice) => self.set_status(notice, true),
+                    None => self.show_caps(),
+                }
+            }
+            Some(until) => self.show_wait(until),
+            None => {}
         }
     }
 
@@ -723,6 +732,15 @@ impl App {
         }
     }
 
+    /// A contagem da espera depois de erros seguidos.
+    fn show_wait(&self, until: Instant) {
+        if self.pam_notice.borrow().is_some() {
+            return;
+        }
+        let left = until.saturating_duration_since(Instant::now()).as_secs_f64().ceil().max(1.0) as u64;
+        self.set_status(&tr("Too many attempts: try again in %s s").replace("%s", &left.to_string()), true);
+    }
+
     fn caps_lock(&self) -> bool {
         self.display.default_seat().and_then(|seat| seat.keyboard()).is_some_and(|keyboard| keyboard.is_caps_locked())
     }
@@ -758,7 +776,7 @@ impl App {
         let app = Rc::downgrade(self);
         glib::spawn_future_local(async move {
             let result = gio::spawn_blocking(move || match pam::LibPam::open() {
-                Ok(lib) => pam::authenticate(&lib, &mut secret, &user, pam::SERVICE),
+                Ok(lib) => pam::authenticate(&lib, &mut secret, &user, pam::service()),
                 Err(err) => {
                     unsafe { zero(secret.as_mut_ptr(), secret.len()) };
                     pam::Outcome { status: pam::Status::Error, code: -1, messages: vec![err] }
@@ -805,20 +823,32 @@ impl App {
             }
             pam::Status::Wrong => {
                 self.failures.set(self.failures.get() + 1);
-                tr("Wrong password")
+                // O aviso do PAM, se houver: o faillock do Arch ("The account is locked due to 3 failed logins.
+                // (10 minutes left to unlock)")
+                pam::failure_text(&result.messages, tr("Wrong password"))
             }
-            pam::Status::Expired => result.messages.last().cloned().unwrap_or_else(|| tr("The account needs attention: log in on a text console")),
-            pam::Status::Error => result.messages.last().cloned().unwrap_or_else(|| tr("Could not check the password")),
+            pam::Status::Expired => pam::failure_text(&result.messages, tr("The account needs attention: log in on a text console")),
+            pam::Status::Error => pam::failure_text(&result.messages, tr("Could not check the password")),
         };
+        let pam_said = result.messages.iter().any(|m| !m.trim().is_empty());
         for window in self.windows.borrow().iter() {
             window.shake();
         }
         if self.failures.get() >= FAIL_LIMIT {
             self.failures.set(0);
-            self.wait_until.set(Some(Instant::now() + FAIL_WAIT));
-            self.set_status(&tr("Too many attempts: wait a few seconds"), true);
+            let until = Instant::now() + FAIL_WAIT;
+            self.wait_until.set(Some(until));
+            // O aviso do PAM vale mais que a contagem (e fica depois da espera); sem ele, a contagem: o campo não
+            // aceita teclas enquanto isso, e sem ela o que se digita some sem aviso
+            *self.pam_notice.borrow_mut() = pam_said.then(|| text.clone());
+            if pam_said {
+                self.set_status(&text, true);
+            } else {
+                self.show_wait(until);
+            }
             return;
         }
+        *self.pam_notice.borrow_mut() = None;
         self.set_status(&text, true);
         self.set_sensitive(true);
     }
@@ -902,6 +932,10 @@ fn main() -> ExitCode {
     };
     // O cairo, como os popups: uma tela parada, sem animação, e menos memória que o GL
     swaydesk_common::renderer::use_cairo_renderer();
+    // O campo de senha no IM "simple" do GTK (as teclas mortas pelo Compose), sempre: um GTK_IM_MODULE=fcitx
+    // (o im-config do Debian) ou ibus mandaria as teclas da senha para o daemon do método de entrada.
+    // Antes de qualquer linha, como o do renderizador
+    std::env::set_var("GTK_IM_MODULE", "simple");
     if let Err(err) = gtk4::init() {
         log(&format!("could not open the display: {err}"));
         return ExitCode::FAILURE;
@@ -941,6 +975,7 @@ fn main() -> ExitCode {
         attempt: Cell::new(0),
         failures: Cell::new(0),
         wait_until: Cell::new(None),
+        pam_notice: RefCell::new(None),
         windows: RefCell::new(Vec::new()),
         initials: sl::initials(&name),
         name,

@@ -28,7 +28,7 @@ pub const PROTECTED: &[&str] = &[
     "systemd", "pipewire", "pipewire-pulse", "wireplumber", "gnome-keyring-d", "xdg-desktop-por",
     "xdg-document-po", "xdg-permission-", "gvfsd", "at-spi-bus-laun", "at-spi2-registr", "polkit-gnome-au",
     "lxpolkit", "greetd", "nwg-hello",
-    "sway-lock-gtk", "swaydesk-lock", "sway-lock-watch",
+    "sway-lock-gtk", "swaydesk-lock", "sway-lock-watch", "gtklock", "sway-gtklock",
     "sway-session", "(sd-pam)", "gdm-wayland-ses", "gdm-x-session", "polkit-mate-aut", "polkit-kde-auth",
     "wob", "swayrd", "wl-paste", "kwalletd5", "kwalletd6", "swaymsg",
 ];

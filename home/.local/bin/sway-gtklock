@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# O gtklock (GTK 3, ext-session-lock pela gtk-session-lock) como locker do sway-lock-watch: o último do
+# sway-lock, a reserva que os pacotes trazem (Depends), depois do bloqueio próprio em Rust e do em Python. Tem
+# teclas mortas pelo IM "simple" do GTK 3, que o swaylock, a reserva de antes, não tinha (nem no upstream).
+# Fala o protocolo do supervisor (o fd de aviso): "L" quando o gtklock avisa que bloqueou (--lock-command) e "U"
+# depois do unlock_and_destroy e do sync com o Sway (--unlock-command). Os dois chegam aqui por sinal: os
+# comandos do gtklock saem pelo g_spawn, que fecha os fds herdados. Se o gtklock sair sem o "U", este script sai
+# também, e o supervisor passa o bloqueio a outro locker.
+# Só o gtklock 3 ou mais novo: o 2 (Ubuntu 24.04, a base do Mint 22) usa o wlr-input-inhibitor, sem o
+# ext-session-lock, e roda o -L antes de bloquear: um "L" falso
+# uso: sway-gtklock --notify-fd N (pelo sway-lock)
+#      sway-gtklock --check (0 se o gtklock daqui serve; o sway-lock dos dotfiles usa o swaylock se não)
+set -uo pipefail
+if [[ ! ( $# -eq 2 && $1 == --notify-fd && $2 =~ ^[0-9]+$ ) && ! ( $# -eq 1 && $1 == --check ) ]]; then
+  echo "usage: sway-gtklock --notify-fd N | --check (run it through sway-lock)" >&2
+  exit 2
+fi
+command -v gtklock >/dev/null 2>&1 || exit 1
+version=$(gtklock -v 2>/dev/null) || exit 1
+major=${version#gtklock v}
+major=${major%%.*}
+[[ $major =~ ^[0-9]+$ ]] && (( major >= 3 )) || { echo "sway-gtklock: $version has no ext-session-lock" >&2; exit 1; }
+[[ $1 == --check ]] && exit 0
+fd=$2
+
+data=${XDG_DATA_HOME:-$HOME/.local/share}/sway-desktop
+[[ -e $data ]] || data=${XDG_DATA_HOME:-$HOME/.local/share}/swaydesk
+wallpaper=$HOME/.local/share/wallpaper/current.jpg
+args=()
+# As cores do bloqueio próprio, geradas pelo sway-desktop-config com a cor de destaque
+[[ -r $data/gtklock/style.css ]] && args+=(-s "$data/gtklock/style.css")
+[[ -r $wallpaper ]] && args+=(-b "$wallpaper")
+
+pid=
+sent=
+# A saída de erros do gtklock, para reconhecer o "já bloqueado" (o finished do ext-session-lock)
+errlog=$(mktemp "${XDG_RUNTIME_DIR:-/tmp}/sway-gtklock.XXXXXX") || exit 1
+# Antes do "L", o supervisor desiste com TERM (prazo): o gtklock sai junto, sempre com KILL. Com TERM, o
+# gtklock destrava de forma limpa (unlock_and_destroy): se ele já tivesse bloqueado e o USR1 ainda não
+# tivesse chegado, a tela apareceria. Morto com KILL, um bloqueio já feito fica abandonado e travado no Sway,
+# e o próximo locker o assume
+trap '[[ -n $pid ]] && kill -KILL "$pid" 2>/dev/null; rm -f "$errlog"; exit 1' TERM INT HUP
+# Bloqueado: daqui em diante só o desbloqueio encerra, como no supervisor
+trap '[[ -z $sent ]] && { sent=L; trap "" TERM INT HUP; printf L >&"$fd"; }' USR1
+trap '[[ $sent == L ]] && { sent=U; printf U >&"$fd"; }' USR2
+trap '' PIPE
+
+# O IM "simple" do GTK, mesmo com o fcitx5 ou o ibus da sessão: o campo de senha não passa por um método de
+# entrada (nada de pré-edição na tela). O gtklock não leva o fd de aviso: só este script fala com o supervisor
+# (o $fd é só dígitos, conferido acima: o eval só monta o "N>&-")
+eval 'GTK_IM_MODULE=simple gtklock "${args[@]}" -L "kill -USR1 $$" -U "kill -USR2 $$" 2>"$errlog" '"$fd"'>&- &'
+pid=$!
+while kill -0 "$pid" 2>/dev/null; do
+  wait "$pid"
+done
+# O -U sai por um fork (o g_spawn) e o gtklock sai logo depois, sem esperá-lo: o "U" pode chegar até um pouco
+# depois do fim do gtklock. Sem esperar, o supervisor veria o fim sem "U" e abriria outro locker numa sessão já
+# desbloqueada. Só o "U" prova o desbloqueio: depois da espera, qualquer outro fim passa a outro locker
+if [[ $sent == L ]]; then
+  for _ in {1..40}; do
+    [[ $sent == U ]] && break
+    sleep 0.05
+  done
+fi
+cat "$errlog" >&2
+# Outro cliente já tinha bloqueado: o gtklock recebe finished e sai com "Failed to lock session", antes de
+# qualquer "L". É o "F" do protocolo, como nos outros lockers: o sway-lock volta 0 sem um segundo bloqueio
+if [[ -z $sent ]] && grep -q 'Failed to lock session' "$errlog"; then
+  rm -f "$errlog"
+  printf F >&"$fd"
+  exit 0
+fi
+rm -f "$errlog"
+[[ $sent == U ]] && exit 0
+exit 1

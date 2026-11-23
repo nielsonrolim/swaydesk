@@ -1,0 +1,681 @@
+#!/usr/bin/python3
+"""A tela de bloqueio em Python + GTK 3, pela gtk-session-lock (protocolo ext-session-lock-v1).
+
+Não abrir direto: quem abre é o sway-lock, pelo supervisor sway-lock-watch, com --notify-fd N. No fd N
+este programa escreve "L" ao receber locked, "F" se recebeu finished antes (outro já bloqueou) e "U" só
+depois do unlock_and_destroy e de um roundtrip com o Sway. Sair de qualquer outro jeito deixa a tela
+bloqueada, e o supervisor passa o bloqueio a outro locker (o takeover).
+
+Segurança:
+- nada de GtkLayerShell neste processo (a gtk-session-lock é um fork dela, e as duas mexem no Wayland
+  do GTK 3), por isso não usa o waybar_popup;
+- a senha vai do campo para um bytearray, que o sway_pam copia para um buffer do ctypes e zera; o campo
+  é limpo na hora;
+- o PAM roda numa linha à parte, e só o pam_authenticate (sway_pam);
+- o fundo desfocado só é lido do cache: sem ele, um fundo liso, e o desfoque é gerado depois do locked;
+- o campo de senha aparece em todos os monitores: se o principal sumir, ainda há onde digitar.
+
+uso: sway-lock-gtk --notify-fd N
+"""
+import glob
+import json
+import math
+import os
+import subprocess
+import sys
+import threading
+import time
+
+# A gtk-session-lock compilada pelo install.sh (Mint 22) fica em /usr/local, fora do caminho padrão das
+# typelibs no Debian e no Ubuntu. A .so é achada pelo ld.so.conf.d do multiarch
+_extra = glob.glob("/usr/local/lib/*/girepository-1.0") + glob.glob("/usr/local/lib/girepository-1.0")
+if _extra:
+    os.environ["GI_TYPELIB_PATH"] = ":".join(_extra + [p for p in os.environ.get("GI_TYPELIB_PATH", "").split(":") if p])
+
+# O campo de senha no IM "simple" do GTK (as teclas mortas pelo Compose), sempre: um GTK_IM_MODULE=fcitx (o
+# im-config do Debian) ou ibus mandaria as teclas da senha para o daemon do método de entrada. Antes do GTK
+os.environ["GTK_IM_MODULE"] = "simple"
+
+import gi  # noqa: E402
+
+gi.require_version("Gtk", "3.0")
+gi.require_version("Gdk", "3.0")
+gi.require_version("GdkPixbuf", "2.0")
+gi.require_version("GtkSessionLock", "0.1")
+from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, GtkSessionLock, Pango  # noqa: E402
+
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
+import desktop_config as dc  # noqa: E402
+import sway_lock as sl  # noqa: E402
+import sway_pam  # noqa: E402
+from sway_i18n import _, layout_name  # noqa: E402
+
+AVATAR = 96
+PHOTO_MAX_BYTES = 2 * 1024 * 1024  # a única entrada de tamanho livre: uma foto maior fica nas iniciais
+FAIL_LIMIT = 3       # erros seguidos antes da espera
+FAIL_WAIT_S = 5      # a espera, além da que o próprio PAM fizer
+PAM_STUCK_S = 30     # um PAM que não responde (rede, leitor de digital): o campo volta
+SHAKE_MS = 400
+STATE_EVERY_S = 2    # bateria, rede, layout e mídia, numa linha à parte
+ART = 64
+# Nerd Font: anterior, tocar, pausar e próxima (os do popup de mídia)
+MEDIA_PREV, MEDIA_PLAY, MEDIA_PAUSE, MEDIA_NEXT = "\U000f04ae", "\U000f040a", "\U000f03e4", "\U000f04ad"
+
+CSS = b"""
+window { background: #1e1e22; }
+.scrim { background: rgba(0, 0, 0, 0.25); }
+.time { color: #ffffff; font-size: 84px; font-weight: 300; }
+.date { color: #e6e6e6; font-size: 20px; }
+.name { color: #ffffff; font-size: 18px; font-weight: bold; }
+.initials { color: @on_accent; font-size: 34px; font-weight: bold; }
+entry.password {
+  min-width: 260px; min-height: 36px; padding: 0 12px; border-radius: 8px;
+  background: #38383d; color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: none; caret-color: #ffffff;
+}
+entry.password:focus { border-color: @accent; }
+entry.password.shake { animation: shake 0.4s linear; }
+@keyframes shake {
+  0% { margin-left: 0; margin-right: 0; }
+  20% { margin-left: 16px; margin-right: 0; }
+  40% { margin-left: 0; margin-right: 16px; }
+  60% { margin-left: 12px; margin-right: 0; }
+  80% { margin-left: 0; margin-right: 8px; }
+  100% { margin-left: 0; margin-right: 0; }
+}
+.status { color: #f2c94c; font-size: 13px; min-height: 18px; }
+.corner { color: #ffffff; font-size: 14px; }
+.glyph { font-family: "Symbols Nerd Font"; font-size: 16px; }
+button.flat-btn {
+  background: transparent; border: none; box-shadow: none; color: #ffffff; padding: 2px 8px;
+  border-radius: 8px; min-height: 0;
+}
+button.flat-btn:hover { background: rgba(255, 255, 255, 0.12); }
+.media {
+  background: rgba(46, 46, 51, 0.85); border-radius: 12px; padding: 10px 14px; color: #ffffff;
+}
+.media-title { font-weight: bold; font-size: 14px; }
+.media-artist { color: #c8c8c8; font-size: 12px; }
+.status.error { color: #ff8a80; }
+"""
+
+
+class Notifier:
+    """O pipe do supervisor. Um erro de escrita não derruba o bloqueio: quem decide é o supervisor."""
+
+    def __init__(self, fd):
+        self.fd = fd
+
+    def send(self, code):
+        if self.fd is None:
+            return
+        try:
+            os.write(self.fd, code)
+        except OSError:
+            pass
+
+
+def initials_pixbuf(text, size, color):
+    """Um círculo na cor de destaque com as iniciais, desenhado pelo cairo."""
+    import cairo
+
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    cr = cairo.Context(surface)
+    r, g, b = (int(color[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    cr.set_source_rgb(r, g, b)
+    cr.arc(size / 2, size / 2, size / 2, 0, 6.2832)
+    cr.fill()
+    return Gdk.pixbuf_get_from_surface(surface, 0, 0, size, size), text
+
+
+def load_photo(path, size):
+    """A foto no tamanho do avatar, ou None. Roda fora da linha principal."""
+    try:
+        if path.stat().st_size > PHOTO_MAX_BYTES:
+            return None
+        return GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), size, size, False)
+    except (OSError, GLib.Error):
+        return None
+
+
+def round_photo(src, size):
+    """A foto já carregada, cortada em círculo."""
+    import cairo
+
+    surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, size, size)
+    cr = cairo.Context(surface)
+    cr.arc(size / 2, size / 2, size / 2, 0, 6.2832)
+    cr.clip()
+    Gdk.cairo_set_source_pixbuf(cr, src, 0, 0)
+    cr.paint()
+    return Gdk.pixbuf_get_from_surface(surface, 0, 0, size, size)
+
+
+class LockWindow(Gtk.Window):
+    """A tela de um monitor: fundo, hora, data, foto, nome, campo de senha e a linha de aviso."""
+
+    def __init__(self, app, monitor):
+        super().__init__()
+        self.app = app
+        self.monitor = monitor
+        geometry = monitor.get_geometry()
+        self.size = (geometry.width, geometry.height)
+        overlay = Gtk.Overlay()
+        # Liso até o locked: o PNG do desfoque no tamanho da tela é lido depois, numa linha à parte. O
+        # Sway só manda o locked com todas as superfícies desenhadas, e isso conta no prazo do sway-lock
+        self.background = Gtk.Image()
+        overlay.add(self.background)
+
+        center = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=10, halign=Gtk.Align.CENTER,
+                         valign=Gtk.Align.CENTER)
+        self.time = self.label("time")
+        self.date = self.label("date")
+        center.pack_start(self.time, False, False, 0)
+        center.pack_start(self.date, False, False, 0)
+        avatar = Gtk.Overlay(halign=Gtk.Align.CENTER, margin_top=36)
+        self.avatar = Gtk.Image.new_from_pixbuf(app.avatar)
+        avatar.add(self.avatar)
+        self.letters = self.label("initials")
+        self.letters.set_text(app.avatar_text)
+        avatar.add_overlay(self.letters)
+        center.pack_start(avatar, False, False, 0)
+        name = self.label("name")
+        name.set_text(app.name)
+        name.set_ellipsize(Pango.EllipsizeMode.END)
+        name.set_max_width_chars(40)
+        center.pack_start(name, False, False, 0)
+        self.entry = Gtk.Entry(visibility=False, halign=Gtk.Align.CENTER, margin_top=8,
+                               placeholder_text=_("Password"))
+        self.entry.get_style_context().add_class("password")
+        self.entry.set_input_purpose(Gtk.InputPurpose.PASSWORD)
+        self.entry.connect("activate", lambda entry: app.submit(entry))
+        center.pack_start(self.entry, False, False, 0)
+        self.status = self.label("status")
+        center.pack_start(self.status, False, False, 0)
+        overlay.add_overlay(center)
+        # O canto e a mídia existem em todas as telas, mas só aparecem na principal: se ela sair, a
+        # próxima assume sem remontar nada
+        app.is_main(monitor)
+        self.build_corner(overlay)
+        self.build_media(overlay)
+        self.add(overlay)
+        self.refresh_clock()
+
+    def build_corner(self, overlay):
+        """No canto superior direito: bateria, rede e o layout do teclado, que troca com um clique."""
+        box = Gtk.Box(spacing=14, halign=Gtk.Align.END, valign=Gtk.Align.START, margin_top=20, margin_end=24)
+        box.get_style_context().add_class("corner")
+        box.set_no_show_all(True)
+        self.battery = Gtk.Label()
+        self.battery.get_style_context().add_class("glyph")
+        self.battery_text = Gtk.Label()
+        self.net = Gtk.Label()
+        self.net.get_style_context().add_class("glyph")
+        self.layout = Gtk.Button(relief=Gtk.ReliefStyle.NONE, can_focus=False)
+        self.layout.get_style_context().add_class("flat-btn")
+        self.layout.connect("clicked", lambda _b: self.app.switch_layout())
+        for widget in (self.battery, self.battery_text, self.net, self.layout):
+            box.pack_start(widget, False, False, 0)
+            widget.show()
+        overlay.add_overlay(box)
+        self.corner = box
+
+    def build_media(self, overlay):
+        """No canto inferior esquerdo, só com mídia tocando ou pausada."""
+        card = Gtk.Box(spacing=12, halign=Gtk.Align.START, valign=Gtk.Align.END, margin_start=24,
+                       margin_bottom=24, no_show_all=True)
+        card.get_style_context().add_class("media")
+        self.art = Gtk.Image(no_show_all=True)
+        card.pack_start(self.art, False, False, 0)
+        text = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2, valign=Gtk.Align.CENTER)
+        self.title = Gtk.Label(xalign=0, max_width_chars=32, ellipsize=Pango.EllipsizeMode.END)
+        self.title.get_style_context().add_class("media-title")
+        self.artist = Gtk.Label(xalign=0, max_width_chars=32, ellipsize=Pango.EllipsizeMode.END)
+        self.artist.get_style_context().add_class("media-artist")
+        buttons = Gtk.Box(spacing=4)
+        self.media_buttons = {}
+        for method, glyph in (("Previous", MEDIA_PREV), ("PlayPause", MEDIA_PLAY), ("Next", MEDIA_NEXT)):
+            button = Gtk.Button(label=glyph, relief=Gtk.ReliefStyle.NONE, can_focus=False)
+            button.get_style_context().add_class("flat-btn")
+            button.get_style_context().add_class("glyph")
+            button.connect("clicked", lambda _b, m=method: self.app.media_command(m))
+            buttons.pack_start(button, False, False, 0)
+            self.media_buttons[method] = button
+        for widget in (self.title, self.artist, buttons):
+            text.pack_start(widget, False, False, 0)
+        card.pack_start(text, False, False, 0)
+        for child in (text, self.title, self.artist, buttons, *self.media_buttons.values()):
+            child.show()
+        overlay.add_overlay(card)
+        self.media = card
+
+    def show_system(self, state, main):
+        if not main:
+            self.corner.hide()
+            return
+        self.corner.show()
+        bat, net, layout = state
+        if bat is None:
+            self.battery.hide()
+            self.battery_text.hide()
+        else:
+            self.battery.set_text(sl.battery_icon(*bat))
+            self.battery_text.set_text(f"{bat[0]}%")
+            self.battery.show()
+            self.battery_text.show()
+        self.net.set_text(sl.network_icon(*net))
+        name, many = layout
+        self.layout.set_label(name)
+        self.layout.set_visible(bool(name))
+        self.layout.set_sensitive(many)
+
+    def show_media(self, media, art, main):
+        if media is None or not main:
+            self.media.hide()
+            return
+        self.title.set_text(media.title or media.label)
+        self.artist.set_text(media.artist)
+        self.artist.set_visible(bool(media.artist))
+        self.media_buttons["PlayPause"].set_label(MEDIA_PAUSE if media.status == "Playing" else MEDIA_PLAY)
+        self.media_buttons["Previous"].set_sensitive(media.can_previous)
+        self.media_buttons["Next"].set_sensitive(media.can_next)
+        if art is None:
+            self.art.hide()
+        else:
+            self.art.set_from_pixbuf(art)
+            self.art.show()
+        self.media.show()
+
+    @staticmethod
+    def label(css):
+        lbl = Gtk.Label()
+        lbl.get_style_context().add_class(css)
+        return lbl
+
+    def set_background(self, pixbuf):
+        if pixbuf is not None:
+            self.background.set_from_pixbuf(pixbuf)
+
+    def set_photo(self, pixbuf):
+        self.avatar.set_from_pixbuf(pixbuf)
+        self.letters.hide()
+
+    def refresh_clock(self):
+        now = time.localtime()
+        import datetime
+        stamp = datetime.datetime(*now[:6])
+        self.time.set_text(sl.time_text(stamp))
+        self.date.set_text(sl.date_text(stamp, self.app.time_locale))
+
+    def set_status(self, text, error=False):
+        self.status.set_text(text)
+        context = self.status.get_style_context()
+        (context.add_class if error else context.remove_class)("error")
+
+    def shake(self):
+        context = self.entry.get_style_context()
+        context.remove_class("shake")
+        context.add_class("shake")
+        GLib.timeout_add(SHAKE_MS, lambda: context.remove_class("shake") or False)
+
+
+class LockApp:
+    def __init__(self, notifier):
+        self.notifier = notifier
+        self.locked = False
+        self.busy = False
+        self.attempt = 0  # a resposta de uma verificação abandonada (PAM travado) é ignorada
+        self.failures = 0
+        self.wait_until = 0.0
+        # O aviso do PAM da tentativa que abriu a espera (a conta travada pelo faillock): fica depois dela
+        self.pam_notice = None
+        self.windows = {}
+        config = dc.load()
+        self.palette = dc.palette(config)
+        # A data no locale efetivo (o da config, LC_ALL, LC_TIME ou LANG) e, sem ele gerado, na língua dos textos
+        interface = next(iter(dc.message_languages(config)), "")
+        self.time_locale, missing = sl.set_time_locale(dc.time_locales(config, interface=interface))
+        line = sl.missing_time_locale_line(missing, self.time_locale)
+        if line:
+            print(f"sway-lock-gtk: {line}", file=sys.stderr)
+        user = sl.current_user()
+        self.name = sl.real_name(user)
+        # As iniciais primeiro (só o cairo); a foto é lida depois do locked
+        self.photo_path = sl.photo(user)
+        self.avatar, self.avatar_text = initials_pixbuf(sl.initials(self.name), AVATAR, self.palette.accent)
+        provider = Gtk.CssProvider()
+        provider.load_from_data(dc.css_colors(self.palette).encode() + CSS)
+        Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider,
+                                                 Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        self.display = Gdk.Display.get_default()
+        self.lock = GtkSessionLock.prepare_lock()
+        self.lock.connect("locked", self.on_locked)
+        self.lock.connect("finished", self.on_finished)
+        self.main_monitor = None
+        self.media = None       # o player mostrado (waybar_media.State)
+        self.art_url = None
+        self.art = None
+        self.bus = None
+        self.state_lock = threading.Lock()  # o laço e um comando de mídia podem ler ao mesmo tempo
+        keymap = Gdk.Keymap.get_for_display(self.display)
+        keymap.connect("state-changed", lambda *_a: self.show_caps())
+        self.keymap = keymap
+
+    def is_main(self, monitor):
+        """O monitor principal: o primeiro. Só ele tem o estado do sistema e a mídia."""
+        if self.main_monitor is None:
+            self.main_monitor = monitor
+        return monitor is self.main_monitor
+
+    def start(self):
+        self.lock.lock_lock()
+        for i in range(self.display.get_n_monitors()):
+            self.add_monitor(self.display.get_monitor(i))
+        # Monitores ligados com a tela bloqueada ganham a sua superfície; sem ela, a cor sólida do Sway
+        self.display.connect("monitor-added", lambda _d, monitor: self.add_monitor(monitor))
+        self.display.connect("monitor-removed", lambda _d, monitor: self.remove_monitor(monitor))
+        GLib.timeout_add_seconds(1, self.tick)
+
+    def add_monitor(self, monitor):
+        if monitor in self.windows:
+            return
+        window = LockWindow(self, monitor)
+        self.lock.new_surface(window, monitor)
+        window.show_all()
+        if not self.avatar_text:
+            window.letters.hide()
+        self.windows[monitor] = window
+        self.show_caps()
+        if self.locked:  # um monitor ligado com a tela já bloqueada
+            threading.Thread(target=self.load_backgrounds, args=({window.size},), daemon=True).start()
+
+    def remove_monitor(self, monitor):
+        window = self.windows.pop(monitor, None)
+        if window is not None:
+            GtkSessionLock.unmap_lock_window(window)
+            window.destroy()
+        if monitor is self.main_monitor:
+            # A primeira tela que sobrou vira a principal, e o canto e a mídia aparecem nela
+            self.main_monitor = next(iter(self.windows), None)
+            if self.locked:
+                self.refresh_soon()
+
+    def tick(self):
+        for window in self.windows.values():
+            window.refresh_clock()
+        if self.wait_until and time.monotonic() >= self.wait_until:
+            self.wait_until = 0.0
+            self.set_sensitive(True)
+            if self.pam_notice:
+                self.set_status(self.pam_notice, error=True)
+            else:
+                self.show_caps()
+        elif self.wait_until:
+            self.show_wait()
+        return True
+
+    def show_wait(self):
+        """A contagem da espera depois de erros seguidos."""
+        if self.pam_notice:
+            return
+        left = max(1, math.ceil(self.wait_until - time.monotonic()))
+        self.set_status(_("Too many attempts: try again in %s s") % left, error=True)
+
+    def on_locked(self, *_args):
+        self.locked = True
+        self.notifier.send(b"L")
+        # Agora, e não antes: a foto, o fundo do cache e o desfoque que faltar, numa linha à parte
+        sizes = {window.size for window in self.windows.values()}
+        threading.Thread(target=self.load_extras, args=(sizes,), daemon=True).start()
+        threading.Thread(target=self.watch_state, daemon=True).start()
+
+    # --- Estado do sistema e mídia: lidos numa linha à parte, aplicados pelo idle_add ---
+
+    def watch_state(self):
+        try:
+            from gi.repository import Gio
+
+            self.bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+        except Exception:  # noqa: BLE001 - sem barramento, sem mídia; o resto segue
+            self.bus = None
+        while True:
+            self.refresh_state()
+            time.sleep(STATE_EVERY_S)
+
+    def refresh_state(self):
+        """Um /sys ou um get_inputs inesperado não pode parar o laço: o canto e a mídia ficariam congelados."""
+        with self.state_lock:
+            try:
+                self._refresh_state()
+            except Exception as err:  # noqa: BLE001
+                print(f"sway-lock-gtk: could not read the system state: {err!r}", file=sys.stderr)
+
+    def _refresh_state(self):
+        try:
+            inputs = json.loads(subprocess.run(["swaymsg", "-r", "-t", "get_inputs"], capture_output=True,
+                                               text=True, timeout=2).stdout or "[]")
+        except (OSError, subprocess.SubprocessError, ValueError):
+            inputs = []
+        name, many = sl.keyboard_layout(inputs)
+        system = (sl.battery(), sl.network(), (layout_name(name), many))
+        media, art = self.read_media()
+        GLib.idle_add(self.apply_state, system, media, art)
+
+    def read_media(self):
+        if self.bus is None:
+            return None, None
+        import waybar_media as wm
+
+        try:
+            media = wm.pick(wm.read_all(self.bus))
+        except Exception:  # noqa: BLE001
+            return None, None
+        url = media.art_url if media else ""
+        if url != self.art_url:
+            self.art_url, self.art = url, self.load_art(url)
+        return media, self.art
+
+    @staticmethod
+    def load_art(url):
+        """Só capa local (arquivo, cache do popup ou data:), nunca da rede, e só com o carregador do
+        formato que os primeiros bytes dizem (sl.art_bytes): nunca o new_from_file, que escolheria."""
+        try:
+            found = sl.art_bytes(url)
+            if found is None:
+                return None
+            data, kind = found
+            loader = GdkPixbuf.PixbufLoader.new_with_type(kind)
+            loader.set_size(ART, ART)
+            loader.write(data)
+            loader.close()
+            return loader.get_pixbuf()
+        except (GLib.Error, OSError, ValueError):
+            return None
+
+    def apply_state(self, system, media, art):
+        self.media = media
+        for window in self.windows.values():
+            main = window.monitor is self.main_monitor
+            window.show_system(system, main)
+            window.show_media(media, art, main)
+        return False
+
+    def switch_layout(self):
+        subprocess.Popen(["swaymsg", "input", "type:keyboard", "xkb_switch_layout", "next"],
+                         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        GLib.timeout_add(300, self.refresh_soon)
+
+    def media_command(self, method):
+        media, bus = self.media, self.bus
+        if media is None or bus is None:
+            return
+
+        def run():
+            import waybar_media as wm
+
+            try:
+                wm.command(bus, media.name, method)
+            except Exception as err:  # noqa: BLE001
+                print(f"sway-lock-gtk: media {method}: {err!r}", file=sys.stderr)
+            time.sleep(0.2)
+            self.refresh_state()
+
+        threading.Thread(target=run, daemon=True).start()
+
+    def refresh_soon(self):
+        threading.Thread(target=self.refresh_state, daemon=True).start()
+        return False
+
+    def load_extras(self, sizes):
+        if self.photo_path is not None:
+            photo = load_photo(self.photo_path, AVATAR)
+            if photo is not None:
+                GLib.idle_add(self.apply_photo, photo)
+        self.load_backgrounds(sizes)
+
+    def load_backgrounds(self, sizes):
+        wallpaper = sl.WALLPAPER.expanduser()
+        for size in sizes:
+            try:
+                path = sl.cached_blur(wallpaper, *size) or sl.make_blur(wallpaper, *size)
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), *size, False) if path else None
+            except (GLib.Error, OSError):
+                continue
+            if pixbuf is not None:
+                GLib.idle_add(self.apply_background, size, pixbuf)
+
+    def apply_photo(self, photo):
+        rounded = round_photo(photo, AVATAR)
+        for window in self.windows.values():
+            window.set_photo(rounded)
+        self.avatar, self.avatar_text = rounded, ""
+        return False
+
+    def apply_background(self, size, pixbuf):
+        for window in self.windows.values():
+            if window.size == size:
+                window.set_background(pixbuf)
+        return False
+
+    def on_finished(self, *_args):
+        if not self.locked:
+            # Outro cliente já bloqueou: a tela está bloqueada, e não por nós
+            self.notifier.send(b"F")
+            self.lock.destroy()
+            Gtk.main_quit()
+            return
+        # O Sway encerrou o nosso bloqueio sem desbloquear: sair sem "U", e o supervisor assume
+        Gtk.main_quit()
+
+    def set_sensitive(self, sensitive):
+        for window in self.windows.values():
+            window.entry.set_sensitive(sensitive)
+            if sensitive:
+                window.entry.grab_focus()
+
+    def set_status(self, text, error=False):
+        for window in self.windows.values():
+            window.set_status(text, error)
+
+    def show_caps(self):
+        if self.busy or self.wait_until:
+            return
+        caps = self.keymap.get_caps_lock_state()
+        self.set_status(_("Caps Lock is on") if caps else "")
+
+    def submit(self, entry):
+        if self.busy or self.wait_until or not self.locked:
+            return
+        secret = bytearray(entry.get_text().encode())
+        for window in self.windows.values():
+            window.entry.set_text("")
+        if not secret:
+            return
+        self.busy = True
+        self.attempt += 1
+        self.set_sensitive(False)
+        self.set_status(_("Checking…"))
+        threading.Thread(target=self.check, args=(secret, self.attempt), daemon=True).start()
+        GLib.timeout_add_seconds(PAM_STUCK_S, self.on_stuck, self.attempt)
+
+    def check(self, secret, attempt):
+        try:
+            result = sway_pam.authenticate(secret)
+        except Exception:  # noqa: BLE001 - qualquer falha conta como erro, nunca como acerto
+            result = sway_pam.Result(sway_pam.ERROR, -1, [])
+        GLib.idle_add(self.on_result, result, attempt)
+
+    def on_stuck(self, attempt):
+        """O PAM não respondeu (não dá para cancelá-lo): o campo volta, e a resposta velha é ignorada."""
+        if self.busy and attempt == self.attempt:
+            self.attempt += 1
+            self.busy = False
+            self.set_status(_("The password check did not answer: try again"), error=True)
+            self.set_sensitive(True)
+        return False
+
+    def on_result(self, result, attempt):
+        if attempt != self.attempt:
+            return False  # de uma verificação abandonada: nem um acerto atrasado desbloqueia
+        self.busy = False
+        if result.status == sway_pam.OK:
+            self.lock.unlock_and_destroy()
+            self.display.sync()
+            self.notifier.send(b"U")
+            Gtk.main_quit()
+            return False
+        if result.status == sway_pam.WRONG:
+            self.failures += 1
+            # O aviso do PAM, se houver: o faillock do Arch ("The account is locked due to 3 failed logins.
+            # (10 minutes left to unlock)")
+            text = sway_pam.failure_text(result.messages, _("Wrong password"))
+        elif result.status == sway_pam.EXPIRED:
+            text = sway_pam.failure_text(result.messages, _("The account needs attention: log in on a text console"))
+        else:
+            text = sway_pam.failure_text(result.messages, _("Could not check the password"))
+        pam_said = any(m.strip() for m in result.messages)
+        for window in self.windows.values():
+            window.shake()
+        if self.failures >= FAIL_LIMIT:
+            self.failures = 0
+            self.wait_until = time.monotonic() + FAIL_WAIT_S
+            # O aviso do PAM vale mais que a contagem (e fica depois da espera); sem ele, a contagem: o campo não
+            # aceita teclas enquanto isso, e sem ela o que se digita some sem aviso
+            self.pam_notice = text if pam_said else None
+            if pam_said:
+                self.set_status(text, error=True)
+            else:
+                self.show_wait()
+            return False
+        self.pam_notice = None
+        self.set_status(text, error=True)
+        self.set_sensitive(True)
+        return False
+
+
+def parse_args(argv):
+    """Só com o supervisor: sem ele, um bloqueio que cai não teria quem o assumisse."""
+    if len(argv) == 2 and argv[0] == "--notify-fd" and argv[1].isdigit():
+        return int(argv[1])
+    print("usage: sway-lock-gtk --notify-fd N (run it through sway-lock)", file=sys.stderr)
+    sys.exit(2)
+
+
+def main():
+    fd = parse_args(sys.argv[1:])
+    try:
+        supported = GtkSessionLock.is_supported()
+    except GLib.Error as err:  # a typelib sem a biblioteca (libgtk-session-lock0)
+        print(f"sway-lock-gtk: gtk-session-lock is not usable: {err.message}", file=sys.stderr)
+        return 1
+    if not supported:
+        print("sway-lock-gtk: the compositor has no ext-session-lock-v1", file=sys.stderr)
+        return 1
+    app = LockApp(Notifier(fd))
+    app.start()
+    Gtk.main()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

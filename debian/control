@@ -37,7 +37,7 @@ Description: Sway desktop components - keep translations on minimized systems
 Package: swaydesk-scripts
 Architecture: all
 Depends: ${misc:Depends}, python3, python3-holidays
-Recommends: brightnessctl, swayidle, swaylock, gammastep, libnotify-bin
+Recommends: brightnessctl, swayidle, gtklock, gammastep, libnotify-bin
 Description: Sway desktop components - helper scripts
  The scripts the components call, in /usr/libexec/swaydesk: session
  actions, brightness, caffeine (idle inhibit), night light, Waybar module
@@ -102,7 +102,7 @@ Description: Sway desktop components - theme tools, accent portal and Displays
 
 Package: swaydesk-session
 Architecture: any
-Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, systemd, libpam0g, swaylock
+Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, systemd, libpam0g, python3, python3-gi, python3-gi-cairo, gir1.2-gtk-3.0, gir1.2-gtksessionlock-0.1, gtklock
 Description: Sway desktop components - session menu, lock screen and services
  The full-screen session menu (lock, log out, suspend, reboot, power
  off), a minimal org.gnome.SessionManager for Sway (reboot and shutdown
@@ -110,13 +110,16 @@ Description: Sway desktop components - session menu, lock screen and services
  gnome-keyring.
  .
  The lock screen (swaydesk-lock) uses ext-session-lock through
- gtk4-layer-shell 1.2 or newer. It checks the password with the PAM
- service of swaylock (/etc/pam.d/swaylock), which loads libpam at run
- time; swaylock also stays as the fallback locker.
+ gtk4-layer-shell 1.2 or newer. It checks the password with its own PAM
+ service (/etc/pam.d/swaydesk-lock, the same "auth include login" as
+ swaylock's), loading libpam at run time. Where gtk4-layer-shell is older
+ (Debian 13), the lock is sway-lock-gtk, the same lock in Python with GTK 3
+ and gtk-session-lock. gtklock is the fallback locker; swaylock is no
+ longer used, since it takes no dead keys.
 
 Package: swaydesk-desktop
 Architecture: all
-Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), swaydesk-notifd (>= ${source:Version}), swaydesk-notifd (<< ${source:Version}.1~), swaydesk-dock (>= ${source:Version}), swaydesk-dock (<< ${source:Version}.1~), swaydesk-drawer (>= ${source:Version}), swaydesk-drawer (<< ${source:Version}.1~), swaydesk-widgets (>= ${source:Version}), swaydesk-widgets (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-theme (>= ${source:Version}), swaydesk-theme (<< ${source:Version}.1~), swaydesk-session (>= ${source:Version}), swaydesk-session (<< ${source:Version}.1~), swaydesk-efi (>= ${source:Version}), swaydesk-efi (<< ${source:Version}.1~), ${misc:Depends}, sway, swaybg, swayidle, swaylock, waybar, kitty, rofi, qalc, jq, curl, wl-clipboard, cliphist, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, dconf-cli, libglib2.0-bin, fonts-noto-core, fonts-noto-color-emoji, gnome-themes-extra, adw-gtk-theme, systemd, mate-polkit | lxpolkit
+Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), swaydesk-notifd (>= ${source:Version}), swaydesk-notifd (<< ${source:Version}.1~), swaydesk-dock (>= ${source:Version}), swaydesk-dock (<< ${source:Version}.1~), swaydesk-drawer (>= ${source:Version}), swaydesk-drawer (<< ${source:Version}.1~), swaydesk-widgets (>= ${source:Version}), swaydesk-widgets (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-theme (>= ${source:Version}), swaydesk-theme (<< ${source:Version}.1~), swaydesk-session (>= ${source:Version}), swaydesk-session (<< ${source:Version}.1~), swaydesk-efi (>= ${source:Version}), swaydesk-efi (<< ${source:Version}.1~), ${misc:Depends}, sway, swaybg, swayidle, waybar, kitty, rofi, qalc, jq, curl, wl-clipboard, cliphist, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, dconf-cli, libglib2.0-bin, fonts-noto-core, fonts-noto-color-emoji, gnome-themes-extra, adw-gtk-theme, systemd, mate-polkit | lxpolkit
 Recommends: papirus-icon-theme, thunar | file-manager, grim, slurp, wf-recorder, brightnessctl, playerctl, pavucontrol, gammastep, blueman, network-manager-applet | network-manager-gnome, libnotify-bin, power-profiles-daemon, xwayland, qt5ct, qt6ct, gnome-text-editor
 Suggests: fcitx5
 Description: Sway desktop - the full session

@@ -1,0 +1,18 @@
+/* O gtklock (o bloqueio onde o próprio não sobe, pelo sway-gtklock) nas cores do bloqueio próprio, com a cor
+   de destaque. Gerado em ~/.local/share/swaydesk/gtklock/style.css pelo sway-desktop-config: mude o modelo */
+window { background-color: #1e1e22; }
+#window-box { padding: 32px; }
+#clock-label { color: #ffffff; font-size: 84px; font-weight: 300; }
+#date-label { color: #e6e6e6; font-size: 20px; }
+#input-label { color: #ffffff; font-size: 14px; }
+#input-field {
+  min-width: 260px; min-height: 36px; padding: 0 12px; border-radius: 8px;
+  background: #38383d; color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: none; outline: none; caret-color: #ffffff;
+}
+#input-field:focus { border-color: #{{accent}}; }
+#unlock-button {
+  border-radius: 8px; background: #{{accent}}; color: #{{on_accent}}; border: none; box-shadow: none;
+}
+#warning-label { color: #f2c94c; font-size: 13px; }
+#error-label { color: #ff8a80; font-size: 13px; }

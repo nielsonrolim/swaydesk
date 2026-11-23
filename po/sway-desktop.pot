@@ -125,6 +125,7 @@ msgid "No audio"
 msgstr ""
 
 #: home/.local/bin/sway-capture home/.local/bin/sway-drawer
+#: home/.local/bin/waybar-system-popup
 msgid "System"
 msgstr ""
 
@@ -177,7 +178,7 @@ msgid "Capture"
 msgstr ""
 
 #: home/.local/bin/sway-capture home/.local/bin/sway-files
-#, python-format
+#, python-format, sh-printf-format
 msgid "Could not open %s"
 msgstr ""
 
@@ -368,6 +369,11 @@ msgid "Password"
 msgstr ""
 
 #: home/.local/bin/sway-lock-gtk
+#, python-format
+msgid "Too many attempts: try again in %s s"
+msgstr ""
+
+#: home/.local/bin/sway-lock-gtk
 msgid "Caps Lock is on"
 msgstr ""
 
@@ -389,10 +395,6 @@ msgstr ""
 
 #: home/.local/bin/sway-lock-gtk
 msgid "Could not check the password"
-msgstr ""
-
-#: home/.local/bin/sway-lock-gtk
-msgid "Too many attempts: wait a few seconds"
 msgstr ""
 
 #: home/.local/bin/sway-switcher
@@ -604,6 +606,16 @@ msgstr ""
 
 #: home/.local/bin/sway_themes.py
 #, python-format
+msgid "Another desktop is installed (%s), so the accent color is not written to ~/.config/gtk-3.0/gtk.css and gtk-4.0/gtk.css, which every desktop reads: in Sway, the libadwaita apps use the nearest of their own accent colors, and the GTK 3 apps keep the theme's color"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "%s is not from the Theme app and was left as it was: the GTK apps don't get the accent color from it"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
+#, python-format
 msgid "%s takes its colors from the KDE color scheme (~/.config/gtk-3.0/colors.css): the GTK 3 apps follow it, not the style chosen here. Change the scheme in the KDE System Settings"
 msgstr ""
 
@@ -680,16 +692,6 @@ msgid "The GTK settings.ini files belong to another desktop (KDE, for example) a
 msgstr ""
 
 #: home/.local/bin/sway_themes.py
-#, python-format
-msgid "Another desktop is installed (%s), so the accent color is not written to ~/.config/gtk-3.0/gtk.css and gtk-4.0/gtk.css, which every desktop reads: in Sway, the libadwaita apps use the nearest of their own accent colors, and the GTK 3 apps keep the theme's color"
-msgstr ""
-
-#: home/.local/bin/sway_themes.py
-#, python-format
-msgid "%s is not from the Theme app and was left as it was: the GTK apps don't get the accent color from it"
-msgstr ""
-
-#: home/.local/bin/sway_themes.py
 msgid "theme in dconf (gsettings)"
 msgstr ""
 
@@ -737,15 +739,18 @@ msgstr ""
 msgid "Audio unavailable"
 msgstr ""
 
-#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-system-popup
+#: home/.local/bin/waybar-battery
 msgid "Power saver"
 msgstr ""
 
-#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-system-popup
+#: home/.local/bin/waybar-battery
 msgid "Balanced"
 msgstr ""
 
-#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-system-popup
+#: home/.local/bin/waybar-battery
 msgid "Performance"
 msgstr ""
 
@@ -775,7 +780,8 @@ msgstr ""
 msgid "now"
 msgstr ""
 
-#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-system-popup
+#: home/.local/bin/waybar-battery
 msgid "Power profile"
 msgstr ""
 
@@ -800,7 +806,7 @@ msgid "Charging"
 msgstr ""
 
 #: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
-#, python-format
+#, python-format, sh-printf-format
 msgid "Full in %s"
 msgstr ""
 
@@ -817,7 +823,7 @@ msgid "Discharging"
 msgstr ""
 
 #: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-battery
-#, python-format
+#, python-format, sh-printf-format
 msgid "%s left"
 msgstr ""
 
@@ -842,7 +848,7 @@ msgid_plural "%s cycles"
 msgstr[0] ""
 msgstr[1] ""
 
-#: home/.local/bin/waybar-battery-popup
+#: home/.local/bin/waybar-battery-popup home/.local/bin/waybar-system-popup
 msgid "Could not change the power profile"
 msgstr ""
 
@@ -1066,17 +1072,17 @@ msgid "Could not change: %s"
 msgstr ""
 
 #: home/.local/bin/waybar-bluetooth-popup
+#, python-format
+msgid "Could not search: %s"
+msgstr ""
+
+#: home/.local/bin/waybar-bluetooth-popup
 msgid "Bluetooth is turned off by a hardware switch or key"
 msgstr ""
 
 #: home/.local/bin/waybar-bluetooth-popup
 #, python-format
 msgid "Could not unblock Bluetooth (rfkill): %s"
-msgstr ""
-
-#: home/.local/bin/waybar-bluetooth-popup
-#, python-format
-msgid "Could not search: %s"
 msgstr ""
 
 #: home/.local/bin/waybar-brightness-popup
@@ -1980,6 +1986,7 @@ msgid "Translations for your language"
 msgstr ""
 
 #: home/.local/bin/sway-language-packs
+#, sh-printf-format
 msgid ""
 "Some windows, such as the file chooser, are in English because the GTK translations for your language are not installed. To install them, run in a terminal:\n"
 "%s"
@@ -2002,6 +2009,7 @@ msgid "term"
 msgstr ""
 
 #: home/.local/bin/sway-launcher
+#, sh-printf-format
 msgid "Type to search %s, or use %s, or type an address, like kde.org, and press Enter."
 msgstr ""
 
@@ -2041,6 +2049,15 @@ msgstr ""
 msgid "usage: sway-launcher toggle|windows"
 msgstr ""
 
+#: home/.local/bin/sway-lock
+msgid "The screen is not locked"
+msgstr ""
+
+#: home/.local/bin/sway-lock
+#, sh-format
+msgid "No screen lock could start. See the log in $XDG_RUNTIME_DIR/sway-lock.log."
+msgstr ""
+
 #: home/.local/bin/sway-nightlight
 msgid "use HH:MM"
 msgstr ""
@@ -2050,10 +2067,12 @@ msgid "the end must come before the start on the same day"
 msgstr ""
 
 #: home/.local/bin/sway-nightlight
+#, sh-printf-format
 msgid "could not write %s"
 msgstr ""
 
 #: home/.local/bin/sway-nightlight
+#, sh-printf-format
 msgid "could not find [general] in %s"
 msgstr ""
 
@@ -2086,6 +2105,7 @@ msgid "Recording"
 msgstr ""
 
 #: home/.local/bin/sway-rec
+#, sh-printf-format
 msgid "Recording · audio: %s · click to stop"
 msgstr ""
 
@@ -2098,6 +2118,7 @@ msgid "usage: sway-rec region|full|window|stop|status"
 msgstr ""
 
 #: home/.local/bin/sway-rec
+#, sh-printf-format
 msgid "Unexpected error at line %s of sway-rec"
 msgstr ""
 
@@ -2142,6 +2163,7 @@ msgid "none"
 msgstr ""
 
 #: home/.local/bin/sway-rec home/.local/bin/sway-shot
+#, sh-printf-format
 msgid "Could not create %s"
 msgstr ""
 
@@ -2150,10 +2172,12 @@ msgid "Incomplete recording"
 msgstr ""
 
 #: home/.local/bin/sway-rec
+#, sh-printf-format
 msgid "%s may not open."
 msgstr ""
 
 #: home/.local/bin/sway-rec
+#, sh-printf-format
 msgid "%s · audio: %s"
 msgstr ""
 
@@ -2170,6 +2194,7 @@ msgid "usage: sway-resize left|right|up|down [pixels]"
 msgstr ""
 
 #: home/.local/bin/sway-resize
+#, sh-printf-format
 msgid "invalid pixels: %s"
 msgstr ""
 
@@ -2178,6 +2203,7 @@ msgid "Screenshot failed"
 msgstr ""
 
 #: home/.local/bin/sway-shot
+#, sh-printf-format
 msgid "Unexpected error at line %s of sway-shot"
 msgstr ""
 
@@ -2190,6 +2216,7 @@ msgid "grim could not capture the region."
 msgstr ""
 
 #: home/.local/bin/sway-shot
+#, sh-printf-format
 msgid "grim could not capture the screen %s."
 msgstr ""
 
@@ -2210,6 +2237,7 @@ msgid "Gradia not installed"
 msgstr ""
 
 #: home/.local/bin/sway-shot
+#, sh-printf-format
 msgid "The screenshot was saved, but did not open in the editor. Install: %s"
 msgstr ""
 
@@ -2222,6 +2250,7 @@ msgid "Update"
 msgstr ""
 
 #: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+#, sh-printf-format
 msgid "%d update available"
 msgid_plural "%d updates available"
 msgstr[0] ""
@@ -2232,22 +2261,27 @@ msgid "Firmware"
 msgstr ""
 
 #: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+#, sh-printf-format
 msgid "Official: %d"
 msgstr ""
 
 #: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+#, sh-printf-format
 msgid "AUR: %d"
 msgstr ""
 
 #: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+#, sh-printf-format
 msgid "Flatpak: %d"
 msgstr ""
 
 #: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+#, sh-printf-format
 msgid "Firmware: %d"
 msgstr ""
 
 #: home/.local/bin/sway-updates home/.local/bin/waybar-updates
+#, sh-printf-format
 msgid "and %d more"
 msgid_plural "and %d more"
 msgstr[0] ""
@@ -2270,6 +2304,7 @@ msgid "paku maintain ended; see above."
 msgstr ""
 
 #: home/.local/bin/sway-updates
+#, sh-printf-format
 msgid "Updating the system and the AUR with %s -Syu. sudo asks for your password."
 msgstr ""
 
@@ -2302,6 +2337,7 @@ msgid "less than 1 min"
 msgstr ""
 
 #: home/.local/bin/waybar-battery
+#, sh-printf-format
 msgid "full in %s"
 msgstr ""
 
@@ -2322,10 +2358,12 @@ msgid "Waiting to charge"
 msgstr ""
 
 #: home/.local/bin/waybar-battery
+#, sh-printf-format
 msgid "Profile: %s"
 msgstr ""
 
 #: home/.local/bin/waybar-battery
+#, sh-printf-format
 msgid "Could not change to %s"
 msgstr ""
 
@@ -2358,6 +2396,7 @@ msgid "Caffeine on: no lock, screen blanking or suspend"
 msgstr ""
 
 #: home/.local/bin/waybar-caffeine
+#, sh-printf-format
 msgid "Caffeine until %s: no lock, screen blanking or suspend"
 msgstr ""
 
@@ -2370,6 +2409,7 @@ msgid "Click to update"
 msgstr ""
 
 #: home/.local/bin/waybar-volume
+#, sh-printf-format
 msgid "Muted · %s"
 msgstr ""
 
@@ -2378,14 +2418,17 @@ msgid "usage: ./install.sh [--dry-run] [--system] [--deps [--yes]] [--rust | --r
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "warning: %s %s is not supported (Linux Mint 22.3, Ubuntu 26.04 or Debian 13, or newer)"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "distro: %s %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "warning: NetworkManager does not manage %s, and the network popup has no control over it."
 msgstr ""
 
@@ -2414,12 +2457,14 @@ msgid "No login screen: --deps installs greetd, nwg-hello and basic apps ([sem-d
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "%d package missing:"
 msgid_plural "%d packages missing:"
 msgstr[0] ""
 msgstr[1] ""
 
 #: install.sh
+#, sh-printf-format
 msgid "No apt package: %s"
 msgstr ""
 
@@ -2436,6 +2481,7 @@ msgid "Missing optional packages:"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "Outside apt, not found: %s"
 msgstr ""
 
@@ -2468,6 +2514,7 @@ msgid "download failed or with a wrong checksum"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "no .deb for the %s architecture"
 msgstr ""
 
@@ -2476,6 +2523,7 @@ msgid "apt packages"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "no apt package: %s"
 msgstr ""
 
@@ -2488,14 +2536,17 @@ msgid "Not installed:"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "rust: no apt package: %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "rust: still missing to build: %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "components: %s (components in config.toml)"
 msgstr ""
 
@@ -2508,10 +2559,12 @@ msgid "the Rust version does not load here"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "rust: folder not found: %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "rust: missing to build, kept the Python versions: %s"
 msgstr ""
 
@@ -2528,58 +2581,72 @@ msgid "rust: --rust-only needs the Rust versions; run ./install.sh --deps --rust
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "rust: building %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "rust: %s not found in %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "rust: would install %s (dry run)"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "rust: %s does not load here, and with --rust-only nothing replaces it"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "rust: %s does not load here; the Python version stays in use"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "rust: installed %s; it takes over at the next login (or: pkill -x sway-%s)"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "different, saved first: %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "broken link to remove: %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "broken link removed: %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "old nwg-drawer file to remove: %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "old nwg-drawer file removed: %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "old Albert plugin to remove: %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "old Albert plugin removed: %s"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "kept, differs from the repository: %s"
 msgstr ""
 
@@ -2588,6 +2655,7 @@ msgid "could not generate the accent color files: run sway-desktop-config genera
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "system: %s"
 msgstr ""
 
@@ -2600,6 +2668,7 @@ msgid "The new login screen shows up after a restart."
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "notify-send: could not read %s, so it was left alone."
 msgstr ""
 
@@ -2608,6 +2677,7 @@ msgid "The notify-send change takes effect after a restart."
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "notify-send: the AppArmor rules did not compile, so %s is back as it was:"
 msgstr ""
 
@@ -2620,10 +2690,12 @@ msgid "system: Flathub in Flatpak"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "new links: %d · already right: %d · different, saved: %d · copied: %d · kept: %d · without the program: %d"
 msgstr ""
 
 #: install.sh
+#, sh-printf-format
 msgid "copies in %s"
 msgstr ""
 

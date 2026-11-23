@@ -198,9 +198,11 @@ pub fn get(config: &Config, key: &str) -> Option<String> {
 }
 
 /// Os modelos que o render_template usa
-pub const TEMPLATE_NAMES: &[&str] = &["swaylock.conf", "kitty-theme.conf", "rofi.rasi"];
+pub const TEMPLATE_NAMES: &[&str] = &["swaylock.conf", "kitty-theme.conf", "rofi.rasi", "gtklock.css"];
 /// O tema do rofi do sway-launcher, na pasta de dados (`swaydesk_common::dirs::data_dir`)
 pub const ROFI_THEME: &str = "rofi/sway-desktop.rasi";
+/// O estilo do gtklock, na data_dir: o sway-gtklock o passa com -s.
+pub const GTKLOCK_STYLE: &str = "gtklock/style.css";
 
 /// O modelo com as cores, em hexadecimal sem o #. O erro diz o caminho, como o do Python.
 pub fn render_template(name: &str, colors: &Palette) -> std::io::Result<String> {
@@ -696,6 +698,8 @@ pub fn generate_with(config: &Config, fonts: &Fonts) -> std::io::Result<Vec<Stri
     kept.extend(sync_gtk_css(&base, &colors, &other_desktops())?);
     // O tema do rofi do sway-launcher (Alt+Espaço)
     write_file(&swaydesk_common::dirs::data_dir().join(ROFI_THEME), &render_template("rofi.rasi", &colors)?)?;
+    // O do gtklock, o bloqueio onde o próprio não sobe (o sway-gtklock)
+    write_file(&swaydesk_common::dirs::data_dir().join(GTKLOCK_STYLE), &render_template("gtklock.css", &colors)?)?;
     Ok(kept)
 }
 

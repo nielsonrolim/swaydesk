@@ -19,7 +19,7 @@ ACCENT = re.compile(r"#[0-9a-fA-F]{6}")
 DEFAULT_ACCENT = "#199ca8"
 MIN_WHITE_CONTRAST = 2.4  # abaixo disso, texto preto: todas as cores do Mint-Y ficam com branco, como nos temas
 TEMPLATES = Path(__file__).resolve().parents[1] / "share/sway-desktop/templates"
-TEMPLATE_NAMES = ("swaylock.conf", "kitty-theme.conf", "rofi.rasi")  # os que o render_template usa
+TEMPLATE_NAMES = ("swaylock.conf", "kitty-theme.conf", "rofi.rasi", "gtklock.css")  # os que o render_template usa
 THEME_NAME = re.compile(r"[\w .+-]+")
 # O tema de reserva, quando o pedido não está instalado: o adw-gtk3-dark (o pacote adw-gtk-theme), que segue a cor
 # de destaque; sem ele, o Adwaita-dark do gnome-themes-extra
@@ -936,6 +936,7 @@ def waybar_wrapper():
 
 
 ROFI_THEME = "rofi/sway-desktop.rasi"  # na data_dir(); o sway-launcher o lê
+GTKLOCK_STYLE = "gtklock/style.css"  # na data_dir(); o sway-gtklock o passa com -s
 
 
 def generated_files(colors, config=None, fonts=None):
@@ -1183,6 +1184,7 @@ def generate(config):
     kept += sync_gtk_css(base, colors, other_desktops())
     # O tema do rofi do sway-launcher (Alt+Espaço)
     write_file(data_dir() / ROFI_THEME, render_template("rofi.rasi", colors))
+    write_file(data_dir() / GTKLOCK_STYLE, render_template("gtklock.css", colors))
     # A Waybar sem os módulos desligados. Sem o modelo, ou com ele quebrado, o sway-waybar usa o modelo
     try:
         write_waybar(config)
