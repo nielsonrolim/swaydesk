@@ -63,8 +63,8 @@ window { background: #1e1e22; }
 .avatar { min-width: 96px; min-height: 96px; border-radius: 48px; background: @accent; }
 .initials { color: @on_accent; font-size: 34px; font-weight: bold; }
 entry.lock-password {
-  min-width: 260px; min-height: 36px; padding: 0 12px; border-radius: 18px;
-  background: rgba(46, 46, 51, 0.85); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.12);
+  min-width: 260px; min-height: 36px; padding: 0 12px; border-radius: 8px;
+  background: #38383d; color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: none; outline: none; caret-color: #ffffff;
 }
 entry.lock-password:focus-within { border-color: @accent; }

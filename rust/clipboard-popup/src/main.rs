@@ -70,6 +70,8 @@ entry {
   border-radius: 8px; font-size: 13px; min-height: 0; padding: 6px 10px;
 }
 entry:focus-within { box-shadow: inset 0 0 0 1px @accent; }
+/* A lupa a 11 px do texto, como no rofi (o padrão do GTK deixava 8 com a fonte de 13 px) */
+entry > image:first-child { margin-right: 3px; }
 button.link {
   background: transparent; border: none; box-shadow: none; color: #8a8a8f;
   padding: 0 4px; min-height: 0; font-size: 12px;

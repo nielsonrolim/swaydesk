@@ -39,9 +39,13 @@ mainbox {
     children: [ inputbar, message, listview, mode-switcher ];
 }
 
+/* O campo como os das outras buscas (a grade, o clipboard): #38383d, borda de 1 px e cantos de 8 px. O rofi não tem
+ * estado de foco no tema, e o campo está sempre focado: a borda é a do destaque, como a dos outros com o foco */
 inputbar {
-    background-color: @field;
-    border-radius:    10px;
+    background-color: #38383d;
+    border:           1px;
+    border-color:     @accent;
+    border-radius:    8px;
     padding:          10px 14px;
     spacing:          10px;
     /* A lupa no lugar do prompt, que mostraria o nome do modo (os botões embaixo já o mostram) */

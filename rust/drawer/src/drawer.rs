@@ -71,6 +71,8 @@ entry {
 }
 entry:focus-within { border-color: @accent; }
 entry image { color: #8a8a8f; }
+/* A lupa a 11 px do texto, como no rofi (o padrão do GTK deixava 7) */
+entry > image:first-child { margin-right: 4px; }
 entry text selection { background-color: @accent; color: @on_accent; }
 button {
   background: none; border: none; box-shadow: none; text-shadow: none; color: #dadada;
