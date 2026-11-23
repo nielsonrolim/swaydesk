@@ -159,7 +159,10 @@ fn stuck_states() {
     assert_eq!(stuck_state(Some(500), false, None, false), None);
     assert_eq!(stuck_state(Some(1000), false, None, false), Some(Stuck::Menu));
     assert_eq!(stuck_state(Some(5000), true, None, false), None);
-    assert_eq!(stuck_state(None, false, Some(10), false), Some(Stuck::Drag));
+    // Sem o botão no seat, um arrasto que acabou de se mover continua (o seat nem sempre o informa)
+    assert_eq!(stuck_state(None, false, Some(10), false), None);
+    assert_eq!(stuck_state(None, false, Some(999), false), None);
+    assert_eq!(stuck_state(None, false, Some(1000), false), Some(Stuck::Drag));
     assert_eq!(stuck_state(None, false, Some(100), true), None);
     assert_eq!(stuck_state(None, false, Some(5000), true), Some(Stuck::Drag));
 }
@@ -342,10 +345,36 @@ fn toggle_move_and_drop() {
     assert_eq!(move_pin(&s(&["a", "b", "c"]), "c", 0), s(&["c", "a", "b"]));
     assert_eq!(move_pin(&s(&["a", "b", "c"]), "a", 99), s(&["b", "c", "a"]));
     assert_eq!(move_pin(&s(&["a", "b", "c"]), "b", -3), s(&["b", "a", "c"]));
-    assert_eq!(drop_index(10.0, &[40.0, 40.0, 40.0]), 0);
-    assert_eq!(drop_index(25.0, &[40.0, 40.0, 40.0]), 1);
-    assert_eq!(drop_index(500.0, &[40.0, 40.0, 40.0]), 2);
-    assert_eq!(drop_index(5.0, &[]), 0);
+    // Quatro lugares de 56 px, centros em 28, 84, 140 e 196
+    let w = [56.0, 56.0, 56.0, 56.0];
+    // Para a direita, o primeiro: passa o vizinho só no centro dele, e fica no lugar sob o ponteiro
+    assert_eq!(drag_index(30.0, &w, 0), 0);
+    assert_eq!(drag_index(83.0, &w, 0), 0);
+    assert_eq!(drag_index(84.0, &w, 0), 1);
+    assert_eq!(drag_index(139.0, &w, 0), 1);
+    assert_eq!(drag_index(141.0, &w, 0), 2);
+    assert_eq!(drag_index(500.0, &w, 0), 3);
+    // Para a esquerda, o último
+    assert_eq!(drag_index(197.0, &w, 3), 3);
+    assert_eq!(drag_index(141.0, &w, 3), 3);
+    assert_eq!(drag_index(139.0, &w, 3), 2);
+    assert_eq!(drag_index(83.0, &w, 3), 1);
+    assert_eq!(drag_index(27.0, &w, 3), 0);
+    assert_eq!(drag_index(-50.0, &w, 3), 0);
+    // Um do meio fica onde está entre os centros dos vizinhos, sem ir e voltar
+    assert_eq!(drag_index(85.0, &w, 1), 1);
+    assert_eq!(drag_index(139.0, &w, 1), 1);
+    assert_eq!(drag_index(27.0, &w, 1), 0);
+    assert_eq!(drag_index(141.0, &w, 1), 2);
+    // Larguras diferentes (um item largo no meio): o centro de cada um conta
+    let mixed = [56.0, 120.0, 56.0];
+    assert_eq!(drag_index(115.0, &mixed, 0), 0);
+    assert_eq!(drag_index(117.0, &mixed, 0), 1);
+    assert_eq!(drag_index(203.0, &mixed, 0), 1);
+    assert_eq!(drag_index(205.0, &mixed, 0), 2);
+    // Sem outros itens
+    assert_eq!(drag_index(5.0, &[56.0], 0), 0);
+    assert_eq!(drag_index(5.0, &[], 0), 0);
 }
 
 #[test]

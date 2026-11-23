@@ -23,6 +23,9 @@ pub const MAX_ANIMATION: i64 = 1000;
 pub const MENU_GRACE_MS: u64 = 1000;
 /// Com o botão apertado, o Sway manda os movimentos mesmo fora da dock.
 pub const DRAG_IDLE_MS: u64 = 5000;
+/// Um movimento do arrasto há menos que isso mostra o botão apertado, diga o GDK o que disser: o estado
+/// do botão no seat nem sempre vem (o virtio-tablet do QEMU não o informa) e o arrasto parava no meio.
+pub const DRAG_MOVING_MS: u64 = 1000;
 
 // --- Config ---
 
@@ -270,7 +273,7 @@ pub fn stuck_state(menu_age_ms: Option<u64>, menu_mapped: bool, drag_idle_ms: Op
     if menu_age_ms.is_some_and(|age| age >= MENU_GRACE_MS) && !menu_mapped {
         return Some(Stuck::Menu);
     }
-    if drag_idle_ms.is_some_and(|idle| !button1_down || idle >= DRAG_IDLE_MS) {
+    if drag_idle_ms.is_some_and(|idle| (!button1_down && idle >= DRAG_MOVING_MS) || idle >= DRAG_IDLE_MS) {
         return Some(Stuck::Drag);
     }
     None
@@ -596,14 +599,19 @@ pub fn move_pin(pins: &[String], key: &str, index: i64) -> Vec<String> {
     rest
 }
 
-/// Em que posição fica um item solto na coordenada x, dadas as larguras dos itens em sequência.
-pub fn drop_index(x: f64, widths: &[f64]) -> usize {
+/// Para que lugar vai o item arrastado (o de índice `current`) com o ponteiro na coordenada x, dadas as
+/// larguras dos itens na ordem em que estão agora, com o arrastado no lugar dele. O lugar é contado entre
+/// os outros (0 = antes de todos): o arrastado passa um vizinho quando o ponteiro cruza o centro do
+/// vizinho, para os dois lados, e fica no lugar sob o ponteiro. Contar o próprio arrastado entre os
+/// lugares o punha um adiante para a direita.
+pub fn drag_index(x: f64, widths: &[f64], current: usize) -> usize {
     let mut edge = 0.0;
-    for (index, width) in widths.iter().enumerate() {
-        if x < edge + width / 2.0 {
-            return index;
+    let mut index = 0;
+    for (i, width) in widths.iter().enumerate() {
+        if i != current && x >= edge + width / 2.0 {
+            index += 1;
         }
         edge += width;
     }
-    widths.len().saturating_sub(1)
+    index
 }

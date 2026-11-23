@@ -1227,9 +1227,14 @@ impl Bar {
     fn drag_to(&self, it: &Rc<DockItem>, x: f64) {
         self.drag_moved.set(now_ms());
         let pinned = self.pinned_items();
-        let widths: Vec<f64> = pinned.iter().map(|b| b.widget.width() as f64 + ITEM_MARGIN).collect();
-        let target = dl::drop_index(x, &widths);
+        // O lugar de cada um: a borda (bounds, com o padding; o width() do GTK 4 o deixa de fora, e o
+        // lugar ficava 8 px menor) mais a margem do CSS
+        let widths: Vec<f64> = pinned
+            .iter()
+            .map(|b| b.widget.compute_bounds(&self.items).map_or(b.widget.width() as f64, |r| r.width() as f64) + ITEM_MARGIN)
+            .collect();
         let Some(current) = pinned.iter().position(|b| Rc::ptr_eq(b, it)) else { return };
+        let target = dl::drag_index(x, &widths, current);
         if current == target {
             return;
         }
