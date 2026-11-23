@@ -42,10 +42,10 @@ A cor de destaque chega aos apps GTK, os apps da pasta de início automático ab
 
 ### Imagens de instalação
 
-- **"Swaydesk" no menu de boot**: nas imagens do Debian 13, do Debian testing e do Ubuntu, a entrada de boot do firmware e o menu do GRUB se chamam Swaydesk, e os arquivos de boot ficam em `EFI/swaydesk`, em todas as atualizações do GRUB. Ao lado de um Debian ou Ubuntu comum no mesmo disco, cada sistema fica com a sua pasta.
-- **Reserva do Secure Boot**: nessas três imagens, o caminho reserva do firmware tem o shim assinado, então o sistema instalado dá boot com o Secure Boot mesmo depois de perder a entrada de boot, e a entrada volta sozinha. Antes, o caminho reserva tinha o GRUB, que o Secure Boot recusa.
-- A imagem do Debian 13 ficou cerca de 8% menor (compressão xz, como a do Debian testing já usava); a sessão live leva cerca de 4 segundos a mais para abrir (42 s em vez de 38 s num pendrive).
-- **A sessão live do Ubuntu abre mais rápido**: cerca de 15 s a menos até o desktop nos nossos testes (a inicialização do systemd caiu de 21,9 s para 7,1 s). A imagem agora faz na hora do build as tarefas de atualização que o systemd refazia a cada boot da live, o serviço do Bluetooth só inicia quando é preciso e o networkd-dispatcher fica desligado (quem cuida da rede é o NetworkManager; o sistema instalado também fica sem ele). A live também não mostra mais um `casper-md5check` com falha: o download é conferido pelo `.sha256`.
+- **Imagens só do Debian 13 e do Arch a partir da 0.1.4**: o Ubuntu 26.04 e o Debian testing se instalam pelos pacotes, do repositório do Swaydesk num sistema que você mesmo instala (o Debian testing é de melhor esforço). Os sistemas instalados pelas imagens do Ubuntu e do Debian testing da 0.1.3.x continuam recebendo as atualizações do Swaydesk pelo repositório, inclusive a correção do Secure Boot (veja **Atualizando da 0.1.3.x**).
+- **"Swaydesk" no menu de boot**: na imagem do Debian 13, a entrada de boot do firmware e o menu do GRUB se chamam Swaydesk, e os arquivos de boot ficam em `EFI/swaydesk`, em todas as atualizações do GRUB. Ao lado de um Debian ou Ubuntu comum no mesmo disco, cada sistema fica com a sua pasta.
+- **Reserva do Secure Boot**: também na imagem do Debian 13, o caminho reserva do firmware tem o shim assinado, então o sistema instalado dá boot com o Secure Boot mesmo depois de perder a entrada de boot, e a entrada volta sozinha. Antes, o caminho reserva tinha o GRUB, que o Secure Boot recusa.
+- A imagem do Debian 13 ficou cerca de 8% menor (compressão xz, como a do Debian testing da 0.1.3.x usava); a sessão live leva cerca de 4 segundos a mais para abrir (42 s em vez de 38 s num pendrive).
 
 ### Atualizando da 0.1.3.x
 

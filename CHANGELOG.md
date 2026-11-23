@@ -42,10 +42,10 @@ The accent color reaches GTK apps, apps in your autostart folder start with the 
 
 ### Install images
 
-- **"Swaydesk" in the boot menu**: on the Debian 13, Debian testing and Ubuntu images, the firmware's boot entry and the GRUB menu are named Swaydesk, and the boot files live in `EFI/swaydesk`, through every later GRUB update. Next to a plain Debian or Ubuntu on the same disk, each system keeps its own folder.
-- **Secure Boot fallback**: on those three images, the firmware's fallback path holds the signed shim, so the installed system boots with Secure Boot even after it loses its boot entry, and the entry comes back by itself. Before, the fallback path held GRUB, which Secure Boot rejects.
-- The Debian 13 image is about 8% smaller (xz compression, as on the Debian testing image already); the live session takes about 4 seconds longer to start (42 s instead of 38 s from a USB stick).
-- **The Ubuntu live session starts faster**: about 15 s less before the desktop in our tests (systemd's startup went from 21.9 s to 7.1 s). The image now runs at build time the update jobs systemd used to redo at every live boot, the Bluetooth service starts only when it's needed, and networkd-dispatcher is off (NetworkManager handles the network; an installed system keeps it off too). The live session also no longer lists a failed `casper-md5check`: the download is checked by its `.sha256`.
+- **Images only for Debian 13 and Arch from 0.1.4 on**: Ubuntu 26.04 and Debian testing install through the packages, from the Swaydesk repository on a system you install yourself (Debian testing is best effort). Systems installed from the 0.1.3.x Ubuntu and Debian testing images keep getting Swaydesk's updates from the repository, the Secure Boot fix included (see **Upgrading from 0.1.3.x**).
+- **"Swaydesk" in the boot menu**: on the Debian 13 image, the firmware's boot entry and the GRUB menu are named Swaydesk, and the boot files live in `EFI/swaydesk`, through every later GRUB update. Next to a plain Debian or Ubuntu on the same disk, each system keeps its own folder.
+- **Secure Boot fallback**: on the Debian 13 image too, the firmware's fallback path holds the signed shim, so the installed system boots with Secure Boot even after it loses its boot entry, and the entry comes back by itself. Before, the fallback path held GRUB, which Secure Boot rejects.
+- The Debian 13 image is about 8% smaller (xz compression, as the 0.1.3.x Debian testing image used); the live session takes about 4 seconds longer to start (42 s instead of 38 s from a USB stick).
 
 ### Upgrading from 0.1.3.x
 
