@@ -103,6 +103,38 @@ fn image_file(id: u32) -> PathBuf {
     image_dir().join(format!("{id}.png"))
 }
 
+/// O programa dono do nome: o comm do processo que o barramento diz ser o dono.
+fn name_owner(conn: &gio::DBusConnection) -> Option<String> {
+    let call = |method: &str, arg: &str| {
+        conn.call_sync(
+            Some("org.freedesktop.DBus"),
+            "/org/freedesktop/DBus",
+            "org.freedesktop.DBus",
+            method,
+            Some(&(arg,).to_variant()),
+            None,
+            gio::DBusCallFlags::NONE,
+            1000,
+            gio::Cancellable::NONE,
+        )
+        .ok()
+    };
+    let (unique,) = call("GetNameOwner", NAME)?.get::<(String,)>()?;
+    let (pid,) = call("GetConnectionUnixProcessID", &unique)?.get::<(u32,)>()?;
+    let comm = std::fs::read_to_string(format!("/proc/{pid}/comm")).ok()?;
+    // O comm é texto livre do outro processo: caracteres de controle viram "?" antes do terminal e do log
+    let comm: String = comm.trim().chars().map(|c| if c.is_control() { '?' } else { c }).collect();
+    Some(format!("{comm} (pid {pid})"))
+}
+
+/// O aviso de quando outro programa tem o nome: o pedido fica na fila, e o nome vem quando ele sair.
+fn waiting_message(owner: Option<&str>) -> String {
+    format!(
+        "org.freedesktop.Notifications is owned by {}; waiting: notifications go there until it exits",
+        owner.unwrap_or("another program")
+    )
+}
+
 /// Só o que deu errado, nunca o conteúdo das notificações.
 fn log(message: &str) {
     let now = glib::DateTime::now_local().ok().and_then(|t| t.format("%F %T").ok()).unwrap_or_default();
@@ -758,8 +790,11 @@ fn main() -> ExitCode {
         move |conn, _| {
             // Com o nome ocupado, o pedido fica na fila do barramento e o nome chega quando o outro sair.
             // Sair aqui só faria o laço do Sway reabrir este processo a cada segundo
-            if conn.is_some() && !s3.owned.get() {
-                log("org.freedesktop.Notifications is owned by another program; waiting");
+            if let (Some(conn), false) = (conn.as_ref(), s3.owned.get()) {
+                // No stderr também: fora da sessão (um Sway comum com o mako ou o dunst), quem roda à mão vê por quê
+                let message = waiting_message(name_owner(conn).as_deref());
+                eprintln!("{PROGRAM}: {message}");
+                log(&message);
                 return;
             }
             log("lost the name org.freedesktop.Notifications");
@@ -772,4 +807,19 @@ fn main() -> ExitCode {
         let _ = std::fs::remove_dir_all(image_dir());
     }
     ExitCode::from(code.get())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_waiting_message_names_the_owner() {
+        // O mesmo texto do waiting_message do sway-notifd em Python
+        assert_eq!(
+            waiting_message(Some("mako (pid 42)")),
+            "org.freedesktop.Notifications is owned by mako (pid 42); waiting: notifications go there until it exits"
+        );
+        assert!(waiting_message(None).contains("owned by another program; waiting"));
+    }
 }

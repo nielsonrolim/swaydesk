@@ -858,6 +858,8 @@ impl App {
 }
 
 /// Só com o supervisor: sem ele, um bloqueio que cai não teria quem o assumisse.
+const LOCK_USAGE: &str = "usage: swaydesk-lock --notify-fd N (run it through sway-lock)";
+
 fn parse_args(args: &[String]) -> Option<i32> {
     match args {
         [flag, fd] if flag == "--notify-fd" && !fd.is_empty() && fd.bytes().all(|b| b.is_ascii_digit()) => fd.parse().ok(),
@@ -905,6 +907,11 @@ fn main() -> ExitCode {
         }
         None => {}
     }
+    if matches!(args.as_slice(), [flag] if flag == "--help" || flag == "-h") {
+        // Só o uso, com 0: um --help nunca bloqueia a tela
+        println!("{LOCK_USAGE}");
+        return ExitCode::SUCCESS;
+    }
     if args.first().map(String::as_str) == Some("--check") {
         // O install.sh pergunta se esta versão serve aqui: só se o gtk4-layer-shell tem o bloqueio
         return match session_lock::api() {
@@ -916,7 +923,7 @@ fn main() -> ExitCode {
         };
     }
     let Some(fd) = parse_args(&args) else {
-        eprintln!("usage: swaydesk-lock --notify-fd N (run it through sway-lock)");
+        eprintln!("{LOCK_USAGE}");
         return ExitCode::from(2);
     };
     // O supervisor vê a queda do locker pelo fim do pipe: os filhos (swaymsg) não podem herdar a ponta de

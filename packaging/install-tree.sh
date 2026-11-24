@@ -25,11 +25,16 @@ bin=$root/home/.local/bin
 libexec=${SWAYDESK_LIBEXEC:-/usr/libexec}/swaydesk
 SCRIPTS=(session-action sway-brightness sway-caffeine sway-nightlight waybar-notify sway-idle sway-idle-suspend sway-lock
          sway-lock-watch sway-gtklock sway-files sway-shot sway-rec)
-# Os módulos em Python: o calendário roda o waybar_holidays.py com o python3, e ele importa os outros dois da
-# própria pasta. Sem o bit de execução (o debian/rules os tira do dh_fixperms)
+# Sem o bit de execução (o debian/rules os tira do dh_fixperms). O sway-i18n.sh é incluído com "." pelos scripts.
+# O sway_i18n.py e o desktop_config.py ficam aqui, como arquivos: o swaydesk-scripts não depende do python3, e
+# quem os importa (o calendário do swaydesk-widgets, o bloqueio em Python do swaydesk-session) traz o python3
+MODULES=(sway_i18n.py desktop_config.py sway-i18n.sh)
+# O calendário, no swaydesk-widgets (o dono dele), na mesma pasta: ele roda o waybar_holidays.py com o python3, que
+# importa os dois módulos acima da própria pasta. Antes da 0.1.7 ia no swaydesk-scripts, e quem instalava só a grade
+# ou a captura levava o python3 e o python3-holidays
+CALENDAR_MODULES=(waybar_holidays.py)
 # O bloqueio em Python, no swaydesk-session do Debian e do Ubuntu (o waybar_media, para a mídia na tela)
 PYTHON_LOCK=(sway-lock-gtk sway_lock.py sway_pam.py waybar_media.py)
-MODULES=(waybar_holidays.py sway_i18n.py desktop_config.py sway-i18n.sh)  # o sway-i18n.sh é incluído com "."
 # O swaydesk-desktop: os scripts que o config do Sway e o da Waybar do pacote chamam, além dos do
 # swaydesk-scripts, e a sessão (o sway-session e o sway-gpu, que no --system vão para /usr/local/bin). O
 # tests/test_packaging.py confere que todo programa que as configs chamam está num pacote
@@ -71,7 +76,7 @@ AUTOSTART_TARGET=swaydesk-autostart.target
 autostart_dropins() { (cd "$root/home/.config/systemd/user" && printf '%s\n' app-*@autostart.service.d/swaydesk.conf); }
 
 if [[ ${1:-} == --sources ]]; then
-  for name in "${SCRIPTS[@]}" "${MODULES[@]}" "${SESSION_SCRIPTS[@]}" "${SESSION_MODULES[@]}" "${PYTHON_LOCK[@]}"; do
+  for name in "${SCRIPTS[@]}" "${MODULES[@]}" "${CALENDAR_MODULES[@]}" "${SESSION_SCRIPTS[@]}" "${SESSION_MODULES[@]}" "${PYTHON_LOCK[@]}"; do
     echo "home/.local/bin/$name"
   done
   (cd "$root" && printf '%s\n' home/.local/share/locale/*/LC_MESSAGES/sway-desktop.mo)
@@ -147,6 +152,9 @@ case $pkg in
     done
     ;;
   swaydesk-widgets)
+    for name in "${CALENDAR_MODULES[@]}"; do
+      install -Dm644 "$bin/$name" "$dest$libexec/$name"
+    done
     # A Ajuda do Swaydesk na grade. O nome do arquivo é o app_id do app (a dock acha o ícone por ele), e o
     # Exec dos dotfiles é o lançador de ~/.local/bin, que o pacote não tem: aqui, o binário em /usr/bin
     entry=$HELP_ENTRY

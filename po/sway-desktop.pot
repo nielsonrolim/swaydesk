@@ -2124,6 +2124,11 @@ msgstr ""
 msgid "Unexpected error at line %s of sway-rec"
 msgstr ""
 
+#: home/.local/bin/sway-rec home/.local/bin/sway-shot
+#, sh-printf-format
+msgid "Not installed: %s."
+msgstr ""
+
 #: home/.local/bin/sway-rec
 msgid "A recording is already in progress."
 msgstr ""

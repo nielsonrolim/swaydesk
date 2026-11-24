@@ -62,14 +62,12 @@ package_swaydesk-common() {
 }
 
 package_swaydesk-scripts() {
-  pkgdesc="Sway desktop components - helper scripts (session actions, brightness, caffeine, night light, holidays)"
+  pkgdesc="Sway desktop components - helper scripts (session actions, brightness, caffeine, night light, capture)"
   arch=(any)
   license=(MIT)
   depends=(bash)
   optdepends=('brightnessctl: brightness' 'swayidle: idle and caffeine' 'gtklock: lock fallback'
-              'gammastep: night light' 'libnotify: session notices' 'python: calendar holidays')
-  # O Python só serve aos feriados do calendário, que também precisam do python-holidays. Ele só existe no
-  # AUR e fica fora, por decisão do usuário: sem ele, o calendário abre sem a caixa dos feriados
+              'gammastep: night light' 'libnotify: session notices')
   # No Arch, os programas internos de um pacote ficam em /usr/lib/<pacote>
   SWAYDESK_LIBEXEC=/usr/lib _install swaydesk-scripts
 }
@@ -96,18 +94,22 @@ package_swaydesk-drawer() {
 
 package_swaydesk-widgets() {
   pkgdesc="Sway desktop components - Waybar popups and icons, volume and brightness indicator"
-  depends=(swaydesk-common swaydesk-scripts gtk4 gtk4-layer-shell)
+  # O módulo em Python do calendário (waybar_holidays.py) veio do swaydesk-scripts na 0.1.7: a mesma versão
+  # dele, para os dois subirem juntos (o pacman passa o arquivo de um para o outro na mesma transação)
+  depends=(swaydesk-common "swaydesk-scripts=$pkgver-$pkgrel" gtk4 gtk4-layer-shell)
   optdepends=('wireplumber: audio' 'libpulse: audio devices (pactl)' 'networkmanager: network' 'bluez: Bluetooth'
               'upower: battery' 'cliphist: clipboard history' 'wl-clipboard: clipboard'
-              'noto-fonts-emoji: weather icons')
-  _install swaydesk-widgets
+              'noto-fonts-emoji: weather icons' 'python: calendar holidays')
+  # O Python só serve aos feriados do calendário, que também precisam do python-holidays. Ele só existe no
+  # AUR e fica fora, por decisão do usuário: sem ele, o calendário abre sem a caixa dos feriados
+  # No Arch, os programas internos de um pacote ficam em /usr/lib/<pacote>
+  SWAYDESK_LIBEXEC=/usr/lib _install swaydesk-widgets
 }
 
 package_swaydesk-capture() {
   pkgdesc="Sway desktop components - screenshot and screen recording panels"
-  depends=(swaydesk-common swaydesk-scripts gtk4 gtk4-layer-shell)
-  optdepends=('grim: screenshots' 'slurp: region and window' 'wf-recorder: screen recording' 'jq: window geometry'
-              'wl-clipboard: copy the screenshot' 'libnotify: notices')
+  depends=(swaydesk-common swaydesk-scripts gtk4 gtk4-layer-shell grim slurp jq)
+  optdepends=('wf-recorder: screen recording' 'wl-clipboard: copy the screenshot' 'libnotify: notices')
   _install swaydesk-capture
 }
 

@@ -36,13 +36,13 @@ Description: Sway desktop components - keep translations on minimized systems
 
 Package: swaydesk-scripts
 Architecture: all
-Depends: ${misc:Depends}, python3, python3-holidays
+Depends: ${misc:Depends}
 Recommends: brightnessctl, swayidle, gtklock, gammastep, libnotify-bin
 Description: Sway desktop components - helper scripts
  The scripts the components call, in /usr/libexec/swaydesk: session
  actions, brightness, caffeine (idle inhibit), night light, Waybar module
  refresh, idle and lock handling, the file manager launcher and the
- calendar holidays (read by python3-holidays).
+ screenshot and recording helpers.
 
 Package: swaydesk-notifd
 Architecture: any
@@ -69,7 +69,9 @@ Description: Sway desktop components - app grid
 
 Package: swaydesk-widgets
 Architecture: any
-Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, python3, python3-holidays
+Breaks: swaydesk-scripts (<< ${source:Version})
+Replaces: swaydesk-scripts (<< ${source:Version})
 Recommends: wireplumber, pulseaudio-utils, network-manager, bluez, upower, cliphist, wl-clipboard, fonts-noto-color-emoji
 Description: Sway desktop components - Waybar popups and icons
  Popups for the Waybar modules (calendar, weather, battery, audio,
@@ -79,8 +81,8 @@ Description: Sway desktop components - Waybar popups and icons
 
 Package: swaydesk-capture
 Architecture: any
-Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
-Recommends: grim, slurp, wf-recorder, jq, wl-clipboard, libnotify-bin
+Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, grim, slurp, jq
+Recommends: wf-recorder, wl-clipboard, libnotify-bin
 Description: Sway desktop components - screenshot and screen recording panels
  The screenshot and screen recording panels (region, full screen or
  window, with delay, Gradia and audio options) over a dimmed screen.

@@ -110,6 +110,22 @@ unexpected() {
 }
 trap 'unexpected $LINENO' ERR
 
+# Os programas de cada modo, antes de tudo: sem eles (Recommends, ou optdepends no Arch), a falha seria outra
+# ("não achei a tela em foco"), sem dizer o que falta. Também no stderr, para quem roda à mão
+need() {
+  local tool missing=
+  for tool in "$@"; do command -v "$tool" >/dev/null 2>&1 || missing="${missing:+$missing, }$tool"; done
+  [ -z "$missing" ] && return 0
+  # shellcheck disable=SC2059  # o formato vem da tradução
+  msg=$(printf "$(t 'Not installed: %s.')" "$missing")
+  echo "${0##*/}: $msg" >&2
+  fail "$msg"
+}
+case $1 in
+  region) need wf-recorder slurp ;;
+  *) need wf-recorder swaymsg jq ;;
+esac
+
 # Antes de pedir a seleção: não adianta escolher a região para depois não gravar
 if recording; then
   notify -i dialog-information "$(t 'Recording')" "$(t 'A recording is already in progress.')"

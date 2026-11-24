@@ -2138,6 +2138,11 @@ msgstr "uso: sway-rec region|full|window|stop|status"
 msgid "Unexpected error at line %s of sway-rec"
 msgstr "Error inesperado en la línea %s de sway-rec"
 
+#: home/.local/bin/sway-rec home/.local/bin/sway-shot
+#, sh-printf-format
+msgid "Not installed: %s."
+msgstr "Falta instalar: %s."
+
 #: home/.local/bin/sway-rec
 msgid "A recording is already in progress."
 msgstr "Ya hay una grabación en curso."
