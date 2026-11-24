@@ -51,6 +51,8 @@ pub struct Choice {
     pub loaded: Loaded,
     /// O tema aplicado quando a escolha carregou: com a cor própria e a família e o estilo intocados, é ele que fica
     pub loaded_theme: String,
+    /// A cor de fato no carregamento (color_name): com o modo automático, a do papel, que pode mudar depois
+    loaded_name: String,
 }
 
 /// Os campos da escolha, como carregam de um tema aplicado.
@@ -129,6 +131,7 @@ impl Choice {
             loaded_icons: String::new(),
             loaded: Loaded { family: None, other: None, style: Style::Dark, color: String::new(), kept_default: false, auto: false },
             loaded_theme: String::new(),
+            loaded_name: String::new(),
         }
     }
 
@@ -178,6 +181,7 @@ impl Choice {
         self.set_fields(&loaded);
         self.loaded = loaded;
         self.loaded_theme = theme_name.to_string();
+        self.loaded_name = self.color_name();
     }
 
     /// O tema, a cor ou o modo mudaram por fora (terminal, config editado) com uma escolha em andamento: cada
@@ -212,6 +216,7 @@ impl Choice {
         }
         self.loaded = fresh;
         self.loaded_theme = theme_name.to_string();
+        self.loaded_name = self.color_name();
     }
 
     /// Os ícones em uso (a entrada da lista): a escolha começa neles.
@@ -311,7 +316,26 @@ impl Choice {
 
     /// Com a cor própria, a variante não vem das pastas: o tema aplicado, enquanto a família e o estilo são os dele (a
     /// cor própria pode ser a do tema, que não tem a cor das pastas no nome); trocados, a variante mais perto do hex.
+    /// Sem nada mexido desde o carregamento (a família, o estilo, a cor, o modo, o papel), a variante é a aplicada, se for da
+    /// família: um `sway-theme set` de uma variante que não é a mais perto da cor (com o modo automático, a do papel)
+    /// abriria com o Aplicar ligado. Mexer só nos ícones a mantém (Set, quando o Pick daria outra).
+    fn kept(&self) -> bool {
+        self.family.as_ref().is_some_and(|family| {
+            self.fields() == self.loaded
+                && self.color_name() == self.loaded_name
+                && family.variants.iter().any(|v| v.theme == self.loaded_theme)
+        })
+    }
+
     pub fn theme(&self) -> Option<String> {
+        if self.kept() {
+            return Some(self.loaded_theme.clone());
+        }
+        self.resolved()
+    }
+
+    /// A variante pela escolha, sem a aplicada: a que o Pick daria (fora a cor própria).
+    fn resolved(&self) -> Option<String> {
         match &self.family {
             Some(family) if self.is_custom() => {
                 let untouched = self.loaded.family.as_deref() == Some(family.name.as_str()) && self.loaded.style == self.style;
@@ -343,7 +367,7 @@ impl Choice {
     pub fn action(&self) -> Option<Action> {
         let (name, auto, icons) = (self.color_name(), self.auto, self.wanted_icons());
         match (&self.family, &self.other) {
-            (Some(family), _) if !name.is_empty() && !self.is_custom() => Some(Action::Pick { family: family.name.clone(), style: self.style, color: name, auto, icons }),
+            (Some(family), _) if !name.is_empty() && !self.is_custom() && self.theme() == self.resolved() => Some(Action::Pick { family: family.name.clone(), style: self.style, color: name, auto, icons }),
             (Some(_), _) => self.theme().map(|theme| Action::Set { theme, accent: self.accent(), color: name, auto, icons }),
             (None, Some(theme)) => Some(Action::Set { theme: theme.clone(), accent: self.accent(), color: name, auto, icons }),
             _ => None,
@@ -429,6 +453,41 @@ mod tests {
 
     fn choice() -> Choice {
         Choice::new(vec![mint()], vec![theme("Arc-Dark", true, None)], &["teal".into(), "blue".into(), "red".into()])
+    }
+
+    #[test]
+    fn an_untouched_choice_keeps_the_applied_variant() {
+        // sway-theme set Mint-Y-Dark-Teal com o modo automático ligado e um papel azul: a variante não é a mais
+        // perto do papel. A janela abre sem mudança (a variante fica), e mexer só nos ícones também a mantém
+        let mut c = choice();
+        c.wallpaper = Some(Some("blue"));
+        c.load("Mint-Y-Dark-Teal", "teal", true);
+        assert_eq!(c.theme().as_deref(), Some("Mint-Y-Dark-Teal"));
+        assert_eq!(c.key(), (Some("Mint-Y-Dark-Teal".into()), String::new(), true, String::new()));
+        assert_eq!(
+            c.action(),
+            Some(Action::Set { theme: "Mint-Y-Dark-Teal".into(), accent: papirus_color("blue").unwrap().into(), color: "blue".into(), auto: true, icons: None })
+        );
+        // Outro estilo e de volta: nada mexido
+        c.style = Style::Light;
+        assert_eq!(c.theme().as_deref(), Some("Mint-Y-Teal"));
+        c.style = Style::Dark;
+        assert_eq!(c.theme().as_deref(), Some("Mint-Y-Dark-Teal"));
+        // Desligar o modo (a cor fica a do papel) é uma mudança: a variante da cor, pelo Pick
+        c.set_auto(false);
+        assert_eq!(c.theme().as_deref(), Some("Mint-Y-Dark-Blue"));
+        assert!(matches!(c.action(), Some(Action::Pick { .. })));
+        // Outro papel com a janela aberta: a variante dele (a azul, não a aplicada)
+        let mut c = choice();
+        c.wallpaper = Some(Some("red"));
+        c.load("Mint-Y-Dark-Teal", "teal", true);
+        assert_eq!(c.theme().as_deref(), Some("Mint-Y-Dark-Teal"));
+        c.wallpaper = Some(Some("blue"));
+        assert_eq!(c.theme().as_deref(), Some("Mint-Y-Dark-Blue"));
+        // Uma variante que é a da cor: o Pick, como antes
+        let mut c = choice();
+        c.load("Mint-Y-Dark-Teal", "teal", false);
+        assert!(matches!(c.action(), Some(Action::Pick { .. })));
     }
 
     #[test]
