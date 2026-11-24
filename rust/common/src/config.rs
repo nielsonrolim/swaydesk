@@ -11,7 +11,7 @@ pub const ICON_FONT: &str = "Symbols Nerd Font";
 // As mesmas chaves do Config do desktop_config.py
 const KNOWN: &[&str] = &[
     "locale", "weather_location", "holidays", "accent", "accent_auto", "gtk_theme", "icon_theme", "folder_color", "file_manager",
-    "components", "enabled", "effects", "shortcuts", "power_profiles_in_system",
+    "components", "enabled", "effects", "shortcuts", "power_profiles_in_system", "cursor_size",
 ];
 /// As chaves do [enabled]: os componentes da sessão que podem ser desligados (o ENABLED_KEYS do Python).
 pub const ENABLED_KEYS: &[&str] = &[
@@ -41,6 +41,8 @@ const EFFECT_KEYS: &[&str] = &["corner_radius", "blur", "shadows", "layer_blur",
 pub const MAX_CORNER_RADIUS: i64 = 30;
 /// O limite do animation_duration_ms do SwayFX (5 segundos)
 pub const MAX_ANIMATION_DURATION_MS: i64 = 5000;
+/// O tamanho do cursor aceito no cursor_size, em pixels (o padrão é o cursor::CURSOR_SIZE)
+pub const CURSOR_SIZES: std::ops::RangeInclusive<i64> = 16..=96;
 
 /// As cores do papirus-folders, com a cor da frente da pasta (48x48/places/folder-<cor>.svg). A adwaita e
 /// a yaru são o destaque padrão desses temas, e não a cor da pasta. Na ordem do desktop_config.py.
@@ -93,6 +95,8 @@ pub struct Config {
     /// Quando o popup Sistema mostra os perfis de energia, um dos power::IN_SYSTEM: "auto" (só sem bateria),
     /// "always" ou "never"; "auto" sem a chave ou com um valor inválido
     pub power_profiles_in_system: String,
+    /// O tamanho do cursor, em pixels, de CURSOR_SIZES; o cursor::CURSOR_SIZE sem a chave ou com um valor inválido
+    pub cursor_size: u32,
     /// Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui
     /// está ligado: a chave ausente liga, para um config antigo continuar como era (menos as do DEFAULT_OFF)
     pub disabled: BTreeSet<String>,
@@ -250,6 +254,7 @@ impl Default for Config {
             components: "auto".to_string(),
             shortcuts: "swaydesk".to_string(),
             power_profiles_in_system: "auto".to_string(),
+            cursor_size: crate::cursor::CURSOR_SIZE,
             disabled: BTreeSet::new(),
             turned_on: BTreeSet::new(),
             effects: Effects::default(),
@@ -381,6 +386,15 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
                     auto_given = true;
                 }
                 None => warnings.push("config: invalid value in accent_auto (use true or false)".to_string()),
+            }
+            continue;
+        }
+        if key == "cursor_size" {
+            match value {
+                toml::Value::Integer(n) if CURSOR_SIZES.contains(n) => config.cursor_size = *n as u32,
+                _ => warnings.push(format!(
+                    "config: invalid cursor_size (use {} to {})", CURSOR_SIZES.start(), CURSOR_SIZES.end()
+                )),
             }
             continue;
         }
@@ -983,6 +997,21 @@ mod tests {
         assert_eq!(warnings, ["config: invalid shortcuts: sway (use swaydesk, i3, hyprland, niri or dwm)"]);
         assert_eq!(parse_config("shortcuts = 1").1, ["config: invalid value in shortcuts"]);
         assert!(shortcut_keys_file("../etc/passwd").is_none());
+    }
+
+    #[test]
+    fn cursor_size() {
+        // Os mesmos casos do CursorSizeTests do Python
+        assert_eq!(parse_config("").0.cursor_size, crate::cursor::CURSOR_SIZE);
+        for value in [16, 32, 96] {
+            let (config, warnings) = parse_config(&format!("cursor_size = {value}"));
+            assert_eq!((config.cursor_size, warnings.len()), (value, 0));
+        }
+        for value in ["15", "97", "0", "-24", "\"32\"", "32.0", "true"] {
+            let (config, warnings) = parse_config(&format!("cursor_size = {value}"));
+            assert_eq!(config.cursor_size, crate::cursor::CURSOR_SIZE, "{value}");
+            assert_eq!(warnings, ["config: invalid cursor_size (use 16 to 96)"], "{value}");
+        }
     }
 
     #[test]

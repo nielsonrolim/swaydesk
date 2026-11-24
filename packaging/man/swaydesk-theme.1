@@ -21,6 +21,9 @@ init
 icons [ICONS]
 .br
 .B swaydesk\-theme
+cursor [SIZE]
+.br
+.B swaydesk\-theme
 set THEME [\-\-accent #RRGGBB] [\-\-folders COLOR] [\-\-icons ICONS] [\-\-auto | \-\-no\-auto]
 .br
 .B swaydesk\-theme
@@ -55,6 +58,18 @@ The icon themes that can be chosen, the current one marked with *: real icon the
 .B icons ICONS
 Use the icon theme ICONS and change nothing else: the GTK theme, the accent, the folder color and accent_auto stay. An unknown name exits 2.
 .TP
+.B cursor
+The cursor sizes the cursor theme has (read from its left_ptr cursor; 24, 32, 48 and 64 when that file does not
+open), the current one marked with *, or the one nearest it, which is the one the cursor shows.
+.TP
+.B cursor SIZE
+Set cursor_size to SIZE (16 to 96) and apply it: the Sway seat and the GTK settings.ini files, the cursor\-size key in
+dconf (gsettings) and, in a Sway session, the seat at once and XCURSOR_THEME and XCURSOR_SIZE in the systemd and D\-Bus
+environment. GTK 4 and Qt 6 apps follow at once; older ones (GTK 3, Qt 5, Electron, X11) when they open again. Any
+other value exits 2 and changes nothing. The seat gets the cursor theme the desktop uses (Bibata Modern Classic, Capitaine
+where it is missing, or Xcursor's default theme with neither). A seat line of your own in
+~/.config/sway/config.d/50-local.conf is read after the generated one and wins again at the next reload or login.
+.TP
 .B set THEME
 Use the GTK theme THEME; \-\-accent sets the accent color and \-\-folders the Papirus folder color. Changing the theme or the color keeps an icon theme that is not Papirus; Papirus follows the style of the theme, and the icons that came with the previous theme follow the new one.
 .TP
@@ -84,7 +99,7 @@ Exit 0 at once without doing anything: the Python launchers use it to check that
 .SH FILES
 .TP
 .I ~/.config/swaydesk/config.toml
-The desktop configuration: language, accent color and accent_auto, GTK and icon themes, folder color, file manager, weather location and holidays.
+The desktop configuration: language, accent color and accent_auto, GTK and icon themes, folder color, cursor size, file manager, weather location and holidays.
 .TP
 .I ~/.local/state/swaydesk/accent\-auto
 The last wallpaper accent\-auto read (its path and modification time), its color and the version of the method, so the same file is not read again.

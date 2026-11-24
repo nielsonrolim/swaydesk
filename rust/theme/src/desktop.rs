@@ -8,7 +8,7 @@ use std::time::Duration;
 
 use regex::Regex;
 use swaydesk_common::config::{self, contrast_with_white, data_home, font_css, font_families, mix, palette, Config, Effects, Palette, ICON_FONT};
-use swaydesk_common::cursor::{cursor_theme, CURSOR_SIZE, CURSOR_THEMES};
+use swaydesk_common::cursor::{cursor_theme, CURSOR_THEMES};
 
 use crate::run_timeout;
 
@@ -231,11 +231,21 @@ fn gtk4_prefers_dark(theme: &str) -> bool {
 fn gtk_settings_with(config: &Config, prefer_dark: bool) -> String {
     format!(
         "{GENERATED}: mude o tema com sway-theme\n[Settings]\ngtk-theme-name={}\ngtk-application-prefer-dark-theme={}\n\
-         gtk-icon-theme-name={}\n",
+         gtk-icon-theme-name={}\n{}",
         effective_gtk_theme(config),
         u8::from(prefer_dark),
-        effective_icon_theme(config)
+        effective_icon_theme(config),
+        gtk_cursor_settings(cursor_theme(), config.cursor_size)
     )
+}
+
+/// O cursor no settings.ini: o tamanho sempre, o tema só se um dos CURSOR_THEMES está instalado (o mesmo do seat).
+/// Os apps GTK 3 e XWayland o leem ao abrir; os de Wayland seguem o seat do Sway (o cursor-shape) e o gsettings.
+pub fn gtk_cursor_settings(theme: Option<&str>, size: u32) -> String {
+    match theme {
+        Some(name) => format!("gtk-cursor-theme-name={name}\ngtk-cursor-theme-size={size}\n"),
+        None => format!("gtk-cursor-theme-size={size}\n"),
+    }
 }
 
 /// Um `@define-color nome #rrggbb` do CSS, em minúsculas.
@@ -349,12 +359,17 @@ pub fn font_family(font: &str) -> String {
     }
 }
 
-/// O cursor do seat: vence a linha fixa do config do Sway (o Bibata), que fica para quem não gera os arquivos.
-/// Sem nenhum dos temas, nada: o Sway usa o padrão.
-pub fn sway_cursor(theme: Option<&str>) -> String {
+/// O cursor do seat, no tamanho do cursor_size: vence a linha fixa do config do Sway (o Bibata), que fica para quem
+/// não gera os arquivos. Sem nenhum dos temas, o "default" do Xcursor, no mesmo tamanho: é o que o Sway usa sem linha
+/// seat, então o tema não muda. Uma linha seat do usuário fica no config.d/50-local.conf, lido depois deste
+/// 00-cursor.conf, e vence.
+pub fn sway_cursor(theme: Option<&str>, size: u32) -> String {
     match theme {
-        Some(name) => format!("{GENERATED}: o cursor instalado\nseat seat0 xcursor_theme {name} {CURSOR_SIZE}\n"),
-        None => format!("{GENERATED}: nenhum dos cursores ({}) instalado; fica o padrão\n", CURSOR_THEMES.join(", ")),
+        Some(name) => format!("{GENERATED}: o cursor instalado\nseat seat0 xcursor_theme {name} {size}\n"),
+        None => format!(
+            "{GENERATED}: nenhum dos cursores ({}) instalado; fica o padrão\nseat seat0 xcursor_theme default {size}\n",
+            CURSOR_THEMES.join(", ")
+        ),
     }
 }
 
@@ -532,7 +547,7 @@ pub fn generated_files(colors: &Palette, config: &Config, fonts: &Fonts) -> std:
         ("waybar/accent.css", css),
         ("sway/config.d/00-accent.conf", sway),
         ("sway/config.d/00-font.conf", sway_font(fonts)),
-        ("sway/config.d/00-cursor.conf", sway_cursor(cursor_theme())),
+        ("sway/config.d/00-cursor.conf", sway_cursor(cursor_theme(), config.cursor_size)),
         ("sway/config.d/00-keys.conf", sway_keys(config, &swaydesk_common::config::keys_dir())),
         ("sway/config.d/10-effects.conf", sway_effects(&config.effects, is_swayfx())),
         ("waybar/fonts.css", fonts_css),
@@ -991,10 +1006,11 @@ mod tests {
     #[test]
     fn sway_cursor_like_python() {
         // O mesmo texto do sway_cursor do desktop_config.py
-        assert_eq!(sway_cursor(Some("capitaine-cursors")),
+        assert_eq!(sway_cursor(Some("capitaine-cursors"), 24),
                    "# Gerado pelo sway-desktop-config: o cursor instalado\nseat seat0 xcursor_theme capitaine-cursors 24\n");
-        assert_eq!(sway_cursor(None),
-                   "# Gerado pelo sway-desktop-config: nenhum dos cursores (Bibata-Modern-Classic, capitaine-cursors) instalado; fica o padrão\n");
+        assert_eq!(sway_cursor(None, 24),
+                   "# Gerado pelo sway-desktop-config: nenhum dos cursores (Bibata-Modern-Classic, capitaine-cursors) instalado; fica o padrão\n\
+                    seat seat0 xcursor_theme default 24\n");
     }
 
     #[test]

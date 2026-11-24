@@ -10,6 +10,9 @@ The switch "Use the wallpaper's color", above the colors, is accent_auto (on by 
 .PP
 The Icons list, below the style, has the icon themes that can be chosen, each with a strip of its own icons (Papirus is one entry that follows the style). Changing it applies only the icons with Apply; the Papirus folder color only exists with Papirus, and with other icons the color changes the accent only.
 .PP
+The Cursor size list, below the icons, has the sizes the cursor theme has. Choosing one applies it at once, without
+Apply, as swaydesk\-theme cursor does: GTK 4 and Qt 6 apps follow at once, older ones when they open again.
+.PP
 The session runs it under the name sway\-theme\-app (a link in the package's helper directory to /usr/bin/swaydesk\-theme\-app); the process name is sway\-theme\-app too.
 .SH OPTIONS
 .TP
@@ -18,7 +21,7 @@ Exit 0 at once without doing anything: the Python launchers use it to check that
 .SH FILES
 .TP
 .I ~/.config/swaydesk/config.toml
-The desktop configuration: language, accent color and accent_auto, GTK and icon themes, folder color, file manager, weather location and holidays.
+The desktop configuration: language, accent color and accent_auto, GTK and icon themes, folder color, cursor size, file manager, weather location and holidays.
 .SH SEE ALSO
 .BR swaydesk (7),
 .BR swaydesk\-theme (1)

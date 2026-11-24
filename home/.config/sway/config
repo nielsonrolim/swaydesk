@@ -38,7 +38,7 @@ input type:touchpad {
 # --- Autostart ---
 # Os componentes passam pelo sway-if-enabled: com false no [enabled] do ~/.config/swaydesk/config.toml,
 # não sobem (vale ao entrar de novo). Os atalhos deles não precisam: quem eles chamam confere sozinho
-exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE MOZ_ENABLE_WAYLAND QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME ELECTRON_OZONE_PLATFORM_HINT _JAVA_AWT_WM_NONREPARENTING DCONF_PROFILE SWAYDESK_SESSION GTK_IM_MODULE
+exec dbus-update-activation-environment --systemd WAYLAND_DISPLAY DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP XDG_SESSION_DESKTOP XDG_SESSION_TYPE MOZ_ENABLE_WAYLAND QT_QPA_PLATFORM QT_QPA_PLATFORMTHEME ELECTRON_OZONE_PLATFORM_HINT _JAVA_AWT_WM_NONREPARENTING DCONF_PROFILE SWAYDESK_SESSION GTK_IM_MODULE XCURSOR_THEME XCURSOR_SIZE
 # Só onde o sway-session o definiu (Kubuntu): o menu dos apps do KDE abertos pelo D-Bus
 exec sh -c '[ -z "${XDG_MENU_PREFIX:-}" ] || dbus-update-activation-environment --systemd XDG_MENU_PREFIX'
 # Em uma instalação nova, grava o tema da config no dconf. Depois disso, não faz nada

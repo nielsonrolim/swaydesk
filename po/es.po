@@ -444,13 +444,18 @@ msgstr "Los iconos Papirus no están instalados: instala el paquete papirus-icon
 
 #: home/.local/bin/sway-theme
 #, python-format
-msgid "Theme: %s"
-msgstr "Tema: %s"
+msgid "Cursor size: %s"
+msgstr "Tamaño del cursor: %s"
 
-#: home/.local/bin/sway-theme
+#: home/.local/bin/sway-theme home/.local/bin/sway-theme-app
 #, python-format
 msgid "Could not update: %s"
 msgstr "No se pudo actualizar: %s"
+
+#: home/.local/bin/sway-theme
+#, python-format
+msgid "Theme: %s"
+msgstr "Tema: %s"
 
 #: home/.local/bin/sway-theme home/.local/bin/sway-theme-app
 #: home/.local/bin/sway_themes.py
@@ -507,6 +512,15 @@ msgstr "Proyectos"
 #: home/.local/bin/sway-theme-app
 msgid "Apply"
 msgstr "Aplicar"
+
+#: home/.local/bin/sway-theme-app
+msgid "Cursor size"
+msgstr "Tamaño del cursor"
+
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "%s px"
+msgstr "%s px"
 
 #: home/.local/bin/sway-theme-app
 msgid "Desktop Theme"
@@ -676,6 +690,32 @@ msgstr "%(family)s no tiene versión %(style)s"
 
 #: home/.local/bin/sway_themes.py
 #, python-format
+msgid "invalid cursor size: %(size)s (use %(min)s to %(max)s)"
+msgstr "tamaño de cursor no válido: %(size)s (use de %(min)s a %(max)s)"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "fix the file first: %s"
+msgstr "corrige primero el archivo: %s"
+
+#: home/.local/bin/sway_themes.py
+msgid "cursor size in dconf (gsettings)"
+msgstr "tamaño del cursor en dconf (gsettings)"
+
+#: home/.local/bin/sway_themes.py
+msgid "cursor size in the session environment"
+msgstr "tamaño del cursor en el entorno de la sesión"
+
+#: home/.local/bin/sway_themes.py
+msgid "Older apps (GTK 3, Qt 5, Electron, X11) take the new size when reopened"
+msgstr "Las aplicaciones más antiguas (GTK 3, Qt 5, Electron, X11) toman el tamaño nuevo al abrirse de nuevo"
+
+#: home/.local/bin/sway_themes.py
+msgid "No Sway session: the rest changes when you log in to it"
+msgstr "No hay sesión de Sway: el resto cambia cuando inicies sesión en ella"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
 msgid "theme not installed: %(theme)s. See them with: %(command)s list"
 msgstr "tema no instalado: %(theme)s. Consulta los disponibles con: %(command)s list"
 
@@ -683,11 +723,6 @@ msgstr "tema no instalado: %(theme)s. Consulta los disponibles con: %(command)s 
 #, python-format
 msgid "invalid color: %(color)s (use one like %(example)s)"
 msgstr "color no válido: %(color)s (usa uno como %(example)s)"
-
-#: home/.local/bin/sway_themes.py
-#, python-format
-msgid "fix the file first: %s"
-msgstr "corrige primero el archivo: %s"
 
 #: home/.local/bin/sway_themes.py
 #, python-format
@@ -720,10 +755,6 @@ msgstr "tema en dconf (gsettings)"
 #: home/.local/bin/sway_themes.py
 msgid "This session uses the same dconf database as GNOME and KDE: to separate them, run ./install.sh --system and log in again"
 msgstr "Esta sesión usa la misma base de datos de dconf que GNOME y KDE: para separarlas, ejecuta ./install.sh --system y vuelve a iniciar sesión"
-
-#: home/.local/bin/sway_themes.py
-msgid "No Sway session: the rest changes when you log in to it"
-msgstr "No hay sesión de Sway: el resto cambia cuando inicies sesión en ella"
 
 #: home/.local/bin/sway_themes.py
 msgid "Notifications change at the next login. Some open apps may need to be reopened"

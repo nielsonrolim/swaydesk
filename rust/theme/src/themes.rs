@@ -297,6 +297,7 @@ pub fn split_tables(text: &str) -> (String, &str) {
 pub enum Value {
     Str(String),
     Bool(bool),
+    Int(i64),
 }
 
 impl From<String> for Value {
@@ -317,6 +318,12 @@ impl From<bool> for Value {
     }
 }
 
+impl From<u32> for Value {
+    fn from(value: u32) -> Self {
+        Value::Int(i64::from(value))
+    }
+}
+
 /// Troca só estas linhas do config.toml: os comentários e o resto ficam como estão. As chaves são as do começo
 /// do arquivo, antes da primeira tabela ([effects]): uma chave nova entra ali, senão viraria parte da tabela.
 pub fn set_config_values(file: &Path, values: &[(&str, Value)]) -> Result<(), Error> {
@@ -332,6 +339,7 @@ pub fn set_config_values(file: &Path, values: &[(&str, Value)]) -> Result<(), Er
         let line = match value {
             Value::Str(text) => format!("{key} = {}", serde_json::to_string(text).unwrap_or_default()),
             Value::Bool(flag) => format!("{key} = {flag}"),
+            Value::Int(n) => format!("{key} = {n}"),
         };
         let pattern = Regex::new(&format!(r"(?m)^{}\s*=.*$", regex::escape(key))).expect("key pattern");
         if pattern.is_match(&head) {
@@ -586,9 +594,15 @@ fn write_dconf(values: &[(&str, String)]) -> bool {
     all
 }
 
-/// Em Wayland, o GTK lê o tema daqui, pelo portal.
+/// Em Wayland, o GTK lê o tema daqui, pelo portal. O tamanho do cursor (para os apps que leem o gsettings: GTK 3,
+/// Electron, o XWayland pelo portal) vai junto só na base própria do Sway: na base de todos (uma sessão antiga), a
+/// troca de tema mudaria o cursor do GNOME; ali, só o `sway-theme cursor` o grava.
 pub fn set_dconf(config: &Config, icons: Option<String>) -> bool {
-    write_dconf(&dconf_values(config, icons))
+    let mut values = dconf_values(config, icons);
+    if dconf_profile("sway").is_some() {
+        values.push(("cursor-size", config.cursor_size.to_string()));
+    }
+    write_dconf(&values)
 }
 
 /// O valor só na base do Sway, como o dconf o mostra ('Mint-Y-Teal'); "" sem valor; None se falhou.
@@ -610,8 +624,16 @@ fn dconf_is_unset(key: &str) -> bool {
 
 /// No login: sem um tema na base do Sway, grava o da config. Com um tema gravado, só o ícone.
 pub fn init_dconf(config: &Config) -> bool {
+    // O tamanho do cursor: na base própria do Sway, sempre o do config (um cursor_size mudado à mão vale no login);
+    // na base de todos, só se ela não tem nenhum, como o resto. Sem conseguir ler, nada
+    let size = config.cursor_size.to_string();
+    let own = dconf_profile("sway").is_some();
+    let size_ok = match dconf_read("cursor-size") {
+        Some(current) if current != size && (own || current.is_empty()) => write_dconf(&[("cursor-size", size)]),
+        _ => true,
+    };
     if !dconf_is_unset("gtk-theme") {
-        return refresh_icons(config);
+        return refresh_icons(config) && size_ok;
     }
     let mut values = dconf_values(config, None);
     // O mesmo do seat do Sway (00-cursor.conf): sem isso, o cursor mudaria ao passar por cima dos apps GTK
@@ -619,7 +641,7 @@ pub fn init_dconf(config: &Config) -> bool {
         values.push(("cursor-theme", cursor.to_string()));
     }
     let unset: Vec<(&str, String)> = values.into_iter().filter(|(key, _)| dconf_is_unset(key)).collect();
-    write_dconf(&unset)
+    write_dconf(&unset) && size_ok
 }
 
 /// Com um tema já gravado, só o ícone, e só se ainda é o da config. Outro valor é do usuário.
@@ -847,6 +869,46 @@ fn accent_auto_value(auto: Option<bool>, color: &str, current: &Config, has_key:
 /// Se o config.toml tem a chave (solta, antes das tabelas). Ilegível: não.
 fn has_key(file: &Path, key: &str) -> bool {
     std::fs::read_to_string(file).ok().and_then(|text| text.parse::<toml::Table>().ok()).is_some_and(|t| t.contains_key(key))
+}
+
+/// Grava o cursor_size e o aplica: os arquivos gerados (o seat do Sway e os settings.ini), o gsettings da base do
+/// Sway e, numa sessão do Sway aberta, o seat na hora e o XCURSOR_* do systemd e do D-Bus. Um tamanho fora do
+/// CURSOR_SIZES é erro antes de mudar qualquer coisa. O mesmo do apply_cursor_size do sway_themes.py.
+pub fn apply_cursor_size(size: u32) -> Result<Applied, Error> {
+    if !config::CURSOR_SIZES.contains(&i64::from(size)) {
+        return Err(Error::Value(fill(&tr("invalid cursor size: %(size)s (use %(min)s to %(max)s)"), &[
+            ("size", &size.to_string()),
+            ("min", &config::CURSOR_SIZES.start().to_string()),
+            ("max", &config::CURSOR_SIZES.end().to_string()),
+        ])));
+    }
+    let file = config::path();
+    let problems = load_config(&file).1;
+    if problems.iter().any(|p| p.contains("could not read")) {
+        return Err(Error::Value(fill_one(&tr("fix the file first: %s"), &problems[0])));
+    }
+    set_config_values(&file, &[("cursor_size", size.into())])?;
+    let config = load_config(&file).0;
+    dc::generate(&config)?;
+    let mut notes = Vec::new();
+    let mut failures = Vec::new();
+    if !write_dconf(&[("cursor-size", size.to_string())]) {
+        failures.push(tr("cursor size in dconf (gsettings)"));
+    }
+    let size = size.to_string();
+    // Sem nenhum dos temas, o "default" do Xcursor, como no 00-cursor.conf
+    let theme = swaydesk_common::cursor::cursor_theme().unwrap_or("default");
+    // Só com o seat trocado (uma sessão do Sway): fora dela, o XCURSOR_* iria para os apps de outro desktop
+    if run(&["swaymsg", "seat", "seat0", "xcursor_theme", theme, &size], None) == 0 {
+        let env = [format!("XCURSOR_THEME={theme}"), format!("XCURSOR_SIZE={size}")];
+        if run(&["dbus-update-activation-environment", "--systemd", &env[0], &env[1]], None) != 0 {
+            failures.push(tr("cursor size in the session environment"));
+        }
+        notes.push(tr("Older apps (GTK 3, Qt 5, Electron, X11) take the new size when reopened"));
+    } else {
+        notes.push(tr("No Sway session: the rest changes when you log in to it"));
+    }
+    Ok(Applied { notes, failures })
 }
 
 /// Aplica tudo. Erra antes de mudar qualquer coisa. folders: a cor das pastas do Papirus, só delas ("": a mais perto

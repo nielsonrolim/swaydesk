@@ -15,8 +15,8 @@
 # Arc-Dark na lateral e Aplicar grava o tema no config.toml, e a janela continua aberta. A cor do papel de parede
 # (um vermelho liso, só na versão em Rust): o interruptor abre ligado (o padrão, sem a chave), e o Aplicar grava o vermelho com
 # accent_auto = true; uma amostra (o azul) desliga o interruptor, e o Aplicar grava a cor com accent_auto = false;
-# ligar de novo volta ao vermelho. Sem o arquivo do papel e sem a chave, o interruptor abre desligado. Sai com 1 se
-# algum caso falhar.
+# ligar de novo volta ao vermelho; a lista do tamanho do cursor aplica ao escolher (só na versão em Rust). Sem o arquivo
+# do papel e sem a chave, o interruptor abre desligado. Sai com 1 se algum caso falhar.
 set -u
 impl=${1:-rust}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
@@ -132,8 +132,8 @@ apply_and_wait() {  # o Aplicar; espera a linha no config.toml
   close_info
 }
 close_info
-# O azul é a terceira amostra da primeira linha
-pointer move $((wx + 345)) $((wy + 472)) sleep 100 click sleep 500
+# O azul é a terceira amostra da primeira linha (abaixo da linha do tamanho do cursor)
+pointer move $((wx + 345)) $((wy + 516)) sleep 100 click sleep 500
 shot 4-azul
 apply_and_wait 'accent_auto = false'
 shot 5-azul-aplicado
@@ -142,7 +142,7 @@ if config | grep -qx 'accent = "#5294e2"' && config | grep -qx 'accent_auto = fa
 else
   fail "a cor à mão não desligou o modo: $(config)"
 fi
-pointer move $((wx + 277)) $((wy + 432)) sleep 100 click sleep 500  # o interruptor
+pointer move $((wx + 277)) $((wy + 476)) sleep 100 click sleep 500  # o interruptor
 shot 6-auto-ligado
 apply_and_wait 'accent_auto = true'
 shot 7-auto-aplicado
@@ -182,6 +182,20 @@ if config | grep -qx 'icon_theme = "Adwaita"' && config | grep -qx 'gtk_theme = 
 else
   fail "os ícones não foram gravados: $(config)"
 fi
+# O tamanho do cursor (sem tema de cursor no contêiner: os de reserva, 24/32/48/64): abrir a lista, escolher o 48 (a
+# terceira linha) aplica sem o Aplicar, no config.toml e no seat gerado
+pointer move $((wx + 374)) $((wy + 399)) sleep 100 click sleep 600
+shot 12-cursor-lista
+pointer move $((wx + 371)) $((wy + 519)) sleep 100 click sleep 500
+for _ in $(seq 100); do config | grep -qx 'cursor_size = 48' && break; sleep 0.1; done
+sleep 0.5
+shot 13-cursor-aplicado
+if config | grep -qx 'cursor_size = 48' && config | grep -qx 'icon_theme = "Adwaita"' \
+  && grep -qx 'seat seat0 xcursor_theme default 48' "$HOME/.config/sway/config.d/00-cursor.conf"; then
+  ok "a lista do cursor aplica o tamanho ao escolher, sem o Aplicar"
+else
+  fail "o tamanho do cursor não foi aplicado: $(config) / $(cat "$HOME/.config/sway/config.d/00-cursor.conf" 2>&1)"
+fi
 # Sem o arquivo do papel e sem a chave accent_auto (o app Tema instalado sozinho): o interruptor abre desligado, e
 # o Aplicar de um tema não grava a cor de papel nenhum, nem o accent_auto (um papel que aparecer depois liga o modo)
 kill "$pid" 2>/dev/null
@@ -192,10 +206,10 @@ app
 for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
 sleep 1.5
 pid=$(pgrep -n -f "swaydesk-theme-app")
-shot 12-sem-papel
+shot 14-sem-papel
 pointer move $((wx + 100)) $((wy + 235)) sleep 100 click sleep 500  # o Arc-Dark
 apply_and_wait 'gtk_theme = "Arc-Dark"'
-shot 13-sem-papel-aplicado
+shot 15-sem-papel-aplicado
 if config | grep -qx 'gtk_theme = "Arc-Dark"' && ! config | grep -q '^accent_auto' && ! config | grep -q '#e25252'; then
   ok "sem papel e sem a chave, o interruptor abre desligado: o Aplicar não grava o modo (nem true nem false)"
 else

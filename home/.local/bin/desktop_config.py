@@ -62,6 +62,7 @@ class Effects:
 
 MAX_CORNER_RADIUS = 30  # mais que isso, os cantos comem o conteúdo das janelas
 MAX_ANIMATION_DURATION_MS = 5000  # o limite do animation_duration_ms do SwayFX (5 segundos)
+CURSOR_SIZES = range(16, 97)  # o tamanho do cursor aceito no cursor_size, em pixels (o padrão é o CURSOR_SIZE)
 
 
 def parse_effects(data, warnings):
@@ -114,6 +115,7 @@ class Config:
     # Quando o popup Sistema mostra os perfis de energia, um dos POWER_IN_SYSTEM: "auto" (só sem bateria), "always"
     # ou "never"
     power_profiles_in_system: str = "auto"
+    cursor_size: int = 24  # o tamanho do cursor, em pixels, de CURSOR_SIZES (o CURSOR_SIZE)
     # Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui está
     # ligado: a chave ausente liga, para um config antigo continuar como era (menos as do DEFAULT_OFF)
     enabled: frozenset = frozenset()
@@ -236,6 +238,10 @@ def parse_config(data):
             auto_given = True
         elif key == "accent_auto":
             warnings.append("config: invalid value in accent_auto (use true or false)")
+        elif key == "cursor_size" and type(value) is int and value in CURSOR_SIZES:
+            config = replace(config, cursor_size=value)
+        elif key == "cursor_size":
+            warnings.append(f"config: invalid cursor_size (use {CURSOR_SIZES.start} to {CURSOR_SIZES.stop - 1})")
         elif not isinstance(value, str):
             warnings.append(f"config: invalid value in {key}")
         elif key == "locale" and value and not LOCALE.fullmatch(value):
@@ -727,7 +733,14 @@ def gtk_settings(config, prefer_dark=False):
             "[Settings]\n"
             f"gtk-theme-name={effective_gtk_theme(config)}\n"
             f"gtk-application-prefer-dark-theme={int(prefer_dark)}\n"
-            f"gtk-icon-theme-name={effective_icon_theme(config)}\n")
+            f"gtk-icon-theme-name={effective_icon_theme(config)}\n"
+            f"{gtk_cursor_settings(cursor_theme(), config.cursor_size)}")
+
+
+def gtk_cursor_settings(theme, size):
+    """O cursor no settings.ini: o tamanho sempre, o tema só se um dos CURSOR_THEMES está instalado (o mesmo do
+    seat). O mesmo do gtk_cursor_settings do rust/theme/src/desktop.rs."""
+    return (f"gtk-cursor-theme-name={theme}\n" if theme else "") + f"gtk-cursor-theme-size={size}\n"
 
 
 def gtk4_settings(config):
@@ -846,6 +859,53 @@ def cursor_theme():
                 None)
 
 
+CURSOR_FALLBACK_SIZES = (24, 32, 48, 64)  # os tamanhos oferecidos quando o arquivo do cursor não se lê
+XCURSOR_IMAGE = 0xfffd0002  # o tipo das imagens na tabela do XCursor (o subtipo é o tamanho nominal)
+XCURSOR_HEADER_BYTES = 64 * 1024  # a tabela vem logo depois do cabeçalho: 64 KiB cabem 5 mil imagens
+
+
+def xcursor_sizes(data):
+    """Os tamanhos nominais de um arquivo XCursor dentro de CURSOR_SIZES, em ordem e sem repetir; vazio se o arquivo
+    não é um XCursor. O mesmo do xcursor_sizes do swaydesk_common::cursor."""
+    def at(i):
+        return int.from_bytes(data[i:i + 4], "little") if len(data) >= i + 4 else None
+    if data[:4] != b"Xcur" or at(4) is None or at(12) is None:
+        return []
+    header, sizes = at(4), set()
+    for n in range(at(12)):
+        kind, size = at(header + n * 12), at(header + n * 12 + 4)
+        if kind is None or size is None:
+            break
+        if kind == XCURSOR_IMAGE and size in CURSOR_SIZES:
+            sizes.add(size)
+    return sorted(sizes)
+
+
+def theme_cursor_sizes(theme, dirs=None):
+    """Os tamanhos do cursor de um tema, pelo cursors/left_ptr da primeira pasta que o tem; CURSOR_FALLBACK_SIZES sem
+    ele ou sem nenhum tamanho legível. Um tema que herda os cursores (Inherits=) também fica com os de reserva: os
+    CURSOR_THEMES trazem o left_ptr."""
+    for base in dirs if dirs is not None else icon_dirs():
+        try:
+            with open(base / theme / "cursors/left_ptr", "rb") as file:
+                data = file.read(XCURSOR_HEADER_BYTES)
+        except OSError:
+            continue
+        return xcursor_sizes(data) or list(CURSOR_FALLBACK_SIZES)
+    return list(CURSOR_FALLBACK_SIZES)
+
+
+def cursor_sizes():
+    """Os do tema do seat (cursor_theme); CURSOR_FALLBACK_SIZES sem nenhum."""
+    theme = cursor_theme()
+    return theme_cursor_sizes(theme) if theme else list(CURSOR_FALLBACK_SIZES)
+
+
+def closest_cursor_size(sizes, wanted):
+    """O tamanho da lista mais perto do pedido; no empate, o menor. A lista vazia devolve o pedido."""
+    return min(sizes, key=lambda size: (abs(size - wanted), size), default=wanted)
+
+
 # As camadas do layer-shell com o blur do SwayFX (layer_effects), pelo namespace: a Waybar, a dock, os popups da
 # Waybar, as notificações, o OSD, o switcher e os painéis de tela inteira (a grade e o menu de sessão). Ficam de
 # fora o popup-click-catcher (de tela inteira e quase transparente: borraria a tela toda), o hotspot da dock e a
@@ -923,11 +983,14 @@ def sway_effects(effects, swayfx):
     return text
 
 
-def sway_cursor(theme):
-    """O cursor do seat: vence a linha fixa do config do Sway (o Bibata). Sem nenhum, o padrão do Sway."""
+def sway_cursor(theme, size=CURSOR_SIZE):
+    """O cursor do seat, no tamanho do cursor_size: vence a linha fixa do config do Sway (o Bibata). Sem nenhum, o
+    tema "default" do Xcursor, no mesmo tamanho: é o que o Sway usa sem linha seat, então o tema não muda. Uma linha
+    seat do usuário fica no config.d/50-local.conf, lido depois deste 00-cursor.conf, e vence."""
     if theme:
-        return f"{GENERATED}: o cursor instalado\nseat seat0 xcursor_theme {theme} {CURSOR_SIZE}\n"
-    return f"{GENERATED}: nenhum dos cursores ({', '.join(CURSOR_THEMES)}) instalado; fica o padrão\n"
+        return f"{GENERATED}: o cursor instalado\nseat seat0 xcursor_theme {theme} {size}\n"
+    return (f"{GENERATED}: nenhum dos cursores ({', '.join(CURSOR_THEMES)}) instalado; fica o padrão\n"
+            f"seat seat0 xcursor_theme default {size}\n")
 
 
 def sway_font(fonts):
@@ -985,7 +1048,7 @@ def generated_files(colors, config=None, fonts=None):
         "waybar/accent.css": css,
         "sway/config.d/00-accent.conf": sway,
         "sway/config.d/00-font.conf": sway_font(fonts),
-        "sway/config.d/00-cursor.conf": sway_cursor(cursor_theme()),
+        "sway/config.d/00-cursor.conf": sway_cursor(cursor_theme(), config.cursor_size),
         "sway/config.d/00-keys.conf": sway_keys(config),
         "sway/config.d/10-effects.conf": sway_effects(config.effects, is_swayfx()),
         "waybar/fonts.css": fonts_css,

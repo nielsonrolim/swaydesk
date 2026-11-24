@@ -432,12 +432,17 @@ msgstr ""
 
 #: home/.local/bin/sway-theme
 #, python-format
-msgid "Theme: %s"
+msgid "Cursor size: %s"
+msgstr ""
+
+#: home/.local/bin/sway-theme home/.local/bin/sway-theme-app
+#, python-format
+msgid "Could not update: %s"
 msgstr ""
 
 #: home/.local/bin/sway-theme
 #, python-format
-msgid "Could not update: %s"
+msgid "Theme: %s"
 msgstr ""
 
 #: home/.local/bin/sway-theme home/.local/bin/sway-theme-app
@@ -494,6 +499,15 @@ msgstr ""
 
 #: home/.local/bin/sway-theme-app
 msgid "Apply"
+msgstr ""
+
+#: home/.local/bin/sway-theme-app
+msgid "Cursor size"
+msgstr ""
+
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "%s px"
 msgstr ""
 
 #: home/.local/bin/sway-theme-app
@@ -664,17 +678,38 @@ msgstr ""
 
 #: home/.local/bin/sway_themes.py
 #, python-format
+msgid "invalid cursor size: %(size)s (use %(min)s to %(max)s)"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "fix the file first: %s"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
+msgid "cursor size in dconf (gsettings)"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
+msgid "cursor size in the session environment"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
+msgid "Older apps (GTK 3, Qt 5, Electron, X11) take the new size when reopened"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
+msgid "No Sway session: the rest changes when you log in to it"
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
+#, python-format
 msgid "theme not installed: %(theme)s. See them with: %(command)s list"
 msgstr ""
 
 #: home/.local/bin/sway_themes.py
 #, python-format
 msgid "invalid color: %(color)s (use one like %(example)s)"
-msgstr ""
-
-#: home/.local/bin/sway_themes.py
-#, python-format
-msgid "fix the file first: %s"
 msgstr ""
 
 #: home/.local/bin/sway_themes.py
@@ -707,10 +742,6 @@ msgstr ""
 
 #: home/.local/bin/sway_themes.py
 msgid "This session uses the same dconf database as GNOME and KDE: to separate them, run ./install.sh --system and log in again"
-msgstr ""
-
-#: home/.local/bin/sway_themes.py
-msgid "No Sway session: the rest changes when you log in to it"
 msgstr ""
 
 #: home/.local/bin/sway_themes.py

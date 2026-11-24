@@ -6,17 +6,19 @@
 //!      sway-theme set <tema> [--accent #rrggbb] [--folders <cor>] [--icons <ícones>] [--auto | --no-auto]
 //!      sway-theme pick <família> light|dark <cor> [--icons <ícones>] [--auto | --no-auto]
 //!      sway-theme accent-auto [--print]
+//!      sway-theme cursor [<tamanho>]
 //! --auto: a cor veio do papel de parede (accent_auto = true); --no-auto desliga o modo. Sem nenhum dos dois, uma
 //! cor diferente da atual desliga o modo e a mesma cor o deixa como está.
 //! icons: sem nome, os temas de ícones que dá para escolher (o * é o em uso); com nome, troca só os ícones.
 //! --icons: os ícones pedidos, no lugar dos que a troca de tema manteria.
+//! cursor: sem tamanho, os do tema do cursor (o * é o em uso, ou o mais perto dele); com ele, troca o tamanho.
 //! accent-auto: com accent_auto = true (o padrão), aplica a cor do papel de parede; --print só mostra o nome dela.
 //! --check: só confere que o binário carrega.
 use std::process::ExitCode;
 
 use std::collections::HashMap;
 
-use swaydesk_common::config::{load_config, message_languages, path, PAPIRUS_COLORS};
+use swaydesk_common::config::{self, load_config, message_languages, path, PAPIRUS_COLORS};
 use swaydesk_common::i18n::tr;
 use swaydesk_common::resident;
 use swaydesk_theme::families::{self as sf, Style};
@@ -37,7 +39,7 @@ macro_rules! out {
 
 /// O nome do processo. Nas mensagens vai o command_name, que nos pacotes é o swaydesk-theme
 const PROGRAM: &str = "sway-theme";
-const COMMANDS: &str = "{list,current,init,families,colors,icons,set,pick,accent-auto}";
+const COMMANDS: &str = "{list,current,init,families,colors,icons,cursor,set,pick,accent-auto}";
 
 fn usage_line() -> String {
     format!("usage: {} [-h] {COMMANDS} ...", command_name())
@@ -134,6 +136,47 @@ fn set_icons(name: &str) -> ExitCode {
     });
     match result.and_then(|r| r) {
         Ok((theme, applied)) => report(&theme, applied),
+        Err(err) => {
+            eprintln!("{err}");
+            ExitCode::from(2)
+        }
+    }
+}
+
+fn show_cursor_sizes() -> ExitCode {
+    let config = load_config(&path()).0;
+    let sizes = swaydesk_common::cursor::theme_sizes();
+    let current = swaydesk_common::cursor::closest_size(&sizes, config.cursor_size);
+    for size in sizes {
+        out!("{} {size}", if size == current { "*" } else { " " });
+    }
+    ExitCode::SUCCESS
+}
+
+fn set_cursor_size(value: &str) -> ExitCode {
+    // Só algarismos ASCII (o parse aceitaria um "+"); um texto ou um número que não cabe num u32 também é inválido,
+    // com a mesma mensagem do tamanho fora da faixa
+    let parsed = value.bytes().all(|b| b.is_ascii_digit()).then(|| value.parse::<u32>().ok()).flatten();
+    let result = match parsed {
+        Some(size) => st::locked(|| st::apply_cursor_size(size)).and_then(|r| r),
+        None => Err(swaydesk_theme::Error::Value(fill(&tr("invalid cursor size: %(size)s (use %(min)s to %(max)s)"), &[
+            ("size", value),
+            ("min", &config::CURSOR_SIZES.start().to_string()),
+            ("max", &config::CURSOR_SIZES.end().to_string()),
+        ]))),
+    };
+    match result {
+        Ok(applied) => {
+            println!("{}", fill_one(&tr("Cursor size: %s"), &parsed.unwrap_or_default().to_string()));
+            for note in &applied.notes {
+                println!("{note}");
+            }
+            if !applied.failures.is_empty() {
+                eprintln!("{}", fill_one(&tr("Could not update: %s"), &applied.failures.join(", ")));
+                return ExitCode::from(1);
+            }
+            ExitCode::SUCCESS
+        }
         Err(err) => {
             eprintln!("{err}");
             ExitCode::from(2)
@@ -330,11 +373,16 @@ fn main() -> ExitCode {
             _ if rest.len() < 3 => usage_error("the following arguments are required: family, style, color"),
             _ => usage_error(&format!("unrecognized arguments: {}", rest[3..].join(" "))),
         },
+        "cursor" => match rest {
+            [] => show_cursor_sizes(),
+            [size] => set_cursor_size(size),
+            _ => usage_error(&format!("unrecognized arguments: {}", rest[1..].join(" "))),
+        },
         "accent-auto" => match rest {
             [] => accent_auto(),
             [print] if print == "--print" => print_accent(),
             _ => usage_error(&format!("unrecognized arguments: {}", rest.join(" "))),
         },
-        other => usage_error(&format!("argument command: invalid choice: '{other}' (choose from 'list', 'current', 'init', 'families', 'colors', 'icons', 'set', 'pick', 'accent-auto')")),
+        other => usage_error(&format!("argument command: invalid choice: '{other}' (choose from 'list', 'current', 'init', 'families', 'colors', 'icons', 'cursor', 'set', 'pick', 'accent-auto')")),
     }
 }

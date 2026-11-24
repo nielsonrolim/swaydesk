@@ -49,6 +49,10 @@ shortcuts = "swaydesk"
 # também nos notebooks. "never": nunca. Com bateria, o popup da bateria continua com os botões. Vale ao abrir o popup
 power_profiles_in_system = "auto"
 
+# O tamanho do cursor, em pixels (16 a 96). O app Tema do Desktop só oferece os tamanhos que o tema do cursor tem.
+# Os apps novos (GTK 4, Qt 6) mudam na hora; os mais velhos (GTK 3, Qt 5, Electron, XWayland), ao abrir de novo
+cursor_size = 24
+
 # Componentes da sessão: false desliga, e a chave ausente liga. Vale ao entrar de novo na sessão; a barra, ao
 # reiniciar a Waybar (sway-waybar restart). As tabelas ficam no fim do arquivo: uma chave solta depois delas
 # entraria na tabela
