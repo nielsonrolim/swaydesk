@@ -562,11 +562,17 @@ pub fn run_single<T>(
         };
         // Os argumentos antes do sinal: depois dele, o aberto pode já ter saído
         let open_args = live_args(&pidfile, program);
-        if resident::signal_pid(&pidfile, program, libc::SIGTERM) && closes_open(&open_args.unwrap_or_default()) {
-            return ExitCode::SUCCESS; // estava aberto: só fecha
+        if resident::signal_pid(&pidfile, program, libc::SIGTERM) {
+            // Quem fecha diz por quê: o aberto só registra o sinal
+            log(program, "opened again: SIGTERM to the open one");
+            if closes_open(&open_args.unwrap_or_default()) {
+                return ExitCode::SUCCESS; // estava aberto: só fecha
+            }
         }
         for other in others {
-            resident::signal_pid(&resident::pidfile(other), other, libc::SIGTERM);
+            if resident::signal_pid(&resident::pidfile(other), other, libc::SIGTERM) {
+                log(other, &format!("SIGTERM: {program} opened"));
+            }
         }
         if let Err(err) = resident::write_pid(&pidfile) {
             eprintln!("{program}: could not write {}: {err}", pidfile.display());
@@ -580,10 +586,12 @@ pub fn run_single<T>(
         }
         i18n::init(&config::load());
         let main_loop = glib::MainLoop::new(None, false);
-        for signal in [libc::SIGTERM, libc::SIGINT] {
+        for (signal, name) in [(libc::SIGTERM, "SIGTERM"), (libc::SIGINT, "SIGINT")] {
             let main_loop = main_loop.clone();
-            // Clicaram de novo no ícone ou abriram outro popup
+            // Clicaram de novo no ícone ou abriram outro popup. O sinal não passa pelo close: sem esta linha,
+            // o fechamento não deixaria motivo no log
             glib::unix_signal_add_local(signal, move || {
+                log(program, name);
                 let handled = TERMINATE.with(|t| t.borrow().as_ref().is_some_and(|f| f()));
                 if !handled {
                     main_loop.quit();

@@ -55,8 +55,29 @@ check() {
   sleep 0.5
 }
 
+# toggle_log IMPL: abrir de novo fecha o aberto, e o log diz por quê (o SIGTERM não passa pelo close do popup)
+toggle_log() {
+  local impl=$1 pid log=$XDG_RUNTIME_DIR/waybar-popups.log
+  : > "$log"
+  SWAY_CALENDAR_IMPL=$impl "$HOME/.local/bin/waybar-calendar" 2>/dev/null & pid=$!
+  for _ in $(seq 50); do [ -e "$XDG_RUNTIME_DIR/waybar-calendar.pid" ] && break; sleep 0.1; done
+  sleep 1
+  SWAY_CALENDAR_IMPL=$impl "$HOME/.local/bin/waybar-calendar" 2>/dev/null
+  for _ in $(seq 30); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
+  if kill -0 "$pid" 2>/dev/null; then
+    printf 'FALHOU  waybar-calendar (%s): abrir de novo não fechou\n' "$impl"; failed=1; kill "$pid"
+  elif grep -q 'waybar-calendar: opened again: SIGTERM to the open one' "$log" && grep -q 'waybar-calendar: SIGTERM$' "$log"; then
+    printf 'ok      waybar-calendar (%s): abrir de novo fecha, e o log diz por quê\n' "$impl"
+  else
+    printf 'FALHOU  waybar-calendar (%s): o log do toggle: %s\n' "$impl" "$(tr '\n' '|' < "$log")"; failed=1
+  fi
+  wait "$pid" 2>/dev/null
+  sleep 0.5
+}
+
 for impl in rust python; do
   check waybar-calendar SWAY_CALENDAR_IMPL "$impl" 100 600 fechado  # fora: o catcher
   check waybar-calendar SWAY_CALENDAR_IMPL "$impl" 640 120 aberto   # dentro do popup
+  toggle_log "$impl"
 done
 exit "$failed"
