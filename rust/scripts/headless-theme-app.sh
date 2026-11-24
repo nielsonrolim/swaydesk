@@ -15,7 +15,8 @@
 # Arc-Dark na lateral e Aplicar grava o tema no config.toml, e a janela continua aberta. A cor do papel de parede
 # (um vermelho liso, só na versão em Rust): o interruptor abre ligado (o padrão, sem a chave), e o Aplicar grava o vermelho com
 # accent_auto = true; uma amostra (o azul) desliga o interruptor, e o Aplicar grava a cor com accent_auto = false;
-# ligar de novo volta ao vermelho. Sai com 1 se algum caso falhar.
+# ligar de novo volta ao vermelho. Sem o arquivo do papel e sem a chave, o interruptor abre desligado. Sai com 1 se
+# algum caso falhar.
 set -u
 impl=${1:-rust}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
@@ -180,6 +181,25 @@ if config | grep -qx 'icon_theme = "Adwaita"' && config | grep -qx 'gtk_theme = 
   ok "a lista de ícones troca só os ícones"
 else
   fail "os ícones não foram gravados: $(config)"
+fi
+# Sem o arquivo do papel e sem a chave accent_auto (o app Tema instalado sozinho): o interruptor abre desligado, e
+# o Aplicar de um tema não grava a cor de papel nenhum, nem o accent_auto (um papel que aparecer depois liga o modo)
+kill "$pid" 2>/dev/null
+for _ in $(seq 50); do [ "$(windows)" = 0 ] && break; sleep 0.1; done
+rm -f "$HOME/.local/share/wallpaper/current.jpg"
+printf 'gtk_theme = "Mint-Y-Dark-Teal"\n' > "$HOME/.config/swaydesk/config.toml"
+app
+for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
+sleep 1.5
+pid=$(pgrep -n -f "swaydesk-theme-app")
+shot 12-sem-papel
+pointer move $((wx + 100)) $((wy + 235)) sleep 100 click sleep 500  # o Arc-Dark
+apply_and_wait 'gtk_theme = "Arc-Dark"'
+shot 13-sem-papel-aplicado
+if config | grep -qx 'gtk_theme = "Arc-Dark"' && ! config | grep -q '^accent_auto' && ! config | grep -q '#e25252'; then
+  ok "sem papel e sem a chave, o interruptor abre desligado: o Aplicar não grava o modo (nem true nem false)"
+else
+  fail "sem papel, o modo ligou: $(config)"
 fi
 fi
 grep -q "CRITICAL\|Traceback\|panicked" /tmp/app.log && { fail "avisos no log"; cat /tmp/app.log; }

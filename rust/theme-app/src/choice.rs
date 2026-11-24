@@ -18,12 +18,13 @@ pub fn matches(names: &[String], text: &str) -> bool {
 }
 
 /// O que aplicar: a família no estilo e na cor (`sway-theme pick`), ou um tema com o destaque e as pastas na cor
-/// (`sway-theme set`). auto: o accent_auto que fica gravado (o --auto ou o --no-auto), o do interruptor. icons: os
+/// (`sway-theme set`). auto: o accent_auto que fica gravado (o --auto ou o --no-auto), o do interruptor; None (nem um
+/// nem outro) deixa a chave como está: o interruptor desligado e intocado sem a chave no config (auto_inferred). icons: os
 /// ícones escolhidos na lista (o --icons), só quando mudaram; sem eles, a troca de tema mantém os de antes.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Action {
-    Pick { family: String, style: Style, color: String, auto: bool, icons: Option<String> },
-    Set { theme: String, accent: String, color: String, auto: bool, icons: Option<String> },
+    Pick { family: String, style: Style, color: String, auto: Option<bool>, icons: Option<String> },
+    Set { theme: String, accent: String, color: String, auto: Option<bool>, icons: Option<String> },
 }
 
 pub struct Choice {
@@ -36,6 +37,10 @@ pub struct Choice {
     pub color: String,
     /// A cor do papel de parede (o interruptor ligado)
     pub auto: bool,
+    /// O accent_auto do config veio do padrão (sem a chave, Config::accent_auto_set falso): o interruptor
+    /// desligado como carregou não é uma escolha, e o Aplicar não grava o false (o modo liga sozinho quando
+    /// aparecer um papel). Ligado, o --auto vai como sempre: a cor do papel gravada em accent desligaria o padrão
+    pub auto_inferred: bool,
     /// A leitura do papel de parede: None não abre, Some(None) sem cor, Some(Some(nome)) a cor do Papirus
     pub wallpaper: Option<Option<&'static str>>,
     /// O modo desligado em cima da cor padrão (papel sem cor ou ilegível): ela fica, até escolher uma amostra
@@ -124,6 +129,7 @@ impl Choice {
             style: Style::Dark,
             color,
             auto: false,
+            auto_inferred: false,
             wallpaper: None,
             kept_default: false,
             custom: None,
@@ -365,7 +371,8 @@ impl Choice {
     /// Papirus (o DEFAULT_ACCENT), a variante mais perto dele com as pastas na mais perto (set com --folders "").
     /// A cor própria vai como o destaque do set, com as pastas em uso.
     pub fn action(&self) -> Option<Action> {
-        let (name, auto, icons) = (self.color_name(), self.auto, self.wanted_icons());
+        let (name, icons) = (self.color_name(), self.wanted_icons());
+        let auto = (!(self.auto_inferred && !self.auto && !self.loaded.auto)).then_some(self.auto);
         match (&self.family, &self.other) {
             (Some(family), _) if !name.is_empty() && !self.is_custom() && self.theme() == self.resolved() => Some(Action::Pick { family: family.name.clone(), style: self.style, color: name, auto, icons }),
             (Some(_), _) => self.theme().map(|theme| Action::Set { theme, accent: self.accent(), color: name, auto, icons }),
@@ -399,7 +406,7 @@ pub fn outcome(theme: &str, result: Result<Applied, Error>) -> (i32, String) {
 /// tema aplicado, o código e a mensagem.
 pub fn apply(action: &Action) -> (String, i32, String) {
     match action {
-        Action::Pick { family, style, color, auto, icons } => match st::locked(|| st::pick(family, *style, color, Some(*auto), icons.as_deref())).and_then(|r| r) {
+        Action::Pick { family, style, color, auto, icons } => match st::locked(|| st::pick(family, *style, color, *auto, icons.as_deref())).and_then(|r| r) {
             Ok((theme, applied)) => {
                 let (code, message) = outcome(&theme, Ok(applied));
                 (theme, code, message)
@@ -410,7 +417,7 @@ pub fn apply(action: &Action) -> (String, i32, String) {
             }
         },
         Action::Set { theme, accent, color, auto, icons } => {
-            let result = st::locked(|| st::apply(theme, Some(accent), Some(color), None, Some(*auto), icons.as_deref())).and_then(|r| r);
+            let result = st::locked(|| st::apply(theme, Some(accent), Some(color), None, *auto, icons.as_deref())).and_then(|r| r);
             let (code, message) = outcome(theme, result);
             (theme.clone(), code, message)
         }
@@ -466,7 +473,7 @@ mod tests {
         assert_eq!(c.key(), (Some("Mint-Y-Dark-Teal".into()), String::new(), true, String::new()));
         assert_eq!(
             c.action(),
-            Some(Action::Set { theme: "Mint-Y-Dark-Teal".into(), accent: papirus_color("blue").unwrap().into(), color: "blue".into(), auto: true, icons: None })
+            Some(Action::Set { theme: "Mint-Y-Dark-Teal".into(), accent: papirus_color("blue").unwrap().into(), color: "blue".into(), auto: Some(true), icons: None })
         );
         // Outro estilo e de volta: nada mexido
         c.style = Style::Light;
@@ -511,12 +518,12 @@ mod tests {
         // Aplicar de novo (outro estilo, outra família) mantém o hex e as pastas: um set, não um pick
         assert_eq!(
             c.action(),
-            Some(Action::Set { theme: "Mint-Y-Dark-Blue".into(), accent: "#1060d0".into(), color: "blue".into(), auto: false, icons: None })
+            Some(Action::Set { theme: "Mint-Y-Dark-Blue".into(), accent: "#1060d0".into(), color: "blue".into(), auto: Some(false), icons: None })
         );
         c.pick_other(&theme("Arc-Dark", true, None));
         assert_eq!(
             c.action(),
-            Some(Action::Set { theme: "Arc-Dark".into(), accent: "#1060d0".into(), color: "blue".into(), auto: false, icons: None })
+            Some(Action::Set { theme: "Arc-Dark".into(), accent: "#1060d0".into(), color: "blue".into(), auto: Some(false), icons: None })
         );
         // A chave distingue a cor própria da amostra das pastas
         let custom_key = c.key();
@@ -573,7 +580,7 @@ mod tests {
         assert_eq!((c.family.is_none(), c.other.as_deref(), c.style), (true, Some("Arc-Dark"), Style::Dark));
         assert_eq!(
             c.action(),
-            Some(Action::Set { theme: "Arc-Dark".into(), accent: papirus_color("blue").unwrap().into(), color: "blue".into(), auto: false, icons: None })
+            Some(Action::Set { theme: "Arc-Dark".into(), accent: papirus_color("blue").unwrap().into(), color: "blue".into(), auto: Some(false), icons: None })
         );
     }
 
@@ -594,7 +601,7 @@ mod tests {
         assert!(c.theme().is_some());
         assert!(!c.exact());
         assert_eq!(c.key(), (c.theme(), "red".to_string(), false, String::new()));
-        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "red".into(), auto: false, icons: None }));
+        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "red".into(), auto: Some(false), icons: None }));
     }
 
     #[test]
@@ -604,7 +611,7 @@ mod tests {
         c.wallpaper = Some(Some("blue"));
         assert_eq!((c.color_name().as_str(), c.accent()), ("blue", papirus_color("blue").unwrap().to_string()));
         assert_eq!(c.theme().as_deref(), Some("Mint-Y-Dark-Blue"));
-        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "blue".into(), auto: true, icons: None }));
+        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "blue".into(), auto: Some(true), icons: None }));
         // A cor escolhida à mão fica guardada, e a chave não a compara
         assert_eq!(c.color, "teal");
         assert_eq!(c.key(), (Some("Mint-Y-Dark-Blue".into()), String::new(), true, String::new()));
@@ -615,19 +622,54 @@ mod tests {
             assert!(!c.exact());
             assert_eq!(
                 c.action(),
-                Some(Action::Set { theme: "Mint-Y-Dark-Teal".into(), accent: DEFAULT_ACCENT.into(), color: String::new(), auto: true, icons: None })
+                Some(Action::Set { theme: "Mint-Y-Dark-Teal".into(), accent: DEFAULT_ACCENT.into(), color: String::new(), auto: Some(true), icons: None })
             );
         }
         // Desligado: volta a cor à mão, e o Aplicar desliga o modo
         c.auto = false;
-        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "teal".into(), auto: false, icons: None }));
+        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "teal".into(), auto: Some(false), icons: None }));
         // Um tema de fora das famílias, com a cor do papel
         c.load("Arc-Dark", "teal", true);
         c.wallpaper = Some(Some("red"));
         assert_eq!(
             c.action(),
-            Some(Action::Set { theme: "Arc-Dark".into(), accent: papirus_color("red").unwrap().into(), color: "red".into(), auto: true, icons: None })
+            Some(Action::Set { theme: "Arc-Dark".into(), accent: papirus_color("red").unwrap().into(), color: "red".into(), auto: Some(true), icons: None })
         );
+    }
+
+    /// O auto do que o Aplicar rodaria (pick ou set)
+    fn auto_of(c: &Choice) -> Option<bool> {
+        match c.action() {
+            Some(Action::Pick { auto, .. }) | Some(Action::Set { auto, .. }) => auto,
+            None => panic!("nada a aplicar"),
+        }
+    }
+
+    #[test]
+    fn an_untouched_switch_off_without_the_key_writes_no_mode() {
+        // Sem a chave e sem papel, o interruptor carrega desligado: o Aplicar não grava o false. O mesmo teste do
+        // sway-theme-app (test_sway_theme.py)
+        let mut c = choice();
+        c.auto_inferred = true;
+        c.load("Mint-Y-Dark-Teal", "teal", false);
+        c.style = Style::Light;
+        assert_eq!(auto_of(&c), None);
+        // Ligar e desligar de novo volta ao carregado: continua sem gravar
+        c.set_auto(true);
+        assert_eq!(auto_of(&c), Some(true));
+        c.set_auto(false);
+        assert_eq!(auto_of(&c), None);
+        // Carregado ligado (com papel), desligar é uma escolha: grava o false
+        let mut on = choice();
+        on.auto_inferred = true;
+        on.load("Mint-Y-Dark-Teal", "teal", true);
+        on.set_auto(false);
+        assert_eq!(auto_of(&on), Some(false));
+        // Com a chave no config (auto_inferred falso), sempre explícito, como antes
+        let mut set = choice();
+        set.load("Mint-Y-Dark-Teal", "teal", false);
+        set.style = Style::Light;
+        assert_eq!(auto_of(&set), Some(false));
     }
 
     #[test]
@@ -638,7 +680,7 @@ mod tests {
         c.wallpaper = Some(Some("blue"));
         c.set_auto(false);
         assert_eq!((c.color.as_str(), c.kept_default), ("blue", false));
-        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "blue".into(), auto: false, icons: None }));
+        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "blue".into(), auto: Some(false), icons: None }));
         // Sem cor no papel, ou ilegível: fica o destaque padrão exato, não a amostra mais perto
         for reading in [Some(None), None] {
             c.load("Mint-Y-Dark-Teal", "teal", true);
@@ -648,7 +690,7 @@ mod tests {
             assert_eq!((c.color_name().as_str(), c.accent().as_str()), ("", DEFAULT_ACCENT));
             assert_eq!(
                 c.action(),
-                Some(Action::Set { theme: "Mint-Y-Dark-Teal".into(), accent: DEFAULT_ACCENT.into(), color: String::new(), auto: false, icons: None })
+                Some(Action::Set { theme: "Mint-Y-Dark-Teal".into(), accent: DEFAULT_ACCENT.into(), color: String::new(), auto: Some(false), icons: None })
             );
             assert_eq!(c.key(), (Some("Mint-Y-Dark-Teal".into()), String::new(), false, String::new()));
         }
@@ -691,7 +733,7 @@ mod tests {
         c.style = Style::Light;
         assert_eq!(
             c.action(),
-            Some(Action::Set { theme: "Mint-Y-Teal".into(), accent: DEFAULT_ACCENT.into(), color: String::new(), auto: false, icons: None })
+            Some(Action::Set { theme: "Mint-Y-Teal".into(), accent: DEFAULT_ACCENT.into(), color: String::new(), auto: Some(false), icons: None })
         );
         // A chave bate com a do aplicado (a cor ""), e qualquer amostra é uma mudança, a mais perto também
         assert_eq!(c.key().1, "");
@@ -710,12 +752,12 @@ mod tests {
         c.load_icons("Yaru");
         // Sem mudança, nada de --icons: a troca de tema decide (os da pessoa ficam, os do tema acompanham)
         assert_eq!(c.wanted_icons(), None);
-        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "teal".into(), auto: false, icons: None }));
+        assert_eq!(c.action(), Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "teal".into(), auto: Some(false), icons: None }));
         c.icons = "Papirus".into();
         assert_eq!(c.wanted_icons().as_deref(), Some("Papirus"));
         assert_eq!(
             c.action(),
-            Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "teal".into(), auto: false, icons: Some("Papirus".into()) })
+            Some(Action::Pick { family: "Mint-Y".into(), style: Style::Dark, color: "teal".into(), auto: Some(false), icons: Some("Papirus".into()) })
         );
         // A chave muda com os ícones: o Aplicar liga
         assert_eq!(c.key().3, "Papirus");

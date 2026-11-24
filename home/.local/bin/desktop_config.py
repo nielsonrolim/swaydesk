@@ -104,6 +104,7 @@ class Config:
     # A cor tirada do papel de parede: o sway-theme accent-auto grava a cor em accent. Sem a chave (ou com um valor
     # inválido), ligado só se o accent é o DEFAULT_ACCENT: quem escolheu outra cor antes da chave fica com ela
     accent_auto: bool = True
+    accent_auto_set: bool = False  # se o accent_auto veio do config (um true ou false válido): ver accent_auto_for
     gtk_theme: str = "Mint-Y-Dark-Teal"
     icon_theme: str = "Papirus-Dark"
     folder_color: str = ""  # a cor das pastas do Papirus, como "teal"; vazio: a mais perto do destaque
@@ -119,6 +120,12 @@ class Config:
     # Os ligados com true no [enabled]: só contam para as chaves do DEFAULT_OFF. Não é uma chave do arquivo
     turned_on: frozenset = frozenset()
     effects: Effects = Effects()  # os efeitos do SwayFX ([effects])
+
+    def accent_auto_for(self, wallpaper_exists):
+        """O accent_auto em vigor, com o papel de parede existindo ou não (o accent_auto_for do Rust). Sem a chave,
+        desligado sem o arquivo: o interruptor da cor do papel não aparece ligado só para avisar que não há papel.
+        Um true ou false que o usuário gravou vale sempre. O parse não olha o disco: quem chama diz."""
+        return self.accent_auto and (self.accent_auto_set or bool(wallpaper_exists))
 
 
 @dataclass(frozen=True)
@@ -212,7 +219,8 @@ def parse_config(data):
     """Devolve a config e os avisos: um valor ruim não invalida os outros."""
     config, warnings = Config(), []
     auto_given = False
-    known = {f.name for f in fields(Config)} - {"turned_on"}
+    # O turned_on e o accent_auto_set saem do parse: não são chaves do arquivo
+    known = {f.name for f in fields(Config)} - {"turned_on", "accent_auto_set"}
     for key, value in data.items():
         if key not in known:
             warnings.append(f"config: unknown option: {key}")
@@ -254,7 +262,7 @@ def parse_config(data):
             config = replace(config, **{key: value})
     if not auto_given:
         config = replace(config, accent_auto=config.accent == DEFAULT_ACCENT)
-    return config, warnings
+    return replace(config, accent_auto_set=auto_given), warnings
 
 
 def load_config(file):

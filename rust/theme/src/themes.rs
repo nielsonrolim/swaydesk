@@ -959,7 +959,9 @@ pub enum Auto {
 /// piscar a barra.
 pub fn accent_auto() -> Result<Auto, Error> {
     let config = load_config(&config::path()).0;
-    if !config.accent_auto {
+    // Sem a chave e sem o arquivo do papel, o modo está desligado (Config::accent_auto_for): nada a aplicar, e
+    // nenhum aviso de papel ilegível a cada login de quem nunca teve papel
+    if !config.accent_auto_for(crate::wallpaper_accent::wallpaper().exists()) {
         return Ok(Auto::Off);
     }
     let reading = crate::wallpaper_accent::current_color();

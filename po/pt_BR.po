@@ -468,6 +468,15 @@ msgid "Custom · %s"
 msgstr "Personalizada · %s"
 
 #: home/.local/bin/sway-theme-app
+msgid "No theme found"
+msgstr "Nenhum tema encontrado"
+
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "No GTK themes are installed. Install one, such as %s."
+msgstr "Nenhum tema GTK instalado. Instale um, como o %s."
+
+#: home/.local/bin/sway-theme-app
 msgid "In use"
 msgstr "Em uso"
 
@@ -506,10 +515,6 @@ msgstr "Tema do Desktop"
 #: home/.local/bin/sway-theme-app
 msgid "Back to the theme in use"
 msgstr "Voltar ao tema em uso"
-
-#: home/.local/bin/sway-theme-app
-msgid "No theme found"
-msgstr "Nenhum tema encontrado"
 
 #: home/.local/bin/sway-theme-app
 msgid "Themes"

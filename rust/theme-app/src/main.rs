@@ -182,6 +182,8 @@ struct Window {
     spinner: gtk4::Spinner,
     entry: gtk4::SearchEntry,
     listbox: gtk4::ListBox,
+    /// O texto da lista vazia: nenhum tema instalado, ou só a busca sem resultado (empty_text)
+    empty: gtk4::Label,
     scroller: gtk4::ScrolledWindow,
     rows: RefCell<Vec<Row>>,
     #[allow(deprecated)] // sem substituto pronto no GTK 4.18; o do Python é o GtkInfoBar
@@ -282,6 +284,9 @@ impl Window {
         listbox.set_activate_on_single_click(false);
         listbox.set_selection_mode(gtk4::SelectionMode::Browse);
         let empty = gtk4::Label::new(Some(&tr("No theme found")));
+        // A dica de instalar um tema é mais larga que a lateral
+        empty.set_wrap(true);
+        empty.set_justify(gtk4::Justification::Center);
         margins(&empty, 24);
         dim(&empty);
         listbox.set_placeholder(Some(&empty));
@@ -477,6 +482,7 @@ impl Window {
             spinner,
             entry,
             listbox,
+            empty,
             scroller,
             rows: RefCell::new(Vec::new()),
             info,
@@ -677,6 +683,7 @@ impl Window {
             self.listbox.remove(&row.row);
         }
         let rows: Vec<Row> = families.iter().map(|f| Row::new(Some(f.clone()), None)).chain(others.iter().map(|t| Row::new(None, Some(t.clone())))).collect();
+        self.empty.set_text(&empty_text(!rows.is_empty()));
         // A lista antes das linhas: o filtro e os títulos leem a lista quando a linha entra
         let widgets: Vec<gtk4::ListBoxRow> = rows.iter().map(|r| r.row.clone()).collect();
         *self.rows.borrow_mut() = rows;
@@ -716,19 +723,23 @@ impl Window {
         // Sem o Papirus em uso, a cor mais perto do destaque, entre as que o app mostra; o destaque padrão exato
         // (que não é amostra), com o modo desligado, carrega como nenhuma ("")
         let folders = st::folder_color(&config).unwrap_or_else(|| sp::nearest_color(&config.accent, &self.colors));
-        *self.current_color.borrow_mut() = choice::loaded_color(&config.accent, &config.folder_color, config.accent_auto, &folders);
-        self.current_auto.set(config.accent_auto);
+        // O modo em vigor: sem a chave no config e sem o arquivo do papel, desligado (Config::accent_auto_for)
+        let auto = config.accent_auto_for(wa::wallpaper().exists());
+        *self.current_color.borrow_mut() = choice::loaded_color(&config.accent, &config.folder_color, auto, &folders);
+        self.current_auto.set(auto);
         *self.css_notes.borrow_mut() = st::gtk_css_status();
         self.snaps.set(dc::snap_theme_prompt());
         // A cor do próprio tema (sway-theme set sem --accent) leva o nome dele; outra, "Custom"
         let own = self.themes.borrow().get(&*self.current.borrow()).and_then(|t| t.accent.clone());
-        *self.current_custom.borrow_mut() = choice::custom_accent(&config.accent, config.accent_auto, &config.folder_color, &folders).map(|accent| Custom {
+        *self.current_custom.borrow_mut() = choice::custom_accent(&config.accent, auto, &config.folder_color, &folders).map(|accent| Custom {
             theme: own.as_deref().is_some_and(|o| o.eq_ignore_ascii_case(&accent)).then(|| self.current.borrow().clone()),
             accent,
             folders,
         });
         *self.current_icons.borrow_mut() = it::entry_of(&dc::installed_icon_theme(&config)).to_string();
         self.accent_provider.load_from_string(&config::accent_css(&config::palette(&config)));
+        // Sem a chave no config, o interruptor desligado e intocado não grava o false no Aplicar
+        self.choice.borrow_mut().auto_inferred = !config.accent_auto_set;
         *self.config.borrow_mut() = config;
         // O papel pode ter mudado (o do dia): a cor que o interruptor daria agora
         self.choice.borrow_mut().wallpaper = wa::current_color();
@@ -1316,6 +1327,20 @@ fn stand_in_theme(settings: &gtk4::Settings) {
     }
 }
 
+/// O pacote que a lista vazia sugere: um tema GTK dos repositórios do Debian, do Ubuntu e do Arch
+const SUGGESTED_THEME_PACKAGE: &str = "gnome-themes-extra";
+
+/// O texto da lista de temas sem nenhuma linha: com temas, é a busca que não achou nada; sem nenhum, diz o que
+/// instalar. O pacote do app depende do gnome-themes-extra no Arch e o recomenda no Debian e no Ubuntu: a lista
+/// fica sem temas com ele removido, ou instalado sem os Recommends
+fn empty_text(any_theme: bool) -> String {
+    if any_theme {
+        tr("No theme found")
+    } else {
+        fill_one(&tr("No GTK themes are installed. Install one, such as %s."), SUGGESTED_THEME_PACKAGE)
+    }
+}
+
 /// O que a amostra ao lado do interruptor mostra: a cor do papel ou por que vale o destaque padrão.
 fn auto_note(wallpaper: Option<Option<&'static str>>) -> String {
     match wallpaper {
@@ -1345,4 +1370,16 @@ fn main() -> ExitCode {
     });
     let code = app.run_with_args(&std::env::args().take(1).collect::<Vec<_>>());
     ExitCode::from(code.value() as u8)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_empty_list_says_what_to_install_only_without_any_theme() {
+        // Sem catálogo (o i18n sem init), o inglês do código: o mesmo do empty_text do sway-theme-app
+        assert_eq!(empty_text(true), "No theme found");
+        assert_eq!(empty_text(false), "No GTK themes are installed. Install one, such as gnome-themes-extra.");
+    }
 }

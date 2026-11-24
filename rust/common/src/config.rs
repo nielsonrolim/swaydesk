@@ -74,6 +74,8 @@ pub struct Config {
     /// Sem a chave (ou com um valor inválido), ligado só se o accent é o DEFAULT_ACCENT: quem escolheu outra cor
     /// antes da chave existir fica com ela
     pub accent_auto: bool,
+    /// Se o accent_auto veio do config (um true ou false válido), e não do padrão: o accent_auto_for o usa
+    pub accent_auto_set: bool,
     /// O código do país dos feriados do calendário, como "BR"; vazio: o do locale; "none": nenhum
     pub holidays: String,
     /// A cidade do tempo, como "São Paulo"; vazio: o wttr.in usa a do IP
@@ -223,12 +225,22 @@ fn parse_effects(table: &toml::Table, warnings: &mut Vec<String>) -> Effects {
     effects
 }
 
+impl Config {
+    /// O accent_auto em vigor, com o papel de parede existindo ou não. Sem a chave no config, desligado sem o
+    /// arquivo: numa instalação sem papel, o interruptor da cor do papel não aparece ligado só para avisar que
+    /// não há papel. Um true ou false que o usuário gravou vale sempre. O parse não olha o disco: quem chama diz
+    pub fn accent_auto_for(&self, wallpaper_exists: bool) -> bool {
+        self.accent_auto && (self.accent_auto_set || wallpaper_exists)
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Config {
             locale: String::new(),
             accent: DEFAULT_ACCENT.to_string(),
             accent_auto: true,
+            accent_auto_set: false,
             holidays: String::new(),
             weather_location: String::new(),
             gtk_theme: "Mint-Y-Dark-Teal".to_string(),
@@ -424,6 +436,7 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
     if !auto_given {
         config.accent_auto = config.accent == DEFAULT_ACCENT;
     }
+    config.accent_auto_set = auto_given;
     (config, warnings)
 }
 
@@ -772,6 +785,24 @@ mod tests {
 
     fn env(pairs: &[(&str, &str)]) -> HashMap<String, String> {
         pairs.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect()
+    }
+
+    #[test]
+    fn accent_auto_without_the_key_is_off_without_a_wallpaper_and_a_set_value_always_wins() {
+        let inferred = parse_config("").0;
+        assert!(!inferred.accent_auto_set);
+        assert!(inferred.accent_auto_for(true) && !inferred.accent_auto_for(false));
+        let (on, off) = (parse_config("accent_auto = true\n").0, parse_config("accent_auto = false\n").0);
+        assert!(on.accent_auto_set && off.accent_auto_set);
+        assert!(on.accent_auto_for(true) && on.accent_auto_for(false));
+        assert!(!off.accent_auto_for(true) && !off.accent_auto_for(false));
+        // Uma cor própria sem a chave: desligado, com papel ou sem
+        let own = parse_config("accent = \"#e25252\"\n").0;
+        assert!(!own.accent_auto_for(true) && !own.accent_auto_for(false));
+        // Um valor inválido não conta como escolha: é o padrão, como sem a chave
+        let bad = parse_config("accent_auto = \"yes\"\n").0;
+        assert!(!bad.accent_auto_set && !bad.accent_auto_for(false));
+        assert!(!Config::default().accent_auto_set);
     }
 
     #[test]
