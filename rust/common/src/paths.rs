@@ -32,19 +32,49 @@ pub fn helper_candidates(name: &str, exe_dir: Option<&Path>, home_bin: &Path) ->
 }
 
 /// Um script auxiliar (sway-caffeine, session-action…): o primeiro que existir, ou o de ~/.local/bin, como
-/// antes, para a mensagem de erro dizer onde se esperava.
+/// antes, para a mensagem de erro dizer onde se esperava. Sem nenhum, avisa no stderr (o sway.log) uma vez
+/// por nome, com os lugares procurados e o que instalar: sem o script, o botão só não fazia nada.
 pub fn helper(name: &str) -> PathBuf {
-    find_helper(name).unwrap_or_else(|| local_bin().join(name))
+    find_helper(name).unwrap_or_else(|| {
+        if first_miss(name) {
+            // O install.sh copia os binários para o ~/.local/bin; o exe_dir já vem resolvido, a HOME pode não vir
+            let dotfiles = exe_dir().is_some_and(|dir| std::fs::canonicalize(local_bin()).is_ok_and(|bin| bin == dir));
+            eprintln!("{}", missing_helper_message(name, &helper_search(name), dotfiles));
+        }
+        local_bin().join(name)
+    })
 }
 
-/// O script auxiliar que existe, ou None. Na sessão do pacote, só os dele: o ~/.local/bin é da outra sessão.
-pub fn find_helper(name: &str) -> Option<PathBuf> {
+/// O aviso de um script auxiliar que não existe em lugar nenhum: os lugares que o find_helper tentou e, nos
+/// dotfiles (o binário no ~/.local/bin), o install.sh; nos pacotes, o swaydesk-scripts.
+fn missing_helper_message(name: &str, tried: &[PathBuf], dotfiles: bool) -> String {
+    let places: Vec<String> = tried.iter().map(|p| p.display().to_string()).collect();
+    let hint = if dotfiles { "run install.sh again" } else { "install the swaydesk-scripts package" };
+    format!("swaydesk: helper script {name} not found (tried {}); {hint}", places.join(", "))
+}
+
+/// Se é a primeira falta deste nome neste processo (o aviso sai uma vez, não a cada clique).
+fn first_miss(name: &str) -> bool {
+    use std::collections::HashSet;
+    use std::sync::{Mutex, OnceLock};
+    static MISSED: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    MISSED.get_or_init(Default::default).lock().map(|mut seen| seen.insert(name.to_string())).unwrap_or(false)
+}
+
+/// Os lugares de um script, na ordem em que o find_helper procura. Na sessão do pacote, só os dele: o
+/// ~/.local/bin é da outra sessão.
+fn helper_search(name: &str) -> Vec<PathBuf> {
     let home_bin = local_bin();
     let mut candidates = helper_candidates(name, exe_dir().as_deref(), &home_bin);
     if package_session() {
         candidates.retain(|p| !p.starts_with(&home_bin));
     }
-    candidates.into_iter().find(|p| p.is_file())
+    candidates
+}
+
+/// O script auxiliar que existe, ou None.
+pub fn find_helper(name: &str) -> Option<PathBuf> {
+    helper_search(name).into_iter().find(|p| p.is_file())
 }
 
 /// Um script auxiliar que nunca pode vir do PATH nem da HOME de outro lugar, porque age de verdade (o
@@ -81,6 +111,23 @@ pub fn component(launcher: &str, binary: &str) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_missing_helper_is_reported_once_with_where_it_looked() {
+        let tried = [PathBuf::from("/usr/local/libexec/swaydesk/sway-files"), PathBuf::from("/usr/local/lib/swaydesk/sway-files")];
+        let package = missing_helper_message("sway-files", &tried, false);
+        assert_eq!(
+            package,
+            "swaydesk: helper script sway-files not found (tried /usr/local/libexec/swaydesk/sway-files, \
+             /usr/local/lib/swaydesk/sway-files); install the swaydesk-scripts package"
+        );
+        let dotfiles = missing_helper_message("sway-files", &[PathBuf::from("/home/u/.local/bin/sway-files")], true);
+        assert!(dotfiles.ends_with("(tried /home/u/.local/bin/sway-files); run install.sh again"), "{dotfiles}");
+        // Um nome só deste teste, para não depender da ordem dos outros
+        assert!(first_miss("a-helper-only-this-test-misses"));
+        assert!(!first_miss("a-helper-only-this-test-misses"));
+        assert!(first_miss("another-helper-only-this-test-misses"));
+    }
 
     #[test]
     fn helpers_beside_then_package_then_home() {
