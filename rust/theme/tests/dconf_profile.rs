@@ -21,6 +21,12 @@ fn tempdir() -> PathBuf {
 /// Um HOME com um tema GTK, um gsettings falso que anota o DCONF_PROFILE de cada gravação e um /proc falso,
 /// com um processo sway nosso quando `sway_profile` vem (Some("") = sway sem o perfil).
 fn profiles_written(sway_profile: Option<&str>) -> Vec<String> {
+    profiles_written_with(sway_profile, None)
+}
+
+/// O mesmo, com o arquivo do sway-session no XDG_RUNTIME_DIR quando `session_file` vem (o conteúdo; "{perfil}"
+/// vira um perfil que existe) e, nesse caso, o sway com o environ ilegível, como o do Arch (cap_sys_nice).
+fn profiles_written_with(sway_profile: Option<&str>, session_file: Option<&str>) -> Vec<String> {
     let dir = tempdir();
     let home = dir.join("home");
     let theme = home.join(".themes/Novo-Dark/gtk-3.0");
@@ -43,7 +49,22 @@ fn profiles_written(sway_profile: Option<&str>) -> Vec<String> {
         if !profile.is_empty() {
             environ.extend_from_slice(format!("DCONF_PROFILE={profile}\0").as_bytes());
         }
-        std::fs::write(pid.join("environ"), environ).unwrap();
+        if session_file.is_none() {
+            std::fs::write(pid.join("environ"), environ).unwrap();
+        }
+        // O que se lê do sway do Arch: o comm e o uid real
+        // SAFETY: getuid não falha nem toca memória
+        let uid = unsafe { libc::getuid() };
+        std::fs::write(pid.join("status"), format!("Name:\tsway\nUid:\t{uid}\t{uid}\t{uid}\t{uid}\n")).unwrap();
+    }
+    let runtime = dir.join("run");
+    std::fs::create_dir_all(&runtime).unwrap();
+    if let Some(content) = session_file {
+        let profile = dir.join("perfil-sway");
+        std::fs::write(&profile, "user-db:sway\nuser-db:user\n").unwrap();
+        std::fs::create_dir_all(runtime.join("swaydesk")).unwrap();
+        let content = content.replace("{perfil}", &profile.display().to_string());
+        std::fs::write(runtime.join("swaydesk/dconf-profile"), content).unwrap();
     }
     let out = Command::new(env!("CARGO_BIN_EXE_swaydesk-theme"))
         .args(["set", "Novo-Dark"])
@@ -52,6 +73,7 @@ fn profiles_written(sway_profile: Option<&str>) -> Vec<String> {
         .env("PATH", format!("{}:/usr/bin:/bin", bin.display()))
         .env("SWAY_THEME_GSETTINGS", &gsettings)
         .env("SWAY_DESKTOP_PROC", &proc)
+        .env("XDG_RUNTIME_DIR", &runtime)
         .env("SWAY_DESKTOP_SHARE", repo().join("home/.local/share/sway-desktop"))
         .output()
         .unwrap();
@@ -77,4 +99,21 @@ fn without_a_sway_with_the_profile_the_normal_database_stays() {
         assert!(!written.is_empty());
         assert!(written.iter().all(|p| p == "[]"), "{sway_profile:?}: {written:?}");
     }
+}
+
+#[test]
+fn on_arch_the_session_file_names_the_database() {
+    // O environ do sway do Arch não se lê: vale o arquivo que o sway-session gravou no login
+    let sway = repo().join("home/.local/share/sway-desktop/dconf/sway");
+    let written = profiles_written_with(Some("/usr/share/sway-desktop/dconf/sway"), Some("4242\n{perfil}\n"));
+    assert!(!written.is_empty());
+    assert!(written.iter().all(|p| *p == format!("[{}]", sway.display())), "{written:?}");
+    // Vazio: a sessão não tem o perfil, a base normal
+    let written = profiles_written_with(Some(""), Some("4242\n\n"));
+    assert!(!written.is_empty());
+    assert!(written.iter().all(|p| p == "[]"), "{written:?}");
+    // O Sway que gravou já saiu (outro desktop depois do logout, com a pasta ainda de pé): a base normal
+    let written = profiles_written_with(None, Some("4242\n{perfil}\n"));
+    assert!(!written.is_empty());
+    assert!(written.iter().all(|p| p == "[]"), "{written:?}");
 }

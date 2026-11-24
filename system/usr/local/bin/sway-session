@@ -105,7 +105,17 @@ else
   dconf_profile="$HOME/.local/share/sway-desktop/dconf/sway"
   [ -e "$HOME/.local/share/sway-desktop" ] || dconf_profile="$HOME/.local/share/swaydesk/dconf/sway"
 fi
-[ -f "$dconf_profile" ] && export DCONF_PROFILE="$dconf_profile"
+[ -f "$dconf_profile" ] || dconf_profile=
+[ -n "$dconf_profile" ] && export DCONF_PROFILE="$dconf_profile"
+# Fora da sessão (ssh, cron) o sway-theme não tem o DCONF_PROFILE, e no Arch não o lê do Sway: o sway de lá tem
+# cap_sys_nice, e o /proc/PID/environ dele fica só para o root. Então o perfil vai para um arquivo do
+# XDG_RUNTIME_DIR (só do usuário), reescrito a cada login: o pid do Sway (o $$, que o exec lá embaixo mantém) e
+# o perfil, vazio sem ele. A pasta pode durar mais que o Sway (linger, um ssh, os segundos depois do logout): o
+# sway-theme só confia no arquivo com esse pid vivo e sendo um sway nosso. Nunca impede o login
+if [ -n "${XDG_RUNTIME_DIR-}" ] && [ -d "$XDG_RUNTIME_DIR" ] && [ -O "$XDG_RUNTIME_DIR" ]; then
+  (umask 077; mkdir -p "$XDG_RUNTIME_DIR/swaydesk" \
+     && printf '%s\n%s\n' "$$" "$dconf_profile" >"$XDG_RUNTIME_DIR/swaydesk/dconf-profile") 2>/dev/null || true
+fi
 export SWAYDESK_SESSION=$mode
 # Já no systemd do usuário, antes do Sway: as units que o graphical-session.target sobe (a Waybar e o
 # gammastep dos pacotes) conferem a variável, e os serviços ativados pelo D-Bus a herdam. O DCONF_PROFILE

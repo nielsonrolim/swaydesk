@@ -433,33 +433,81 @@ fn swaysock_pid(sock: &str) -> Option<String> {
     SOCK.captures(sock).map(|c| c[1].to_string())
 }
 
-/// O DCONF_PROFILE do Sway em execução deste usuário ("" se ele não o tem), ou None sem Sway à vista.
-/// Serve a um ambiente sem o DCONF_PROFILE da sessão (ssh, cron, um shell que exportou só o
-/// XDG_CURRENT_DESKTOP). SWAY_DESKTOP_PROC troca o /proc nos testes; a escolha está no sway_profile_in.
+/// O DCONF_PROFILE da sessão do Sway deste usuário ("" se ela não o tem), ou None sem sessão à vista. Serve a
+/// um ambiente sem o DCONF_PROFILE da sessão (ssh, cron, um shell que exportou só o XDG_CURRENT_DESKTOP).
+/// Primeiro o arquivo que o sway-session grava no login (session_file_profile); sem ele (uma sessão aberta
+/// antes dele), os processos (sway_profile_in). SWAY_DESKTOP_PROC troca o /proc nos testes.
 pub fn running_sway_profile() -> Option<String> {
-    let proc = std::env::var_os("SWAY_DESKTOP_PROC").filter(|v| !v.is_empty()).map_or_else(|| PathBuf::from("/proc"), PathBuf::from);
-    let sock_pid = std::env::var("SWAYSOCK").ok().as_deref().and_then(swaysock_pid);
     // SAFETY: getuid não falha nem toca memória
     let uid = unsafe { libc::getuid() };
+    let proc = std::env::var_os("SWAY_DESKTOP_PROC").filter(|v| !v.is_empty()).map_or_else(|| PathBuf::from("/proc"), PathBuf::from);
+    let runtime = std::env::var_os("XDG_RUNTIME_DIR").filter(|v| !v.is_empty());
+    if let Some(profile) = runtime.and_then(|dir| session_file_profile(&Path::new(&dir).join(SESSION_PROFILE_FILE), &proc, uid)) {
+        return Some(profile);
+    }
+    let sock_pid = std::env::var("SWAYSOCK").ok().as_deref().and_then(swaysock_pid);
     sway_profile_in(&proc, sock_pid.as_deref(), uid)
 }
 
-/// O Sway a seguir, entre os processos `sway` do uid (os de outro usuário não contam, como no pgrep -u): o do
-/// SWAYSOCK, se for um deles (um socket velho não é); senão, do menor pid, o primeiro com o DCONF_PROFILE (um
-/// Sway aninhado de teste, sem o perfil, não decide). Do environ só se lê o DCONF_PROFILE, e nada dele vai para
-/// o log. "" quando há Sway nosso mas nenhum com o perfil.
+/// O arquivo do sway-session, no XDG_RUNTIME_DIR: o pid do Sway e o caminho do perfil (vazio numa sessão sem ele).
+const SESSION_PROFILE_FILE: &str = "swaydesk/dconf-profile";
+
+/// O perfil do arquivo do sway-session: só um arquivo comum do uid (um link não vale), e só com o Sway que o
+/// gravou vivo (a pasta dura mais que ele: linger, um ssh, os segundos depois do logout; senão, None, e vale a
+/// busca nos processos). Um perfil que não existe mais (o pacote saiu) vale como sessão sem perfil. Lê no
+/// máximo 4 KiB; o conteúdo só decide se há perfil, nunca vira caminho de gravação.
+fn session_file_profile(file: &Path, proc: &Path, uid: u32) -> Option<String> {
+    use std::io::Read;
+    use std::os::unix::fs::MetadataExt;
+    let meta = std::fs::symlink_metadata(file).ok()?;
+    if !meta.is_file() || meta.uid() != uid {
+        return None;
+    }
+    let mut bytes = Vec::new();
+    std::fs::File::open(file).ok()?.take(4096).read_to_end(&mut bytes).ok()?;
+    let text = String::from_utf8_lossy(&bytes);
+    let mut lines = text.lines();
+    let pid = lines.next()?.trim();
+    if pid.is_empty() || !pid.bytes().all(|b| b.is_ascii_digit()) || !our_sway_alive(proc, pid, uid) {
+        return None;
+    }
+    let profile = lines.next().unwrap_or_default().trim();
+    Some(if !profile.is_empty() && Path::new(profile).is_file() { profile.to_string() } else { String::new() })
+}
+
+/// Se o pid é um sway vivo do uid. Pelo comm e pelo uid real do status, que se leem mesmo no sway do Arch
+/// (cap_sys_nice: não "dumpable", a pasta dele no /proc aparece como do root).
+fn our_sway_alive(proc: &Path, pid: &str, uid: u32) -> bool {
+    let dir = proc.join(pid);
+    let is_sway = std::fs::read_to_string(dir.join("comm")).is_ok_and(|c| c.trim() == "sway");
+    is_sway
+        && std::fs::read_to_string(dir.join("status")).is_ok_and(|status| {
+            status
+                .lines()
+                .find_map(|l| l.strip_prefix("Uid:"))
+                .and_then(|ids| ids.split_whitespace().next()?.parse::<u32>().ok())
+                == Some(uid)
+        })
+}
+
+/// A sessão a seguir, entre os processos `sway` e `waybar` do uid (os de outro usuário não contam, como no
+/// pgrep -u): o Sway do SWAYSOCK, se for um deles (um socket velho não é); senão, do menor pid, o primeiro com o
+/// DCONF_PROFILE (um Sway aninhado de teste, sem o perfil, não decide). A Waybar herda o ambiente da sessão e,
+/// ao contrário do Sway do Arch (cap_sys_nice), tem o environ legível. Um environ que não se lê não conta. Do
+/// environ só se lê o DCONF_PROFILE, e nada dele vai para o log. "" quando há sessão nossa mas nenhuma com o
+/// perfil.
 fn sway_profile_in(proc: &Path, sock_pid: Option<&str>, uid: u32) -> Option<String> {
     use std::os::unix::fs::MetadataExt;
-    // None: não é um sway nosso; Some(perfil, ou "" sem ele)
-    let profile_of = |pid: &str| -> Option<String> {
+    // None: não é um processo da sessão que se possa ler; Some(perfil, ou "" sem ele)
+    let profile_of = |pid: &str, names: &[&str]| -> Option<String> {
         let dir = proc.join(pid);
-        let ours = std::fs::read_to_string(dir.join("comm")).is_ok_and(|c| c.trim() == "sway")
+        let ours = std::fs::read_to_string(dir.join("comm")).is_ok_and(|c| names.contains(&c.trim()))
             && std::fs::metadata(&dir).is_ok_and(|m| m.uid() == uid);
         let environ = ours.then(|| std::fs::read(dir.join("environ")).ok()).flatten()?;
         let value = environ.split(|b| *b == 0).find_map(|item| item.strip_prefix(b"DCONF_PROFILE="));
         Some(value.map(|v| String::from_utf8_lossy(v).into_owned()).unwrap_or_default())
     };
-    if let Some(profile) = sock_pid.and_then(profile_of) {
+    if let Some(profile) = sock_pid.and_then(|pid| profile_of(pid, &["sway"])) {
         return Some(profile);
     }
     let mut scanned: Vec<u64> = std::fs::read_dir(proc)
@@ -468,7 +516,7 @@ fn sway_profile_in(proc: &Path, sock_pid: Option<&str>, uid: u32) -> Option<Stri
     scanned.sort_unstable();
     let mut seen = false;
     for pid in scanned {
-        match profile_of(&pid.to_string()) {
+        match profile_of(&pid.to_string(), &["sway", "waybar"]) {
             Some(profile) if !profile.is_empty() => return Some(profile),
             Some(_) => seen = true,
             None => {}
@@ -943,6 +991,10 @@ mod tests {
             let dir = proc.join(pid.to_string());
             std::fs::create_dir_all(&dir).unwrap();
             std::fs::write(dir.join("comm"), "sway\n").unwrap();
+            if *pid < 10 {
+                // Os pids < 10: o sway do Arch (cap_sys_nice), cujo environ não se lê
+                continue;
+            }
             let mut environ = b"HOME=/home/x\0SECRET=nada\0".to_vec();
             if let Some(profile) = profile {
                 environ.extend_from_slice(format!("DCONF_PROFILE={profile}\0").as_bytes());
@@ -955,6 +1007,56 @@ mod tests {
         std::fs::write(other.join("comm"), "bash\n").unwrap();
         std::fs::write(other.join("environ"), b"DCONF_PROFILE=/outro\0").unwrap();
         proc
+    }
+
+    /// Um processo no /proc falso, com o comm e o uid real do status (o que se lê do sway do Arch).
+    fn fake_process(proc: &Path, pid: u32, comm: &str, uid: u32) {
+        let dir = proc.join(pid.to_string());
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("comm"), format!("{comm}\n")).unwrap();
+        std::fs::write(dir.join("status"), format!("Name:\t{comm}\nUid:\t{uid}\t{uid}\t{uid}\t{uid}\n")).unwrap();
+    }
+
+    #[test]
+    fn the_session_file_is_only_trusted_when_it_is_ours() {
+        // SAFETY: getuid não falha nem toca memória
+        let uid = unsafe { libc::getuid() };
+        let dir = std::env::temp_dir().join(format!("swaydesk-theme-session-file-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let proc = dir.join("proc");
+        // 50: o sway do Arch, sem environ legível; 60: outro programa; 70: um sway de outro usuário
+        fake_process(&proc, 50, "sway", uid);
+        fake_process(&proc, 60, "bash", uid);
+        fake_process(&proc, 70, "sway", uid.wrapping_add(1));
+        let profile = dir.join("sway");
+        std::fs::write(&profile, "user-db:sway\nuser-db:user\n").unwrap();
+        let file = dir.join("dconf-profile");
+        let write = |pid: &str, profile: &str| std::fs::write(&file, format!("{pid}\n{profile}\n")).unwrap();
+        let shown = profile.display().to_string();
+        write("50", &shown);
+        assert_eq!(session_file_profile(&file, &proc, uid), Some(shown.clone()));
+        assert_eq!(session_file_profile(&file, &proc, uid.wrapping_add(1)), None);
+        assert_eq!(session_file_profile(&dir.join("nada"), &proc, uid), None);
+        // O Sway que gravou já saiu (o pid não existe, ou é outro programa, ou de outro usuário): não vale
+        for pid in ["99", "60", "70", "", "x"] {
+            write(pid, &shown);
+            assert_eq!(session_file_profile(&file, &proc, uid), None, "{pid}");
+        }
+        // Um perfil que não existe mais, ou vazio: sessão sem perfil
+        write("50", &dir.join("sumiu").display().to_string());
+        assert_eq!(session_file_profile(&file, &proc, uid).as_deref(), Some(""));
+        write("50", "");
+        assert_eq!(session_file_profile(&file, &proc, uid).as_deref(), Some(""));
+        // UTF-8 inválido não derruba a leitura (o mesmo do Python)
+        std::fs::write(&file, b"50\n\xff\n").unwrap();
+        assert_eq!(session_file_profile(&file, &proc, uid).as_deref(), Some(""));
+        // Um link não vale
+        let target = dir.join("alvo");
+        std::fs::write(&target, format!("50\n{shown}\n")).unwrap();
+        std::fs::remove_file(&file).unwrap();
+        std::os::unix::fs::symlink(&target, &file).unwrap();
+        assert_eq!(session_file_profile(&file, &proc, uid), None);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -971,6 +1073,17 @@ mod tests {
         // Os Sway de outro usuário (o dono dos arquivos não é o uid) não contam
         assert_eq!(sway_profile_in(&proc, None, uid.wrapping_add(1)), None);
         assert_eq!(sway_profile_in(&proc, Some("20"), uid.wrapping_add(1)), None);
+        // O Sway do Arch (environ ilegível) não conta, nem pelo SWAYSOCK; a Waybar da sessão sim, mas não pelo
+        // SWAYSOCK
+        let arch = fake_proc("arch", &[(5, None)]);
+        assert_eq!(sway_profile_in(&arch, Some("5"), uid), None);
+        let waybar = arch.join("30");
+        std::fs::create_dir_all(&waybar).unwrap();
+        std::fs::write(waybar.join("comm"), "waybar\n").unwrap();
+        std::fs::write(waybar.join("environ"), b"DCONF_PROFILE=/usr/share/sway-desktop/dconf/sway\0").unwrap();
+        assert_eq!(sway_profile_in(&arch, Some("5"), uid).as_deref(), Some("/usr/share/sway-desktop/dconf/sway"));
+        assert_eq!(sway_profile_in(&arch, Some("30"), uid).as_deref(), Some("/usr/share/sway-desktop/dconf/sway"));
+        let _ = std::fs::remove_dir_all(&arch);
         // Só Sway sem o perfil: "", nenhum: None
         let none = fake_proc("bare", &[(10, None)]);
         assert_eq!(sway_profile_in(&none, None, uid).as_deref(), Some(""));
