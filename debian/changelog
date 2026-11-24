@@ -1,8 +1,21 @@
-swaydesk (0.1.6-1) UNRELEASED; urgency=medium
+swaydesk (0.1.6-1) unstable; urgency=medium
 
-  * Development after 0.1.5.
+  * Release 0.1.6.
+  * Install images (published with 0.1.6.1): the installer requires a
+    password for the first user (minLength), and its files no longer
+    stay in /etc/calamares on the installed system; on Arch, Brazilian
+    formats, a US keyboard page and GRUB_DISABLE_BOOTNEXT.
+  * The dock animates a drag: the icon lifts, the others slide aside.
+  * swaydesk-desktop lists the polkit agent first in Depends, so apt on
+    Debian 13 no longer pulls in ukui-polkit.
+  * Desktop Theme keeps a custom accent and an untouched variant, and
+    shows the gtk.css note when it opens; sway-theme set run outside the
+    session writes the dconf database the running Sway reads (found
+    through a runtime file written by sway-session, as Arch's sway
+    environ can't be read).
+  * The lock maps its surfaces with set_visible (no Gdk-CRITICAL lines).
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Mon, 23 Nov 2026 22:32:45 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Tue, 24 Nov 2026 07:14:29 -0300
 
 swaydesk (0.1.5-1) unstable; urgency=medium
 

@@ -2,6 +2,43 @@
 
 Each release is published as packages and, shortly after, as install images. Updates arrive through `apt upgrade` or `pacman -Syu`.
 
+## 0.1.6 — 2026-11-24
+
+A drag animation in the dock, a Desktop Theme app that keeps your choices, and a theme set from outside the session that reaches the running session. The install images come with 0.1.6.1.
+
+### Added
+
+- **The dock animates a drag**: a dragged icon lifts and follows the pointer, the others slide aside, and on release it glides into its place. This is off with `gtk-enable-animations=false`.
+
+### Changed
+
+- **Debian 13: a plain `apt install swaydesk-desktop` no longer pulls in a second polkit agent (ukui-polkit)**, which brought about 50 libraries (OpenCV and GDAL among them) and never ran under Sway. The polkit agent now comes first in the package's dependencies, so apt picks mate-polkit.
+
+### Fixed
+
+- **Desktop Theme keeps what you chose**:
+  - A custom accent, set with `swaydesk-theme set … --accent #hex` or a theme's own accent, shows as its own "Custom" swatch, selected, and applying another style keeps it. Before, it opened as the nearest swatch, with Apply already lit.
+  - Opening the app and closing it without touching anything no longer changes the applied variant.
+  - The note about a `gtk.css` that isn't Swaydesk's, or about another desktop being installed, now shows when the app opens, not only after Apply.
+  - With snapd's desktop integration installed, choosing adw-gtk3 shows a note: snap apps don't include it, and snapd will ask at every login to install a theme snap.
+- **`swaydesk-theme set` run outside the session** (over ssh, from cron or a TTY) now writes the settings the running session reads. GTK 4 apps and the desktop portal follow at once. The bar and Sway itself pick it up at the next login, as the command says.
+- **The lock screen** no longer logs `Gdk-CRITICAL` lines each time it locks.
+
+### Install images
+
+No new images come with 0.1.6. These changes reach them in 0.1.6.1:
+
+- **Debian 13 and Arch:** the installer's files no longer stay in `/etc/calamares` on the installed system.
+- **Arch:**
+  - With a time zone in Brazil, the installed system's numbers and dates are in Portuguese, as on Debian.
+  - The installer's keyboard page starts on the US layout.
+  - The installed GRUB menu no longer lists every firmware boot entry: GRUB 2.16's BootNext entries are turned off.
+
+### Upgrading from 0.1.5
+
+- **On Debian 13, installed from the packages or from a Swaydesk image before 0.1.5**, a second polkit agent (ukui-polkit) and about 50 libraries it brought may be installed. `dpkg -l ukui-polkit` shows whether it is. They aren't used under Swaydesk. To remove the agent and its autostart file, run `sudo apt purge ukui-polkit`. Then `sudo apt autoremove` removes the packages nothing needs any more, on the whole system, not only these: read its list before you confirm.
+- `swaydesk-theme set` from outside the session reaches a session opened after the upgrade; log in again once.
+
 ## 0.1.5 — 2026-11-23
 
 ç and the accents in Chromium and Electron apps through fcitx5, on by default in the install images, and a lock screen that no longer uses swaylock, so a password with an accent unlocks it.

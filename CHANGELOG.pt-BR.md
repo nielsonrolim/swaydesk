@@ -2,6 +2,43 @@
 
 O que muda em cada versão do Swaydesk, em português a partir da 0.1.4. As versões anteriores estão no [CHANGELOG.md](CHANGELOG.md), em inglês. Cada versão sai primeiro em pacotes e, logo depois, em imagens de instalação. As atualizações chegam pelo `apt upgrade` ou pelo `pacman -Syu`.
 
+## 0.1.6 — 2026-11-24
+
+Uma animação de arraste na dock, um app Tema do Desktop que mantém as suas escolhas e um tema aplicado de fora da sessão que chega à sessão aberta. As imagens de instalação vêm com a 0.1.6.1.
+
+### Novo
+
+- **A dock anima o arraste**: o ícone arrastado levanta e segue o ponteiro, os outros abrem espaço deslizando, e ao soltar ele assenta no lugar. Desliga com `gtk-enable-animations=false`.
+
+### Mudanças
+
+- **Debian 13: um `apt install swaydesk-desktop` simples não puxa mais um segundo agente do polkit (ukui-polkit)**, que trazia umas 50 bibliotecas (OpenCV e GDAL entre elas) e nunca rodava no Sway. O agente do polkit agora vem primeiro nas dependências do pacote, e o apt escolhe o mate-polkit.
+
+### Correções
+
+- **O Tema do Desktop mantém o que você escolheu**:
+  - Uma cor de destaque própria, definida com `swaydesk-theme set … --accent #hex` ou a do próprio tema, aparece como uma amostra "Personalizada", selecionada, e aplicar outro estilo a mantém. Antes, ela abria como a amostra mais próxima, com Aplicar já aceso.
+  - Abrir o app e fechar sem mexer em nada não muda mais a variante aplicada.
+  - O aviso sobre um `gtk.css` que não é do Swaydesk, ou sobre outro desktop instalado, agora aparece ao abrir o app, e não só depois de Aplicar.
+  - Com a integração de desktop do snapd instalada, escolher o adw-gtk3 mostra um aviso: os apps snap não o trazem, e o snapd vai pedir a cada login para instalar um snap de tema.
+- **O `swaydesk-theme set` rodado fora da sessão** (por ssh, pelo cron ou num TTY) agora grava as configurações que a sessão aberta lê. Os apps GTK 4 e o portal do desktop acompanham na hora. A barra e o próprio Sway pegam a mudança no próximo login, como o comando avisa.
+- **A tela de bloqueio** não registra mais linhas `Gdk-CRITICAL` a cada bloqueio.
+
+### Imagens de instalação
+
+A 0.1.6 não traz imagens novas. Estas mudanças chegam a elas na 0.1.6.1:
+
+- **Debian 13 e Arch:** os arquivos do instalador não ficam mais em `/etc/calamares` no sistema instalado.
+- **Arch:**
+  - Com um fuso no Brasil, os números e as datas do sistema instalado ficam em português, como no Debian.
+  - A página de teclado do instalador começa no layout US.
+  - O menu do GRUB instalado não lista mais todas as entradas de boot do firmware: as entradas de BootNext do GRUB 2.16 ficam desligadas.
+
+### Atualizando da 0.1.5
+
+- **No Debian 13, instalado pelos pacotes ou por uma imagem do Swaydesk anterior à 0.1.5**, pode haver um segundo agente do polkit (ukui-polkit) e umas 50 bibliotecas que vieram com ele. `dpkg -l ukui-polkit` mostra se ele está instalado. Eles não são usados no Swaydesk. Para remover o agente e o arquivo de autoinício dele, rode `sudo apt purge ukui-polkit`. Depois, o `sudo apt autoremove` remove os pacotes de que nada mais precisa, no sistema todo, e não só esses: leia a lista antes de confirmar.
+- O `swaydesk-theme set` de fora da sessão chega a uma sessão aberta depois da atualização; entre de novo uma vez.
+
 ## 0.1.5 — 2026-11-23
 
 ç e acentos no Chromium e nos apps Electron pelo fcitx5, ligado por padrão nas imagens de instalação, e uma tela de bloqueio que não usa mais o swaylock, e por isso uma senha com acento a destrava.
