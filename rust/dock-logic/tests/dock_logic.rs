@@ -270,6 +270,39 @@ fn pins_load_save_and_set_aside() {
 }
 
 #[test]
+fn read_pins_tells_a_missing_file_from_an_empty_one() {
+    let dir = tmpdir("pins-read");
+    let file = dir.join("pinned");
+    assert_eq!(read_pins(&file).unwrap(), None);
+    fs::write(&file, "").unwrap();
+    // Um arquivo vazio é o usuário que desafixou tudo: nada de fixados padrão
+    assert_eq!(read_pins(&file).unwrap(), Some(vec![]));
+    assert!(read_pins(&dir).is_err());
+}
+
+#[test]
+fn default_pins_are_the_file_manager_and_the_first_terminal_installed() {
+    use swaydesk_common::config::Config;
+    let apps = |installed: &'static [(&'static str, &'static str)]| {
+        move |name: &str| installed.iter().find(|(n, _)| *n == name).map(|(_, id)| id.to_string())
+    };
+    let none = Config::default();
+    // O primeiro dos FILE_MANAGERS instalado e o primeiro dos DEFAULT_TERMINALS
+    let both = apps(&[("thunar", "thunar"), ("nautilus", "org.gnome.Nautilus"), ("foot", "foot"), ("alacritty", "Alacritty")]);
+    assert_eq!(default_pins(&none, &both), s(&["thunar", "foot"]));
+    // O da config vence, se existir
+    let chosen = Config { file_manager: "nautilus".into(), ..Config::default() };
+    assert_eq!(default_pins(&chosen, &both), s(&["org.gnome.Nautilus", "foot"]));
+    // Um que não existe não vira um ícone quebrado
+    let missing = Config { file_manager: "nonexistent".into(), ..Config::default() };
+    assert_eq!(default_pins(&missing, &both), s(&["foot"]));
+    // Sem nada instalado, nenhum fixado (o thunar do file_manager não está)
+    assert_eq!(default_pins(&none, &apps(&[])), Vec::<String>::new());
+    // O kitty do Swaydesk vem antes dos outros terminais
+    assert_eq!(default_pins(&none, &apps(&[("nemo", "nemo"), ("foot", "foot"), ("kitty", "kitty")])), s(&["nemo", "kitty"]));
+}
+
+#[test]
 fn load_pins_other_errors_are_raised() {
     let dir = tmpdir("pins-err");
     // Uma pasta no lugar do arquivo: tratar como vazio apagaria os fixados ao salvar

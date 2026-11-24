@@ -1354,6 +1354,8 @@ pub struct App {
     config: RefCell<dl::Config>,
     pins: RefCell<Vec<String>>,
     pins_unreadable: Cell<bool>,
+    /// Sem o arquivo de fixados: a dock mostra os default_pins e não grava até o usuário mudar algo
+    pins_default: Cell<bool>,
     windows: RefCell<Vec<dl::Window>>,
     outputs: RefCell<HashMap<String, (dl::Rect, Option<String>)>>,
     bars: RefCell<Vec<Rc<Bar>>>,
@@ -1392,6 +1394,7 @@ impl App {
             config: RefCell::new(dl::Config::default()),
             pins: RefCell::new(vec![]),
             pins_unreadable: Cell::new(false),
+            pins_default: Cell::new(false),
             windows: RefCell::new(vec![]),
             outputs: RefCell::new(HashMap::new()),
             bars: RefCell::new(vec![]),
@@ -1576,9 +1579,14 @@ impl App {
     }
 
     fn on_apps_changed(self: &Rc<Self>) {
+        if self.pins_default.get() {
+            // Um app instalado agora pode entrar nos padrões; continuam sem gravar
+            *self.pins.borrow_mut() = self.default_pins();
+            self.publish_pins();
+        }
         // Um fixado pode ter passado a ter outro id: sem isso, Desafixar não o encontraria
         let pins = self.canonical(&self.pins.borrow());
-        if pins != *self.pins.borrow() {
+        if pins != *self.pins.borrow() && !self.pins_default.get() {
             *self.pins.borrow_mut() = pins;
             self.save_pins();
         }
@@ -1774,10 +1782,16 @@ impl App {
 
     fn load_pins(&self) {
         let path = dl::pins_path();
-        match dl::load_pins(&path) {
-            Ok(pins) => {
+        self.pins_default.set(false);
+        match dl::read_pins(&path) {
+            Ok(Some(pins)) => {
                 *self.pins.borrow_mut() = self.canonical(&pins);
                 self.pins_unreadable.set(false);
+            }
+            Ok(None) => {
+                *self.pins.borrow_mut() = self.default_pins();
+                self.pins_unreadable.set(false);
+                self.pins_default.set(true);
             }
             Err(err) => {
                 self.pins.borrow_mut().clear();
@@ -1788,7 +1802,14 @@ impl App {
         self.publish_pins();
     }
 
+    /// Os fixados de quem não tem o arquivo (a dock sem a sessão, que copiaria o do skel)
+    fn default_pins(&self) -> Vec<String> {
+        dl::default_pins(&swaydesk_common::config::load(), &|name| self.apps.resolve(name))
+    }
+
+    /// Só depois de uma mudança do usuário: a partir daí, os fixados são dele e vão para o arquivo
     fn save_pins(&self) {
+        self.pins_default.set(false);
         let path = dl::pins_path();
         if self.pins_unreadable.get() {
             // Salvar por cima perderia o que ainda pode estar no arquivo

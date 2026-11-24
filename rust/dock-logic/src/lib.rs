@@ -478,18 +478,43 @@ pub fn build_items(pins: &[String], windows: &[Window], resolve: &dyn Fn(&str) -
 
 /// Sem arquivo, não há fixados. Outro erro sobe: tratar como lista vazia apagaria os fixados ao salvar.
 pub fn load_pins(path: &Path) -> io::Result<Vec<String>> {
+    Ok(read_pins(path)?.unwrap_or_default())
+}
+
+/// Os fixados do arquivo, ou None sem ele (a dock então mostra os default_pins, sem gravar).
+pub fn read_pins(path: &Path) -> io::Result<Option<Vec<String>>> {
     let text = match fs::read_to_string(path) {
         Ok(text) => text,
-        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(vec![]),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => return Ok(None),
         Err(err) => return Err(err),
     };
     let mut seen = HashSet::new();
-    Ok(text
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty() && seen.insert(l.to_string()))
-        .map(str::to_string)
-        .collect())
+    Ok(Some(
+        text.lines()
+            .map(str::trim)
+            .filter(|l| !l.is_empty() && seen.insert(l.to_string()))
+            .map(str::to_string)
+            .collect(),
+    ))
+}
+
+/// Os terminais dos default_pins, na ordem: o primeiro instalado entra. O kitty é o do Swaydesk.
+pub const DEFAULT_TERMINALS: &[&str] =
+    &["kitty", "foot", "alacritty", "org.gnome.Ptyxis", "org.gnome.Console", "org.kde.konsole", "xfce4-terminal"];
+
+/// Os fixados de quem não tem o arquivo, como a dock instalada sozinha (a sessão copia o do skel antes):
+/// o gerenciador de arquivos (o da config, ou o primeiro instalado) e o primeiro terminal instalado,
+/// pelos .desktop que `resolve` acha. Só os que existem; nada é gravado até o usuário mudar os fixados.
+pub fn default_pins(config: &swaydesk_common::config::Config, resolve: &dyn Fn(&str) -> Option<String>) -> Vec<String> {
+    let manager = swaydesk_common::config::file_manager(config, |name| resolve(name).is_some());
+    let terminal = DEFAULT_TERMINALS.iter().find_map(|name| resolve(name));
+    let mut pins: Vec<String> = Vec::new();
+    for key in [resolve(&manager), terminal].into_iter().flatten() {
+        if !pins.contains(&key) {
+            pins.push(key);
+        }
+    }
+    pins
 }
 
 /// Guarda ao lado um arquivo que não deu para ler, sem apagar cópias anteriores. Devolve o novo nome.
