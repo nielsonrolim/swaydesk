@@ -15,7 +15,7 @@
 //!    empate, a primeira da tabela. As somas seguem a ordem dos pixels, linha a linha.
 use std::path::{Path, PathBuf};
 
-use swaydesk_common::config::{data_home, PAPIRUS_COLORS};
+use swaydesk_common::config::{home, PAPIRUS_COLORS};
 
 use crate::papirus::{distance_lch, lab_linear, lch, lch_of_lab, GREY_CHROMA};
 
@@ -31,9 +31,11 @@ const NEUTRALS: &[&str] = &["black", "grey", "white"];
 /// A versão do algoritmo no estado: outra versão calcula de novo
 const STATE_VERSION: &str = "1";
 
-/// O papel de parede em uso (um link para a imagem do dia ou a escolhida).
+/// O papel de parede em uso (um link para a imagem do dia ou a escolhida). Sempre na HOME, como quem o grava
+/// e mostra (o bing-wallpaper, o `output * bg` do config do Sway, os bloqueios e o ensure_wallpaper): com um
+/// XDG_DATA_HOME próprio, o data_home apontava para outra pasta, e a cor automática não achava a imagem.
 pub fn wallpaper() -> PathBuf {
-    data_home().join("wallpaper/current.jpg")
+    home().join(crate::desktop::WALLPAPER)
 }
 
 fn linear(channel: u8) -> f64 {
@@ -159,6 +161,12 @@ pub fn current_color() -> Option<Option<&'static str>> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
+
+    #[test]
+    fn the_wallpaper_is_the_one_the_session_writes_and_shows() {
+        // O caminho do ensure_wallpaper (desktop.rs) e do bloqueio (lock-logic), na HOME, não no XDG_DATA_HOME
+        assert_eq!(wallpaper(), home().join(".local/share/wallpaper/current.jpg"));
+    }
 
     /// Uma imagem 64x64 RGB a partir de faixas horizontais: (cor, linhas). As linhas somam 64.
     pub(crate) fn stripes(parts: &[(&str, usize)]) -> Vec<u8> {

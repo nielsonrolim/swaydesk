@@ -728,7 +728,7 @@ pub fn ours(file: &Path) -> bool {
 }
 
 /// O papel de parede que o config do Sway mostra (`output * bg ~/.local/share/wallpaper/current.jpg`).
-const WALLPAPER: &str = ".local/share/wallpaper/current.jpg";
+pub(crate) const WALLPAPER: &str = ".local/share/wallpaper/current.jpg";
 
 /// As imagens lisas de onde o papel volta: a do skel do pacote e, nos dotfiles, a do home-copy/ do repositório
 /// (achado pelo link ~/.config/sway/config, que aponta para home/.config/sway/config).
