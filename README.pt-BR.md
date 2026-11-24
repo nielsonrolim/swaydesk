@@ -16,20 +16,28 @@ O Swaydesk é um projeto independente, construído sobre o [Sway](https://swaywm
 
 | Componente | Pacote | O que faz |
 | --- | --- | --- |
-| Barra e popups | `swaydesk-widgets` | Os módulos da Waybar e os popups deles: áudio, rede, Bluetooth, bateria, brilho, mídia, clima, calendário, cafeína e sistema; a troca de janelas (Alt+Tab) e o indicador de volume e brilho na tela |
+| Itens da barra | `swaydesk-calendar`, `swaydesk-weather`, `swaydesk-audio`, `swaydesk-network`, `swaydesk-bluetooth`, `swaydesk-battery`, `swaydesk-brightness`, `swaydesk-caffeine`, `swaydesk-system`, `swaydesk-media`, `swaydesk-language` | Um pacote por módulo da Waybar, com o popup dele |
+| Indicador de volume e brilho | `swaydesk-osd` | Ícone, barra e porcentagem na tela por um segundo; o `sway-osd` muda o nível pelas teclas de volume e brilho |
+| Troca de janelas | `swaydesk-switcher` | O Alt+Tab: as janelas na ordem de uso, de todos os workspaces |
 | Dock | `swaydesk-dock` | Apps fixados e abertos, esconde sozinha, menu do botão direito |
 | Grade de apps | `swaydesk-drawer` | A grade de apps em tela cheia, com grupos, busca, arquivos e uma calculadora (o qalc para unidades e conversões) |
 | Lançador | `swaydesk-desktop` | O rofi (Alt+Espaço), com apps, janelas abertas, histórico da área de transferência e busca na web |
 | Notificações | `swaydesk-notifd` | O serviço de notificações, com os avisos na tela, o histórico e o não perturbe |
-| Área de transferência | `swaydesk-widgets` | O histórico (cliphist), com um popup |
+| Área de transferência | `swaydesk-clipboard` | O histórico (cliphist), com um popup |
 | Captura e gravação | `swaydesk-capture` | Os painéis de captura de tela (área, janela, tela) e de gravação |
-| Tema | `swaydesk-theme` | O app Tema: cor de destaque, claro ou escuro e ícones, aplicados ao GTK, ao Qt, ao Sway, à Waybar e ao rofi |
-| Sessão | `swaydesk-session` | A tela de bloqueio, o menu da sessão (sair, suspender, reiniciar, desligar), o desbloqueio do chaveiro e os serviços da sessão |
+| Tema | `swaydesk-theme-app`, `swaydesk-theme-tool`, `swaydesk-portal` | O app Tema: cor de destaque, claro ou escuro e ícones, aplicados ao GTK, ao Qt, ao Sway, à Waybar e ao rofi; as ferramentas de linha de comando que ele usa e o portal que dá a cor de destaque aos apps libadwaita |
+| Telas | `swaydesk-displays` | O app Telas: arruma as telas num mapa, com resolução, taxa de atualização, escala e rotação, e um perfil por conjunto de monitores, aplicado ao conectá-los ou ao fechar a tampa |
+| Ajuda | `swaydesk-help` | Uma janela com os atalhos do Sway em uso e um cartão por app do desktop |
+| Tela de bloqueio | `swaydesk-lock` | Hora, data e a senha em todos os monitores, sobre o papel de parede desfocado |
+| Sessão | `swaydesk-session-menu`, `swaydesk-keyring`, `swaydesk-sessionmgr` | O menu da sessão (sair, suspender, reiniciar, desligar), o desbloqueio do chaveiro e o gerenciador de sessão das atualizações |
 | Tela de login | `swaydesk-greeter` | Uma tela de login para o greetd, no visual da tela de bloqueio: opcional com outro gerenciador de login, necessária para entrar no modo gráfico sem um |
-| Ajuda | `swaydesk-widgets` | Uma janela com os atalhos do Sway em uso e um cartão por app do desktop |
-| Telas | `swaydesk-theme` | O app Telas: arruma as telas num mapa, com resolução, taxa de atualização, escala e rotação, e um perfil por conjunto de monitores, aplicado ao conectá-los ou ao fechar a tampa |
 
-O `swaydesk-common` traz os dados e as fontes em comum, e o `swaydesk-scripts` os scripts auxiliares. No Debian e no Ubuntu, o `swaydesk-desktop` também traz o `swaydesk-efi`, que mantém funcionando com o Secure Boot o caminho de reserva do firmware (`EFI/BOOT`) dos sistemas instalados por uma imagem do Swaydesk. Em qualquer outro sistema, inclusive um que só adicionou este repositório, ele não faz nada: nunca mexe no ESP, nas entradas de boot nem nos arquivos de outro sistema. Para desligá-lo: `sudo mkdir -p /etc/swaydesk && echo off | sudo tee /etc/swaydesk/efi-fallback`. Para ver por que ele agiu ou não, rode `sudo SWAYDESK_EFI_VERBOSE=1 /usr/libexec/swaydesk/swaydesk-efi-fallback`: ele diz qual verificação o parou, ou o que mudou.
+Cada componente se instala sozinho. Alguns pacotes instalam grupos:
+- `swaydesk-bar`: todos os itens da barra, com o indicador de volume e brilho;
+- `swaydesk-apps`: os apps Tema, Telas e Ajuda e os painéis de captura;
+- `swaydesk-desktop`: a sessão completa, com tudo.
+
+O `swaydesk-widgets`, o `swaydesk-theme` e o `swaydesk-session`, os nomes dos pacotes antes da 0.1.7, instalam os mesmos componentes de antes. O `swaydesk-scripts` é um pacote de transição, que sai na 0.2.0. O `swaydesk-common` traz os dados, as fontes e os scripts auxiliares em comum. No Debian e no Ubuntu, o `swaydesk-desktop` também traz o `swaydesk-efi`, que mantém funcionando com o Secure Boot o caminho de reserva do firmware (`EFI/BOOT`) dos sistemas instalados por uma imagem do Swaydesk. Em qualquer outro sistema, inclusive um que só adicionou este repositório, ele não faz nada: nunca mexe no ESP, nas entradas de boot nem nos arquivos de outro sistema. Para desligá-lo: `sudo mkdir -p /etc/swaydesk && echo off | sudo tee /etc/swaydesk/efi-fallback`. Para ver por que ele agiu ou não, rode `sudo SWAYDESK_EFI_VERBOSE=1 /usr/libexec/swaydesk/swaydesk-efi-fallback`: ele diz qual verificação o parou, ou o que mudou.
 
 ## Como as peças se encaixam
 

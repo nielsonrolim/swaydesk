@@ -43,8 +43,8 @@ override_dh_auto_install:
 override_dh_auto_clean:
 	rm -rf debian/cargo-home debian/cargo-target
 
-# O dh_fixperms deixa executável tudo em /usr/libexec; os módulos (os em Python do calendário, no
-# swaydesk-widgets, e os incluídos com ".") não são programas: o calendário roda o waybar_holidays.py pelo python3
+# O dh_fixperms deixa executável tudo em /usr/libexec; os módulos (os em Python do calendário e do common, e
+# os incluídos com ".") não são programas: o calendário roda o waybar_holidays.py pelo python3
 override_dh_fixperms:
 	dh_fixperms -X.py -Xsway-i18n.sh -Xwaybar-icon-lib
 

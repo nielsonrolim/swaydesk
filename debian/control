@@ -17,8 +17,12 @@ Package: swaydesk-common
 Architecture: all
 Pre-Depends: ${misc:Pre-Depends}, swaydesk-dpkg-includes (= ${source:Version})
 Depends: ${misc:Depends}
+Recommends: libnotify-bin
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)
 Description: Sway desktop components - shared data
- The translations and the Symbols Nerd Font (the icons) shared by the
+ The translations, the Symbols Nerd Font (the icons) and the helper scripts
+ and modules more than one component uses, shared by the
  swaydesk components: a dock, a
  notification daemon, Waybar popups and icons, an app grid and the theme
  tools, written in Rust and GTK 4 for wlroots compositors with
@@ -34,20 +38,12 @@ Description: Sway desktop components - keep translations on minimized systems
  drops every translation. It only brings back the swaydesk files; the
  other packages are left as they are.
 
-Package: swaydesk-scripts
-Architecture: all
-Depends: ${misc:Depends}
-Recommends: brightnessctl, swayidle, gtklock, gammastep, libnotify-bin
-Description: Sway desktop components - helper scripts
- The scripts the components call, in /usr/libexec/swaydesk: session
- actions, brightness, caffeine (idle inhibit), night light, Waybar module
- refresh, idle and lock handling, the file manager launcher and the
- screenshot and recording helpers.
-
 Package: swaydesk-notifd
 Architecture: any
 Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
 Provides: notification-daemon
+Breaks: swaydesk-desktop (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~)
 Description: Sway desktop components - notification daemon
  The org.freedesktop.Notifications daemon with toasts (swaydesk-notifd),
  the notification center popup and its Waybar icon.
@@ -55,73 +51,280 @@ Description: Sway desktop components - notification daemon
 Package: swaydesk-dock
 Architecture: any
 Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, sway
+Breaks: swaydesk-desktop (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~)
 Description: Sway desktop components - dock
  A bottom dock for Sway with pinned apps, running windows and
  workspaces, in GTK 4 with layer-shell.
 
 Package: swaydesk-drawer
 Architecture: any
-Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
-Recommends: thunar | file-manager, xdg-user-dirs
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: xdg-user-dirs, libnotify-bin
+Suggests: thunar | file-manager
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)
 Description: Sway desktop components - app grid
  A full-screen app grid with search, groups and favorites, in GTK 4 with
  layer-shell.
 
-Package: swaydesk-widgets
+Package: swaydesk-switcher
 Architecture: any
-Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, python3, python3-holidays
-Breaks: swaydesk-scripts (<< ${source:Version})
-Replaces: swaydesk-scripts (<< ${source:Version})
-Recommends: wireplumber, pulseaudio-utils, network-manager, bluez, upower, cliphist, wl-clipboard, fonts-noto-color-emoji
-Description: Sway desktop components - Waybar popups and icons
- Popups for the Waybar modules (calendar, weather, battery, audio,
- brightness, caffeine, network, Bluetooth, system, media and clipboard),
- the icons for weather, network, Bluetooth and system, and the on-screen
- volume and brightness indicator.
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, sway
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk window switcher (Alt+Tab)
+ Windows in the order you used them, from every workspace, on a card in
+ the middle of the screen.
+
+Package: swaydesk-calendar
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, python3
+Recommends: python3-holidays
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk calendar popup
+ The month, with your country's holidays (from python3-holidays, when
+ installed).
+
+Package: swaydesk-weather
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: fonts-noto-color-emoji
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk weather icon and popup
+ The forecast for today and the next days, for the city you set or the
+ one your IP points to.
+
+Package: swaydesk-audio
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, jq
+Recommends: wireplumber, pulseaudio-utils
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk audio popup
+ Volume and mute for the output and the microphone, and which device each
+ one uses.
+
+Package: swaydesk-network
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: network-manager
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk network icon and popup
+ Wi-Fi, wired and VPN: turn them on and off, connect, enter the password
+ and see the details. Works with NetworkManager, and also with iwd and
+ systemd-networkd (VPN only with NetworkManager).
+
+Package: swaydesk-bluetooth
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: bluez
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk Bluetooth icon and popup
+ Turns Bluetooth on, finds devices, pairs, connects, forgets them and
+ sends files.
+
+Package: swaydesk-battery
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: upower, jq, libnotify-bin
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk battery popup
+ Charge, time left, power draw, health, a 12-hour graph and the power
+ profile.
+
+Package: swaydesk-brightness
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: brightnessctl, gammastep
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk brightness and night light popup
+ Screen brightness and the night light: off, on, or on the schedule you
+ pick.
+
+Package: swaydesk-caffeine
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, swayidle
+Recommends: swaydesk-lock
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk caffeine popup
+ Keeps the screen from locking and the computer from sleeping for 1 hour,
+ 2 hours or always. It works through its own swayidle (sway-idle), which
+ locks the screen with swaydesk-lock.
+
+Package: swaydesk-system
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk system monitor icon and popup
+ CPU, memory, disk, temperature and the busiest processes, with "End".
+ The icon turns orange when something is tight.
+
+Package: swaydesk-media
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, jq
+Recommends: playerctl
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk media popup
+ Cover, title, progress and the controls of whatever player is playing.
+
+Package: swaydesk-clipboard
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, cliphist, wl-clipboard
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk clipboard history
+ The history of what you copied, with search, thumbnails and pinned
+ items (cliphist), and the service that keeps it.
+
+Package: swaydesk-osd
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: wireplumber, brightnessctl
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk volume and brightness indicator
+ Icon, bar and percentage on screen for a second, when the volume or the
+ brightness changes. It also has sway-osd, which the volume and brightness
+ keys run: it changes the level and shows it.
+
+Package: swaydesk-language
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, sway
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk keyboard layout indicator
+ The current keyboard layout, for the bar.
+
+Package: swaydesk-help
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: swaydesk-lock
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk Help app
+ The shortcuts of the profile in use, with search, read from the Sway
+ configuration itself, and a card for each part of the desktop, with its
+ shortcut and a button that opens it.
+
+Package: swaydesk-click-catcher
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Breaks: swaydesk-widgets (<< 0.1.7~)
+Replaces: swaydesk-widgets (<< 0.1.7~)
+Description: Swaydesk launcher click catcher
+ A transparent layer on every monitor that closes the launcher (rofi) with
+ a click outside it, as Esc does.
 
 Package: swaydesk-capture
 Architecture: any
-Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, grim, slurp, jq
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, grim, slurp, jq
 Recommends: wf-recorder, wl-clipboard, libnotify-bin
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)
 Description: Sway desktop components - screenshot and screen recording panels
  The screenshot and screen recording panels (region, full screen or
  window, with delay, Gradia and audio options) over a dimmed screen.
 
-Package: swaydesk-theme
+Package: swaydesk-theme-tool
 Architecture: any
 Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, libglib2.0-bin
 Recommends: papirus-icon-theme, dconf-cli, gnome-themes-extra
-Description: Sway desktop components - theme tools, accent portal and Displays
- sway-theme and sway-desktop-config: the GTK theme, icons and accent
- color across the desktop, with the Papirus folder colors, and an
- org.freedesktop.impl.portal.Settings backend that gives the accent color
- to libadwaita apps. The Desktop Theme app picks the theme family, light or
- dark style and color with a live preview.
- .
- The Displays app arranges the screens (position, resolution, refresh
- rate, scale and rotation), and its service applies the layout saved for
- each set of monitors when they are plugged in or out.
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-theme (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-theme (<< 0.1.7~)
+Description: Swaydesk theme tools
+ swaydesk-theme and swaydesk-desktop-config: the GTK theme, icons and
+ accent color across the desktop, with the Papirus folder colors, and the
+ files that Sway, the bar and the apps read from
+ ~/.config/swaydesk/config.toml.
 
-Package: swaydesk-session
+Package: swaydesk-portal
 Architecture: any
-Depends: swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, systemd, libpam0g, python3, python3-gi, python3-gi-cairo, gir1.2-gtk-3.0, gir1.2-gtksessionlock-0.1, gtklock
-Description: Sway desktop components - session menu, lock screen and services
- The full-screen session menu (lock, log out, suspend, reboot, power
- off), a minimal org.gnome.SessionManager for Sway (reboot and shutdown
- for GNOME Software updates) and the first-login keyring fix for
- gnome-keyring.
- .
- The lock screen (swaydesk-lock) uses ext-session-lock through
- gtk4-layer-shell 1.2 or newer. It checks the password with its own PAM
- service (/etc/pam.d/swaydesk-lock, the same "auth include login" as
- swaylock's), loading libpam at run time. Where gtk4-layer-shell is older
- (Debian 13), the lock is sway-lock-gtk, the same lock in Python with GTK 3
- and gtk-session-lock. gtklock is the fallback locker; swaylock is no
- longer used, since it takes no dead keys.
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-theme (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-theme (<< 0.1.7~)
+Description: Swaydesk accent color portal
+ An org.freedesktop.impl.portal.Settings backend that gives the accent
+ color and the light or dark style to libadwaita apps.
+
+Package: swaydesk-theme-app
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, swaydesk-theme-tool (>= ${source:Version}), swaydesk-theme-tool (<< ${source:Version}.1~)
+Recommends: gnome-themes-extra
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-theme (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-theme (<< 0.1.7~)
+Description: Swaydesk Desktop Theme app
+ Picks the GTK theme, the icons and the accent color, and applies them all
+ at once, GTK and libadwaita apps included, with a live preview.
+
+Package: swaydesk-displays
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-theme (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-theme (<< 0.1.7~)
+Description: Swaydesk Displays app
+ Your screens on a map, to drag around, with each one's resolution,
+ refresh rate, scale and rotation. Each set of monitors keeps its own
+ layout, applied when you plug or unplug a screen.
+
+Package: swaydesk-session-menu
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: swaydesk-lock
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
+Description: Swaydesk session menu
+ Lock, log out, suspend, restart and shut down, full screen. When an app
+ asks to restart or shut down, it asks first, with a countdown.
+
+# python3, GTK 3 and gtk-session-lock: the Python lock (sway-lock-gtk) is the real lock on Debian 13, whose
+# gtk4-layer-shell has no session lock before 1.2 (install-tree.sh ships it on Debian and Ubuntu only)
+Package: swaydesk-lock
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, systemd, libpam0g, gtklock, python3, python3-gi, python3-gi-cairo, gir1.2-gtk-3.0, gir1.2-gtksessionlock-0.1
+Recommends: swayidle, libnotify-bin
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
+Description: Swaydesk lock screen
+ Time, date and the password field on every monitor, over the blurred
+ wallpaper. It checks the password with its own PAM service
+ (/etc/pam.d/swaydesk-lock). Where gtk4-layer-shell is older than 1.2
+ (Debian 13), the lock is sway-lock-gtk, the same lock in Python with
+ GTK 3. gtklock is the fallback locker.
+
+Package: swaydesk-keyring
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, systemd
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
+Description: Swaydesk keyring fix
+ Unlocks gnome-keyring at the first login of each user, so the apps'
+ passwords open with the login.
+
+Package: swaydesk-sessionmgr
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, sway
+Recommends: swaydesk-session-menu
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
+Description: Swaydesk session manager service
+ A minimal org.gnome.SessionManager for Sway, so GNOME Software can
+ restart or shut down after updates. With swaydesk-session-menu, it asks
+ first, with a countdown. Without swaydesk-session-menu, it restarts or
+ shuts down when asked, with no confirmation.
 
 Package: swaydesk-desktop
 Architecture: all
-Depends: mate-polkit | lxpolkit, swaydesk-common (= ${source:Version}), swaydesk-scripts (= ${source:Version}), swaydesk-notifd (>= ${source:Version}), swaydesk-notifd (<< ${source:Version}.1~), swaydesk-dock (>= ${source:Version}), swaydesk-dock (<< ${source:Version}.1~), swaydesk-drawer (>= ${source:Version}), swaydesk-drawer (<< ${source:Version}.1~), swaydesk-widgets (>= ${source:Version}), swaydesk-widgets (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-theme (>= ${source:Version}), swaydesk-theme (<< ${source:Version}.1~), swaydesk-session (>= ${source:Version}), swaydesk-session (<< ${source:Version}.1~), swaydesk-efi (>= ${source:Version}), swaydesk-efi (<< ${source:Version}.1~), ${misc:Depends}, sway, swaybg, swayidle, waybar, kitty, rofi, qalc, jq, curl, wl-clipboard, cliphist, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, dconf-cli, libglib2.0-bin, fonts-noto-core, fonts-noto-color-emoji, gnome-themes-extra, adw-gtk-theme, systemd
+Depends: mate-polkit | lxpolkit, swaydesk-common (= ${source:Version}), swaydesk-notifd (>= ${source:Version}), swaydesk-notifd (<< ${source:Version}.1~), swaydesk-dock (>= ${source:Version}), swaydesk-dock (<< ${source:Version}.1~), swaydesk-drawer (>= ${source:Version}), swaydesk-drawer (<< ${source:Version}.1~), swaydesk-switcher (>= ${source:Version}), swaydesk-switcher (<< ${source:Version}.1~), swaydesk-calendar (>= ${source:Version}), swaydesk-calendar (<< ${source:Version}.1~), swaydesk-weather (>= ${source:Version}), swaydesk-weather (<< ${source:Version}.1~), swaydesk-audio (>= ${source:Version}), swaydesk-audio (<< ${source:Version}.1~), swaydesk-network (>= ${source:Version}), swaydesk-network (<< ${source:Version}.1~), swaydesk-bluetooth (>= ${source:Version}), swaydesk-bluetooth (<< ${source:Version}.1~), swaydesk-battery (>= ${source:Version}), swaydesk-battery (<< ${source:Version}.1~), swaydesk-brightness (>= ${source:Version}), swaydesk-brightness (<< ${source:Version}.1~), swaydesk-caffeine (>= ${source:Version}), swaydesk-caffeine (<< ${source:Version}.1~), swaydesk-system (>= ${source:Version}), swaydesk-system (<< ${source:Version}.1~), swaydesk-media (>= ${source:Version}), swaydesk-media (<< ${source:Version}.1~), swaydesk-clipboard (>= ${source:Version}), swaydesk-clipboard (<< ${source:Version}.1~), swaydesk-osd (>= ${source:Version}), swaydesk-osd (<< ${source:Version}.1~), swaydesk-language (>= ${source:Version}), swaydesk-language (<< ${source:Version}.1~), swaydesk-help (>= ${source:Version}), swaydesk-help (<< ${source:Version}.1~), swaydesk-click-catcher (>= ${source:Version}), swaydesk-click-catcher (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-theme-tool (>= ${source:Version}), swaydesk-theme-tool (<< ${source:Version}.1~), swaydesk-portal (>= ${source:Version}), swaydesk-portal (<< ${source:Version}.1~), swaydesk-theme-app (>= ${source:Version}), swaydesk-theme-app (<< ${source:Version}.1~), swaydesk-displays (>= ${source:Version}), swaydesk-displays (<< ${source:Version}.1~), swaydesk-session-menu (>= ${source:Version}), swaydesk-session-menu (<< ${source:Version}.1~), swaydesk-lock (>= ${source:Version}), swaydesk-lock (<< ${source:Version}.1~), swaydesk-keyring (>= ${source:Version}), swaydesk-keyring (<< ${source:Version}.1~), swaydesk-sessionmgr (>= ${source:Version}), swaydesk-sessionmgr (<< ${source:Version}.1~), swaydesk-efi (>= ${source:Version}), swaydesk-efi (<< ${source:Version}.1~), ${misc:Depends}, sway, swaybg, swayidle, waybar, kitty, rofi, qalc, jq, curl, wl-clipboard, cliphist, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, dconf-cli, libglib2.0-bin, fonts-noto-core, fonts-noto-color-emoji, gnome-themes-extra, adw-gtk-theme, systemd
 Recommends: papirus-icon-theme, thunar | file-manager, grim, slurp, wf-recorder, brightnessctl, playerctl, pavucontrol, gammastep, blueman, network-manager-applet | network-manager-gnome, libnotify-bin, power-profiles-daemon, xwayland, qt5ct, qt6ct, gnome-text-editor
 Suggests: fcitx5
 Description: Sway desktop - the full session
@@ -156,6 +359,66 @@ Description: Sway desktop - login screen for greetd
  "sudo mkdir -p /etc/systemd/system/greetd.service.d && sudo ln -s
  /dev/null /etc/systemd/system/greetd.service.d/swaydesk-greeter.conf &&
  sudo systemctl daemon-reload", effective at the next boot.
+
+Package: swaydesk-widgets
+Architecture: all
+Depends: swaydesk-calendar (>= ${source:Version}), swaydesk-calendar (<< ${source:Version}.1~), swaydesk-weather (>= ${source:Version}), swaydesk-weather (<< ${source:Version}.1~), swaydesk-audio (>= ${source:Version}), swaydesk-audio (<< ${source:Version}.1~), swaydesk-network (>= ${source:Version}), swaydesk-network (<< ${source:Version}.1~), swaydesk-bluetooth (>= ${source:Version}), swaydesk-bluetooth (<< ${source:Version}.1~), swaydesk-battery (>= ${source:Version}), swaydesk-battery (<< ${source:Version}.1~), swaydesk-brightness (>= ${source:Version}), swaydesk-brightness (<< ${source:Version}.1~), swaydesk-caffeine (>= ${source:Version}), swaydesk-caffeine (<< ${source:Version}.1~), swaydesk-system (>= ${source:Version}), swaydesk-system (<< ${source:Version}.1~), swaydesk-media (>= ${source:Version}), swaydesk-media (<< ${source:Version}.1~), swaydesk-clipboard (>= ${source:Version}), swaydesk-clipboard (<< ${source:Version}.1~), swaydesk-osd (>= ${source:Version}), swaydesk-osd (<< ${source:Version}.1~), swaydesk-language (>= ${source:Version}), swaydesk-language (<< ${source:Version}.1~), swaydesk-switcher (>= ${source:Version}), swaydesk-switcher (<< ${source:Version}.1~), swaydesk-help (>= ${source:Version}), swaydesk-help (<< ${source:Version}.1~), swaydesk-click-catcher (>= ${source:Version}), swaydesk-click-catcher (<< ${source:Version}.1~), ${misc:Depends}
+Description: Swaydesk bar popups and icons (metapackage)
+ Since 0.1.7, each popup and icon has its own package; this one installs
+ them all, as before.
+ .
+ This is an empty package that depends on the others.
+
+Package: swaydesk-theme
+Architecture: all
+Depends: swaydesk-theme-tool (>= ${source:Version}), swaydesk-theme-tool (<< ${source:Version}.1~), swaydesk-portal (>= ${source:Version}), swaydesk-portal (<< ${source:Version}.1~), swaydesk-theme-app (>= ${source:Version}), swaydesk-theme-app (<< ${source:Version}.1~), swaydesk-displays (>= ${source:Version}), swaydesk-displays (<< ${source:Version}.1~), ${misc:Depends}
+Description: Swaydesk theme tools, Desktop Theme and Displays (metapackage)
+ Since 0.1.7, the theme tools, the accent color portal, the Desktop Theme
+ app and the Displays app each have their own package; this one installs
+ them all, as before.
+ .
+ This is an empty package that depends on the others.
+
+Package: swaydesk-session
+Architecture: all
+Depends: swaydesk-session-menu (>= ${source:Version}), swaydesk-session-menu (<< ${source:Version}.1~), swaydesk-lock (>= ${source:Version}), swaydesk-lock (<< ${source:Version}.1~), swaydesk-keyring (>= ${source:Version}), swaydesk-keyring (<< ${source:Version}.1~), swaydesk-sessionmgr (>= ${source:Version}), swaydesk-sessionmgr (<< ${source:Version}.1~), ${misc:Depends}
+Description: Swaydesk session menu, lock and services (metapackage)
+ Since 0.1.7, the session menu, the lock screen, the keyring fix and the
+ session manager each have their own package; this one installs them all,
+ as before.
+ .
+ This is an empty package that depends on the others.
+
+Package: swaydesk-bar
+Architecture: all
+Depends: swaydesk-calendar (>= ${source:Version}), swaydesk-calendar (<< ${source:Version}.1~), swaydesk-weather (>= ${source:Version}), swaydesk-weather (<< ${source:Version}.1~), swaydesk-audio (>= ${source:Version}), swaydesk-audio (<< ${source:Version}.1~), swaydesk-network (>= ${source:Version}), swaydesk-network (<< ${source:Version}.1~), swaydesk-bluetooth (>= ${source:Version}), swaydesk-bluetooth (<< ${source:Version}.1~), swaydesk-battery (>= ${source:Version}), swaydesk-battery (<< ${source:Version}.1~), swaydesk-brightness (>= ${source:Version}), swaydesk-brightness (<< ${source:Version}.1~), swaydesk-caffeine (>= ${source:Version}), swaydesk-caffeine (<< ${source:Version}.1~), swaydesk-system (>= ${source:Version}), swaydesk-system (<< ${source:Version}.1~), swaydesk-media (>= ${source:Version}), swaydesk-media (<< ${source:Version}.1~), swaydesk-clipboard (>= ${source:Version}), swaydesk-clipboard (<< ${source:Version}.1~), swaydesk-osd (>= ${source:Version}), swaydesk-osd (<< ${source:Version}.1~), swaydesk-language (>= ${source:Version}), swaydesk-language (<< ${source:Version}.1~), ${misc:Depends}
+Description: Swaydesk bar items (metapackage)
+ Every popup and icon of the bar, without the window apps. It includes the
+ volume and brightness indicator, which the volume and brightness keys
+ show next to the bar.
+ .
+ This is an empty package that depends on the others.
+
+Package: swaydesk-apps
+Architecture: all
+Depends: swaydesk-theme-app (>= ${source:Version}), swaydesk-theme-app (<< ${source:Version}.1~), swaydesk-displays (>= ${source:Version}), swaydesk-displays (<< ${source:Version}.1~), swaydesk-help (>= ${source:Version}), swaydesk-help (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), ${misc:Depends}
+Description: Swaydesk apps: Desktop Theme, Displays, Help, Screenshot (metapackage)
+ The window apps, without the bar or the session.
+ .
+ This is an empty package that depends on the others.
+
+Package: swaydesk-scripts
+Section: oldlibs
+Architecture: all
+Depends: swaydesk-common (>= ${source:Version}), swaydesk-common (<< ${source:Version}.1~), ${misc:Depends}
+Description: Swaydesk helper scripts (transitional metapackage)
+ Until 0.1.6, the helper scripts the components call. Since 0.1.7, each
+ script ships with the package that calls it (the shared ones in
+ swaydesk-common), so upgrading a component brings its scripts along. This
+ package is left only for the upgrade; it can be removed, and goes away in
+ 0.2.0.
+ .
+ This is an empty package.
 
 Package: swaydesk-efi
 Architecture: all

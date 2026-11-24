@@ -2,7 +2,7 @@
 //!
 //! A libpam.so.0 é aberta na hora (dlopen): sem o pacote -dev para compilar, e sem ligar o binário a
 //! ela. O serviço é o próprio, /etc/pam.d/swaydesk-lock (só "auth include login", como o do swaylock), que o
-//! swaydesk-session traz; sem ele (os dotfiles sem o install.sh --system), o do swaylock ([`service`]).
+//! swaydesk-lock traz; sem ele (os dotfiles sem o install.sh --system), o do swaylock ([`service`]).
 //!
 //! Só pam_authenticate e, depois de acertar, pam_setcred(PAM_REFRESH_CRED), como o swaylock. Nunca o
 //! pam_acct_mgmt: o arquivo do swaylock só tem "auth", e a conta cairia na pilha "other" da distro, que

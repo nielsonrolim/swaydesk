@@ -1,8 +1,9 @@
 //! Popup do brilho para o clique no ícone da Waybar: o porte de `home/.local/bin/waybar-brightness-popup`,
 //! que passa a vez a este binário (sway_rust).
 //!
-//! Brilho e luz noturna, com tamanho fixo. Quem muda o brilho é o sway-brightness, e a luz noturna é
-//! do sway-nightlight: aqui só há o slider e os botões. Clicar de novo no ícone, Esc, clicar fora ou
+//! Brilho e luz noturna, com tamanho fixo. O brilho, o próprio popup muda pelo brightnessctl (com o mesmo
+//! dispositivo e o mesmo piso do sway-brightness, que é do swaydesk-osd), e a luz noturna é do sway-nightlight:
+//! aqui só há o slider e os botões. Clicar de novo no ícone, Esc, clicar fora ou
 //! trocar de workspace fecha.
 use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
@@ -130,7 +131,7 @@ struct Popup {
     /// O valor que espera a vez de ser gravado
     pending: Cell<Option<i64>>,
     apply_source: RefCell<Option<glib::SourceId>>,
-    /// O sway-brightness em andamento: um por vez, para o último valor valer
+    /// O brightnessctl em andamento (o `sway-brightness set` em Rust): um por vez, para o último valor valer
     writer: RefCell<Option<JoinHandle<()>>>,
     schedule_source: RefCell<Option<glib::SourceId>>,
     /// Fica até a próxima edição: a atualização não pode apagá-lo

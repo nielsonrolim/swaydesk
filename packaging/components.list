@@ -4,12 +4,42 @@
 swaydesk-notifd: notifd notifications notifications-popup
 swaydesk-dock: dock
 swaydesk-drawer: drawer
-swaydesk-widgets: calendar caffeine-popup brightness-popup battery-popup system system-popup audio-popup network network-popup bluetooth bluetooth-popup weather weather-popup media-popup clipboard-popup osd-bar clip-store switcher help click-catcher language
+swaydesk-switcher: switcher
+swaydesk-calendar: calendar
+swaydesk-weather: weather weather-popup
+swaydesk-audio: audio-popup
+swaydesk-network: network network-popup
+swaydesk-bluetooth: bluetooth bluetooth-popup
+swaydesk-battery: battery-popup
+swaydesk-brightness: brightness-popup
+swaydesk-caffeine: caffeine-popup
+swaydesk-system: system system-popup
+swaydesk-media: media-popup
+swaydesk-clipboard: clipboard-popup clip-store
+swaydesk-osd: osd-bar
+swaydesk-language: language
+swaydesk-help: help
+# A camada que fecha o lançador (o rofi do sway-launcher, no swaydesk-desktop) com um clique fora dele
+swaydesk-click-catcher: click-catcher
 swaydesk-capture: capture
-swaydesk-theme: theme desktop-config portal theme-app displays
-# Os scripts auxiliares que os binários chamam (paths::helper), sem binário em Rust
+swaydesk-theme-tool: theme desktop-config
+swaydesk-portal: portal
+swaydesk-theme-app: theme-app
+swaydesk-displays: displays
+swaydesk-session-menu: session-menu
+swaydesk-lock: lock
+swaydesk-keyring: keyring
+swaydesk-sessionmgr: sessionmgr
+# Os metapacotes (desde a 0.1.7): os nomes de antes da divisão, que puxam os pacotes de cada componente, para
+# quem atualiza não perder nada, e dois grupos novos. Sem arquivos (o tests/test_packaging.py confere)
+swaydesk-widgets:
+swaydesk-theme:
+swaydesk-session:
+swaydesk-bar:
+swaydesk-apps:
+# Antes da 0.1.7, os scripts auxiliares. Hoje cada script vai no pacote que o chama: este só puxa esses pacotes,
+# para quem atualiza, e sai na 0.2.0
 swaydesk-scripts:
-swaydesk-session: session-menu keyring sessionmgr lock
 # A sessão completa (configs do Sway e da Waybar, scripts da sessão, o skel), sem binário em Rust
 swaydesk-desktop:
 # A tela de login sobre o greetd. Só nos pacotes: o install.sh --system usa o nwg-hello (não está no

@@ -1,5 +1,6 @@
 # Os lançadores de home/.local/bin que só chamam um binário em Rust (sway_rust.exec_rust), com o componente:
-# o swaydesk-desktop instala cada nome como um link para /usr/bin/swaydesk-<componente>. Assim o tarball
+# o pacote do binário instala cada nome como um link para /usr/bin/swaydesk-<componente> (desde a 0.1.7; antes,
+# todos no swaydesk-desktop, e o pacote que recebe um link tem Breaks+Replaces nele). Assim o tarball
 # dos pacotes não precisa levar os lançadores em Python (o tests/test_packaging.py confere a lista com eles)
 session-menu session-menu
 sway-capture capture

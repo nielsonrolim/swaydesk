@@ -45,11 +45,36 @@ pub fn helper(name: &str) -> PathBuf {
     })
 }
 
+/// O pacote que leva cada script auxiliar (desde a 0.1.7, o do componente que o chama: o SCRIPTS e o MODULES do
+/// packaging/install-tree.sh, que o tests/test_packaging.py compara com esta lista). None para um nome que não é
+/// de pacote nenhum.
+fn helper_package(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "session-action" | "waybar-notify" | "sway_i18n.py" | "desktop_config.py" | "sway-i18n.sh" => "swaydesk-common",
+        "waybar-icon-lib" => "swaydesk-common",
+        "sway-files" => "swaydesk-drawer",
+        "sway-nightlight" | "waybar-brightness" => "swaydesk-brightness",
+        "sway-osd" | "sway-brightness" => "swaydesk-osd",
+        "sway-caffeine" | "sway-idle" | "sway-idle-suspend" | "waybar-caffeine" => "swaydesk-caffeine",
+        "waybar-volume" => "swaydesk-audio",
+        "waybar-media" => "swaydesk-media",
+        "waybar-battery" => "swaydesk-battery",
+        "sway-shot" | "sway-rec" => "swaydesk-capture",
+        "sway-lock" | "sway-lock-watch" | "sway-gtklock" => "swaydesk-lock",
+        "waybar_holidays.py" | "waybar-clock" => "swaydesk-calendar",
+        _ => return None,
+    })
+}
+
 /// O aviso de um script auxiliar que não existe em lugar nenhum: os lugares que o find_helper tentou e, nos
-/// dotfiles (o binário no ~/.local/bin), o install.sh; nos pacotes, o swaydesk-scripts.
+/// dotfiles (o binário no ~/.local/bin), o install.sh; nos pacotes, o pacote que o leva.
 fn missing_helper_message(name: &str, tried: &[PathBuf], dotfiles: bool) -> String {
     let places: Vec<String> = tried.iter().map(|p| p.display().to_string()).collect();
-    let hint = if dotfiles { "run install.sh again" } else { "install the swaydesk-scripts package" };
+    let hint = match (dotfiles, helper_package(name)) {
+        (true, _) => "run install.sh again".to_string(),
+        (false, Some(package)) => format!("install the {package} package"),
+        (false, None) => "reinstall the Swaydesk packages".to_string(),
+    };
     format!("swaydesk: helper script {name} not found (tried {}); {hint}", places.join(", "))
 }
 
@@ -119,8 +144,10 @@ mod tests {
         assert_eq!(
             package,
             "swaydesk: helper script sway-files not found (tried /usr/local/libexec/swaydesk/sway-files, \
-             /usr/local/lib/swaydesk/sway-files); install the swaydesk-scripts package"
+             /usr/local/lib/swaydesk/sway-files); install the swaydesk-drawer package"
         );
+        assert!(missing_helper_message("sway-lock", &tried, false).ends_with("; install the swaydesk-lock package"));
+        assert!(missing_helper_message("no-such-helper", &tried, false).ends_with("; reinstall the Swaydesk packages"));
         let dotfiles = missing_helper_message("sway-files", &[PathBuf::from("/home/u/.local/bin/sway-files")], true);
         assert!(dotfiles.ends_with("(tried /home/u/.local/bin/sway-files); run install.sh again"), "{dotfiles}");
         // Um nome só deste teste, para não depender da ordem dos outros

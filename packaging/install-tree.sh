@@ -23,28 +23,38 @@ data=$root/home/.local/share
 bin=$root/home/.local/bin
 # Os scripts auxiliares: o Debian os põe em /usr/libexec, e o Arch em /usr/lib (SWAYDESK_LIBEXEC=/usr/lib)
 libexec=${SWAYDESK_LIBEXEC:-/usr/libexec}/swaydesk
-SCRIPTS=(session-action sway-brightness sway-caffeine sway-nightlight waybar-notify sway-idle sway-idle-suspend sway-lock
-         sway-lock-watch sway-gtklock sway-files sway-shot sway-rec)
-# Sem o bit de execução (o debian/rules os tira do dh_fixperms). O sway-i18n.sh é incluído com "." pelos scripts.
-# O sway_i18n.py e o desktop_config.py ficam aqui, como arquivos: o swaydesk-scripts não depende do python3, e
-# quem os importa (o calendário do swaydesk-widgets, o bloqueio em Python do swaydesk-session) traz o python3
-MODULES=(sway_i18n.py desktop_config.py sway-i18n.sh)
-# O calendário, no swaydesk-widgets (o dono dele), na mesma pasta: ele roda o waybar_holidays.py com o python3, que
-# importa os dois módulos acima da própria pasta. Antes da 0.1.7 ia no swaydesk-scripts, e quem instalava só a grade
-# ou a captura levava o python3 e o python3-holidays
+# Os scripts auxiliares que os binários e as configs chamam (paths::helper), cada um no pacote do componente que o
+# chama (desde a 0.1.7; antes, todos no swaydesk-scripts), como pacote:script. Os que mais de um pacote chama
+# ficam no swaydesk-common (o waybar-notify dos popups, o session-action do menu e do gerenciador de sessão). O
+# sway-idle vai com a cafeína, que só funciona por ele (ela troca o swayidle em execução). O ícone em bash de cada
+# item da barra (waybar-volume…) vai com o popup dele, e o sway-osd (as teclas de volume e brilho) com o indicador,
+# junto com o sway-brightness que ele roda. O tests/test_packaging.py confere que cada um vai num pacote só
+SCRIPTS=(swaydesk-common:session-action swaydesk-common:waybar-notify
+         swaydesk-drawer:sway-files
+         swaydesk-brightness:sway-nightlight swaydesk-brightness:waybar-brightness
+         swaydesk-osd:sway-osd swaydesk-osd:sway-brightness
+         swaydesk-calendar:waybar-clock swaydesk-media:waybar-media swaydesk-audio:waybar-volume
+         swaydesk-battery:waybar-battery swaydesk-caffeine:waybar-caffeine
+         swaydesk-caffeine:sway-caffeine
+         swaydesk-capture:sway-shot swaydesk-capture:sway-rec
+         swaydesk-lock:sway-lock swaydesk-lock:sway-lock-watch swaydesk-lock:sway-gtklock
+         swaydesk-caffeine:sway-idle swaydesk-caffeine:sway-idle-suspend)
+# Sem o bit de execução (o debian/rules os tira do dh_fixperms), no swaydesk-common: o calendário e o bloqueio em
+# Python os importam, e os scripts em shell incluem o sway-i18n.sh e o waybar-icon-lib (os ícones da barra) com ".". Só a biblioteca padrão: o common não
+# depende do python3, e quem os roda (o swaydesk-calendar, o swaydesk-lock do Debian) traz o python3
+MODULES=(sway_i18n.py desktop_config.py sway-i18n.sh waybar-icon-lib)
+# O calendário, no swaydesk-calendar, na mesma pasta: ele roda o waybar_holidays.py com o python3, que importa os
+# dois módulos acima da própria pasta
 CALENDAR_MODULES=(waybar_holidays.py)
-# O bloqueio em Python, no swaydesk-session do Debian e do Ubuntu (o waybar_media, para a mídia na tela)
+# O bloqueio em Python, no swaydesk-lock do Debian e do Ubuntu (o waybar_media, para a mídia na tela)
 PYTHON_LOCK=(sway-lock-gtk sway_lock.py sway_pam.py waybar_media.py)
-# O swaydesk-desktop: os scripts que o config do Sway e o da Waybar do pacote chamam, além dos do
-# swaydesk-scripts, e a sessão (o sway-session e o sway-gpu, que no --system vão para /usr/local/bin). O
+# O swaydesk-desktop: os scripts que o config do Sway e o da Waybar do pacote chamam, além dos auxiliares, e a sessão (o sway-session e o sway-gpu, que no --system vão para /usr/local/bin). O
 # tests/test_packaging.py confere que todo programa que as configs chamam está num pacote
 SESSION_SCRIPTS=(sway-after-env sway-if-enabled sway-waybar sway-env-cleanup sway-polkit-agent sway-update-notifier
                  sway-language-packs
-                 blueman-agent bing-wallpaper sway-osd sway-super sway-resize sway-master sway-ws waybar-clock
-                 waybar-media waybar-volume waybar-battery waybar-brightness waybar-caffeine sway-launcher
+                 blueman-agent bing-wallpaper sway-super sway-resize sway-master sway-ws sway-launcher
                  sway-portal-gtk sway-has-display sway-updates waybar-updates sway-autostart
                  sway-input-method)
-SESSION_MODULES=(waybar-icon-lib)  # incluído com "." pelos módulos da Waybar
 share=/usr/share/swaydesk-desktop
 
 rust_components() {  # os componentes em Rust de todos os pacotes
@@ -76,7 +86,7 @@ AUTOSTART_TARGET=swaydesk-autostart.target
 autostart_dropins() { (cd "$root/home/.config/systemd/user" && printf '%s\n' app-*@autostart.service.d/swaydesk.conf); }
 
 if [[ ${1:-} == --sources ]]; then
-  for name in "${SCRIPTS[@]}" "${MODULES[@]}" "${CALENDAR_MODULES[@]}" "${SESSION_SCRIPTS[@]}" "${SESSION_MODULES[@]}" "${PYTHON_LOCK[@]}"; do
+  for name in "${SCRIPTS[@]#*:}" "${MODULES[@]}" "${CALENDAR_MODULES[@]}" "${SESSION_SCRIPTS[@]}" "${PYTHON_LOCK[@]}"; do
     echo "home/.local/bin/$name"
   done
   (cd "$root" && printf '%s\n' home/.local/share/locale/*/LC_MESSAGES/sway-desktop.mo)
@@ -105,6 +115,22 @@ for name in $(components "$pkg"); do
   install -Dm644 "$man/swaydesk-$name.1" "$dest/usr/share/man/man1/swaydesk-$name.1"
 done
 
+# Os scripts auxiliares do pacote (o SCRIPTS acima)
+for entry in "${SCRIPTS[@]}"; do
+  [[ ${entry%%:*} == "$pkg" ]] && install -Dm755 "$bin/${entry#*:}" "$dest$libexec/${entry#*:}"
+done
+# Os nomes que as configs e os scripts usam (sway-dock, waybar-audio…) apontam para o binário em Rust, como no
+# install.sh --rust-only (o lançador em Python de cada um diz o componente, sway_rust.exec_rust). Cada link vai
+# no pacote do binário: os ícones da barra e o sway-osd reconhecem o popup e o indicador por esse nome (desde a
+# 0.1.7; antes, todos no swaydesk-desktop)
+mine=" $(components "$pkg") "
+rust_launchers | while read -r name comp; do
+  if [[ $mine == *" $comp "* ]]; then
+    install -d "$dest$libexec"
+    ln -sfn "/usr/bin/swaydesk-$comp" "$dest$libexec/$name"
+  fi
+done
+
 # Nos arquivos de config do pacote, os scripts e os lançadores de ~/.local/bin passam a ser os do libexec
 package_paths() {
   sed -e "s|^set \$bin  *~/\.local/bin\$|set \$bin $libexec|" -e "s|~/\.local/bin/|$libexec/|g" "$1"
@@ -117,7 +143,10 @@ case $pkg in
       install -Dm644 "$root/packaging/fonts/SymbolsNerdFont-Regular.ttf" \
         "$dest/usr/share/fonts/truetype/swaydesk/SymbolsNerdFont-Regular.ttf"
     fi
-    # Os ícones do hicolor, aqui porque a Ajuda (swaydesk-widgets) também os mostra
+    for name in "${MODULES[@]}"; do
+      install -Dm644 "$bin/$name" "$dest$libexec/$name"
+    done
+    # Os ícones do hicolor, aqui porque a Ajuda (swaydesk-help) também os mostra
     for icon in "${HICOLOR_ICONS[@]}"; do
       install -Dm644 "$data/icons/hicolor/scalable/apps/$icon" "$dest/usr/share/icons/hicolor/scalable/apps/$icon"
     done
@@ -127,14 +156,6 @@ case $pkg in
     for mo in "$data"/locale/*/LC_MESSAGES/sway-desktop.mo; do
       lang=${mo#"$data/locale/"}
       install -Dm644 "$mo" "$dest/usr/share/locale/$lang"
-    done
-    ;;
-  swaydesk-scripts)
-    for name in "${SCRIPTS[@]}"; do
-      install -Dm755 "$bin/$name" "$dest$libexec/$name"
-    done
-    for name in "${MODULES[@]}"; do
-      install -Dm644 "$bin/$name" "$dest$libexec/$name"
     done
     ;;
   swaydesk-capture)
@@ -151,10 +172,12 @@ case $pkg in
       }
     done
     ;;
-  swaydesk-widgets)
+  swaydesk-calendar)
     for name in "${CALENDAR_MODULES[@]}"; do
       install -Dm644 "$bin/$name" "$dest$libexec/$name"
     done
+    ;;
+  swaydesk-help)
     # A Ajuda do Swaydesk na grade. O nome do arquivo é o app_id do app (a dock acha o ícone por ele), e o
     # Exec dos dotfiles é o lançador de ~/.local/bin, que o pacote não tem: aqui, o binário em /usr/bin
     entry=$HELP_ENTRY
@@ -166,14 +189,18 @@ case $pkg in
       exit 1
     }
     ;;
-  swaydesk-theme)
+  swaydesk-theme-tool)
     # Os modelos e os perfis do dconf ficam em bin/../share/sway-desktop, onde o share_dir os acha
     for file in "$data"/sway-desktop/templates/* "$data"/sway-desktop/dconf/*; do
       install -Dm644 "$file" "$dest/usr/share/sway-desktop/${file#"$data/sway-desktop/"}"
     done
+    ;;
+  swaydesk-portal)
     install -Dm644 "$root/packaging/files/org.freedesktop.impl.portal.desktop.swaydesktop.service" \
       "$dest/usr/share/dbus-1/services/org.freedesktop.impl.portal.desktop.swaydesktop.service"
     install -Dm644 "$root/packaging/files/swaydesktop.portal" "$dest/usr/share/xdg-desktop-portal/portals/swaydesktop.portal"
+    ;;
+  swaydesk-theme-app)
     # O app Tema do Desktop no menu. O nome do arquivo é o app_id do app, que é como a dock acha o ícone. O
     # Exec dos dotfiles é o lançador de ~/.local/bin, que o pacote não tem: aqui, o binário em /usr/bin
     entry=$THEME_ENTRY
@@ -184,8 +211,11 @@ case $pkg in
       echo "install-tree: $entry: no Exec=sway-theme-app line to point at the package binary" >&2
       exit 1
     }
+    ;;
+  swaydesk-displays)
     # O app Telas, do mesmo jeito (o nome do arquivo é o app_id, e o swaydesk-help o abre por ele)
     entry=$DISPLAYS_ENTRY
+    install -d "$dest/usr/share/applications"
     sed 's/^Exec=sway-displays$/Exec=swaydesk-displays/' "$data/applications/$entry" > "$dest/usr/share/applications/$entry"
     chmod 644 "$dest/usr/share/applications/$entry"
     grep -qx 'Exec=swaydesk-displays' "$dest/usr/share/applications/$entry" || {
@@ -199,17 +229,8 @@ case $pkg in
     for name in "${SESSION_SCRIPTS[@]}"; do
       install -Dm755 "$bin/$name" "$dest$libexec/$name"
     done
-    for name in "${SESSION_MODULES[@]}"; do
-      install -Dm644 "$bin/$name" "$dest$libexec/$name"
-    done
     for name in "${SYSTEM_SCRIPTS[@]}"; do
       install -Dm755 "$root/system/usr/local/bin/$name" "$dest$libexec/$name"
-    done
-    # Os nomes que as configs e os scripts usam (sway-dock, waybar-network…) apontam para o binário em Rust,
-    # como no install.sh --rust-only: o lançador em Python de cada um diz o componente (sway_rust.exec_rust)
-    rust_launchers | while read -r name comp; do
-      install -d "$dest$libexec"
-      ln -sfn "/usr/bin/swaydesk-$comp" "$dest$libexec/$name"
     done
     mkdir -p "$dest$share/sway" "$dest$share/waybar"
     package_paths "$root/home/.config/sway/config" > "$dest$share/sway/config"
@@ -278,11 +299,11 @@ case $pkg in
       install -Dm644 "$root/packaging/files/console/us-intl.map" "$dest$SWAYDESK_CONSOLE_KEYMAPS/us-intl.map"
     fi
     ;;
-  swaydesk-session)
+  swaydesk-lock)
     # O serviço do PAM do bloqueio (o swaydesk-lock e o sway-lock-gtk): o próprio, sem depender do do swaylock
     install -Dm644 "$root/packaging/files/swaydesk-lock-pam" "$dest/etc/pam.d/swaydesk-lock"
     # O bloqueio em Python (GTK 3 + gtk-session-lock), o segundo do sway-lock: no Debian 13, o gtk4-layer-shell
-    # 1.0 não tem o bloqueio, e ele é o bloqueio de fato. Ao lado dos módulos do swaydesk-scripts
+    # 1.0 não tem o bloqueio, e ele é o bloqueio de fato. Ao lado dos módulos do swaydesk-common
     # (desktop_config, sway_i18n), que ele importa da própria pasta. O Arch não o leva (SWAYDESK_PYTHON_LOCK=0,
     # do PKGBUILD): lá o gtk4-layer-shell tem o bloqueio
     if [[ ${SWAYDESK_PYTHON_LOCK:-1} == 1 ]]; then

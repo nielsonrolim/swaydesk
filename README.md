@@ -16,20 +16,28 @@ Swaydesk is an independent project built on top of [Sway](https://swaywm.org). I
 
 | Component | Package | What it does |
 | --- | --- | --- |
-| Bar and popups | `swaydesk-widgets` | Waybar modules and their popups: audio, network, Bluetooth, battery, brightness, media, weather, calendar, caffeine, system; the Alt+Tab switcher and the volume/brightness on-screen display |
+| Bar items | `swaydesk-calendar`, `swaydesk-weather`, `swaydesk-audio`, `swaydesk-network`, `swaydesk-bluetooth`, `swaydesk-battery`, `swaydesk-brightness`, `swaydesk-caffeine`, `swaydesk-system`, `swaydesk-media`, `swaydesk-language` | One package per Waybar module and its popup |
+| Volume and brightness indicator | `swaydesk-osd` | Icon, bar and percentage on screen for a second; `sway-osd` changes the level from the volume and brightness keys |
+| Window switcher | `swaydesk-switcher` | Alt+Tab: windows in the order you used them, from every workspace |
 | Dock | `swaydesk-dock` | Pinned and running apps, auto-hide, right-click menu |
 | App grid | `swaydesk-drawer` | Full-screen app grid with groups, search, files and a calculator (qalc for units and conversions) |
 | Launcher | `swaydesk-desktop` | rofi (Alt+Space) with apps, open windows, clipboard history and web search |
 | Notifications | `swaydesk-notifd` | Notification daemon with toasts, history and do-not-disturb |
-| Clipboard | `swaydesk-widgets` | History (cliphist) with a popup |
+| Clipboard | `swaydesk-clipboard` | History (cliphist) with a popup |
 | Screenshot and recording | `swaydesk-capture` | Panels for screenshots (area, window, screen) and screen recording |
-| Theme | `swaydesk-theme` | The Theme app: accent color, light/dark and icons, applied to GTK, Qt, Sway, Waybar and rofi |
-| Session | `swaydesk-session` | Lock screen, session menu (log out, suspend, restart, shut down), keyring unlock and session services |
+| Theme | `swaydesk-theme-app`, `swaydesk-theme-tool`, `swaydesk-portal` | The Theme app: accent color, light/dark and icons, applied to GTK, Qt, Sway, Waybar and rofi; the command-line tools it uses, and the portal that gives the accent color to libadwaita apps |
+| Displays | `swaydesk-displays` | The Displays app: arrange the screens on a map, with resolution, refresh rate, scale and rotation, and a profile per set of monitors, applied when they're plugged in or the lid closes |
+| Help | `swaydesk-help` | A window with the Sway shortcuts in use and a card per desktop app |
+| Lock screen | `swaydesk-lock` | Time, date and the password on every monitor, over the blurred wallpaper |
+| Session | `swaydesk-session-menu`, `swaydesk-keyring`, `swaydesk-sessionmgr` | Session menu (log out, suspend, restart, shut down), keyring unlock and the session manager for software updates |
 | Login screen | `swaydesk-greeter` | Greeter for greetd, in the look of the lock screen: optional with another display manager, needed for a graphical login without one |
-| Help | `swaydesk-widgets` | A window with the Sway shortcuts in use and a card per desktop app |
-| Displays | `swaydesk-theme` | The Displays app: arrange the screens on a map, with resolution, refresh rate, scale and rotation, and a profile per set of monitors, applied when they're plugged in or the lid closes |
 
-`swaydesk-common` holds the shared data and fonts, and `swaydesk-scripts` the helper scripts. On Debian and Ubuntu, `swaydesk-desktop` also brings `swaydesk-efi`, which keeps the firmware's fallback boot path (`EFI/BOOT`) working under Secure Boot on systems installed from a Swaydesk image. On any other system, including one that only added this repository, it does nothing: it never touches the ESP, the boot entries or another system's files. To turn it off: `sudo mkdir -p /etc/swaydesk && echo off | sudo tee /etc/swaydesk/efi-fallback`. To see why it did or didn't act, run `sudo SWAYDESK_EFI_VERBOSE=1 /usr/libexec/swaydesk/swaydesk-efi-fallback`: it says which check stopped it, or what it changed.
+Each component installs on its own. A few packages install groups:
+- `swaydesk-bar`: every bar item, with the volume and brightness indicator;
+- `swaydesk-apps`: the Theme, Displays and Help apps, and the screenshot panels;
+- `swaydesk-desktop`: the full session, with everything.
+
+`swaydesk-widgets`, `swaydesk-theme` and `swaydesk-session`, the package names before 0.1.7, now install the same components as before. `swaydesk-scripts` is a transitional package that goes away in 0.2.0. `swaydesk-common` holds the shared data, fonts and helper scripts. On Debian and Ubuntu, `swaydesk-desktop` also brings `swaydesk-efi`, which keeps the firmware's fallback boot path (`EFI/BOOT`) working under Secure Boot on systems installed from a Swaydesk image. On any other system, including one that only added this repository, it does nothing: it never touches the ESP, the boot entries or another system's files. To turn it off: `sudo mkdir -p /etc/swaydesk && echo off | sudo tee /etc/swaydesk/efi-fallback`. To see why it did or didn't act, run `sudo SWAYDESK_EFI_VERBOSE=1 /usr/libexec/swaydesk/swaydesk-efi-fallback`: it says which check stopped it, or what it changed.
 
 ## How it fits together
 

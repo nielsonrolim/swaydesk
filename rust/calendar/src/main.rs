@@ -89,8 +89,14 @@ fn parse_holidays(text: &str) -> Option<Holidays> {
 
 /// Pela versão em Python da lógica (a python3-holidays não existe em Rust). Fora da linha principal.
 fn fetch_holidays(year: i32) -> Option<Holidays> {
+    fetch_holidays_with("python3", year)
+}
+
+/// O mesmo, com o interpretador dado. Sem ele (no Arch, o python é só um optdepends do swaydesk-calendar), o
+/// None: o calendário abre sem a caixa dos feriados, sem aviso na tela.
+fn fetch_holidays_with(python: &str, year: i32) -> Option<Holidays> {
     let script = swaydesk_common::paths::helper("waybar_holidays.py");
-    let output = Command::new("python3").arg(&script).arg(year.to_string()).output().ok()?;
+    let output = Command::new(python).arg(&script).arg(year.to_string()).output().ok()?;
     if !output.status.success() {
         eprintln!("{PROGRAM}: the holidays failed: {}", String::from_utf8_lossy(&output.stderr).trim());
         return None;
@@ -417,6 +423,12 @@ mod tests {
         let none = parse_holidays(r#"{"listed": false, "note": "x", "holidays": []}"#).unwrap();
         assert_eq!((none.listed, none.note.as_deref()), (false, Some("x")));
         assert!(parse_holidays("{").is_none());
+    }
+
+    #[test]
+    fn without_python_there_are_no_holidays() {
+        // O swaydesk-calendar do Arch sem o python (optdepends): nenhum feriado, e nada de pânico nem de erro
+        assert!(fetch_holidays_with("swaydesk-no-such-python-for-this-test", 2026).is_none());
     }
 
     #[test]
