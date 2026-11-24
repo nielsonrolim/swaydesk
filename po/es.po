@@ -2011,6 +2011,10 @@ msgid "cannot log out of this session (XDG_SESSION_ID is empty)"
 msgstr "no se puede cerrar esta sesión (XDG_SESSION_ID está vacío)"
 
 #: home/.local/bin/sway-caffeine
+msgid "swaydesk-caffeinate is not installed: caffeine needs it outside the Swaydesk session"
+msgstr "swaydesk-caffeinate no está instalado: la cafeína lo necesita fuera de la sesión de Swaydesk"
+
+#: home/.local/bin/sway-caffeine
 msgid "XDG_RUNTIME_DIR is not set"
 msgstr "XDG_RUNTIME_DIR no está definido"
 

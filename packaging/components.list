@@ -12,7 +12,7 @@ swaydesk-network: network network-popup
 swaydesk-bluetooth: bluetooth bluetooth-popup
 swaydesk-battery: battery-popup
 swaydesk-brightness: brightness-popup
-swaydesk-caffeine: caffeine-popup
+swaydesk-caffeine: caffeine-popup caffeinate
 swaydesk-system: system system-popup
 swaydesk-media: media-popup
 swaydesk-clipboard: clipboard-popup clip-store

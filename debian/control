@@ -156,8 +156,10 @@ Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-wid
 Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
 Description: Swaydesk caffeine popup
  Keeps the screen from locking and the computer from sleeping for 1 hour,
- 2 hours or always. It works through its own swayidle (sway-idle), which
- locks the screen with swaydesk-lock.
+ 2 hours or always. In the Swaydesk session it works through its own
+ swayidle (sway-idle), which locks the screen with swaydesk-lock; in a plain
+ Sway it leaves the user's swayidle alone and holds a Wayland idle
+ inhibitor (swaydesk-caffeinate) instead.
 
 Package: swaydesk-system
 Architecture: any

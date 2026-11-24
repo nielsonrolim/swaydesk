@@ -1279,6 +1279,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "swaydesk-caffeinate"
+version = "0.1.7"
+dependencies = [
+ "libc",
+ "swaydesk-common",
+ "wayland-client",
+ "wayland-protocols",
+ "wayland-protocols-wlr",
+]
+
+[[package]]
 name = "swaydesk-caffeine-popup"
 version = "0.1.7"
 dependencies = [

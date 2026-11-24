@@ -3,11 +3,18 @@
 # uso: sway-caffeine off|1h|2h|on|toggle|status|login
 #   status  off | forever | until <epoch> <HH:MM>
 #   login   no início da sessão: volta a desligada e sobe o swayidle normal
+# Na sessão do Swaydesk (SWAYDESK_SESSION, ou um Sway que abriu com o config do projeto, que chama o login),
+# troca o swayidle (o sway-idle, sem os tempos). Fora dela (um Sway puro, com o swayidle do usuário), nunca
+# mexe no swayidle: abre o sway-caffeinate, que segura um inibidor de
+# inatividade do Wayland, e o encerra ao desligar. Com todos os monitores desativados, desconectados ou (no Sway
+# 1.12) com a energia desligada, a inatividade pode disparar.
 set -uo pipefail
 if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
 run=${XDG_RUNTIME_DIR:-/nonexistent}
 state="$run/sway-caffeine"
 timerfile="$run/sway-caffeine-timer.pid"
+holder="$run/sway-caffeinate.pid"
+managed="$run/sway-caffeine-session"
 check=${SWAY_CAFFEINE_CHECK:-30}
 bin=$(dirname "$(readlink -f "$0")")
 
@@ -21,11 +28,64 @@ pid_of() {  # PID do arquivo, só se ainda for este script com o argumento dado
   echo "$pid"
 }
 
+# O login grava o SWAYSOCK do Sway que o chamou (ele traz o PID do Sway): um Sway puro aberto depois, na mesma
+# pasta de runtime, não é confundido com ele
+in_session() {
+  [[ -n ${SWAYDESK_SESSION:-} ]] && return 0
+  [[ -n ${SWAYSOCK:-} && -r $managed && $(<"$managed") == "$SWAYSOCK" ]]
+}
+
+# O PID do sway-caffeinate, só se for ele (o número pode ter sido reutilizado): o binário roda com o nome do
+# papel no argv[0] (ele se reabre assim), e só o arquivo de PID diz qual é, nunca o nome sozinho
+holder_pid() {
+  local pid args
+  [[ -r $holder ]] || return 1
+  pid=$(<"$holder")
+  [[ $pid =~ ^[0-9]+$ ]] || return 1
+  mapfile -d '' -t args 2>/dev/null <"/proc/$pid/cmdline" || return 1
+  [[ ${args[0]:-} == sway-caffeinate || ${args[0]:-} == */sway-caffeinate ]] || return 1
+  echo "$pid"
+}
+
+# O binário: ao lado deste script (o ~/.local/bin dos dotfiles) ou no PATH (o pacote)
+holder_bin() {
+  [[ -x $bin/swaydesk-caffeinate ]] && { echo "$bin/swaydesk-caffeinate"; return 0; }
+  command -v swaydesk-caffeinate
+}
+
+start_holder() {
+  holder_pid >/dev/null && return 0  # já segurando: ligar de novo não abre outro
+  local b
+  if ! b=$(holder_bin); then
+    echo "sway-caffeine: $(t 'swaydesk-caffeinate is not installed: caffeine needs it outside the Swaydesk session')" >&2
+    return 1
+  fi
+  # 8>&-: sem isso, o filho herdaria a trava e os próximos comandos esperariam para sempre
+  setsid "$b" </dev/null >/dev/null 2>&1 8>&- &
+  # Até ele publicar o PID (já conectado ao compositor), para o próximo comando o achar
+  local i
+  for (( i = 0; i < 30; i++ )); do
+    holder_pid >/dev/null && return 0
+    sleep 0.1
+  done
+  return 0
+}
+
+stop_holder() {
+  local pid
+  if pid=$(holder_pid); then kill "$pid" 2>/dev/null || true; fi
+}
+
 read_state() {
   # O vencimento vale mesmo antes de o temporizador conferir. Só dígitos: o valor entra numa
   # conta do bash, que executaria um comando escondido no arquivo
   local v
   v=$(cat "$state" 2>/dev/null) || { echo off; return; }
+  # Fora da sessão, ligada sem o sway-caffeinate no ar (ele saiu com a sessão anterior ou caiu): desligada
+  if ! in_session && ! holder_pid >/dev/null; then
+    echo off
+    return
+  fi
   if [[ $v == forever ]]; then
     echo forever
   elif [[ $v =~ ^[0-9]{1,12}$ ]] && (( 10#$v > $(date +%s) )); then
@@ -44,9 +104,25 @@ stop_timer() {
 # 8>&-: sem isso, o filho herdaria a trava e os próximos comandos esperariam para sempre
 start_idle() { setsid "$bin/sway-idle" </dev/null >/dev/null 2>&1 8>&- & }
 
+# Aplica o estado novo: na sessão, o swayidle certo; fora dela, o inibidor (e o swayidle do usuário fica)
+apply() {  # $1 = on ou off
+  if in_session; then
+    start_idle
+  elif [[ $1 == on ]]; then
+    start_holder
+  else
+    stop_holder
+  fi
+}
+
 turn_on() {  # $1 = forever ou segundos
   local was
   was=$(read_state)
+  # Fora da sessão, sem o sway-caffeinate, nada a ligar: o estado fica como estava
+  if ! in_session && ! holder_bin >/dev/null; then
+    start_holder
+    return 1
+  fi
   stop_timer
   if [[ $1 == forever ]]; then
     echo forever >"$state"
@@ -58,7 +134,7 @@ turn_on() {  # $1 = forever ou segundos
     echo $! >"$timerfile"
   fi
   # Trocar de 1 h para 2 h não precisa reiniciar nada
-  [[ $was == off ]] && start_idle
+  [[ $was == off ]] && apply on
   "$bin/waybar-notify" waybar-caffeine
 }
 
@@ -68,7 +144,9 @@ turn_off() {
   # Vencida, o arquivo ainda existe, e o swayidle continua sem os tempos
   if [[ -e $state ]]; then
     rm -f "$state"
-    start_idle
+    apply off
+  elif ! in_session; then
+    stop_holder  # um que ficou no ar sem o arquivo de estado
   fi
   "$bin/waybar-notify" waybar-caffeine
 }
@@ -98,9 +176,12 @@ case ${1:-} in
     serialize
     if [[ $(read_state) == off ]]; then turn_on forever; else turn_off; fi ;;
   login)
+    # Só o config do projeto chama: é ele quem cuida do swayidle neste Sway
     serialize
     stop_timer
     rm -f "$state"
+    stop_holder
+    if [[ -n ${SWAYSOCK:-} ]]; then printf '%s' "$SWAYSOCK" >"$managed"; else rm -f "$managed"; fi
     start_idle
     ;;
   expire)
@@ -112,11 +193,13 @@ case ${1:-} in
   timer)
     # Compara com o relógio: um sleep longo não contaria o tempo em que a máquina ficou suspensa
     need_runtime
-    trap 'exit 0' TERM INT HUP
+    # Leva o sleep junto: sem isso, ele ficaria órfão até o fim do intervalo
+    trap '[[ -n ${nap:-} ]] && kill "$nap" 2>/dev/null; exit 0' TERM INT HUP
     while [[ -f $state ]]; do
       [[ $(read_state) == off ]] && exec "$0" expire
       sleep "$check" &
-      wait $!
+      nap=$!
+      wait "$nap"
     done
     ;;
   *) echo "$(t 'usage: sway-caffeine off|1h|2h|on|toggle|status|login')" >&2; exit 2 ;;

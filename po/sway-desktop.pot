@@ -1999,6 +1999,10 @@ msgid "cannot log out of this session (XDG_SESSION_ID is empty)"
 msgstr ""
 
 #: home/.local/bin/sway-caffeine
+msgid "swaydesk-caffeinate is not installed: caffeine needs it outside the Swaydesk session"
+msgstr ""
+
+#: home/.local/bin/sway-caffeine
 msgid "XDG_RUNTIME_DIR is not set"
 msgstr ""
 

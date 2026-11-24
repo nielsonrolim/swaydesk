@@ -151,7 +151,8 @@ package_swaydesk-brightness() {
 
 package_swaydesk-caffeine() {
   pkgdesc="Sway desktop components - caffeine popup"
-  # A cafeína funciona pelo sway-idle (o swayidle com os tempos do Swaydesk), que bloqueia com o swaydesk-lock
+  # A cafeína funciona pelo sway-idle (o swayidle com os tempos do Swaydesk), que bloqueia com o swaydesk-lock;
+  # num Sway puro, pelo swaydesk-caffeinate (um inibidor do Wayland), sem mexer no swayidle do usuário
   depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell swayidle)
   optdepends=('swaydesk-lock: lock the screen when idle')
   _install swaydesk-caffeine

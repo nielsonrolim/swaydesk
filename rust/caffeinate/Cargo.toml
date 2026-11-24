@@ -1,0 +1,18 @@
+[package]
+name = "swaydesk-caffeinate"
+description = "Cafeína fora da sessão do Swaydesk: segura um inibidor de inatividade do Wayland em cada monitor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-caffeinate"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+libc.workspace = true
+wayland-client = "0.31"
+wayland-protocols = { version = "0.32", features = ["client", "unstable"] }
+wayland-protocols-wlr = { version = "0.3", features = ["client"] }

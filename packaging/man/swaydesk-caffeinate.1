@@ -1,0 +1,22 @@
+.TH SWAYDESK-CAFFEINATE 1 2026-11-24 "swaydesk 0.1.7" "Sway desktop components"
+.SH NAME
+swaydesk\-caffeinate \- hold an idle inhibitor for caffeine outside the Swaydesk session
+.SH SYNOPSIS
+.B swaydesk\-caffeinate
+.SH DESCRIPTION
+Outside the Swaydesk session (a plain Sway with the user's own swayidle), sway\-caffeine starts this program when caffeine is turned on and stops it when caffeine is turned off, instead of replacing swayidle. It keeps a Wayland idle inhibitor on a 1\(mu1 transparent surface on every monitor, which ignores clicks; swayidle and other idle managers that follow inhibitors do not lock, blank or suspend while it runs. Inside the Swaydesk session, caffeine works through its own swayidle and does not use it.
+.PP
+A monitor that is disabled or unplugged stops counting, and one that comes back (or a new one) gets its surface again. With every monitor powered off, disabled or unplugged, the idle timeouts can fire.
+.PP
+Only one runs at a time. It runs under the name sway\-caffeinate, writes its PID to the pidfile below, and exits when the Wayland session ends or on SIGTERM.
+.SH OPTIONS
+.TP
+.B \-\-check
+Exit 0 at once without doing anything: it checks that the binary and its libraries load.
+.SH FILES
+.TP
+.I $XDG_RUNTIME_DIR/sway\-caffeinate.pid
+The PID of the running instance.
+.SH SEE ALSO
+.BR swayidle (1),
+.BR swaydesk (7)
