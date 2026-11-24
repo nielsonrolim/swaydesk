@@ -2,6 +2,15 @@
 
 Each release is published as packages and, shortly after, as install images. Updates arrive through `apt upgrade` or `pacman -Syu`.
 
+## 0.1.6.1 — 2026-11-24
+
+Install images only: the Debian 13 and Arch images of 0.1.6. The packages stay at 0.1.6.
+
+### Install images
+
+- **The installer requires a password of at least 4 characters for the first user.**
+- They also bring the image changes listed under 0.1.6: no `/etc/calamares` left on the installed system on Debian 13 and Arch; on Arch, Portuguese formats with a zone in Brazil, the keyboard page starting on the US layout, and a GRUB menu without every firmware boot entry.
+
 ## 0.1.6 — 2026-11-24
 
 A drag animation in the dock, a Desktop Theme app that keeps your choices, and a theme set from outside the session that reaches the running session. The install images come with 0.1.6.1.
