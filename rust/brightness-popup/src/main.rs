@@ -6,8 +6,9 @@
 //! trocar de workspace fecha.
 use std::cell::{Cell, RefCell};
 use std::path::{Path, PathBuf};
-use std::process::{Child, ExitCode};
+use std::process::{Command, ExitCode};
 use std::rc::Rc;
+use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
 use gtk4::prelude::*;
@@ -45,6 +46,17 @@ fn backlight_dir(root: &Path) -> Option<PathBuf> {
     dirs.sort();
     dirs.into_iter().find(|d| {
         ["brightness", "max_brightness"].iter().all(|f| std::fs::File::open(d.join(f)).is_ok())
+    })
+}
+
+/// Os argumentos do brightnessctl para `sway-brightness set N`: o dispositivo pelo nome, o piso de 1% do
+/// máximo (no mínimo 1: em 0 muitos painéis apagam a luz de fundo) e o valor em %, só de 1 a 100.
+fn set_args(dir: &Path, value: i64) -> Option<Vec<String>> {
+    let max = read_number(&dir.join("max_brightness"))?;
+    let device = dir.file_name()?.to_string_lossy().into_owned();
+    let floor = (max / 100).max(1);
+    (1..=100).contains(&value).then(|| {
+        ["-q", "-d", &device, &format!("--min-value={floor}"), "set", &format!("{value}%")].map(String::from).to_vec()
     })
 }
 
@@ -119,7 +131,7 @@ struct Popup {
     pending: Cell<Option<i64>>,
     apply_source: RefCell<Option<glib::SourceId>>,
     /// O sway-brightness em andamento: um por vez, para o último valor valer
-    writer: RefCell<Option<Child>>,
+    writer: RefCell<Option<JoinHandle<()>>>,
     schedule_source: RefCell<Option<glib::SourceId>>,
     /// Fica até a próxima edição: a atualização não pode apagá-lo
     schedule_error: RefCell<Option<String>>,
@@ -419,7 +431,7 @@ impl Popup {
     }
 
     fn writing(&self) -> bool {
-        self.writer.borrow_mut().as_mut().is_some_and(|child| matches!(child.try_wait(), Ok(None)))
+        self.writer.borrow().as_ref().is_some_and(|writer| !writer.is_finished())
     }
 
     fn apply_brightness(self: &Rc<Self>) {
@@ -437,10 +449,28 @@ impl Popup {
     }
 
     fn set_brightness(&self, value: i64) {
-        // O sway-brightness garante o mesmo dispositivo e o piso, e avisa o ícone
-        let child = spawn(bin("sway-brightness"), &["set", &value.to_string()]).ok();
-        if let Some(mut old) = self.writer.replace(child) {
-            let _ = old.try_wait(); // o anterior já terminou: sem zumbi
+        // O `sway-brightness set` em Rust: o mesmo dispositivo e o piso, e o ícone avisado depois do
+        // brightnessctl, numa linha à parte (o GTK não espera)
+        let Some(args) = self.backlight.as_deref().and_then(|dir| set_args(dir, value)) else { return };
+        let writer = std::thread::spawn(move || {
+            if let Err(err) = Command::new("brightnessctl").args(&args).status() {
+                // Uma vez por processo: o slider tenta a cada movimento
+                static WARNED: std::sync::Once = std::sync::Once::new();
+                WARNED.call_once(|| eprintln!("{PROGRAM}: could not run brightnessctl: {err} (install the brightnessctl package)"));
+            }
+            notify_icon();
+        });
+        // O anterior já terminou (o writing() é conferido antes): o join não espera
+        if let Some(old) = self.writer.replace(Some(writer)) {
+            let _ = old.join();
+        }
+    }
+
+    /// Espera a escrita em curso, até `limit`.
+    fn wait_writer(&self, limit: Duration) {
+        let deadline = Instant::now() + limit;
+        while self.writing() && Instant::now() < deadline {
+            std::thread::sleep(Duration::from_millis(20));
         }
     }
 
@@ -483,13 +513,10 @@ impl Drop for Popup {
             if let Some(display) = gtk4::gdk::Display::default() {
                 display.flush();
             }
-            if let Some(child) = self.writer.borrow_mut().as_mut() {
-                let deadline = Instant::now() + Duration::from_secs(1);
-                while matches!(child.try_wait(), Ok(None)) && Instant::now() < deadline {
-                    std::thread::sleep(Duration::from_millis(20));
-                }
-            }
+            self.wait_writer(Duration::from_secs(1));
             self.set_brightness(value);
+            // A linha da escrita morre com o processo: espera o brightnessctl e o aviso ao ícone
+            self.wait_writer(Duration::from_secs(1));
         }
     }
 }
@@ -527,7 +554,7 @@ fn write_schedule(start: &str, end: &str) -> Option<String> {
 
 fn notify_icon() {
     // O ícone esconde a dica com o popup aberto
-    let _ = status(bin("waybar-notify"), &["waybar-brightness"]);
+    swaydesk_common::resident::notify_icons("waybar-brightness");
 }
 
 fn main() -> ExitCode {
@@ -562,6 +589,48 @@ mod tests {
         assert_eq!(parse_night(""), ("off".into(), false));
         assert_eq!(parse_schedule("19:30 05:45"), ("19:30".into(), "05:45".into()));
         assert_eq!(parse_schedule(""), ("18:00".into(), "06:00".into()));
+    }
+
+    /// Os mesmos argumentos do brightnessctl que o script home/.local/bin/sway-brightness passa no `set N`
+    /// (com um brightnessctl falso que grava o que recebe), e os mesmos valores recusados.
+    #[test]
+    fn set_args_match_the_sway_brightness_script() {
+        use std::os::unix::fs::PermissionsExt;
+        let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../home/.local/bin/sway-brightness");
+        let dir = std::env::temp_dir().join(format!("swaydesk-brightness-set-{}", std::process::id()));
+        let (root, fake, run) = (dir.join("backlight"), dir.join("bin"), dir.join("run"));
+        for d in [&root, &fake, &run] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        let calls = dir.join("calls");
+        let ctl = fake.join("brightnessctl");
+        std::fs::write(&ctl, format!("#!/bin/sh\nprintf '%s\\n' \"$*\" >> {}\n", calls.display())).unwrap();
+        std::fs::set_permissions(&ctl, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::create_dir_all(root.join("a_without_files")).unwrap();
+        let path = format!("{}:{}", fake.display(), std::env::var("PATH").unwrap_or_default());
+        for max in [937, 50, 120000] {
+            let dev = root.join("intel_backlight");
+            std::fs::create_dir_all(&dev).unwrap();
+            std::fs::write(dev.join("max_brightness"), format!("{max}\n")).unwrap();
+            std::fs::write(dev.join("brightness"), "10\n").unwrap();
+            assert_eq!(backlight_dir(&root), Some(dev.clone()));
+            for value in ["1", "42", "100", "0", "101", "-3"] {
+                let _ = std::fs::remove_file(&calls);
+                let out = std::process::Command::new("bash")
+                    .arg(&script)
+                    .args(["set", value])
+                    .env("BACKLIGHT_DIR", &root)
+                    .env("PATH", &path)
+                    .env("XDG_RUNTIME_DIR", &run)
+                    .output()
+                    .unwrap();
+                let from_script = std::fs::read_to_string(&calls).ok().map(|t| t.trim_end().to_string());
+                let ours = set_args(&dev, value.parse().unwrap()).map(|a| a.join(" "));
+                assert_eq!(ours, from_script, "max {max}, set {value}: {}", String::from_utf8_lossy(&out.stderr));
+                assert_eq!(ours.is_some(), out.status.success(), "max {max}, set {value}");
+            }
+        }
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

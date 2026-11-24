@@ -319,6 +319,19 @@ fn is_locale(value: &str) -> bool {
     b.len() == 5 && b[..2].iter().all(u8::is_ascii_lowercase) && b[2] == b'_' && b[3..].iter().all(u8::is_ascii_uppercase)
 }
 
+/// Os gerenciadores de arquivos conhecidos, na ordem de preferência, com o nome do .desktop de cada um.
+pub const FILE_MANAGERS: &[(&str, &str)] =
+    &[("nemo", "nemo"), ("thunar", "thunar"), ("nautilus", "org.gnome.Nautilus"), ("dolphin", "org.kde.dolphin")];
+
+/// O gerenciador de arquivos: o file_manager da config ou, sem ele, o primeiro dos FILE_MANAGERS instalado
+/// (`installed`), ou o thunar. O `get file_manager` do desktop-config, que o sway-files usa.
+pub fn file_manager(config: &Config, installed: impl Fn(&str) -> bool) -> String {
+    if !config.file_manager.is_empty() {
+        return config.file_manager.clone();
+    }
+    FILE_MANAGERS.iter().map(|(n, _)| *n).find(|n| installed(n)).unwrap_or("thunar").to_string()
+}
+
 /// O `#[0-9a-fA-F]{6}` (ACCENT) do Python.
 pub fn is_accent(value: &str) -> bool {
     value.len() == 7 && value.starts_with('#') && value[1..].bytes().all(|c| c.is_ascii_hexdigit())
@@ -633,6 +646,15 @@ pub fn font_css(system: Option<&str>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn file_manager_is_the_configs_then_the_first_installed_then_thunar() {
+        let mut config = Config::default();
+        assert_eq!(file_manager(&config, |n| n == "nautilus" || n == "dolphin"), "nautilus");
+        assert_eq!(file_manager(&config, |_| false), "thunar");
+        config.file_manager = "pcmanfm".into();
+        assert_eq!(file_manager(&config, |_| false), "pcmanfm");
+    }
 
     /// Os mesmos casos do EnabledTests do tests/test_desktop_config.py (a paridade Rust = Python).
     const ENABLED_TOML: &str = "accent = \"#199ca8\"\n[enabled]\ndock = false\napp_grid = true\nosd = \"no\"\nfoo = true\n\

@@ -17,7 +17,7 @@ use gtk4::prelude::*;
 use gtk4::{gio, glib, pango};
 use pipewire::{Entry, Kind, Node, State};
 use swaydesk_common::i18n::tr;
-use swaydesk_ui::cmd::{bin, spawn_detached, status};
+use swaydesk_ui::cmd::spawn_detached;
 use swaydesk_ui::list::{CSS_DEV, CSS_SCALE};
 use swaydesk_ui::{log, run_popup, PopupWindow};
 
@@ -512,7 +512,7 @@ fn relevant(line: &str) -> bool {
 
 fn notify_icon() {
     // O ícone do volume esconde a dica com o popup aberto
-    let _ = status(bin("waybar-notify"), &["waybar-volume"]);
+    swaydesk_common::resident::notify_icons("waybar-volume");
 }
 
 fn main() -> ExitCode {

@@ -1322,8 +1322,11 @@ impl Drawer {
 
     fn open_file(&self, path: &Path, is_dir: bool) {
         let ok = if is_dir {
-            let files = swaydesk_common::paths::helper("sway-files");
-            match files.is_file().then_some(files).or_else(|| glib::find_program_in_path("sway-files")) {
+            // O sway-files em Rust: o gerenciador da config (ou o primeiro instalado) com a pasta, solto; sem
+            // ele instalado, o app padrão do sistema para pastas, como o script
+            let installed = |name: &str| glib::find_program_in_path(name).is_some();
+            let manager = swaydesk_common::config::file_manager(&swaydesk_common::config::load(), installed);
+            match glib::find_program_in_path(&manager) {
                 Some(program) => run_detached(&[program.as_os_str(), path.as_os_str()]),
                 None => self.open_uri(path),
             }

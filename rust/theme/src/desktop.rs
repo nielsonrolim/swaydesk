@@ -17,8 +17,7 @@ use crate::run_timeout;
 pub const FALLBACK_THEME: &str = "adw-gtk3-dark";
 pub const LAST_FALLBACK_THEME: &str = "Adwaita-dark";
 /// Gerenciadores de arquivos conhecidos, na ordem da escolha automática, com o .desktop de cada um
-pub const FILE_MANAGERS: &[(&str, &str)] =
-    &[("nemo", "nemo"), ("thunar", "thunar"), ("nautilus", "org.gnome.Nautilus"), ("dolphin", "org.kde.dolphin")];
+pub use swaydesk_common::config::FILE_MANAGERS;
 /// Sem o tema de ícones da config instalado, o primeiro destes que estiver
 pub const FALLBACK_ICON_THEMES: &[&str] = &["Papirus-Dark", "Papirus", "Mint-Y", "Yaru", "breeze-dark", "breeze", "Adwaita"];
 /// O tema de ícones gerado para o Sway: herda o da config e tem as pastas na cor escolhida (papirus)
@@ -169,10 +168,7 @@ pub fn effective_icon_theme(config: &Config) -> String {
 
 /// O da config ou, sem ele, o primeiro instalado. Sem nenhum, o Thunar.
 pub fn file_manager(config: &Config) -> String {
-    if !config.file_manager.is_empty() {
-        return config.file_manager.clone();
-    }
-    FILE_MANAGERS.iter().map(|(n, _)| *n).find(|n| crate::which(n)).unwrap_or("thunar").to_string()
+    swaydesk_common::config::file_manager(config, crate::which)
 }
 
 /// Valor para os scripts em Bash; None se a chave não existir.

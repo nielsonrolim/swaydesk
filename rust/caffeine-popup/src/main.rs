@@ -155,7 +155,7 @@ impl Popup {
 
 fn notify_icon() {
     // O ícone esconde a dica com o popup aberto
-    let _ = status(bin("waybar-notify"), &["waybar-caffeine"]);
+    swaydesk_common::resident::notify_icons("waybar-caffeine");
 }
 
 fn main() -> ExitCode {

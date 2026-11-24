@@ -16,7 +16,6 @@ use gtk4::prelude::*;
 use gtk4::{gdk, gdk_pixbuf, gio, glib, pango};
 use swaydesk_common::i18n::tr;
 use swaydesk_media::{self as wm, art, State};
-use swaydesk_ui::cmd::{bin, status};
 use swaydesk_ui::list::{CSS_OPT, CSS_SCALE};
 use swaydesk_ui::{label, run_popup, PopupWindow};
 
@@ -580,7 +579,7 @@ impl Popup {
 
 fn notify_icon() {
     // O ícone esconde a dica com o popup aberto
-    let _ = status(bin("waybar-notify"), &["waybar-media"]);
+    swaydesk_common::resident::notify_icons("waybar-media");
 }
 
 fn main() -> ExitCode {

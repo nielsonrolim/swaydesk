@@ -20,7 +20,7 @@ use gtk4::{gio, glib, pango};
 use swaydesk_common::i18n::{decimal, tr};
 use swaydesk_common::{config, power};
 use swaydesk_system_logic::{self as ss, Key, Process, Sort};
-use swaydesk_ui::cmd::{bin, spawn_detached, status};
+use swaydesk_ui::cmd::spawn_detached;
 use swaydesk_ui::list::{link_button, set_status, Options, CSS_OPT};
 use swaydesk_ui::{label, log, run_popup, PopupWindow};
 
@@ -771,7 +771,7 @@ fn open_monitor_only() -> ExitCode {
 
 fn notify_icon() {
     // O ícone esconde a dica com o popup aberto
-    let _ = status(bin("waybar-notify"), &["waybar-system"]);
+    swaydesk_common::resident::notify_icons("waybar-system");
 }
 
 fn main() -> ExitCode {

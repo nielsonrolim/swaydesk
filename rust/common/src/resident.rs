@@ -91,6 +91,42 @@ pub fn remove_own_pid(pidfile: &Path, name: &str) {
     }
 }
 
+/// Avisa (SIGUSR1) os ícones de um módulo da Waybar, um processo por barra, de que algo mudou: o
+/// waybar-notify em Rust, para os popups não dependerem do script. Os arquivos são os mesmos
+/// (`$XDG_RUNTIME_DIR/<nome>.<pid>.pid`, gravados pelos ícones em bash, Python e Rust). Um arquivo que não
+/// aponta mais para o ícone (PID morto ou reutilizado) é apagado, como no script. A diferença: o nome vale
+/// também no argv[0] (o live_pid), e não só no argv[1], então o ícone em Rust (waybar-system) também recebe.
+/// É só um aviso: nunca falha. Devolve quantos foram avisados.
+pub fn notify_icons(name: &str) -> usize {
+    notify_icons_in(&runtime_dir(), name)
+}
+
+pub fn notify_icons_in(dir: &Path, name: &str) -> usize {
+    let Ok(entries) = std::fs::read_dir(dir) else { return 0 };
+    let prefix = format!("{name}.");
+    let mut notified = 0;
+    for entry in entries.flatten() {
+        let file_name = entry.file_name();
+        let file_name = file_name.to_string_lossy();
+        // O "<nome>.*.pid" do script: o nome, um ponto, algo e .pid (o <nome>.pid do residente não entra)
+        let Some(middle) = file_name.strip_prefix(&prefix).and_then(|rest| rest.strip_suffix(".pid")) else { continue };
+        if middle.is_empty() {
+            continue;
+        }
+        let path = entry.path();
+        // Só some o arquivo que não aponta mais para o ícone; um kill que falha (EPERM) num ícone vivo deixa o
+        // arquivo, como no script
+        match live_pid(&path, name) {
+            None => {
+                let _ = std::fs::remove_file(&path);
+            }
+            Some(_) if signal_pid(&path, name, libc::SIGUSR1) => notified += 1,
+            Some(_) => {}
+        }
+    }
+    notified
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -117,6 +153,89 @@ mod tests {
         assert_eq!(live_pid(&dir.join("missing.pid"), &own_name()), None);
         assert!(!signal_pid(&dir.join("missing.pid"), &own_name(), 0));
         std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// Os casos do waybar-notify: avisa o ícone vivo (pelo argv[0] e pelo argv[1], "bash <caminho>/<nome>"),
+    /// apaga o arquivo de PID morto, de lixo ou de outro programa, e não toca no <nome>.pid nem em outro nome.
+    #[test]
+    fn notify_icons_signals_live_icons_and_drops_stale_files() {
+        use std::os::unix::process::{CommandExt, ExitStatusExt};
+        let dir = tmp("notify");
+        let name = "waybar-media";
+        // O sleep morre com o SIGUSR1 (ação padrão), o que prova que o aviso chegou
+        let mut by_argv0 = std::process::Command::new("sleep").arg0(name).arg("30").spawn().unwrap();
+        let script = dir.join(name);
+        std::fs::write(&script, "sleep 30\n").unwrap();
+        let mut by_argv1 = std::process::Command::new("sh").arg(&script).spawn().unwrap();
+        let mut other = std::process::Command::new("sleep").arg("30").spawn().unwrap();
+        // O sh do segundo precisa ter lido o script; o cmdline já vale desde o exec
+        std::thread::sleep(Duration::from_millis(200));
+        let write = |file: &str, text: String| std::fs::write(dir.join(file), text).unwrap();
+        write(&format!("{name}.1.pid"), by_argv0.id().to_string());
+        write(&format!("{name}.2.pid"), by_argv1.id().to_string());
+        write(&format!("{name}.3.pid"), other.id().to_string());
+        write(&format!("{name}.4.pid"), "garbage".into());
+        write(&format!("{name}.5.pid"), "2147483000".into());
+        write(&format!("{name}.pid"), by_argv0.id().to_string()); // o do residente, fora do "<nome>.*.pid"
+        write("waybar-volume.6.pid", by_argv0.id().to_string()); // outro módulo
+        assert_eq!(notify_icons_in(&dir, name), 2);
+        assert_eq!(by_argv0.wait().unwrap().signal(), Some(libc::SIGUSR1));
+        assert_eq!(by_argv1.wait().unwrap().signal(), Some(libc::SIGUSR1));
+        let left: std::collections::BTreeSet<String> =
+            std::fs::read_dir(&dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
+        // Os vivos ficam; os de PID morto, lixo e outro programa somem
+        let expected = [name.to_string(), format!("{name}.1.pid"), format!("{name}.2.pid"), format!("{name}.pid"), "waybar-volume.6.pid".into()];
+        assert_eq!(left, expected.into_iter().collect());
+        let _ = other.kill();
+        let _ = other.wait();
+        assert_eq!(notify_icons_in(&dir.join("missing"), name), 0);
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    /// O mesmo resultado do script home/.local/bin/waybar-notify nos casos dele (ícone em bash ou Python,
+    /// "interpretador <caminho>/<nome>"): rodam os dois sobre pastas iguais, e sobram os mesmos arquivos e o
+    /// mesmo ícone avisado. O argv[0] só o Rust aceita (o teste acima).
+    #[test]
+    fn notify_icons_matches_the_waybar_notify_script() {
+        use std::os::unix::process::ExitStatusExt;
+        let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../home/.local/bin/waybar-notify");
+        assert!(script.is_file(), "{}", script.display());
+        let name = "waybar-brightness";
+        let run = |dir: &Path, rust: bool| -> (std::collections::BTreeSet<String>, Option<i32>) {
+            let icon_script = dir.join(name);
+            std::fs::write(&icon_script, "sleep 30\n").unwrap();
+            let mut icon = std::process::Command::new("sh").arg(&icon_script).spawn().unwrap();
+            let mut other = std::process::Command::new("sleep").arg("30").spawn().unwrap();
+            std::thread::sleep(Duration::from_millis(200));
+            let write = |file: &str, text: String| std::fs::write(dir.join(file), text).unwrap();
+            write(&format!("{name}.1.pid"), icon.id().to_string());
+            write(&format!("{name}.2.pid"), other.id().to_string());
+            write(&format!("{name}.3.pid"), "garbage".into());
+            write(&format!("{name}.4.pid"), "2147483000".into());
+            write("waybar-volume.5.pid", icon.id().to_string());
+            if rust {
+                notify_icons_in(dir, name);
+            } else {
+                let status = std::process::Command::new("bash").arg(&script).arg(name).env("XDG_RUNTIME_DIR", dir).status().unwrap();
+                assert!(status.success());
+            }
+            let signal = icon.wait().unwrap().signal();
+            let _ = other.kill();
+            let _ = other.wait();
+            let left = std::fs::read_dir(dir)
+                .unwrap()
+                .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+                .filter(|f| f.ends_with(".pid"))
+                .collect();
+            (left, signal)
+        };
+        let (bash_dir, rust_dir) = (tmp("notify-bash"), tmp("notify-rust"));
+        let bash = run(&bash_dir, false);
+        let rust = run(&rust_dir, true);
+        assert_eq!(bash.1, Some(libc::SIGUSR1));
+        assert_eq!(rust, bash);
+        std::fs::remove_dir_all(bash_dir).unwrap();
+        std::fs::remove_dir_all(rust_dir).unwrap();
     }
 
     #[test]
