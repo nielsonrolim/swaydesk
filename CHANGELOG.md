@@ -2,6 +2,40 @@
 
 Each release is published as packages and, shortly after, as install images. Updates arrive through `apt upgrade` or `pacman -Syu`.
 
+## 0.1.5 — 2026-11-23
+
+ç and the accents in Chromium and Electron apps through fcitx5, on by default in the install images, and a lock screen that no longer uses swaylock, so a password with an accent unlocks it.
+
+### Added
+
+- **ç and accents in Chromium and Electron apps (fcitx5)**: on Wayland, Chromium, Chrome, Vivaldi, Brave and Electron apps (VS Code, Slack, Discord) ignore `~/.XCompose` and compose with their own table, so `'` + `c` gave `ć`. With `input_method = true` in `[enabled]` of `~/.config/swaydesk/config.toml` and the `fcitx5` package installed, the session starts fcitx5. Browsers opened with `--enable-wayland-ime --wayland-text-input-version=3` then give `ç`.
+  - The setting is **off in the packages and on in the Debian 13 and Arch install images**, which ship `/etc/swaydesk/config.toml`, a new system-wide layer for `[enabled]` defaults. A key in your own `config.toml` always wins.
+  - fcitx5 stays out of the way. Its shortcuts are off (Super+Space still switches the layout in Sway), and so are its tray icon and notifications. It uses the session's keyboard layout, and GTK apps keep composing on their own.
+  - On Arch, the flag files that browser launchers read (`chromium-flags.conf`, `code-flags.conf`…) are created in `~/.config`, only for what's installed and only if missing. A browser installed in the middle of a session gets its file at the next login.
+  - Nothing happens when another input method (IBus, for example) is configured or running. Set `input_method = false` to turn it off at the next login.
+
+### Changed
+
+- **The lock screen no longer uses swaylock**, which has no dead keys: a password with an accent typed as `´` then a letter never unlocked it.
+  - The lock tries Swaydesk's own lock first; on Debian 13 that is the GTK 3 version, now part of `swaydesk-session`. Its last resort is now **gtklock**, a dependency on every distribution.
+  - If a lock stops without unlocking, another one takes over, so the desktop never shows in between.
+  - If no lock can start, a critical notification says the screen is not locked.
+- **The lock screen has its own login rules**, `/etc/pam.d/swaydesk-lock` (the same as the system login), so it no longer depends on swaylock's file.
+- **The password field never goes through an input method**, even with fcitx5 or IBus running, so typed keys go straight into the field.
+- **Wrong password**: the lock screen now shows everything the system says. On Arch, after three wrong passwords, that means "The account is locked due to 3 failed logins. (10 minutes left to unlock)", and the message stays on screen. The short wait after three misses now counts down ("Too many attempts: try again in N s").
+
+### Fixed
+
+- **Dragging a pinned icon in the dock** now follows the pointer: the icon used to run ahead of it, and a slow drag or a drop past either end of the dock stopped short of where you let go.
+
+### Install images
+
+- The Debian 13 and Arch images bring `fcitx5` and turn the input method on through `/etc/swaydesk/config.toml`, in the live session and on the installed system (see **Added**).
+
+### Upgrading from 0.1.4
+
+- After the upgrade, no Swaydesk package needs swaylock any more. It stays installed: sway only suggests it, so `apt autoremove` and `pacman -Qdt` leave it alone. If nothing else of yours uses it, remove it with `sudo apt remove swaylock` on Debian and Ubuntu, or `sudo pacman -Rns swaylock` on Arch.
+
 ## 0.1.4 — 2026-11-23
 
 The accent color reaches GTK apps, apps in your autostart folder start with the session, desktops without a battery get the power profiles, and systems installed from the 0.1.3.x images boot again under Secure Boot after losing their boot entry.

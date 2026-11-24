@@ -2,6 +2,40 @@
 
 O que muda em cada versão do Swaydesk, em português a partir da 0.1.4. As versões anteriores estão no [CHANGELOG.md](CHANGELOG.md), em inglês. Cada versão sai primeiro em pacotes e, logo depois, em imagens de instalação. As atualizações chegam pelo `apt upgrade` ou pelo `pacman -Syu`.
 
+## 0.1.5 — 2026-11-23
+
+ç e acentos no Chromium e nos apps Electron pelo fcitx5, ligado por padrão nas imagens de instalação, e uma tela de bloqueio que não usa mais o swaylock, e por isso uma senha com acento a destrava.
+
+### Novo
+
+- **ç e acentos no Chromium e nos apps Electron (fcitx5)**: no Wayland, o Chromium, o Chrome, o Vivaldi, o Brave e os apps Electron (VS Code, Slack, Discord) ignoram o `~/.XCompose` e compõem com uma tabela própria, e `'` + `c` dava `ć`. Com `input_method = true` no `[enabled]` do `~/.config/swaydesk/config.toml` e o pacote `fcitx5` instalado, a sessão sobe o fcitx5. Os navegadores abertos com `--enable-wayland-ime --wayland-text-input-version=3` passam a dar `ç`.
+  - A opção vem **desligada nos pacotes e ligada nas imagens de instalação do Debian 13 e do Arch**. As imagens trazem o `/etc/swaydesk/config.toml`, uma nova camada do sistema para os padrões do `[enabled]`. Uma chave no seu próprio `config.toml` sempre vence.
+  - O fcitx5 não atrapalha. Os atalhos dele ficam desligados (o Super+Espaço continua trocando o layout no Sway), assim como o ícone na bandeja e os avisos. Ele usa o layout de teclado da sessão, e os apps GTK continuam compondo sozinhos.
+  - No Arch, os arquivos de opções que os lançadores dos navegadores leem (`chromium-flags.conf`, `code-flags.conf`…) são criados em `~/.config`, só para o que está instalado e só se não existirem. Um navegador instalado no meio da sessão ganha o arquivo no próximo login.
+  - Nada acontece se outro método de entrada (o IBus, por exemplo) estiver configurado ou rodando. Para desligar, `input_method = false`, a partir do próximo login.
+
+### Mudou
+
+- **A tela de bloqueio não usa mais o swaylock**, que não tem teclas mortas: uma senha com acento digitado como `´` e depois a letra nunca o destravava.
+  - O bloqueio tenta primeiro o próprio Swaydesk; no Debian 13, é a versão em GTK 3, que agora faz parte do `swaydesk-session`. O último recurso agora é o **gtklock**, dependência em todas as distribuições.
+  - Se um bloqueio parar sem desbloquear, outro assume, e a área de trabalho nunca aparece no meio.
+  - Se nenhum bloqueio conseguir subir, uma notificação crítica avisa que a tela não está bloqueada.
+- **A tela de bloqueio tem regras de login próprias**, o `/etc/pam.d/swaydesk-lock` (iguais às do login do sistema), e não depende mais do arquivo do swaylock.
+- **O campo de senha nunca passa por um método de entrada**, mesmo com o fcitx5 ou o IBus rodando, e as teclas vão direto para o campo.
+- **Senha errada**: a tela de bloqueio agora mostra tudo o que o sistema diz. No Arch, depois de três senhas erradas, isso quer dizer "The account is locked due to 3 failed logins. (10 minutes left to unlock)", e a mensagem fica na tela. A espera curta depois de três erros agora tem contagem ("Muitas tentativas: tente de novo em N s").
+
+### Corrigido
+
+- **Arrastar um ícone fixado na dock** agora acompanha o ponteiro: o ícone corria na frente dele, e um arraste lento ou um ícone solto além de uma das pontas da dock parava antes de onde você o soltou.
+
+### Imagens de instalação
+
+- As imagens do Debian 13 e do Arch trazem o `fcitx5` e ligam o método de entrada pelo `/etc/swaydesk/config.toml`, na sessão live e no sistema instalado (veja **Novo**).
+
+### Atualizando da 0.1.4
+
+- Depois da atualização, nenhum pacote do Swaydesk precisa mais do swaylock. Ele continua instalado: o sway só o sugere, e por isso o `apt autoremove` e o `pacman -Qdt` não mexem nele. Se nada mais seu o usar, remova com `sudo apt remove swaylock` no Debian e no Ubuntu, ou `sudo pacman -Rns swaylock` no Arch.
+
 ## 0.1.4 — 2026-11-23
 
 A cor de destaque chega aos apps GTK, os apps da pasta de início automático abrem com a sessão, os computadores sem bateria ganham os perfis de energia, e os sistemas instalados pelas imagens 0.1.3.x voltam a dar boot com o Secure Boot depois de perder a entrada de boot.

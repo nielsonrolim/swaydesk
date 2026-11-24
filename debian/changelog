@@ -1,8 +1,22 @@
-swaydesk (0.1.5-1) UNRELEASED; urgency=medium
+swaydesk (0.1.5-1) unstable; urgency=medium
 
-  * Development after 0.1.4.
+  * Release 0.1.5.
+  * fcitx5 as the session's input method behind a new [enabled]
+    input_method key (off by default), so ç and the accents work in
+    Chromium and Electron apps; /etc/swaydesk/config.toml is a new
+    system layer for [enabled] defaults, which the install images use
+    to turn it on.
+  * The lock no longer uses swaylock: Swaydesk's own lock first (on
+    Debian 13 the GTK 3 one, now in swaydesk-session), gtklock as the
+    last resort (a dependency), another lock taking over if one stops,
+    and a critical notification if none starts.
+  * The lock has its own PAM service, /etc/pam.d/swaydesk-lock; its
+    password field never goes through an input method; a refused try
+    shows the full PAM message, and the wait after three misses counts
+    down.
+  * Fixed: dragging a pinned icon in the dock follows the pointer.
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Mon, 23 Nov 2026 06:00:32 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Mon, 23 Nov 2026 20:36:47 -0300
 
 swaydesk (0.1.4-1) unstable; urgency=medium
 
