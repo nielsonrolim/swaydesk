@@ -324,6 +324,62 @@ impl Slide {
     }
 }
 
+// --- Animação do arrasto ---
+
+/// A duração de cada animação do arrasto: levantar, abrir espaço e assentar.
+pub const DRAG_ANIMATION_MS: i64 = 180;
+/// O item arrastado, levantado: um pouco maior e um pouco transparente.
+pub const LIFT_SCALE: f64 = 1.1;
+pub const LIFT_OPACITY: f64 = 0.85;
+
+/// O deslocamento na tela de um item que volta ao lugar dele (0) desacelerando: o vizinho que abre espaço
+/// e o arrastado que assenta ao ser solto. Só o desenho anda; o lugar (e os cliques) já é o novo.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct Glide {
+    pub from: f64,
+    pub started: i64,
+}
+
+impl Glide {
+    /// Parte de `from` pixels do lugar em now.
+    pub fn new(from: f64, now: i64) -> Glide {
+        if from.abs() < 0.5 { Glide::default() } else { Glide { from, started: now } }
+    }
+
+    /// O deslocamento em now (ms).
+    pub fn value(&self, now: i64) -> f64 {
+        let t = ((now - self.started) as f64 / DRAG_ANIMATION_MS as f64).clamp(0.0, 1.0);
+        if self.from == 0.0 || t >= 1.0 { 0.0 } else { self.from * (1.0 - ease_out(t)) }
+    }
+
+    pub fn running(&self, now: i64) -> bool {
+        self.from != 0.0 && now - self.started < DRAG_ANIMATION_MS
+    }
+
+    /// O lugar do item mudou `delta` pixels (o antigo menos o novo): na tela ele continua onde estava e
+    /// volta dali ao lugar novo, mesmo no meio de um deslize.
+    pub fn moved(&mut self, delta: f64, now: i64) {
+        *self = Glide::new(self.value(now) + delta, now);
+    }
+}
+
+/// Quanto o item arrastado sai do lugar dele (que começa em `base`) para ficar sob o ponteiro: `pointer`
+/// é o x do ponteiro na fileira e `grab`, o ponto do item onde o arrasto o pegou. Ele não passa das
+/// pontas da fileira (`row` de largura): fora dela, o GTK 3 o cortaria, e não há lugar ali.
+pub fn held_shift(pointer: f64, grab: f64, base: f64, width: f64, row: f64) -> f64 {
+    (pointer - grab).clamp(0.0, (row - width).max(0.0)) - base
+}
+
+/// A escala do item levantado `progress` (0 a 1).
+pub fn lift_scale(progress: f64) -> f64 {
+    1.0 + (LIFT_SCALE - 1.0) * progress
+}
+
+/// A opacidade do item levantado `progress` (0 a 1).
+pub fn lift_opacity(progress: f64) -> f64 {
+    1.0 - (1.0 - LIFT_OPACITY) * progress
+}
+
 /// A parte da dock que fica na tela enquanto ela está mapeada, em porcentagem da altura.
 pub const SLIDE_MIN_VISIBLE_PERCENT: i32 = 12;
 

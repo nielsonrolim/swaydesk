@@ -9,6 +9,7 @@
 //! para a grade), e o processo roda com o nome `sway-dock` no argv[0] e no comm: o `sway-theme`, a
 //! grade e o `sway-dock pin` o acham do mesmo jeito.
 mod dock;
+mod drag_view;
 
 use std::cell::RefCell;
 use std::os::unix::process::CommandExt;

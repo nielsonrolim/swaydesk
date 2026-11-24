@@ -383,3 +383,68 @@ fn icon_paths_reexported() {
     assert_eq!(icon_paths("/x/org.example.App").len(), 4);
     let _: HashMap<(), ()> = HashMap::new();
 }
+
+// --- Animação do arrasto ---
+
+#[test]
+fn glide_eases_from_the_old_place_to_zero() {
+    let glide = Glide::new(56.0, 1000);
+    assert_eq!(glide.value(1000), 56.0);
+    let half = glide.value(1000 + DRAG_ANIMATION_MS / 2);
+    assert!(half > 0.0 && half < 56.0 / 2.0, "ease-out: past half the way at half the time ({half})");
+    assert_eq!(glide.value(1000 + DRAG_ANIMATION_MS), 0.0);
+    assert!(glide.running(1000 + DRAG_ANIMATION_MS - 1));
+    assert!(!glide.running(1000 + DRAG_ANIMATION_MS));
+    assert_eq!(Glide::new(-56.0, 0).value(10).signum(), -1.0);
+}
+
+#[test]
+fn glide_at_rest_is_not_running() {
+    assert!(!Glide::default().running(0));
+    assert_eq!(Glide::default().value(5), 0.0);
+    assert_eq!(Glide::new(0.3, 0), Glide::default(), "less than half a pixel: nothing to animate");
+}
+
+#[test]
+fn glide_moved_keeps_the_place_on_screen() {
+    let mut glide = Glide::new(56.0, 0);
+    let now = DRAG_ANIMATION_MS / 3;
+    let seen = glide.value(now);
+    // A slot back again mid-way: the drawing stays where it was, now 56 px further from the new slot
+    glide.moved(-56.0, now);
+    assert!((glide.value(now) - (seen - 56.0)).abs() < 1e-9);
+    assert!(glide.running(now + 1));
+    // Back to the slot it was drawn at: nothing left
+    let mut back = Glide::new(56.0, 0);
+    back.moved(-56.0, 0);
+    assert_eq!(back, Glide::default());
+}
+
+#[test]
+fn held_shift_follows_the_pointer_inside_the_row() {
+    // Row of 4 slots of 56 px; the item in slot 1 (base 56), grabbed 20 px in
+    assert_eq!(held_shift(96.0, 20.0, 56.0, 56.0, 224.0), 20.0);
+    assert_eq!(held_shift(76.0, 20.0, 56.0, 56.0, 224.0), 0.0);
+    // Never past the ends of the row
+    assert_eq!(held_shift(-50.0, 20.0, 56.0, 56.0, 224.0), -56.0);
+    assert_eq!(held_shift(400.0, 20.0, 56.0, 56.0, 224.0), 224.0 - 56.0 - 56.0);
+    // A row narrower than the item: stays at 0
+    assert_eq!(held_shift(30.0, 10.0, 0.0, 56.0, 40.0), 0.0);
+}
+
+#[test]
+fn lift_scale_and_opacity() {
+    assert_eq!(lift_scale(0.0), 1.0);
+    assert!((lift_scale(1.0) - LIFT_SCALE).abs() < 1e-9);
+    assert_eq!(lift_opacity(0.0), 1.0);
+    assert!((lift_opacity(1.0) - LIFT_OPACITY).abs() < 1e-9);
+    // The lift reuses Slide: up and back down within the drag animation time
+    let mut lift = Slide::default();
+    assert!(lift.start(1.0, 0));
+    assert!(lift.step(DRAG_ANIMATION_MS / 2, DRAG_ANIMATION_MS));
+    assert!(!lift.step(DRAG_ANIMATION_MS, DRAG_ANIMATION_MS));
+    assert_eq!(lift.progress, 1.0);
+    assert!(lift.start(0.0, 1000));
+    assert!(!lift.step(1000 + DRAG_ANIMATION_MS, DRAG_ANIMATION_MS));
+    assert_eq!(lift.progress, 0.0);
+}

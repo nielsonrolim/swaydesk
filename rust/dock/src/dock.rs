@@ -21,6 +21,7 @@ use swaydesk_common::{config, i18n::tr, resident};
 use swaydesk_dock_logic as dl;
 use swaydesk_ui::cmd;
 
+use crate::drag_view::DragView;
 use crate::{requests_path, warn};
 
 const REFRESH: Duration = Duration::from_millis(100);
@@ -59,6 +60,8 @@ window.hotspot { background: rgba(0, 0, 0, 0.01); }
   padding: 4px 4px 2px 4px; margin: 0 4px;
 }
 .dock-item:hover { background-color: #4c4c50; }
+/* Arrastado, com a animação ligada: levantado (a escala e a opacidade vêm do DragView) */
+.dock-item.dragging { background-color: #4c4c50; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45); }
 .glyph { font-family: "Symbols Nerd Font"; }
 .dots { min-height: 4px; }
 .dot { min-width: 4px; min-height: 4px; border-radius: 2px; background: #8a8a8f; }
@@ -387,6 +390,8 @@ pub struct Bar {
     window: gtk4::Window,
     root: gtk4::Box,
     items: gtk4::Box,
+    /// O mesmo widget de items: a animação do arrasto
+    drag_view: DragView,
     hotspot: Option<(gtk4::Window, gtk4::Box)>,
     dock_motion: gtk4::EventControllerMotion,
     launcher_tip: RefCell<Option<Rc<Tip>>>,
@@ -438,7 +443,8 @@ impl Bar {
         }
         let root = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
         root.set_widget_name("dock");
-        let items = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
+        let drag_view = DragView::default();
+        let items = drag_view.clone().upcast::<gtk4::Box>();
         root.append(&items);
         window.set_child(Some(&root));
         let dock_motion = gtk4::EventControllerMotion::new();
@@ -462,6 +468,7 @@ impl Bar {
             window,
             root,
             items,
+            drag_view,
             hotspot,
             dock_motion,
             launcher_tip: RefCell::new(None),
@@ -678,7 +685,7 @@ impl Bar {
                     return;
                 }
                 it.dragging.set(true);
-                bar.start_drag();
+                bar.start_drag(&it, px);
             }
             if let Some(point) = it.widget.compute_point(&bar.items, &graphene::Point::new(x as f32, y as f32)) {
                 bar.drag_to(&it, point.x() as f64);
@@ -1215,9 +1222,13 @@ impl Bar {
             .collect()
     }
 
-    fn start_drag(&self) {
+    /// O arrasto de `it` começou, pego no ponto `grab` (x no item).
+    fn start_drag(&self, it: &Rc<DockItem>, grab: f64) {
         self.dragging.set(true);
         self.drag_moved.set(now_ms());
+        if self.animations() {
+            self.drag_view.lift(it.widget.upcast_ref(), grab);
+        }
         self.update_visibility();
         if let Some(app) = self.app.upgrade() {
             app.watch_stuck();
@@ -1226,6 +1237,7 @@ impl Bar {
 
     fn drag_to(&self, it: &Rc<DockItem>, x: f64) {
         self.drag_moved.set(now_ms());
+        self.drag_view.follow(x);
         let pinned = self.pinned_items();
         // O lugar de cada um: a borda (bounds, com o padding; o width() do GTK 4 o deixa de fora, e o
         // lugar ficava 8 px menor) mais a margem do CSS
@@ -1245,6 +1257,7 @@ impl Bar {
 
     fn end_drag(self: &Rc<Self>) {
         self.dragging.set(false);
+        self.drag_view.release(); // assenta no lugar, também num arrasto cancelado ou preso
         let order: Vec<String> = self.pinned_items().iter().map(|b| b.item.borrow().key.clone()).collect();
         if let Some(app) = self.app.upgrade() {
             app.set_pin_order(order);
@@ -1299,9 +1312,10 @@ impl Bar {
             Some(_) => "off screen",
         };
         let slide = self.slide.borrow();
+        let (shifted, animating) = self.drag_view.state();
         format!(
             "hover_dock={} hover_hotspot={} menu={menu} dragging={} overlapped={} visible={} size={}x{} \
-             slide={:.2}->{:.2} pending={}",
+             slide={:.2}->{:.2} pending={} shifted={shifted} drag_animating={animating}",
             self.hover_dock.get(),
             self.hover_hotspot.get(),
             self.dragging.get(),
