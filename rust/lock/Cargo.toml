@@ -16,7 +16,6 @@ swaydesk-lock-logic.workspace = true
 swaydesk-media.workspace = true
 gio.workspace = true
 gtk4.workspace = true
-gtk4-layer-shell.workspace = true
 # As versões, sem o gtk::init que o crate exige (o --check roda sem tela)
 gtk4-layer-shell-sys = "0.3"
 libc.workspace = true
