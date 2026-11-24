@@ -10,7 +10,6 @@
 use std::cell::{Cell, RefCell};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::ffi::OsStrExt;
-use std::os::unix::process::CommandExt;
 use std::path::Path;
 use std::process::{Command, ExitCode, Stdio};
 use std::rc::Rc;
@@ -519,12 +518,6 @@ fn set_blocked(blocked: bool) {
 /// `run_popup` (a dock): chame antes de abrir linhas e do gtk4::init.
 pub use swaydesk_common::renderer::use_cairo_renderer;
 
-fn reexec_as(program: &str) {
-    let Ok(exe) = std::env::current_exe() else { return };
-    let err = Command::new(exe).arg0(program).args(std::env::args_os().skip(1)).exec();
-    eprintln!("{program}: could not run as {program}: {err}");
-}
-
 /// Abre o popup, ou fecha o que já estiver aberto (abrir de novo fecha), e fecha os outros popups da
 /// barra. `build` monta a janela e devolve o que a mantém viva; `notify`, chamado ao abrir e ao fechar
 /// (o ícone esconde a dica com o popup aberto).
@@ -555,10 +548,7 @@ pub fn run_single<T>(
     notify: impl Fn(),
 ) -> ExitCode {
     resident::set_process_name(program);
-    let argv0 = std::env::args_os().next().unwrap_or_default();
-    if Path::new(&argv0).file_name() != Some(program.as_ref()) {
-        reexec_as(program); // o /proc mostra o nome do programa a quem confere o arquivo de PID
-    }
+    resident::run_as(program); // o /proc mostra o nome do programa a quem confere o arquivo de PID
     // Um 2º clique (ou outro popup abrindo) manda SIGTERM durante a subida, antes do handler do GLib: com a
     // ação padrão o processo morreria sem apagar o pidfile. Bloqueados até lá, o sinal fica pendente e
     // é entregue ao GLib, que fecha limpo. Depois do reexec: a máscara passa pelo exec

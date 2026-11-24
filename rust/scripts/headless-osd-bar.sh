@@ -12,6 +12,7 @@
 #   anota cada clique), e o WAYLAND_DEBUG nunca mostra a região inteira (set_input_region(nil)).
 #   O Python precisa do python3-cairo para a região, que o contêiner não tem: nele, só o Rust é conferido
 #   nesse ponto.
+# Depois, o Rust aberto como /bin/swaydesk-osd-bar (o nome do pacote): o sway-osd ainda o acha.
 # Sai com 1 se algo falhar.
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
@@ -99,5 +100,19 @@ for impl in ${IMPLS:-rust python}; do
   [ "$impl" = rust ] && expect "$impl: nunca a região inteira" "0" "$(grep -c 'set_input_region(nil)' "$log")"
   expect "$impl: o PID sai junto" "" "$(cat "$XDG_RUNTIME_DIR/sway-osd-bar.pid" 2>/dev/null)"
 done
+# Aberto pelo nome do pacote (o PATH, um `exec swaydesk-osd-bar` num Sway puro): ele roda de novo como
+# sway-osd-bar, e o sway-osd, que confere o cmdline, ainda o acha
+rm -f "$XDG_RUNTIME_DIR"/sway-osd-bar.*
+/bin/swaydesk-osd-bar 2>/tmp/wl-package-name.log & bar=$!
+for _ in $(seq 100); do [ -s "$XDG_RUNTIME_DIR/sway-osd-bar.pid" ] && break; sleep 0.1; done
+sleep 0.5
+expect "swaydesk-osd-bar: o argv[0] vira sway-osd-bar" "sway-osd-bar" "$(tr '\0' '\n' </proc/$bar/cmdline | head -n 1)"
+hidden=$(card_pixel)
+echo 'Volume: 0.40' > /tmp/volume
+"$HOME/.local/bin/sway-osd" volume up
+sleep 0.4
+expect "swaydesk-osd-bar: o sway-osd grava o estado" "volume 40" "$(cat "$XDG_RUNTIME_DIR/sway-osd-bar.state" 2>/dev/null)"
+[ "$(card_pixel)" != "$hidden" ] && echo "ok      swaydesk-osd-bar: o sway-osd o faz aparecer" || { echo "FALHOU  swaydesk-osd-bar: não apareceu"; failed=1; }
+kill $bar 2>/dev/null; wait $bar 2>/dev/null
 kill $under 2>/dev/null
 exit "$failed"

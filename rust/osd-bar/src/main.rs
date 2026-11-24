@@ -205,6 +205,8 @@ fn main() -> ExitCode {
     if std::env::args().skip(1).any(|a| a == "--check") {
         return ExitCode::SUCCESS;
     }
+    // Aberto como swaydesk-osd-bar (o PATH, um `exec` no config de um Sway puro), o sway-osd não o acharia
+    resident::run_as(PROGRAM);
     resident::set_process_name(PROGRAM);
     let run = run_dir();
     let Some(_lock) = single_instance(&run.join(format!("{PROGRAM}.lock"))) else { return ExitCode::SUCCESS };

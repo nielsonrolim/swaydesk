@@ -148,5 +148,17 @@ for impl in rust python; do
   still_open "$impl: bateria"
   close_popup
 done
+
+# Aberto pelo nome do pacote (a Ajuda, a dock e o sessionmgr abrem /usr/bin/swaydesk-<x> pelo paths::component):
+# o run_single roda de novo com o nome do papel, e quem confere o arquivo de PID pelo cmdline o vê aberto
+echo off >"$state/caffeine"
+/bin/swaydesk-caffeine-popup 2>>/tmp/popup.err & popup=$!
+for _ in $(seq 50); do [ -s "$XDG_RUNTIME_DIR/waybar-caffeine-popup.pid" ] && break; sleep 0.1; done
+sleep 1.2
+expect "swaydesk-caffeine-popup: o argv[0] vira waybar-caffeine-popup" "waybar-caffeine-popup" \
+  "$(tr '\0' '\n' </proc/$popup/cmdline | head -n 1)"
+expect "swaydesk-caffeine-popup: o popup_open do ícone o vê aberto" "True" \
+  "$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import waybar_common as w; print(w.popup_open("waybar-caffeine-popup"))' "$HOME/.local/bin")"
+close_popup
 cat /tmp/popup.err 2>/dev/null | grep -v '^$' | head -20
 exit "$failed"

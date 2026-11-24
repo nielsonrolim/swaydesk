@@ -79,6 +79,26 @@ pub fn set_process_name(name: &str) -> bool {
     unsafe { libc::prctl(libc::PR_SET_NAME, name.as_ptr() as libc::c_ulong, 0, 0, 0) == 0 }
 }
 
+/// Se o argv[0] já é o nome do papel (`program`): só o nome do arquivo conta, o caminho não.
+pub fn runs_as(argv0: &OsStr, program: &str) -> bool {
+    Path::new(argv0).file_name() == Some(OsStr::new(program))
+}
+
+/// Roda de novo com o nome do papel no argv[0], se ainda não estiver com ele: quem confere o arquivo de PID
+/// lê o /proc/<pid>/cmdline (o live_pid, o sway-osd, o waybar_common.py), e um componente aberto como
+/// `swaydesk-<x>` (pelo PATH, pelo paths::component) não seria achado. O comm (set_process_name) não basta:
+/// ele não muda o cmdline. Só volta se não conseguir, com um aviso.
+pub fn run_as(program: &str) {
+    use std::os::unix::process::CommandExt;
+    let argv0 = std::env::args_os().next().unwrap_or_default();
+    if runs_as(&argv0, program) {
+        return;
+    }
+    let Ok(exe) = std::env::current_exe() else { return };
+    let err = std::process::Command::new(exe).arg0(program).args(std::env::args_os().skip(1)).exec();
+    eprintln!("{program}: could not run as {program}: {err}");
+}
+
 /// Grava o PID deste processo.
 pub fn write_pid(pidfile: &Path) -> std::io::Result<()> {
     std::fs::write(pidfile, std::process::id().to_string())
@@ -139,6 +159,16 @@ mod tests {
 
     fn own_name() -> String {
         std::env::current_exe().unwrap().file_name().unwrap().to_string_lossy().into_owned()
+    }
+
+    #[test]
+    fn runs_as_compares_only_the_file_name() {
+        assert!(runs_as(OsStr::new("sway-osd-bar"), "sway-osd-bar"));
+        assert!(runs_as(OsStr::new("/usr/libexec/swaydesk/sway-osd-bar"), "sway-osd-bar"));
+        // O nome do pacote no PATH ou no /usr/bin precisa do reexec: o sway-osd confere o cmdline
+        assert!(!runs_as(OsStr::new("swaydesk-osd-bar"), "sway-osd-bar"));
+        assert!(!runs_as(OsStr::new("/usr/bin/swaydesk-osd-bar"), "sway-osd-bar"));
+        assert!(!runs_as(OsStr::new(""), "sway-osd-bar"));
     }
 
     #[test]
