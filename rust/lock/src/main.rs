@@ -516,7 +516,10 @@ impl App {
         }
         let (width, height) = window.size.get();
         log(&format!("monitor {} ({width}x{height})", monitor.connector().unwrap_or_default()));
-        window.window.present();
+        // set_visible, e não present: o present() pede o foco e o startup id ao GdkToplevel, que a superfície do
+        // bloqueio (ext-session-lock) não é (dois Gdk-CRITICAL a cada bloqueio). O Sway dá o teclado à superfície
+        // do bloqueio sozinho, e o campo pega o foco abaixo
+        window.window.set_visible(true);
         if let Some(photo) = self.photo.borrow().as_ref() {
             window.set_photo(photo);
         }
