@@ -5,6 +5,17 @@
 export DH_VERBOSE = 1
 export CARGO_HOME = $(CURDIR)/debian/cargo-home
 export CARGO_TARGET_DIR = $(CURDIR)/debian/cargo-target
+# O cargo não lê o DEB_BUILD_OPTIONS: sem isto, um dpkg-buildpackage -jN local dava ao cargo todos os núcleos
+# (e a memória dos links com LTO). O parallel=N (o último, como no debhelper) vira o CARGO_BUILD_JOBS; um
+# CARGO_BUILD_JOBS não vazio já definido vale mais. Sem -j nem CARGO_BUILD_JOBS, o cargo segue sem limite
+ifeq (,$(strip $(CARGO_BUILD_JOBS)))
+DEB_PARALLEL := $(patsubst parallel=%,%,$(lastword $(filter parallel=%,$(DEB_BUILD_OPTIONS))))
+ifneq (,$(DEB_PARALLEL))
+override export CARGO_BUILD_JOBS = $(DEB_PARALLEL)
+else
+unexport CARGO_BUILD_JOBS
+endif
+endif
 CRATES := $(shell packaging/install-tree.sh --crates)
 OFFLINE := $(if $(wildcard rust/vendor),--offline,)
 # Os pacotes só do Debian e do Ubuntu (o swaydesk-dpkg-includes e o swaydesk-efi) levam os arquivos pelo
