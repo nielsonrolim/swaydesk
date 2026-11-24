@@ -1417,6 +1417,7 @@ dependencies = [
  "libc",
  "swaydesk-common",
  "swaydesk-drawer-logic",
+ "swaydesk-ui",
 ]
 
 [[package]]

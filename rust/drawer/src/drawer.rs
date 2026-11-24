@@ -71,8 +71,6 @@ entry {
 }
 entry:focus-within { border-color: @accent; }
 entry image { color: #8a8a8f; }
-/* A lupa a 11 px do texto, como no rofi (o padrão do GTK deixava 7) */
-entry > image:first-child { margin-right: 4px; }
 entry text selection { background-color: @accent; color: @on_accent; }
 button {
   background: none; border: none; box-shadow: none; text-shadow: none; color: #dadada;
@@ -333,7 +331,7 @@ impl Drawer {
             settings.set_gtk_cursor_blink(false);
         }
         let palette = config::palette(config);
-        let css = format!("{}{}{CSS}", config::css_colors(&palette), config::font_css(system_font_family().as_deref()));
+        let css = format!("{}{}{CSS}", config::accent_css(&palette), config::font_css(system_font_family().as_deref()));
         let provider = gtk4::CssProvider::new();
         provider.load_from_string(&css);
         if let Some(display) = gdk::Display::default() {
@@ -1929,8 +1927,7 @@ fn make_widgets() -> Widgets {
     outer.set_valign(gtk4::Align::Center);
     window.set_child(Some(&outer));
 
-    let entry = gtk4::SearchEntry::new();
-    entry.set_placeholder_text(Some(&tr("Type to search")));
+    let entry = swaydesk_ui::search_entry(true);
     entry.set_size_request(SEARCH_WIDTH, -1);
     entry.set_halign(gtk4::Align::Center);
     entry.set_key_capture_widget(Some(&window));

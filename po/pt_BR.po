@@ -282,10 +282,6 @@ msgid "Utilities"
 msgstr "Utilitários"
 
 #: home/.local/bin/sway-drawer
-msgid "Type to search"
-msgstr "Digite para buscar"
-
-#: home/.local/bin/sway-drawer
 msgid "Copy the result"
 msgstr "Copiar o resultado"
 
@@ -409,6 +405,10 @@ msgstr "A conta precisa de atenção: entre por um console de texto"
 msgid "Could not check the password"
 msgstr "Não foi possível verificar a senha"
 
+#: home/.local/bin/sway_search.py home/.local/bin/sway-launcher
+msgid "Search…"
+msgstr "Buscar…"
+
 #: home/.local/bin/sway-switcher
 msgid "usage: sway-switcher daemon|next|prev"
 msgstr "uso: sway-switcher daemon|next|prev"
@@ -463,6 +463,11 @@ msgid "Lists the installed GTK themes and changes theme, icons and accent color 
 msgstr "Lista os temas GTK instalados e troca tema, ícones e cor de destaque em todo o desktop."
 
 #: home/.local/bin/sway-theme-app
+#, python-format
+msgid "Custom · %s"
+msgstr "Personalizada · %s"
+
+#: home/.local/bin/sway-theme-app
 msgid "In use"
 msgstr "Em uso"
 
@@ -503,10 +508,6 @@ msgid "Back to the theme in use"
 msgstr "Voltar ao tema em uso"
 
 #: home/.local/bin/sway-theme-app
-msgid "Search themes"
-msgstr "Buscar tema"
-
-#: home/.local/bin/sway-theme-app
 msgid "No theme found"
 msgstr "Nenhum tema encontrado"
 
@@ -537,11 +538,6 @@ msgstr "Ícones"
 #: home/.local/bin/sway-theme-app
 msgid "Accent color"
 msgstr "Cor de destaque"
-
-#: home/.local/bin/sway-theme-app
-#, python-format
-msgid "Custom · %s"
-msgstr "Personalizada · %s"
 
 #: home/.local/bin/sway-theme-app
 msgid "Use the wallpaper's color"
@@ -632,6 +628,10 @@ msgid "%s is not from the Theme app and was left as it was: the GTK apps don't g
 msgstr "%s não é do app Tema e ficou como estava: os apps GTK não recebem a cor de destaque dele"
 
 #: home/.local/bin/sway_themes.py
+msgid "Snap apps don't include adw-gtk3: snapd will ask at every login to install a third-party theme snap. Choose Adwaita to avoid this; snaps already have it."
+msgstr "Os apps snap não trazem o adw-gtk3: o snapd vai pedir a cada login para instalar um snap de tema de terceiros. Escolha o Adwaita para evitar isso; os snaps já o têm."
+
+#: home/.local/bin/sway_themes.py
 #, python-format
 msgid "%s takes its colors from the KDE color scheme (~/.config/gtk-3.0/colors.css): the GTK 3 apps follow it, not the style chosen here. Change the scheme in the KDE System Settings"
 msgstr "O %s usa as cores do esquema do KDE (~/.config/gtk-3.0/colors.css): os apps GTK 3 seguem esse esquema, e não o estilo escolhido aqui. Troque o esquema nas Configurações do Sistema do KDE"
@@ -688,10 +688,6 @@ msgstr "corrija antes o arquivo: %s"
 #, python-format
 msgid "templates not found in %s: run ./install.sh"
 msgstr "modelos não encontrados em %s: rode o ./install.sh"
-
-#: home/.local/bin/sway_themes.py
-msgid "Snap apps don't include adw-gtk3: snapd will ask at every login to install a third-party theme snap. Choose Adwaita to avoid this; snaps already have it."
-msgstr "Os apps snap não trazem o adw-gtk3: o snapd vai pedir a cada login para instalar um snap de tema de terceiros. Escolha o Adwaita para evitar isso; os snaps já o têm."
 
 #: home/.local/bin/sway_themes.py
 #, python-format
@@ -1373,10 +1369,6 @@ msgid "Text"
 msgstr "Texto"
 
 #: home/.local/bin/waybar-clipboard-popup
-msgid "Search the history…"
-msgstr "Buscar no histórico…"
-
-#: home/.local/bin/waybar-clipboard-popup
 msgid "Pinned"
 msgstr "Fixados"
 
@@ -2051,10 +2043,6 @@ msgstr "Este rofi roda pelo Xwayland. Instale o pacote xwayland."
 #: home/.local/bin/sway-launcher
 msgid "Windows"
 msgstr "Janelas"
-
-#: home/.local/bin/sway-launcher
-msgid "Search…"
-msgstr "Buscar…"
 
 #: home/.local/bin/sway-launcher
 msgid "Clipboard"
@@ -3169,10 +3157,6 @@ msgstr "Não foi possível trocar o perfil de atalhos: %s"
 #: rust/help/src/main.rs
 msgid "Switch to the %s profile?"
 msgstr "Trocar para o perfil %s?"
-
-#: rust/help/src/main.rs
-msgid "Search"
-msgstr "Buscar"
 
 #: rust/network-popup/src/agent.rs
 msgid "Password for %s"

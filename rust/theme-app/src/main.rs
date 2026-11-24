@@ -158,6 +158,8 @@ struct Window {
     papirus: Cell<bool>,
     colors: Vec<String>,
     config: RefCell<Config>,
+    /// A lupa da busca na cor de destaque (config::accent_css): recarregado a cada leitura do config
+    accent_provider: gtk4::CssProvider,
     /// O tema da config, que pode não estar instalado
     wanted: RefCell<String>,
     /// O tema em uso
@@ -241,8 +243,10 @@ impl Window {
     fn new(app: &gtk4::Application) -> Rc<Window> {
         let provider = gtk4::CssProvider::new();
         provider.load_from_string(CSS);
+        let accent_provider = gtk4::CssProvider::new();
         if let Some(display) = gdk::Display::default() {
             gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
+            gtk4::style_context_add_provider_for_display(&display, &accent_provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
         }
         let (themes, families, others) = load_themes();
         let mut colors = sp::available_colors(sp::theme_dir("Papirus").as_deref());
@@ -270,8 +274,7 @@ impl Window {
         sidebar.set_size_request(230, -1);
         sidebar.set_hexpand(false); // sem isso, o hexpand dos nomes sobe e a lateral divide a sobra com o resto
         sidebar.add_css_class("theme-sidebar");
-        let entry = gtk4::SearchEntry::new();
-        entry.set_placeholder_text(Some(&tr("Search themes")));
+        let entry = swaydesk_ui::search_entry(false);
         margins(&entry, 8);
         sidebar.append(&entry);
         // Um clique só escolhe, para ver a prévia; aplicar reinicia a barra: duplo clique ou Enter
@@ -455,6 +458,7 @@ impl Window {
             papirus: Cell::new(papirus),
             colors,
             config: RefCell::new(Config::default()),
+            accent_provider,
             wanted: RefCell::new(String::new()),
             current: RefCell::new(String::new()),
             current_color: RefCell::new(String::new()),
@@ -724,6 +728,7 @@ impl Window {
             folders,
         });
         *self.current_icons.borrow_mut() = it::entry_of(&dc::installed_icon_theme(&config)).to_string();
+        self.accent_provider.load_from_string(&config::accent_css(&config::palette(&config)));
         *self.config.borrow_mut() = config;
         // O papel pode ter mudado (o do dia): a cor que o interruptor daria agora
         self.choice.borrow_mut().wallpaper = wa::current_color();

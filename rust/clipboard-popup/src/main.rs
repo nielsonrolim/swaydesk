@@ -70,8 +70,6 @@ entry {
   border-radius: 8px; font-size: 13px; min-height: 0; padding: 6px 10px;
 }
 entry:focus-within { box-shadow: inset 0 0 0 1px @accent; }
-/* A lupa a 11 px do texto, como no rofi (o padrão do GTK deixava 8 com a fonte de 13 px) */
-entry > image:first-child { margin-right: 3px; }
 button.link {
   background: transparent; border: none; box-shadow: none; color: #8a8a8f;
   padding: 0 4px; min-height: 0; font-size: 12px;
@@ -394,8 +392,7 @@ impl Popup {
         card.add_css_class("card");
         card.set_size_request(CARD_WIDTH, -1);
         popup.window.set_child(Some(&card));
-        let entry = gtk4::SearchEntry::new();
-        entry.set_placeholder_text(Some(&tr("Search the history…")));
+        let entry = swaydesk_ui::search_entry(true);
         card.append(&entry);
         let body = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
         let scroll = scroller(&body, SCROLL_HEIGHT);
@@ -509,7 +506,7 @@ impl Popup {
             glib::Propagation::Proceed
         });
         this.scroll.add_controller(scrolled);
-        // As teclas na busca, antes do SearchEntry: setas e Tab andam, Enter copia, Esc sempre fecha
+        // As teclas na busca, antes do SearchEntry: setas e Tab andam, Enter copia, Esc limpa a busca e, vazia, fecha
         let keys = gtk4::EventControllerKey::new();
         keys.set_propagation_phase(gtk4::PropagationPhase::Capture);
         let me = Rc::downgrade(&this);
@@ -525,6 +522,7 @@ impl Popup {
                         p.copy_row(&row);
                     }
                 }
+                Key::Escape if !p.entry.text().is_empty() => p.entry.set_text(""),
                 Key::Escape => p.popup.close("Esc"),
                 _ => return glib::Propagation::Proceed,
             }

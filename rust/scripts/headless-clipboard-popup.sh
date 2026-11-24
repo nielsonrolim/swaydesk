@@ -68,21 +68,21 @@ for impl in ${IMPLS:-rust python}; do
   open_popup "$impl"
   echo "$impl: popup $(readlink /proc/$popup/exe)"
   grim "/out/clip-$impl.png"
-  click 1050 110  # o primeiro item: o texto comum
+  click 1050 129  # o primeiro item: o texto comum
   expect "$impl: o clique copia o texto" "texto comum para copiar" "$(cat /tmp/copied 2>/dev/null)"
   for _ in $(seq 50); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done  # o Python sai devagar
   expect "$impl: copiar fecha o popup" "fechado" "$(state)"
   open_popup "$impl"
-  click 1050 160  # o segundo: o UTF-16, que vai convertido para UTF-8
+  click 1050 179  # o segundo: o UTF-16, que vai convertido para UTF-8
   expect "$impl: o UTF-16 vai em UTF-8" "https://exemplo.com/ação" "$(cat /tmp/copied 2>/dev/null)"
   expect "$impl: com o tipo do UTF-8" "wl-copy --type text/plain;charset=utf-8" "$(grep wl-copy /tmp/calls | tail -n 1)"
   for _ in $(seq 50); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done
   open_popup "$impl"
-  click 1189 110  # o pino do primeiro
+  click 1189 129  # o pino do primeiro
   sleep 0.5
   expect "$impl: o pino fixa" "1" "$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["items"]))' "$HOME/.local/share/waybar-clipboard/pins.json" 2>/dev/null)"
   grim "/out/clip-$impl-pinned.png"
-  click 1226 298  # a lixeira do último recente (o PDF)
+  click 1226 317  # a lixeira do último recente (o PDF)
   sleep 0.5
   expect "$impl: a lixeira apaga do histórico" "delete 1" "$(grep delete /tmp/calls | tail -n 1)"
   grim "/out/clip-$impl-deleted.png"
@@ -121,20 +121,33 @@ wait_closed() { for _ in $(seq 50); do kill -0 "$popup" 2>/dev/null || break; sl
 copied_at() { rm -f /tmp/copied; click 1050 "$1"; wait_closed; cat /tmp/copied 2>/dev/null; }
 for impl in ${IMPLS:-rust python}; do
   long_history; : >/tmp/calls; rm -rf "$HOME/.local/share/waybar-clipboard" "$HOME/.cache/waybar-clipboard"
-  scrolled_popup "$impl"; y=$(row_center 300); before=$(copied_at "$y"); n=${before##* }
+  scrolled_popup "$impl"; y=$(row_center 319); before=$(copied_at "$y"); n=${before##* }
   echo "$impl: rolada, a linha em y=$y é \"$before\""
   [ -n "$n" ] && [ "$n" -lt 110 ] || { echo "FALHOU  $impl: a roda não rolou a lista"; failed=1; continue; }
   # Fixar o item n: ele vai para Fixados, e a linha seguinte (n-1) fica na mesma altura
-  scrolled_popup "$impl"; y=$(row_center 300)
+  scrolled_popup "$impl"; y=$(row_center 319)
   /bin/swaydesk-vpointer --size 1280x720 move 1189 "$y" click sleep 1500
   grim "/out/clip-$impl-long-pinned.png"
   expect "$impl: fixar com a lista rolada não a move" "item número $((n - 1))" "$(copied_at "$y")"
   # Apagar a linha: a seguinte sobe para o lugar
-  scrolled_popup "$impl"; y=$(row_center 300)
+  scrolled_popup "$impl"; y=$(row_center 319)
   /bin/swaydesk-vpointer --size 1280x720 move 1226 "$y" click sleep 1500
   deleted=$(grep delete /tmp/calls | tail -n 1); deleted=${deleted#delete }
   grim "/out/clip-$impl-long-deleted.png"
   expect "$impl: apagar com a lista rolada não a move" "item número $((deleted - 1))" "$(copied_at "$y")"
 done
+# O Esc, como nas outras buscas: com texto, limpa e o popup fica; com a busca vazia, fecha. Sem um teclado vivo, cada
+# wtype cria o seu e a primeira tecla se perde: um wtype parado segura o teclado virtual (como no headless-help.sh)
+wtype -s 3600000 -k F24 & keeper=$!
+for impl in ${IMPLS:-rust python}; do
+  reset_history; open_popup "$impl"
+  timeout 5 wtype abc; sleep 0.5; timeout 5 wtype -k Escape; sleep 0.8
+  grim "/out/clip-$impl-esc.png"
+  expect "$impl: o Esc com texto limpa a busca e o popup fica" "aberto" "$(state)"
+  timeout 5 wtype -k Escape; wait_closed
+  expect "$impl: o Esc com a busca vazia fecha" "fechado" "$(state)"
+  kill $popup 2>/dev/null; wait $popup 2>/dev/null; sleep 0.5
+done
+kill $keeper 2>/dev/null
 grep -v '^$' /tmp/popup.err | grep -v 'session bus\|a11y\|AT-SPI' | head -10
 exit "$failed"

@@ -148,7 +148,7 @@ mod tests {
         let dirs = [repo_locale()];
         assert_eq!(load(&["en_US".into()], &dirs).gettext("All"), "All");
         // Como o gettext do Python: a primeira língua com catálogo
-        assert_eq!(load(&["en_US".into(), "pt_BR".into()], &dirs).gettext("Type to search"), "Digite para buscar");
+        assert_eq!(load(&["en_US".into(), "pt_BR".into()], &dirs).gettext("Copy the result"), "Copiar o resultado");
         assert_eq!(load(&["zz_ZZ".into()], &dirs).ngettext("%d app", "%d apps", 2), "%d apps");
     }
 
@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn reads_the_portuguese_catalog_with_plural_and_context() {
         let pt = load(&["pt_BR".into()], &[repo_locale()]);
-        assert_eq!(pt.gettext("Type to search"), "Digite para buscar");
+        assert_eq!(pt.gettext("Copy the result"), "Copiar o resultado");
         assert_eq!(pt.ngettext("%d application", "%d applications", 1), "%d aplicativo");
         assert_eq!(pt.ngettext("%d application", "%d applications", 2), "%d aplicativos");
         assert_eq!(pt.pgettext("decimal separator", "."), ",");
@@ -220,7 +220,7 @@ mod tests {
     fn reads_the_spanish_catalog_for_any_country() {
         for language in ["es_ES.UTF-8", "es_MX", "es_AR"] {
             let es = load(&[language.into()], &[repo_locale()]);
-            assert_eq!(es.gettext("Type to search"), "Escribe para buscar");
+            assert_eq!(es.gettext("Copy the result"), "Copiar el resultado");
             assert_eq!(es.ngettext("%d application", "%d applications", 1), "%d aplicación");
             assert_eq!(es.ngettext("%d application", "%d applications", 2), "%d aplicaciones");
             assert_eq!(es.pgettext("decimal separator", "."), ",");

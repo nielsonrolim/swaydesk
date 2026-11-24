@@ -419,6 +419,30 @@ def css_colors(colors):
             "@define-color busy_sub #e0f4f6;\n")
 
 
+# Os campos de busca (o sway_search.search_entry) como o do rofi: o SEARCH_CSS do swaydesk_common::config, no GTK 3.
+# 50 px de altura com a borda, cantos de 8 px, 14 px dos lados, o texto em 15 pt, a lupa na cor de destaque e a 11 px
+# do texto, a borda no destaque com o foco. A lupa é o ícone primário (image.left), a de limpar, o secundário
+# (image.right). O GTK 3 não deixa mudar o tamanho do ícone (fica em 16 px) nem a cor do texto de exemplo.
+# Fora do css_colors, que também é o waybar/accent.css, só com @define-color
+SEARCH_CLASS = "swaydesk-search"
+SEARCH_DARK_CLASS = "search-dark"
+SEARCH_CSS = (
+    "entry.swaydesk-search { min-height: 48px; padding: 0 14px; border-radius: 8px; "
+    "border: 1px solid alpha(currentColor, 0.15); box-shadow: none; font-size: 15pt; }\n"
+    "entry.swaydesk-search:focus { border-color: @accent; box-shadow: none; }\n"
+    "entry.swaydesk-search image.left { color: @accent; opacity: 1; margin-right: 10px; }\n"
+    "entry.swaydesk-search image.right { color: #8a8a8f; }\n"
+    "entry.swaydesk-search.search-dark { background: #38383d; color: #e8e8e8; caret-color: #e8e8e8; "
+    "border-color: rgba(255, 255, 255, 0.06); }\n"
+    "entry.swaydesk-search.search-dark:focus { border-color: @accent; }\n"
+    "entry.swaydesk-search selection { background-color: @accent; color: @on_accent; }\n")
+
+
+def accent_css(colors):
+    """O css_colors e os campos de busca: o CSS do destaque de quem tem uma busca."""
+    return css_colors(colors) + SEARCH_CSS
+
+
 def render_template(name, colors):
     """O modelo com as cores, em hexadecimal sem o #: cada programa pede um formato."""
     text = (TEMPLATES / name).read_text(encoding="utf-8")

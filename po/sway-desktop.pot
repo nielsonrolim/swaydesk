@@ -270,10 +270,6 @@ msgid "Utilities"
 msgstr ""
 
 #: home/.local/bin/sway-drawer
-msgid "Type to search"
-msgstr ""
-
-#: home/.local/bin/sway-drawer
 msgid "Copy the result"
 msgstr ""
 
@@ -397,6 +393,10 @@ msgstr ""
 msgid "Could not check the password"
 msgstr ""
 
+#: home/.local/bin/sway_search.py home/.local/bin/sway-launcher
+msgid "Search…"
+msgstr ""
+
 #: home/.local/bin/sway-switcher
 msgid "usage: sway-switcher daemon|next|prev"
 msgstr ""
@@ -451,6 +451,11 @@ msgid "Lists the installed GTK themes and changes theme, icons and accent color 
 msgstr ""
 
 #: home/.local/bin/sway-theme-app
+#, python-format
+msgid "Custom · %s"
+msgstr ""
+
+#: home/.local/bin/sway-theme-app
 msgid "In use"
 msgstr ""
 
@@ -491,10 +496,6 @@ msgid "Back to the theme in use"
 msgstr ""
 
 #: home/.local/bin/sway-theme-app
-msgid "Search themes"
-msgstr ""
-
-#: home/.local/bin/sway-theme-app
 msgid "No theme found"
 msgstr ""
 
@@ -524,11 +525,6 @@ msgstr ""
 
 #: home/.local/bin/sway-theme-app
 msgid "Accent color"
-msgstr ""
-
-#: home/.local/bin/sway-theme-app
-#, python-format
-msgid "Custom · %s"
 msgstr ""
 
 #: home/.local/bin/sway-theme-app
@@ -620,6 +616,10 @@ msgid "%s is not from the Theme app and was left as it was: the GTK apps don't g
 msgstr ""
 
 #: home/.local/bin/sway_themes.py
+msgid "Snap apps don't include adw-gtk3: snapd will ask at every login to install a third-party theme snap. Choose Adwaita to avoid this; snaps already have it."
+msgstr ""
+
+#: home/.local/bin/sway_themes.py
 #, python-format
 msgid "%s takes its colors from the KDE color scheme (~/.config/gtk-3.0/colors.css): the GTK 3 apps follow it, not the style chosen here. Change the scheme in the KDE System Settings"
 msgstr ""
@@ -675,10 +675,6 @@ msgstr ""
 #: home/.local/bin/sway_themes.py
 #, python-format
 msgid "templates not found in %s: run ./install.sh"
-msgstr ""
-
-#: home/.local/bin/sway_themes.py
-msgid "Snap apps don't include adw-gtk3: snapd will ask at every login to install a third-party theme snap. Choose Adwaita to avoid this; snaps already have it."
 msgstr ""
 
 #: home/.local/bin/sway_themes.py
@@ -1361,10 +1357,6 @@ msgid "Text"
 msgstr ""
 
 #: home/.local/bin/waybar-clipboard-popup
-msgid "Search the history…"
-msgstr ""
-
-#: home/.local/bin/waybar-clipboard-popup
 msgid "Pinned"
 msgstr ""
 
@@ -2036,10 +2028,6 @@ msgstr ""
 
 #: home/.local/bin/sway-launcher
 msgid "Windows"
-msgstr ""
-
-#: home/.local/bin/sway-launcher
-msgid "Search…"
 msgstr ""
 
 #: home/.local/bin/sway-launcher
@@ -3154,10 +3142,6 @@ msgstr ""
 
 #: rust/help/src/main.rs
 msgid "Switch to the %s profile?"
-msgstr ""
-
-#: rust/help/src/main.rs
-msgid "Search"
 msgstr ""
 
 #: rust/network-popup/src/agent.rs

@@ -623,6 +623,32 @@ pub fn css_colors(colors: &Palette) -> String {
     )
 }
 
+/// A classe dos campos de busca (o swaydesk_ui::search_entry): todos com o SEARCH_CSS.
+pub const SEARCH_CLASS: &str = "swaydesk-search";
+/// Com ela também, o fundo escuro do campo do rofi (nos popups escuros); sem ela, o fundo do tema GTK.
+pub const SEARCH_DARK_CLASS: &str = "search-dark";
+
+/// Os campos de busca como o do rofi (templates/rofi.rasi, medido na captura): 50 px de altura com a borda de 1 px,
+/// cantos de 8 px, 14 px dos lados, o texto em 15 pt, a lupa de 17 px na cor de destaque e a 11 px do texto, a borda
+/// no destaque com o foco (o rofi está sempre focado) e o texto de exemplo em #8a8a8f. No GTK 4, a lupa é a primeira
+/// imagem do entry e a de limpar, a última. Fora do css_colors, que também é o waybar/accent.css, só com @define-color.
+pub const SEARCH_CSS: &str = "\
+entry.swaydesk-search { min-height: 48px; padding: 0 14px; border-radius: 8px; border: 1px solid alpha(currentColor, 0.15); \
+box-shadow: none; outline: none; font-size: 15pt; }
+entry.swaydesk-search:focus-within { border-color: @accent; box-shadow: none; outline: none; }
+entry.swaydesk-search > image:first-child { color: @accent; opacity: 1; -gtk-icon-size: 17px; margin-right: 4px; }
+entry.swaydesk-search > image:last-child:not(:first-child) { color: #8a8a8f; -gtk-icon-size: 16px; }
+entry.swaydesk-search > text > placeholder { color: #8a8a8f; }
+entry.swaydesk-search.search-dark { background: #38383d; color: #e8e8e8; caret-color: #e8e8e8; border-color: rgba(255, 255, 255, 0.06); }
+entry.swaydesk-search.search-dark:focus-within { border-color: @accent; }
+entry.swaydesk-search text selection { background-color: @accent; color: @on_accent; }
+";
+
+/// O css_colors e os campos de busca: o CSS do destaque de quem tem uma busca.
+pub fn accent_css(colors: &Palette) -> String {
+    format!("{}{SEARCH_CSS}", css_colors(colors))
+}
+
 /// As famílias, em ordem: a do texto, a do sistema, a dos ícones e a genérica.
 pub fn font_families(system: Option<&str>) -> Vec<String> {
     let mut families: Vec<String> = Vec::new();
@@ -646,6 +672,18 @@ pub fn font_css(system: Option<&str>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_accent_css_styles_the_search_fields() {
+        let colors = palette(&Config::default());
+        let css = accent_css(&colors);
+        assert!(css.starts_with(&css_colors(&colors)));
+        assert!(css.ends_with(SEARCH_CSS));
+        assert!(SEARCH_CSS.contains(&format!("entry.{SEARCH_CLASS} > image:first-child {{ color: @accent;")));
+        assert!(SEARCH_CSS.contains(&format!("entry.{SEARCH_CLASS}.{SEARCH_DARK_CLASS} {{ background: #38383d;")));
+        // O waybar/accent.css continua só com as cores
+        assert!(!css_colors(&colors).contains("entry"));
+    }
 
     #[test]
     fn file_manager_is_the_configs_then_the_first_installed_then_thunar() {

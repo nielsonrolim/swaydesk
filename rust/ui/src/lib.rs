@@ -70,6 +70,19 @@ pub fn log(program: &str, message: &str) {
     }
 }
 
+/// O campo de busca de todos os componentes, como o do rofi: a classe do config::SEARCH_CSS (que vem no
+/// theme_css e no config::accent_css) e o mesmo texto de exemplo. `dark`: o fundo escuro do rofi, nos popups
+/// escuros; sem ele, o fundo do tema GTK (os apps em janela, claros ou escuros).
+pub fn search_entry(dark: bool) -> gtk4::SearchEntry {
+    let entry = gtk4::SearchEntry::new();
+    entry.add_css_class(config::SEARCH_CLASS);
+    if dark {
+        entry.add_css_class(config::SEARCH_DARK_CLASS);
+    }
+    entry.set_placeholder_text(Some(&i18n::tr("Search…")));
+    entry
+}
+
 pub fn label(text: &str, classes: &[&str], xalign: f32) -> gtk4::Label {
     let label = gtk4::Label::new(Some(text));
     label.set_xalign(xalign);
@@ -88,7 +101,7 @@ fn system_font_family() -> Option<String> {
 /// de cada janela. Depois do gtk4::init (lê a fonte do sistema nas configurações do GTK).
 pub fn theme_css() -> String {
     let palette = config::palette(&config::load());
-    format!("{}{}", config::css_colors(&palette), config::font_css(system_font_family().as_deref()))
+    format!("{}{}", config::accent_css(&palette), config::font_css(system_font_family().as_deref()))
 }
 
 /// A janela sob a barra que fecha com Esc, clique fora, foco em outra janela ou troca de workspace.

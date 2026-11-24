@@ -282,10 +282,6 @@ msgid "Utilities"
 msgstr "Utilidades"
 
 #: home/.local/bin/sway-drawer
-msgid "Type to search"
-msgstr "Escribe para buscar"
-
-#: home/.local/bin/sway-drawer
 msgid "Copy the result"
 msgstr "Copiar el resultado"
 
@@ -409,6 +405,10 @@ msgstr "La cuenta requiere atención: inicia sesión en una consola de texto"
 msgid "Could not check the password"
 msgstr "No se pudo verificar la contraseña"
 
+#: home/.local/bin/sway_search.py home/.local/bin/sway-launcher
+msgid "Search…"
+msgstr "Buscar…"
+
 #: home/.local/bin/sway-switcher
 msgid "usage: sway-switcher daemon|next|prev"
 msgstr "uso: sway-switcher daemon|next|prev"
@@ -463,6 +463,11 @@ msgid "Lists the installed GTK themes and changes theme, icons and accent color 
 msgstr "Muestra los temas GTK instalados y cambia el tema, los iconos y el color de acento en todo el escritorio."
 
 #: home/.local/bin/sway-theme-app
+#, python-format
+msgid "Custom · %s"
+msgstr "Personalizado · %s"
+
+#: home/.local/bin/sway-theme-app
 msgid "In use"
 msgstr "En uso"
 
@@ -503,10 +508,6 @@ msgid "Back to the theme in use"
 msgstr "Volver al tema en uso"
 
 #: home/.local/bin/sway-theme-app
-msgid "Search themes"
-msgstr "Buscar temas"
-
-#: home/.local/bin/sway-theme-app
 msgid "No theme found"
 msgstr "No se encontró ningún tema"
 
@@ -537,11 +538,6 @@ msgstr "Iconos"
 #: home/.local/bin/sway-theme-app
 msgid "Accent color"
 msgstr "Color de acento"
-
-#: home/.local/bin/sway-theme-app
-#, python-format
-msgid "Custom · %s"
-msgstr "Personalizado · %s"
 
 #: home/.local/bin/sway-theme-app
 msgid "Use the wallpaper's color"
@@ -632,6 +628,10 @@ msgid "%s is not from the Theme app and was left as it was: the GTK apps don't g
 msgstr "%s no es de la app Tema y se dejó como estaba: las apps GTK no reciben de él el color de acento"
 
 #: home/.local/bin/sway_themes.py
+msgid "Snap apps don't include adw-gtk3: snapd will ask at every login to install a third-party theme snap. Choose Adwaita to avoid this; snaps already have it."
+msgstr "Las apps snap no incluyen adw-gtk3: snapd pedirá en cada inicio de sesión instalar un snap de tema de terceros. Elige Adwaita para evitarlo; los snaps ya lo tienen."
+
+#: home/.local/bin/sway_themes.py
 #, python-format
 msgid "%s takes its colors from the KDE color scheme (~/.config/gtk-3.0/colors.css): the GTK 3 apps follow it, not the style chosen here. Change the scheme in the KDE System Settings"
 msgstr "%s toma sus colores del esquema de colores de KDE (~/.config/gtk-3.0/colors.css): las aplicaciones GTK 3 lo siguen, no el estilo elegido aquí. Cambia el esquema en la Configuración del sistema de KDE"
@@ -688,10 +688,6 @@ msgstr "corrige primero el archivo: %s"
 #, python-format
 msgid "templates not found in %s: run ./install.sh"
 msgstr "no se encontraron plantillas en %s: ejecuta ./install.sh"
-
-#: home/.local/bin/sway_themes.py
-msgid "Snap apps don't include adw-gtk3: snapd will ask at every login to install a third-party theme snap. Choose Adwaita to avoid this; snaps already have it."
-msgstr "Las apps snap no incluyen adw-gtk3: snapd pedirá en cada inicio de sesión instalar un snap de tema de terceros. Elige Adwaita para evitarlo; los snaps ya lo tienen."
 
 #: home/.local/bin/sway_themes.py
 #, python-format
@@ -1373,10 +1369,6 @@ msgid "Text"
 msgstr "Texto"
 
 #: home/.local/bin/waybar-clipboard-popup
-msgid "Search the history…"
-msgstr "Buscar en el historial…"
-
-#: home/.local/bin/waybar-clipboard-popup
 msgid "Pinned"
 msgstr "Fijados"
 
@@ -2051,10 +2043,6 @@ msgstr "Este rofi funciona a través de Xwayland. Instala el paquete xwayland."
 #: home/.local/bin/sway-launcher
 msgid "Windows"
 msgstr "Ventanas"
-
-#: home/.local/bin/sway-launcher
-msgid "Search…"
-msgstr "Buscar…"
 
 #: home/.local/bin/sway-launcher
 msgid "Clipboard"
@@ -3169,10 +3157,6 @@ msgstr "No se pudo cambiar el perfil de atajos: %s"
 #: rust/help/src/main.rs
 msgid "Switch to the %s profile?"
 msgstr "¿Cambiar al perfil %s?"
-
-#: rust/help/src/main.rs
-msgid "Search"
-msgstr "Buscar"
 
 #: rust/network-popup/src/agent.rs
 msgid "Password for %s"
