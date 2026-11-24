@@ -298,6 +298,41 @@ Sem um gerenciador de login, como numa instalação mínima ou de servidor, o si
 
 O `swaydesk-greeter` é uma tela de login para o [greetd](https://sr.ht/~kennylevinsen/greetd/), no visual da tela de bloqueio do Swaydesk. Ela é opcional se você já tem o GDM, o SDDM ou o LightDM, e necessária para entrar no modo gráfico num sistema sem gerenciador de login. Instale com `sudo apt install swaydesk-greeter` (Debian, Ubuntu, Mint) ou `sudo pacman -S swaydesk-greeter` (Arch). No Debian e no Ubuntu, ele só se ativa sozinho quando não há outro gerenciador de login configurado; no Arch, ative-o com `sudo systemctl enable greetd`. Para trocar do GDM, do SDDM ou do LightDM, desative o atual e rode `sudo systemctl enable greetd`; para voltar, `sudo systemctl disable greetd` e ative o antigo de novo (por exemplo, `sudo systemctl enable gdm`).
 
+## Usar um componente só no Sway puro
+
+Você não precisa da sessão inteira: instale só o pacote que quer (`sudo apt install swaydesk-dock`, ou `sudo pacman -Syu swaydesk-dock`), e ele traz só o que precisa. Nada muda no seu Sway até você optar, e a sessão do Swaydesk, se você instalá-la depois, inicia os componentes dela por conta própria.
+
+**No Sway puro, inclua o trecho do componente.** Cada pacote que roda algo no Sway traz um em `/usr/share/swaydesk/sway/config.d/`, e nada o lê até você pôr a linha de `include` dele no `~/.config/sway/config`, depois da linha `set $mod`:
+
+```
+include /usr/share/swaydesk/sway/config.d/50-swaydesk-dock.conf
+```
+
+| Componente | Pacote | Trecho | O que ele põe |
+| --- | --- | --- | --- |
+| Dock | `swaydesk-dock` | `50-swaydesk-dock.conf` | A dock |
+| Grade de apps | `swaydesk-drawer` | `50-swaydesk-drawer.conf` | A grade, no Super+Shift+D |
+| Notificações | `swaydesk-notifd` | `50-swaydesk-notifd.conf` | O serviço de notificações, e a central no Super+N |
+| Indicador de volume e brilho | `swaydesk-osd` | `50-swaydesk-osd.conf` | O indicador, e as teclas de volume e brilho que o mostram |
+| Troca de janelas | `swaydesk-switcher` | `50-swaydesk-switcher.conf` | O Alt+Tab |
+| Telas | `swaydesk-displays` | `50-swaydesk-displays.conf` | O arranjo salvo, aplicado quando as telas mudam e quando a tampa abre ou fecha |
+| Histórico da área de transferência | `swaydesk-clipboard` | `50-swaydesk-clipboard.conf` | O histórico, no Super+Shift+V |
+| Tela de bloqueio | `swaydesk-lock` | `50-swaydesk-lock.conf` | O Ctrl+Alt+L, e o bloqueio depois de 10 minutos sem uso e antes de suspender, pelo swayidle |
+
+- **Os componentes que ficam rodando** (todos menos o bloqueio) sobem como serviços de usuário do systemd, reiniciados se caírem, e param quando aquele Sway sai. Cada trecho se explica nos comentários e termina com a linha de `exec` simples para usar no lugar, num sistema sem sessão de usuário do systemd.
+- **Se o seu config já inicia o componente** com uma linha de `exec` própria, tire essa linha: a dock, a grade, a troca de janelas, as telas e o indicador saem na hora ao lado de uma cópia já rodando, o serviço de notificações espera o outro (o mako, por exemplo) sair, e dois vigias da área de transferência guardariam cada cópia duas vezes.
+- **Numa sessão que inicia o `graphical-session.target`** (o niri, ou o Hyprland com o uwsm, por exemplo), ligue o serviço uma vez no lugar do trecho: `systemctl --user enable --now swaydesk-dock` (os nomes dos serviços são os dos pacotes). Nenhum pacote os liga, e eles nunca sobem dentro da sessão do Swaydesk.
+- **Itens da barra para a sua própria Waybar:** cada um traz o módulo dele em `/usr/share/swaydesk/waybar/`, por exemplo o `swaydesk-calendar.jsonc`, com as linhas para colar no config da sua Waybar.
+
+**A tela de bloqueio.** O `swaydesk-lock` sozinho bloqueia a tela e volta assim que ela fica bloqueada, e assim funciona num atalho e no swayidle. Se o seu config já inicia o swayidle, fique com um só: em vez de incluir o trecho do bloqueio, acrescente o timeout e o before-sleep dele à sua própria linha, por exemplo:
+
+```
+bindsym Ctrl+Alt+l exec swaydesk-lock
+exec swayidle -w timeout 600 swaydesk-lock before-sleep swaydesk-lock
+```
+
+**A cafeína.** Fora da sessão do Swaydesk (um Sway puro, com o seu próprio swayidle), a cafeína segura um inibidor de inatividade do Wayland (`swaydesk-caffeinate`) em vez de trocar o swayidle, e o seu swayidle e os tempos dele ficam como estão. Com todos os monitores desativados ou desconectados (ou, no Sway 1.12, com a energia desligada), os tempos de inatividade ainda podem disparar.
+
 ## Compilar a partir do código
 
 Os componentes são um workspace do Cargo em `rust/` (Rust 1.85 ou mais novo, GTK 4.14 ou mais novo):

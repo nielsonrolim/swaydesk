@@ -298,6 +298,41 @@ Without a display manager, as on a minimal or server install, the system starts 
 
 `swaydesk-greeter` is a login screen for [greetd](https://sr.ht/~kennylevinsen/greetd/), in the look of the Swaydesk lock screen. It's optional if you already have GDM, SDDM or LightDM, and needed for a graphical login on a system without a display manager. Install it with `sudo apt install swaydesk-greeter` (Debian, Ubuntu, Mint) or `sudo pacman -S swaydesk-greeter` (Arch). On Debian and Ubuntu it turns itself on only when no other display manager is set; on Arch, turn it on with `sudo systemctl enable greetd`. To switch from GDM, SDDM or LightDM, disable that one and run `sudo systemctl enable greetd`; to go back, `sudo systemctl disable greetd` and enable the old one again (for example `sudo systemctl enable gdm`).
 
+## Using one component on plain Sway
+
+You don't need the whole session: install only the package you want (`sudo apt install swaydesk-dock`, or `sudo pacman -Syu swaydesk-dock`), and it brings only what it needs. Nothing changes in your Sway until you opt in, and the Swaydesk session, if you install it later, starts its components itself.
+
+**On plain Sway, include the component's snippet.** Each package that runs something on Sway ships one in `/usr/share/swaydesk/sway/config.d/`, and nothing reads it until you add its `include` line to `~/.config/sway/config`, after the `set $mod` line:
+
+```
+include /usr/share/swaydesk/sway/config.d/50-swaydesk-dock.conf
+```
+
+| Component | Package | Snippet | What it adds |
+| --- | --- | --- | --- |
+| Dock | `swaydesk-dock` | `50-swaydesk-dock.conf` | The dock |
+| App grid | `swaydesk-drawer` | `50-swaydesk-drawer.conf` | The grid, on Super+Shift+D |
+| Notifications | `swaydesk-notifd` | `50-swaydesk-notifd.conf` | The notification service, and its center on Super+N |
+| Volume and brightness indicator | `swaydesk-osd` | `50-swaydesk-osd.conf` | The indicator, and the volume and brightness keys that show it |
+| Window switcher | `swaydesk-switcher` | `50-swaydesk-switcher.conf` | Alt+Tab |
+| Displays | `swaydesk-displays` | `50-swaydesk-displays.conf` | The saved layout, applied when screens change and when the lid opens or closes |
+| Clipboard history | `swaydesk-clipboard` | `50-swaydesk-clipboard.conf` | The history, on Super+Shift+V |
+| Lock screen | `swaydesk-lock` | `50-swaydesk-lock.conf` | Ctrl+Alt+L, and the lock after 10 minutes idle and before sleep, through swayidle |
+
+- **The running components** (all but the lock) start as systemd user services, restarted if they crash, and stop when that Sway exits. Each snippet explains itself in its comments, and ends with the plain `exec` line to use instead on a system without a systemd user session.
+- **If your config already starts the component** with its own `exec` line, remove that line: the dock, the grid, the switcher, the displays and the indicator exit at once beside a copy already running, the notifications service waits until the other one (mako, say) exits, and two clipboard watchers would store every copy twice.
+- **In a session that starts `graphical-session.target`** (niri, or Hyprland with uwsm, for example), turn the service on once instead: `systemctl --user enable --now swaydesk-dock` (the service names are the package names). No package turns them on, and they never start inside the Swaydesk session.
+- **Bar items for your own Waybar:** each one ships its module in `/usr/share/swaydesk/waybar/`, for example `swaydesk-calendar.jsonc`, with the lines to paste into your Waybar config.
+
+**The lock screen.** `swaydesk-lock` on its own locks the screen and returns once it's locked, so it works from a key and from swayidle. If your config already starts swayidle, keep a single one: instead of including the lock's snippet, add its timeout and before-sleep to your own line, for example:
+
+```
+bindsym Ctrl+Alt+l exec swaydesk-lock
+exec swayidle -w timeout 600 swaydesk-lock before-sleep swaydesk-lock
+```
+
+**Caffeine.** Outside the Swaydesk session (a plain Sway with your own swayidle), caffeine holds a Wayland idle inhibitor (`swaydesk-caffeinate`) instead of replacing swayidle, so your swayidle and its timeouts are left as they are. With every monitor disabled or unplugged (or, on Sway 1.12, powered off), the idle timeouts can still fire.
+
 ## Build from source
 
 The components are a Cargo workspace in `rust/` (Rust 1.85 or newer, GTK 4.14 or newer):
