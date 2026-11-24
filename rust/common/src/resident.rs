@@ -71,6 +71,27 @@ pub fn take_lock(path: &Path, wait: Duration) -> Option<File> {
     }
 }
 
+/// O código de saída de um residente que achou outro com a trava: a unit do systemd (packaging/files/units)
+/// não o reinicia (RestartPreventExitStatus). Os laços do config do Sway só param no 3 e seguem tentando
+pub const EXIT_ANOTHER_INSTANCE: u8 = 4;
+
+/// Avisa no stderr (o journal da unit) que outro residente já roda, com o PID dele se o arquivo de PID
+/// ainda for de um processo com este comm, e devolve o EXIT_ANOTHER_INSTANCE.
+pub fn another_instance(name: &str, comm: &str, pidfile: Option<&Path>) -> std::process::ExitCode {
+    match pidfile.and_then(|file| pid_with_comm(file, comm)) {
+        Some(pid) => eprintln!("{name}: another instance is running (pid {pid})"),
+        None => eprintln!("{name}: another instance is running"),
+    }
+    std::process::ExitCode::from(EXIT_ANOTHER_INSTANCE)
+}
+
+/// O PID do arquivo, se o processo ainda tiver o comm dado (o set_process_name dos residentes).
+fn pid_with_comm(pidfile: &Path, comm: &str) -> Option<i32> {
+    let pid: i32 = std::fs::read_to_string(pidfile).ok()?.trim().parse().ok()?;
+    let found = std::fs::read_to_string(format!("/proc/{pid}/comm")).ok()?;
+    (pid > 0 && pid as u32 != std::process::id() && found.trim_end() == comm).then_some(pid)
+}
+
 /// O nome do processo no /proc/<pid>/comm, que é o que o `pgrep -x` e o `pkill -x` comparam (o
 /// argv[0] não muda o comm). Chamar na linha principal: o comm do processo é o dela. Até 15 bytes.
 pub fn set_process_name(name: &str) -> bool {
@@ -266,6 +287,25 @@ mod tests {
         assert_eq!(rust, bash);
         std::fs::remove_dir_all(bash_dir).unwrap();
         std::fs::remove_dir_all(rust_dir).unwrap();
+    }
+
+    #[test]
+    fn another_instance_names_the_pid_only_when_the_comm_matches() {
+        let dir = tmp("another");
+        let file = dir.join("x.pid");
+        std::fs::write(&file, "1").unwrap(); // o init: outro comm
+        assert_eq!(pid_with_comm(&file, "sway-test-none"), None);
+        let comm = std::fs::read_to_string("/proc/1/comm").map(|c| c.trim_end().to_owned()).unwrap_or_default();
+        if !comm.is_empty() {
+            assert_eq!(pid_with_comm(&file, &comm), Some(1));
+        }
+        write_pid(&file).unwrap(); // este processo: nunca é o "outro"
+        let own = std::fs::read_to_string("/proc/self/comm").unwrap();
+        assert_eq!(pid_with_comm(&file, own.trim_end()), None);
+        assert_eq!(pid_with_comm(&dir.join("missing.pid"), "x"), None);
+        assert_eq!(another_instance("swaydesk-test", "x", None), std::process::ExitCode::from(EXIT_ANOTHER_INSTANCE));
+        assert_eq!(EXIT_ANOTHER_INSTANCE, 4);
+        std::fs::remove_dir_all(dir).unwrap();
     }
 
     #[test]

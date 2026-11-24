@@ -86,10 +86,12 @@ fn main() -> ExitCode {
     swaydesk_common::renderer::use_cairo_renderer(); // a grade parada não precisa do GL; ~25 MB a menos
     let Some(_lock) = resident::take_lock(&resident::lockfile(PROGRAM), if start { START_WAIT } else { Duration::ZERO })
     else {
+        // Só o start, o do serviço e do laço da sessão, sai com o 4: a unit do systemd não a reabre ao lado da
+        // outra. Sem o start (o Super, o botão da dock), outro está subindo ou já roda, e não é erro
         if start {
-            warn("another sway-drawer holds the lock: not starting");
+            return resident::another_instance("swaydesk-drawer", PROGRAM, Some(&pidfile));
         }
-        return ExitCode::SUCCESS; // outro está subindo ou já roda
+        return ExitCode::SUCCESS;
     };
 
     // Os sinais antes do arquivo do PID: um Super durante a subida mataria o processo com a ação

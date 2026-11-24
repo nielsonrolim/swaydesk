@@ -478,7 +478,10 @@ fn daemon() -> ExitCode {
     }
     // O renderizador cairo: residente, a menor memória (antes dos sinais do GLib e de qualquer linha)
     swaydesk_ui::use_cairo_renderer();
-    let Some(_lock) = resident::take_lock(&resident::lockfile(PROGRAM), Duration::ZERO) else { return ExitCode::SUCCESS };
+    // Com outro daemon no ar, o 4: a unit do systemd não o reabre ao lado dele
+    let Some(_lock) = resident::take_lock(&resident::lockfile(PROGRAM), Duration::ZERO) else {
+        return resident::another_instance("swaydesk-switcher", PROGRAM, Some(&resident::pidfile(PROGRAM)));
+    };
     swaydesk_common::theme_resources::register_theme_resources();
     if let Err(err) = gtk4::init() {
         warn(&format!("could not start GTK: {err}"));

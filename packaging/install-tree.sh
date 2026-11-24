@@ -114,6 +114,13 @@ for name in $(components "$pkg"); do
   install -Dm755 "$bins/swaydesk-$name" "$dest/usr/bin/swaydesk-$name"
   install -Dm644 "$man/swaydesk-$name.1" "$dest/usr/share/man/man1/swaydesk-$name.1"
 done
+# Os serviços de usuário dos componentes residentes (packaging/units.list): com o binário, em qualquer pacote
+# que a divisão o ponha. Para uma sessão que não é a do Swaydesk; nenhum pacote os liga
+for name in $(components "$pkg"); do
+  awk -v c="$name" '!/^#/ && $1 == c { print $2 }' "$root/packaging/units.list" | while read -r unit; do
+    install -Dm644 "$root/packaging/files/units/$unit" "$dest/usr/lib/systemd/user/$unit"
+  done
+done
 
 # Os scripts auxiliares do pacote (o SCRIPTS acima)
 for entry in "${SCRIPTS[@]}"; do

@@ -1,0 +1,34 @@
+# Swaydesk: notifications (org.freedesktop.Notifications).
+# For a session other than Swaydesk's (plain Sway, niri, Hyprland with uwsm...); the package doesn't enable
+# it. With graphical-session.target (niri, uwsm): systemctl --user enable --now swaydesk-notifd. Plain Sway never
+# reaches that target: the component's snippet starts the unit and stops it when Sway exits,
+# /usr/share/swaydesk/sway/config.d/50-swaydesk-notifd.conf. It never starts inside the Swaydesk session, whose
+# Sway config runs the component itself (SWAYDESK_SESSION: sway-session sets it, sway-env-cleanup unsets it)
+[Unit]
+Description=Swaydesk: notifications (org.freedesktop.Notifications)
+Documentation=man:swaydesk-notifd(1)
+PartOf=graphical-session.target
+After=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+ConditionEnvironment=!SWAYDESK_SESSION
+# A Wayland that went away (the compositor quit without stopping the unit): a few tries, then it stops
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+[Service]
+ExecStart=/usr/bin/swaydesk-notifd
+# Always, as the session's respawn loops do: the theme tool restarts the dock and the OSD with pkill (SIGTERM,
+# a clean exit). systemctl --user stop still stops it
+Restart=always
+RestartSec=1
+# Only the component itself on stop and restart: the apps it opens (a dock pin, the grid, a notification's
+# action) start with setsid but stay in this unit's cgroup, and the default control-group mode would take them
+# down with it; its own helpers (the swaymsg of the Sway events) die with it (setpriv --pdeathsig). The cost:
+# the apps are listed in status, a restart logs "left-over process", and a limit set here would cover them;
+# launching each app in its own scope (app-*.scope) would drop this
+KillMode=process
+# With another server (mako, dunst) holding the name, it waits in the bus queue and takes over when that one
+# quits: stop or remove the other one first
+
+[Install]
+WantedBy=graphical-session.target

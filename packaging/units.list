@@ -1,0 +1,11 @@
+# The systemd user units of the resident components (packaging/files/units), one per line: the component (its
+# binary, swaydesk-<component>, in packaging/components.list) and the unit. install-tree.sh installs each unit
+# in the package that has its component, wherever the package split puts it. None is enabled by the packages
+# (debian/rules: dh_installsystemduser --no-enable). tests/test_user_units.py checks them
+dock        swaydesk-dock.service
+notifd      swaydesk-notifd.service
+osd-bar     swaydesk-osd.service
+switcher    swaydesk-switcher.service
+displays    swaydesk-displays.service
+drawer      swaydesk-drawer.service
+clip-store  swaydesk-clipboard.service

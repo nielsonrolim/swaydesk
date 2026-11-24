@@ -95,8 +95,8 @@ fn main() -> ExitCode {
     // apps que ela abre não herdam a escolha (cmd::clean_launch_context e cmd::spawn_detached)
     swaydesk_ui::use_cairo_renderer();
     let Some(_lock) = resident::take_lock(&resident::lockfile(PROGRAM), Duration::ZERO) else {
-        eprintln!("{}", tr("sway-dock is already running"));
-        return ExitCode::FAILURE;
+        // O 4 (e não o 1): a unit do systemd não a reabre ao lado da outra; o laço da sessão segue tentando
+        return resident::another_instance("swaydesk-dock", PROGRAM, Some(&pidfile));
     };
 
     // Os sinais antes do arquivo do PID: um reload ou um pedido de fixar durante a subida mataria a dock

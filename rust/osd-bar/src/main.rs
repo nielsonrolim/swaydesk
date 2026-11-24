@@ -209,7 +209,10 @@ fn main() -> ExitCode {
     resident::run_as(PROGRAM);
     resident::set_process_name(PROGRAM);
     let run = run_dir();
-    let Some(_lock) = single_instance(&run.join(format!("{PROGRAM}.lock"))) else { return ExitCode::SUCCESS };
+    // Com outro no ar, o 4: a unit do systemd não o reabre ao lado dele
+    let Some(_lock) = single_instance(&run.join(format!("{PROGRAM}.lock"))) else {
+        return resident::another_instance("swaydesk-osd-bar", PROGRAM, Some(&run.join(format!("{PROGRAM}.pid"))));
+    };
     swaydesk_ui::use_cairo_renderer(); // residente: a menor memória; o cartão aparece por 1 s, sem animação
     swaydesk_common::theme_resources::register_theme_resources();
     if let Err(err) = gtk4::init() {

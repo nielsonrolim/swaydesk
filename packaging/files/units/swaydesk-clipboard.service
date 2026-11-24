@@ -1,0 +1,29 @@
+# Swaydesk: the clipboard history (cliphist), for the clipboard popup.
+# For a session other than Swaydesk's (plain Sway, niri, Hyprland with uwsm...); the package doesn't enable
+# it. With graphical-session.target (niri, uwsm): systemctl --user enable --now swaydesk-clipboard. Plain Sway never
+# reaches that target: the component's snippet starts the unit and stops it when Sway exits,
+# /usr/share/swaydesk/sway/config.d/50-swaydesk-clipboard.conf. It never starts inside the Swaydesk session, whose
+# Sway config runs the component itself (SWAYDESK_SESSION: sway-session sets it, sway-env-cleanup unsets it)
+[Unit]
+Description=Swaydesk: the clipboard history (cliphist), for the clipboard popup
+Documentation=man:swaydesk-clip-store(1)
+PartOf=graphical-session.target
+After=graphical-session.target
+ConditionEnvironment=WAYLAND_DISPLAY
+ConditionEnvironment=!SWAYDESK_SESSION
+# A Wayland that went away (the compositor quit without stopping the unit): a few tries, then it stops
+StartLimitIntervalSec=30
+StartLimitBurst=5
+
+[Service]
+ExecStart=/bin/sh -c 'wl-paste --type text --watch cliphist store & wl-paste --type image --watch cliphist store & exec wl-paste --watch /usr/bin/swaydesk-clip-store'
+# Always, as the session's respawn loops do: the theme tool restarts the dock and the OSD with pkill (SIGTERM,
+# a clean exit). systemctl --user stop still stops it
+Restart=always
+RestartSec=1
+# The three watchers of the session: text and images go straight to cliphist, the rest (a PDF, a file copied
+# as bytes) through swaydesk-clip-store. Stopping the unit stops all three (its control group)
+# Only the last one is watched: if the text or image watcher dies alone, it stays down until the unit restarts
+
+[Install]
+WantedBy=graphical-session.target

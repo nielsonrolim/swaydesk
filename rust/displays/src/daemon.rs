@@ -86,9 +86,10 @@ pub fn apply_now() -> ExitCode {
 
 pub fn run() -> ExitCode {
     resident::set_process_name(PROGRAM);
-    // Um só serviço por sessão: o segundo sai em silêncio
+    // Um só serviço por sessão: o segundo sai com o 4, que a unit do systemd não reabre (o laço da sessão
+    // só para no 3). Este não grava arquivo de PID
     let Some(_lock) = resident::take_lock(&resident::lockfile("sway-displays-daemon"), Duration::ZERO) else {
-        return ExitCode::SUCCESS;
+        return resident::another_instance("swaydesk-displays", PROGRAM, None);
     };
     let (mut child, mut reader) = match sway::subscribe() {
         Ok(pair) => pair,
