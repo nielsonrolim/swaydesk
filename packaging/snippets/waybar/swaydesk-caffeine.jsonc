@@ -1,0 +1,14 @@
+// swaydesk-caffeine: the caffeine icon: the options (1 h, 2 h, always) on click, on or off on right click, for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/caffeine/
+// In ~/.config/waybar/config.jsonc, add "custom/swaydesk-caffeine" to "modules-left", "modules-center" or
+// "modules-right", and paste the lines below next to your other modules (a comma between them).
+// Outside the Swaydesk session caffeine never touches your swayidle: while it's on, it holds an idle inhibitor.
+// The icons are Nerd Font symbols (Symbols Nerd Font, in swaydesk-common). On and off are the same icon with a
+// class ("on" or "off"): to tell them apart, add to ~/.config/waybar/style.css
+//   #custom-swaydesk-caffeine.off { opacity: 0.5; }
+  "custom/swaydesk-caffeine": {
+    "exec": "exec ~/.local/bin/waybar-caffeine",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/waybar-caffeine-popup",
+    "on-click-right": "~/.local/bin/sway-caffeine toggle"
+  }

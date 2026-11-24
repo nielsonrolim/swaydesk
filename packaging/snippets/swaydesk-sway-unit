@@ -16,8 +16,10 @@ systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK
 systemctl --user set-environment XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-sway}"
 # Um SWAYDESK_SESSION que sobrou de uma sessão do Swaydesk de antes faria a unidade se recusar
 systemctl --user unset-environment SWAYDESK_SESSION
-# restart, e não start: uma cópia que ainda está presa à tela de uma sessão que acabou de fechar dá lugar a esta
-systemctl --user reset-failed "$unit"
+# restart, e não start: uma cópia que ainda está presa à tela de uma sessão que acabou de fechar dá lugar a esta.
+# O reset-failed de uma unidade que o gerenciador ainda não carregou (o primeiro login) falha com "not loaded", que
+# o Sway gravaria no log dele a cada login: sem o stderr, e o status, como antes, não muda nada
+systemctl --user reset-failed "$unit" 2>/dev/null
 systemctl --user restart "$unit"
 
 # Espera o Sway sair (o swaymsg também volta se o Sway morrer). Um erro com o Sway ainda respondendo (o IPC que
