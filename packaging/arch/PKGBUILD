@@ -150,8 +150,9 @@ package_swaydesk-desktop() {
   # O paku (github.com/nielsonrolim/paku, do repositório do projeto no OBS, como estes pacotes): o pacman e um
   # helper do AUR, se houver, num comando só. Vai como ferramenta para o usuário (decisão do usuário, 0.1.4), e a
   # janela de atualização (sway-updates) o usa. Sem helper, ele roda o pacman com sudo. O >= é a versão com o
-  # "maintain" que o sway-updates chama (a manutenção do arch-update, decisão do usuário, 0.1.4); o archlinux-contrib
-  # traz o checkservices do passo dos serviços (o paccache e o pacdiff do cache e dos .pacnew vêm do pacman-contrib).
+  # "maintain" que o sway-updates chama (a manutenção do arch-update, decisão do usuário, 0.1.4) e que, desde a 0.3.2,
+  # depende ele mesmo do que o maintain usa: o archlinux-contrib (o checkservices do passo dos serviços) saiu daqui na
+  # 0.1.7, porque nada do Swaydesk o chama. O pacman-contrib e o fakeroot ficam: o sway-updates chama o checkupdates.
   # O nome paku não é de nenhum pacote oficial, do AUR ou do
   # BlackArch (conferido em 22/11/2026: o BlackArch tem um "pacu", outro programa, e o pacman resolve um nome pelo
   # primeiro repositório do pacman.conf que o tem; o passo 4 do packaging/obs/README.md confere a cada versão)
@@ -163,7 +164,7 @@ package_swaydesk-desktop() {
            mate-polkit xorg-xwayland thunar blueman papirus-icon-theme grim slurp wf-recorder brightnessctl
            playerctl pavucontrol wireplumber libpulse networkmanager network-manager-applet bluez upower gammastep
            libnotify power-profiles-daemon xdg-user-dirs qt5ct qt6ct capitaine-cursors
-           gnome-keyring pacman-contrib archlinux-contrib fakeroot 'paku>=0.3.0')
+           gnome-keyring pacman-contrib fakeroot 'paku>=0.3.2')
   # O fcitx5 só com o [enabled] input_method ligado (o ç no Chromium e no Electron): opcional, como no Suggests do
   # Debian; a ISO o instala e liga
   optdepends=("gnome-text-editor: the Help's Open button, for 50-local.conf"
