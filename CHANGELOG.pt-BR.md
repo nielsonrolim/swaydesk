@@ -2,6 +2,15 @@
 
 O que muda em cada versão do Swaydesk, em português a partir da 0.1.4. As versões anteriores estão no [CHANGELOG.md](CHANGELOG.md), em inglês. Cada versão sai primeiro em pacotes e, logo depois, em imagens de instalação. As atualizações chegam pelo `apt upgrade` ou pelo `pacman -Syu`.
 
+## 0.1.6.1 — 2026-11-24
+
+Só imagens de instalação: as imagens do Debian 13 e do Arch da 0.1.6. Os pacotes continuam na 0.1.6.
+
+### Imagens de instalação
+
+- **O instalador exige uma senha de pelo menos 4 caracteres para o primeiro usuário.**
+- Elas também trazem as mudanças de imagem listadas na 0.1.6: nada de `/etc/calamares` no sistema instalado, no Debian 13 e no Arch; no Arch, formatos em português com um fuso no Brasil, a página de teclado começando no layout US e um menu do GRUB sem todas as entradas de boot do firmware.
+
 ## 0.1.6 — 2026-11-24
 
 Uma animação de arraste na dock, um app Tema do Desktop que mantém as suas escolhas e um tema aplicado de fora da sessão que chega à sessão aberta. As imagens de instalação vêm com a 0.1.6.1.
