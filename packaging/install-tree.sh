@@ -142,6 +142,22 @@ done
 package_paths() {
   sed -e "s|^set \$bin  *~/\.local/bin\$|set \$bin $libexec|" -e "s|~/\.local/bin/|$libexec/|g" "$1"
 }
+# Os trechos opcionais para quem usa o Sway puro e a própria Waybar (desde a 0.1.7, packaging/snippets): o de cada
+# pacote leva o nome dele. Nada os lê sozinho: o usuário inclui o do Sway no config dele e cola o da Waybar no dele
+# (o /etc/sway/config.d, que o config padrão do Sway inclui, ligaria para todos). Como nas configs da sessão, os
+# programas de ~/.local/bin passam a ser os do libexec: os lançadores do próprio pacote (o nome diz o papel)
+snippets=$root/packaging/snippets
+if [[ -f $snippets/sway/50-$pkg.conf ]]; then
+  install -d "$dest/usr/share/swaydesk/sway/config.d"
+  package_paths "$snippets/sway/50-$pkg.conf" > "$dest/usr/share/swaydesk/sway/config.d/50-$pkg.conf"
+  chmod 644 "$dest/usr/share/swaydesk/sway/config.d/50-$pkg.conf"
+fi
+if [[ -f $snippets/waybar/$pkg.jsonc ]]; then
+  install -d "$dest/usr/share/swaydesk/waybar"
+  package_paths "$snippets/waybar/$pkg.jsonc" > "$dest/usr/share/swaydesk/waybar/$pkg.jsonc"
+  chmod 644 "$dest/usr/share/swaydesk/waybar/$pkg.jsonc"
+fi
+
 case $pkg in
   swaydesk-common)
     # Os ícones da Symbols Nerd Font (a mesma v3.4.0 que o install.sh baixa), que o Debian não empacota. O
@@ -153,6 +169,8 @@ case $pkg in
     for name in "${MODULES[@]}"; do
       install -Dm644 "$bin/$name" "$dest$libexec/$name"
     done
+    # O que os trechos do Sway puro chamam para subir a unidade de cada componente (packaging/snippets)
+    install -Dm755 "$root/packaging/snippets/swaydesk-sway-unit" "$dest$libexec/swaydesk-sway-unit"
     # Os ícones do hicolor, aqui porque a Ajuda (swaydesk-help) também os mostra
     for icon in "${HICOLOR_ICONS[@]}"; do
       install -Dm644 "$data/icons/hicolor/scalable/apps/$icon" "$dest/usr/share/icons/hicolor/scalable/apps/$icon"

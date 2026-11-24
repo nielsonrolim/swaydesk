@@ -1,0 +1,25 @@
+// swaydesk-notifd: the notifications icon: the popup on click, do not disturb on right click, for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/notification-center/
+// In ~/.config/waybar/config.jsonc, add "custom/swaydesk-notifd" to "modules-left", "modules-center" or
+// "modules-right", and paste the lines below next to your other modules (a comma between them).
+// The icons are Nerd Font symbols (Symbols Nerd Font, in swaydesk-common).
+// The notification server must run (/usr/share/swaydesk/sway/config.d/50-swaydesk-notifd.conf).
+  "custom/swaydesk-notifd": {
+    "exec": "exec ~/.local/bin/waybar-notifications",
+    "return-type": "json",
+    "restart-interval": 5,
+    "escape": true,
+    "format": "{icon}",
+    "format-icons": {
+      "notification": "<sup> ●</sup>",
+      "none": "",
+      "dnd-notification": "<sup> ●</sup>",
+      "dnd-none": "",
+      "inhibited-notification": "<sup> ●</sup>",
+      "inhibited-none": "",
+      "dnd-inhibited-notification": "<sup> ●</sup>",
+      "dnd-inhibited-none": ""
+    },
+    "tooltip": false,
+    "on-click": "~/.local/bin/waybar-notifications-popup",
+    "on-click-right": "~/.local/bin/waybar-notifications toggle-dnd"
+  }

@@ -1,0 +1,10 @@
+// swaydesk-language: the keyboard layout, shown only with two or more layouts; click switches, for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/language/
+// In ~/.config/waybar/config.jsonc, add "custom/swaydesk-language" to "modules-left", "modules-center" or
+// "modules-right", and paste the lines below next to your other modules (a comma between them).
+// The icons are Nerd Font symbols (Symbols Nerd Font, in swaydesk-common).
+  "custom/swaydesk-language": {
+    "exec": "exec ~/.local/bin/waybar-language",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "swaymsg input type:keyboard xkb_switch_layout next"
+  }

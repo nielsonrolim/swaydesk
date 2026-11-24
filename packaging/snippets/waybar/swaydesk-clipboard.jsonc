@@ -1,0 +1,9 @@
+// swaydesk-clipboard: the clipboard history button, for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/clipboard/
+// In ~/.config/waybar/config.jsonc, add "custom/swaydesk-clipboard" to "modules-left", "modules-center" or
+// "modules-right", and paste the lines below next to your other modules (a comma between them).
+// The icons are Nerd Font symbols (Symbols Nerd Font, in swaydesk-common).
+  "custom/swaydesk-clipboard": {
+    "format": "",
+    "tooltip": false,
+    "on-click": "~/.local/bin/waybar-clipboard-popup"
+  }

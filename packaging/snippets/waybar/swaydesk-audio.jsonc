@@ -1,0 +1,14 @@
+// swaydesk-audio: the volume icon: the audio popup on click, mute on right click, scroll changes the volume, for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/audio/
+// In ~/.config/waybar/config.jsonc, add "custom/swaydesk-audio" to "modules-left", "modules-center" or
+// "modules-right", and paste the lines below next to your other modules (a comma between them).
+// The icons are Nerd Font symbols (Symbols Nerd Font, in swaydesk-common).
+  "custom/swaydesk-audio": {
+    "exec": "exec ~/.local/bin/waybar-volume",
+    "return-type": "json",
+    "restart-interval": 5,
+    "smooth-scrolling-threshold": 1,
+    "on-click": "~/.local/bin/waybar-audio",
+    "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
+    "on-scroll-up": "wpctl set-volume -l 1.0 @DEFAULT_AUDIO_SINK@ 1%+",
+    "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 1%-"
+  }

@@ -1,0 +1,11 @@
+// swaydesk-weather: the weather (from your IP's location) and its forecast popup, for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/weather/
+// In ~/.config/waybar/config.jsonc, add "custom/swaydesk-weather" to "modules-left", "modules-center" or
+// "modules-right", and paste the lines below next to your other modules (a comma between them).
+// The icons are Nerd Font symbols (Symbols Nerd Font, in swaydesk-common).
+  "custom/swaydesk-weather": {
+    "exec": "exec ~/.local/bin/waybar-weather-bar",
+    "interval": 60,
+    "signal": 8,
+    "tooltip": false,
+    "on-click": "~/.local/bin/waybar-weather"
+  }

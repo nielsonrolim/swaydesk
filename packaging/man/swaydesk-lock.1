@@ -12,9 +12,9 @@ swaydesk\-lock \- lock screen
 .SH DESCRIPTION
 The lock screen, through ext\-session\-lock\-v1 (gtk4\-layer\-shell 1.2 or newer).
 .PP
-Run with no arguments, it locks the screen through the package's sway\-lock helper (bin/../libexec/swaydesk or bin/../lib/swaydesk, never the PATH or the home folder) and exits with its code: 0 as soon as the screen is locked, or if it was already locked, without starting a second lock; any other code means nothing locked. It does not wait for the unlock, like
+Run with no arguments, it locks the screen through the package's sway\-lock helper (bin/../libexec/swaydesk, bin/../lib/swaydesk, or its own folder in the dotfiles; never the PATH or the home folder) and exits with its code: 0 as soon as the screen is locked, or if it was already locked, without starting a second lock; any other code means nothing locked. It does not wait for the unlock, like
 .BR "swaylock \-f" ,
-so it suits a key binding and swayidle's timeout and before\-sleep alike. Without the sway\-lock helper (the swaydesk\-scripts package), it exits 1.
+so it suits a key binding and swayidle's timeout and before\-sleep alike. Without the sway\-lock helper (shipped in the swaydesk\-lock package itself), it exits 1 and names the places it looked in.
 .PP
 The sway\-lock helper starts it with \-\-notify\-fd through its supervisor, which falls back to the lock in Python (sway\-lock\-gtk, on Debian and Ubuntu) and then to gtklock if it fails, and hands the lock to another locker if it exits without unlocking. The password field is on every monitor, takes dead keys through GTK's simple input method (never an input method daemon), and PAM checks the password with the swaydesk\-lock service.
 .PP

@@ -396,8 +396,9 @@ store() {
 # que ele escolhe (paru, yay ou pikaur, ou o da config dele; sem nenhum, o sudo pacman -Syu) com o Flatpak junto,
 # depois órfãos, Flatpaks sem uso, o cache, os .pacnew, o reinício por um kernel novo e os serviços, cada passo que
 # apaga ou reinicia com a sua pergunta y/N. Sem argumentos: com o cachy-update instalado, o paku passa tudo a ele,
-# que não conhece as nossas opções. O firmware fica com o passo de baixo. Só a partir da versão com o maintain, a
-# que o swaydesk-desktop pede: nos dotfiles (o install.sh), um paku mais velho fica de fora e nada muda
+# que não conhece as nossas opções. O firmware fica com o passo de baixo. Só a partir da 0.3.0, a primeira com o
+# maintain (o swaydesk-desktop pede a 0.3.2 desde a 0.1.7, a que traz o checkservices): nos dotfiles (o
+# install.sh), um paku mais velho fica de fora e nada muda
 paku_min=0.3.0
 use_paku() {
   command -v paku >/dev/null 2>&1 || return 1

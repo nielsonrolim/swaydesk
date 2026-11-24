@@ -1,0 +1,10 @@
+// swaydesk-network: the network icon and its popup (NetworkManager), for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/network/
+// In ~/.config/waybar/config.jsonc, add "custom/swaydesk-network" to "modules-left", "modules-center" or
+// "modules-right", and paste the lines below next to your other modules (a comma between them).
+// The icons are Nerd Font symbols (Symbols Nerd Font, in swaydesk-common).
+  "custom/swaydesk-network": {
+    "exec": "exec ~/.local/bin/waybar-network",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/waybar-network-popup"
+  }

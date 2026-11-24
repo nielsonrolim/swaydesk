@@ -1,0 +1,13 @@
+// swaydesk-brightness: the screen brightness icon: the popup on click, scroll changes it, for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/brightness/
+// In ~/.config/waybar/config.jsonc, add "custom/swaydesk-brightness" to "modules-left", "modules-center" or
+// "modules-right", and paste the lines below next to your other modules (a comma between them).
+// The icons are Nerd Font symbols (Symbols Nerd Font, in swaydesk-common).
+  "custom/swaydesk-brightness": {
+    "exec": "exec ~/.local/bin/waybar-brightness",
+    "return-type": "json",
+    "restart-interval": 5,
+    "smooth-scrolling-threshold": 1,
+    "on-click": "~/.local/bin/waybar-brightness-popup",
+    "on-scroll-up": "sh -c 'ok=; for d in /sys/class/backlight/*; do [ -r \"$d/brightness\" ] && [ -r \"$d/max_brightness\" ] && ok=1 && break; done; [ -n \"$ok\" ] || exit 0; brightnessctl -q -d \"${d##*/}\" set 5%+; ~/.local/bin/waybar-notify waybar-brightness'",
+    "on-scroll-down": "sh -c 'ok=; for d in /sys/class/backlight/*; do [ -r \"$d/brightness\" ] && [ -r \"$d/max_brightness\" ] && ok=1 && break; done; [ -n \"$ok\" ] || exit 0; f=$(( $(cat \"$d/max_brightness\") / 100 )); [ $f -gt 0 ] || f=1; brightnessctl -q -d \"${d##*/}\" --min-value=$f set 5%-; ~/.local/bin/waybar-notify waybar-brightness'"
+  }

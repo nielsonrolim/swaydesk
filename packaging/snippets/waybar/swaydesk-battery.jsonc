@@ -1,0 +1,12 @@
+// swaydesk-battery: the battery icon: the popup on click, the power profile on right click, for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/battery/
+// In ~/.config/waybar/config.jsonc, add "custom/swaydesk-battery" to "modules-left", "modules-center" or
+// "modules-right", and paste the lines below next to your other modules (a comma between them).
+// The icons are Nerd Font symbols (Symbols Nerd Font, in swaydesk-common).
+  "custom/swaydesk-battery": {
+    "exec": "exec ~/.local/bin/waybar-battery watch",
+    "return-type": "json",
+    "restart-interval": 5,
+    "on-click": "~/.local/bin/waybar-battery-popup",
+    "on-click-middle": "~/.local/bin/waybar-battery info",
+    "on-click-right": "~/.local/bin/waybar-battery profile"
+  }

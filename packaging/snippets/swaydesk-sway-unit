@@ -1,0 +1,75 @@
+#!/bin/sh
+# Sobe uma unidade de usuário do Swaydesk a partir do config de um Sway puro e a para quando esse Sway sai. Os
+# trechos de /usr/share/swaydesk/sway/config.d o chamam com "exec": uso: swaydesk-sway-unit UNIDADE
+#
+# Num script, e não numa linha "sh -c" do trecho: o Sway troca no exec todo "$nome" que um "set" do usuário
+# definiu (casando pelo começo, até entre aspas simples), e as variáveis do shell não chegariam inteiras.
+set -u
+unit=${1:?usage: swaydesk-sway-unit UNIT}
+
+# Na sessão do Swaydesk, quem sobe o componente é a sessão: nada a fazer
+[ -n "${SWAYDESK_SESSION:-}" ] && exit 0
+
+# O ambiente deste Sway para o gerenciador de usuário, como o 50-systemd-user.conf do Sway faz: aquele roda em
+# paralelo (o Sway não espera um exec), e sem o WAYLAND_DISPLAY o ConditionEnvironment da unidade a pularia
+systemctl --user import-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK
+systemctl --user set-environment XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-sway}"
+# Um SWAYDESK_SESSION que sobrou de uma sessão do Swaydesk de antes faria a unidade se recusar
+systemctl --user unset-environment SWAYDESK_SESSION
+# restart, e não start: uma cópia que ainda está presa à tela de uma sessão que acabou de fechar dá lugar a esta
+systemctl --user reset-failed "$unit"
+systemctl --user restart "$unit"
+
+# Espera o Sway sair (o swaymsg também volta se o Sway morrer). Um erro com o Sway ainda respondendo (o IPC que
+# falhou por um instante) não é a saída: tenta de novo, e depois de 10 erros só pergunta a cada 5 s se o Sway ainda
+# responde, sem parar o componente de uma sessão viva
+delay=${SWAYDESK_SWAY_UNIT_DELAY:-1}
+tries=0
+until swaymsg -t subscribe '["shutdown"]' >/dev/null; do
+  if ! swaymsg -t get_version >/dev/null 2>&1; then
+    echo "swaydesk-sway-unit: Sway no longer answers; stopping $unit" >&2
+    break
+  fi
+  tries=$((tries + 1))
+  if [ "$tries" -ge 10 ]; then
+    echo "swaydesk-sway-unit: the Sway IPC subscription keeps failing; polling Sway instead" >&2
+    while swaymsg -t get_version >/dev/null 2>&1; do sleep "${SWAYDESK_SWAY_UNIT_POLL:-5}"; done
+    break
+  fi
+  sleep "$delay"
+done
+
+# De quem é a unidade agora. Primeiro pelo processo dela (/proc/<MainPID>/environ): com o SWAYSOCK de outro Sway,
+# fica (um login logo depois deste a reiniciou). Sem resposta do processo (parado, entre dois Restart=, morrendo junto
+# com o Sway, sem deixar ler), pelo gerenciador: fica só se ele já tem o socket de outro Sway (um login novo importa o
+# ambiente antes do restart, e nada sobe estas unidades sem ele: o ConditionEnvironment=WAYLAND_DISPLAY as recusa,
+# e o !SWAYDESK_SESSION as recusa na sessão do Swaydesk). Só um caminho absoluto conta como socket: um valor que o
+# show-environment escreve em $'...' não prova nada. Sem SWAYSOCK neste script, não há como saber: para. Não pelo
+# InvocationID, que muda a cada Restart=.
+#
+# Janelas que ficam, de milissegundos, aceitas num trecho opcional: o outro login reiniciando a unidade entre esta
+# conta e o stop; e o processo ainda deste Sway com o gerenciador já no de outro, que só fez start (no-op com a
+# unidade ativa): o stop a tira dele, e o próximo login a sobe de novo.
+ours=${SWAYSOCK:-}
+keep=
+if [ -n "$ours" ]; then
+  pid=$(systemctl --user show -p MainPID --value "$unit")
+  sock=
+  if [ "${pid:-0}" != 0 ]; then
+    sock=$(tr '\0' '\n' < "/proc/$pid/environ" 2>/dev/null | sed -n 's/^SWAYSOCK=//p')
+  fi
+  if [ -n "$sock" ]; then
+    [ "$sock" != "$ours" ] && keep=1
+  else
+    manager=$(systemctl --user show-environment | sed -n 's|^SWAYSOCK=\(/.*\)|\1|p')
+    [ -n "$manager" ] && [ "$manager" != "$ours" ] && keep=1
+  fi
+fi
+[ -z "$keep" ] && systemctl --user stop "$unit"
+
+# E o ambiente do gerenciador só sai se ainda for o deste Sway (vários trechos fazem a mesma conta: o segundo não acha
+# mais nada)
+if [ -n "$ours" ] && systemctl --user show-environment | grep -qxF "SWAYSOCK=$ours"; then
+  systemctl --user unset-environment DISPLAY WAYLAND_DISPLAY SWAYSOCK XDG_CURRENT_DESKTOP
+fi
+exit 0
