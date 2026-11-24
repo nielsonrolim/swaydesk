@@ -434,38 +434,47 @@ fn swaysock_pid(sock: &str) -> Option<String> {
 }
 
 /// O DCONF_PROFILE do Sway em execução deste usuário ("" se ele não o tem), ou None sem Sway à vista.
-/// Serve a um ambiente que tem o XDG_CURRENT_DESKTOP=sway mas não o DCONF_PROFILE (um shell de fora da
-/// sessão que exportou um e não o outro). Primeiro o pid do SWAYSOCK; se ele não for um sway nosso (um
-/// socket velho), os processos sway, do menor pid. SWAY_DESKTOP_PROC troca o /proc nos testes.
+/// Serve a um ambiente sem o DCONF_PROFILE da sessão (ssh, cron, um shell que exportou só o
+/// XDG_CURRENT_DESKTOP). SWAY_DESKTOP_PROC troca o /proc nos testes; a escolha está no sway_profile_in.
 pub fn running_sway_profile() -> Option<String> {
-    use std::os::unix::fs::MetadataExt;
     let proc = std::env::var_os("SWAY_DESKTOP_PROC").filter(|v| !v.is_empty()).map_or_else(|| PathBuf::from("/proc"), PathBuf::from);
-    let mut scanned: Vec<u64> = std::fs::read_dir(&proc)
+    let sock_pid = std::env::var("SWAYSOCK").ok().as_deref().and_then(swaysock_pid);
+    // SAFETY: getuid não falha nem toca memória
+    let uid = unsafe { libc::getuid() };
+    sway_profile_in(&proc, sock_pid.as_deref(), uid)
+}
+
+/// O Sway a seguir, entre os processos `sway` do uid (os de outro usuário não contam, como no pgrep -u): o do
+/// SWAYSOCK, se for um deles (um socket velho não é); senão, do menor pid, o primeiro com o DCONF_PROFILE (um
+/// Sway aninhado de teste, sem o perfil, não decide). Do environ só se lê o DCONF_PROFILE, e nada dele vai para
+/// o log. "" quando há Sway nosso mas nenhum com o perfil.
+fn sway_profile_in(proc: &Path, sock_pid: Option<&str>, uid: u32) -> Option<String> {
+    use std::os::unix::fs::MetadataExt;
+    // None: não é um sway nosso; Some(perfil, ou "" sem ele)
+    let profile_of = |pid: &str| -> Option<String> {
+        let dir = proc.join(pid);
+        let ours = std::fs::read_to_string(dir.join("comm")).is_ok_and(|c| c.trim() == "sway")
+            && std::fs::metadata(&dir).is_ok_and(|m| m.uid() == uid);
+        let environ = ours.then(|| std::fs::read(dir.join("environ")).ok()).flatten()?;
+        let value = environ.split(|b| *b == 0).find_map(|item| item.strip_prefix(b"DCONF_PROFILE="));
+        Some(value.map(|v| String::from_utf8_lossy(v).into_owned()).unwrap_or_default())
+    };
+    if let Some(profile) = sock_pid.and_then(profile_of) {
+        return Some(profile);
+    }
+    let mut scanned: Vec<u64> = std::fs::read_dir(proc)
         .map(|dir| dir.filter_map(|e| e.ok()?.file_name().to_str()?.parse().ok()).collect())
         .unwrap_or_default();
     scanned.sort_unstable();
-    let pids = std::env::var("SWAYSOCK")
-        .ok()
-        .as_deref()
-        .and_then(swaysock_pid)
-        .into_iter()
-        .chain(scanned.into_iter().map(|p| p.to_string()));
-    // SAFETY: getuid não falha nem toca memória
-    let uid = unsafe { libc::getuid() };
-    for pid in pids {
-        let dir = proc.join(&pid);
-        let is_ours = std::fs::read_to_string(dir.join("comm")).is_ok_and(|c| c.trim() == "sway")
-            && std::fs::metadata(&dir).is_ok_and(|m| m.uid() == uid);
-        let Some(environ) = is_ours.then(|| std::fs::read(dir.join("environ")).ok()).flatten() else {
-            continue;
-        };
-        let value = environ
-            .split(|b| *b == 0)
-            .find_map(|item| item.strip_prefix(b"DCONF_PROFILE="))
-            .map(|v| String::from_utf8_lossy(v).into_owned());
-        return Some(value.unwrap_or_default());
+    let mut seen = false;
+    for pid in scanned {
+        match profile_of(&pid.to_string()) {
+            Some(profile) if !profile.is_empty() => return Some(profile),
+            Some(_) => seen = true,
+            None => {}
+        }
     }
-    None
+    seen.then(String::new)
 }
 
 /// Um Sway iniciado por um sway-session anterior ao perfil próprio lê a base normal do dconf. Sem o
@@ -483,16 +492,19 @@ pub fn profiles() -> PathBuf {
     dc::share_dir().join("dconf")
 }
 
-/// Se a sessão do Sway lê o banco próprio. Quem o liga é o sway-session dos dotfiles, que exporta o
-/// DCONF_PROFILE quando ~/.local/share/sway-desktop/dconf/sway (ou a da swaydesk) existe. Só com os pacotes, nada o exporta: os
-/// apps leem a base normal, e gravar no banco do Sway não mudaria nada (visto na VM, Sway aberto pelo tty).
+/// Se a sessão do Sway lê o banco próprio. Quem o liga é o sway-session, que exporta o DCONF_PROFILE: nos
+/// dotfiles, quando ~/.local/share/sway-desktop/dconf/sway (ou a da swaydesk) existe; nos pacotes (--package), o
+/// do /usr/share/sway-desktop. Fora da sessão (ssh, cron), sem a variável, vale o Sway em execução: com os pacotes
+/// não há arquivo no ~, e o tema ia para a base normal, que a sessão não lê (visto na VM: os apps GTK 4 ficavam
+/// com o tema antigo). Um Sway sem o perfil (aberto do tty, sem o sway-session) lê a base normal.
 fn sway_profile_in_use() -> bool {
     std::env::var_os("DCONF_PROFILE").is_some_and(|v| !v.is_empty())
         || swaydesk_common::dirs::data_dir().join("dconf/sway").is_file()
+        || running_sway_profile().is_some_and(|p| !p.is_empty())
 }
 
 /// O DCONF_PROFILE da base do Sway, de onde quer que se rode. Numa sessão antiga, ou sem o banco próprio em
-/// uso (só os pacotes), nenhum.
+/// uso (nenhum Sway com o perfil, nem o dos dotfiles), nenhum.
 fn dconf_profile(profile: &str) -> Option<PathBuf> {
     (!legacy_session() && sway_profile_in_use()).then(|| profiles().join(profile))
 }
@@ -922,6 +934,53 @@ pub fn accent_auto() -> Result<Auto, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Um /proc falso com processos sway (pid, perfil: None sem o DCONF_PROFILE), todos do usuário que roda o teste.
+    fn fake_proc(name: &str, sways: &[(u32, Option<&str>)]) -> PathBuf {
+        let proc = std::env::temp_dir().join(format!("swaydesk-theme-proc-{}-{name}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&proc);
+        for (pid, profile) in sways {
+            let dir = proc.join(pid.to_string());
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join("comm"), "sway\n").unwrap();
+            let mut environ = b"HOME=/home/x\0SECRET=nada\0".to_vec();
+            if let Some(profile) = profile {
+                environ.extend_from_slice(format!("DCONF_PROFILE={profile}\0").as_bytes());
+            }
+            std::fs::write(dir.join("environ"), environ).unwrap();
+        }
+        // Outro programa com o perfil não conta
+        let other = proc.join("3");
+        std::fs::create_dir_all(&other).unwrap();
+        std::fs::write(other.join("comm"), "bash\n").unwrap();
+        std::fs::write(other.join("environ"), b"DCONF_PROFILE=/outro\0").unwrap();
+        proc
+    }
+
+    #[test]
+    fn the_running_sway_profile_is_picked_deterministically() {
+        // SAFETY: getuid não falha nem toca memória
+        let uid = unsafe { libc::getuid() };
+        // O de menor pid sem o perfil (um Sway aninhado de teste) não decide: o que tem o perfil
+        let proc = fake_proc("two", &[(10, None), (20, Some("/usr/share/sway-desktop/dconf/sway"))]);
+        assert_eq!(sway_profile_in(&proc, None, uid).as_deref(), Some("/usr/share/sway-desktop/dconf/sway"));
+        // O do SWAYSOCK vale, mesmo sem o perfil; um SWAYSOCK velho (pid que não é sway) cai na busca
+        assert_eq!(sway_profile_in(&proc, Some("10"), uid).as_deref(), Some(""));
+        assert_eq!(sway_profile_in(&proc, Some("3"), uid).as_deref(), Some("/usr/share/sway-desktop/dconf/sway"));
+        assert_eq!(sway_profile_in(&proc, Some("99"), uid).as_deref(), Some("/usr/share/sway-desktop/dconf/sway"));
+        // Os Sway de outro usuário (o dono dos arquivos não é o uid) não contam
+        assert_eq!(sway_profile_in(&proc, None, uid.wrapping_add(1)), None);
+        assert_eq!(sway_profile_in(&proc, Some("20"), uid.wrapping_add(1)), None);
+        // Só Sway sem o perfil: "", nenhum: None
+        let none = fake_proc("bare", &[(10, None)]);
+        assert_eq!(sway_profile_in(&none, None, uid).as_deref(), Some(""));
+        let empty = fake_proc("empty", &[]);
+        assert_eq!(sway_profile_in(&empty, None, uid), None);
+        for dir in [proc, none, empty] {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
+
 
     #[test]
     fn adw_gtk3_with_snapd_desktop_integration_gets_a_note() {
