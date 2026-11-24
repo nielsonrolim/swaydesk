@@ -539,6 +539,11 @@ msgid "Accent color"
 msgstr "Cor de destaque"
 
 #: home/.local/bin/sway-theme-app
+#, python-format
+msgid "Custom · %s"
+msgstr "Personalizada · %s"
+
+#: home/.local/bin/sway-theme-app
 msgid "Use the wallpaper's color"
 msgstr "Usar a cor do papel de parede"
 
@@ -683,6 +688,10 @@ msgstr "corrija antes o arquivo: %s"
 #, python-format
 msgid "templates not found in %s: run ./install.sh"
 msgstr "modelos não encontrados em %s: rode o ./install.sh"
+
+#: home/.local/bin/sway_themes.py
+msgid "Snap apps don't include adw-gtk3: snapd will ask at every login to install a third-party theme snap. Choose Adwaita to avoid this; snaps already have it."
+msgstr "Os apps snap não trazem o adw-gtk3: o snapd vai pedir a cada login para instalar um snap de tema de terceiros. Escolha o Adwaita para evitar isso; os snaps já o têm."
 
 #: home/.local/bin/sway_themes.py
 #, python-format

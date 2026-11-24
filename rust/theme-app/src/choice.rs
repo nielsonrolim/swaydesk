@@ -1,7 +1,7 @@
 //! O que está escolhido na janela, sem GTK: a família (ou um tema de fora), o estilo e a cor, que é uma das do
 //! Papirus ou a do papel de parede (accent_auto). O `Choice` do `sway-theme-app` em Python, e a aplicação pela
 //! biblioteca (no lugar do `sway-theme pick|set`).
-use swaydesk_common::config::{papirus_color, DEFAULT_ACCENT};
+use swaydesk_common::config::{is_accent, papirus_color, DEFAULT_ACCENT};
 use swaydesk_common::i18n::tr;
 use swaydesk_theme::families::{self as sf, Family, Style};
 use swaydesk_theme::themes::{self as st, Applied, Theme};
@@ -40,12 +40,17 @@ pub struct Choice {
     pub wallpaper: Option<Option<&'static str>>,
     /// O modo desligado em cima da cor padrão (papel sem cor ou ilegível): ela fica, até escolher uma amostra
     pub kept_default: bool,
+    /// Uma cor própria da config (custom_accent), com as pastas em uso: a amostra a mais, antes das do Papirus.
+    /// Escolhida, a `color` é o hex dela.
+    pub custom: Option<Custom>,
     /// Os ícones escolhidos na lista (a entrada, "Papirus" pelos três) e os em uso quando a janela carregou
     pub icons: String,
     pub loaded_icons: String,
     /// O que estava aplicado quando a escolha carregou (ou acompanhou por último): um campo igual a ele é um que
     /// a pessoa não mexeu, e acompanha uma mudança de fora
     pub loaded: Loaded,
+    /// O tema aplicado quando a escolha carregou: com a cor própria e a família e o estilo intocados, é ele que fica
+    pub loaded_theme: String,
 }
 
 /// Os campos da escolha, como carregam de um tema aplicado.
@@ -59,13 +64,50 @@ pub struct Loaded {
     pub auto: bool,
 }
 
+/// Uma cor própria: o destaque da config (gravado pelo `sway-theme set --accent`, ou o de um tema que tem o seu)
+/// que não é nenhuma das amostras, nem o padrão. O app a mostra numa amostra a mais e a mantém ao aplicar; antes, ela
+/// carregava como a das pastas, e o Aplicar a trocava. Com o modo automático, a cor é a do papel.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Custom {
+    /// O hex, em minúsculas
+    pub accent: String,
+    /// As pastas em uso (folder_color, ou a mais perto do destaque): ficam como estão ao aplicar
+    pub folders: String,
+    /// O tema em uso, quando a cor é a dele (sway-theme set Yaru-dark sem --accent); None: uma cor de fora
+    pub theme: Option<String>,
+}
+
+impl Custom {
+    /// O nome da amostra: "Yaru-dark · #e95420" (o nome do tema não se traduz) ou "Custom · #rrggbb".
+    pub fn caption(&self) -> String {
+        match &self.theme {
+            Some(theme) => format!("{theme} · {}", self.accent),
+            None => fill_one(&tr("Custom · %s"), &self.accent),
+        }
+    }
+}
+
+/// A cor própria: o destaque não é o da amostra das pastas em uso (folders, o nome do Papirus). Fica de fora o padrão
+/// exato com as pastas seguindo o destaque (folder_color ""), que o accent-auto deixa com um papel sem cor. Um
+/// destaque de outra amostra também conta: o Aplicar com a das pastas o trocaria. É o caso do `sway-theme set
+/// Mint-Y-Dark-Teal`, que grava o destaque do tema (o DEFAULT_ACCENT) e deixa as pastas de antes.
+pub fn custom_accent(accent: &str, auto: bool, folder_color: &str, folders: &str) -> Option<String> {
+    let accent = accent.to_lowercase();
+    if auto || !is_accent(&accent) || (accent == DEFAULT_ACCENT && folder_color.is_empty()) {
+        return None;
+    }
+    let swatch = papirus_color(folders).is_some_and(|hex| hex.eq_ignore_ascii_case(&accent));
+    (!swatch).then_some(accent)
+}
+
 /// A cor em uso, como o app a carrega: "" quando o modo está desligado em cima do destaque padrão exato, com as
-/// pastas na padrão (folder_color ""), como o accent-auto o deixa com um papel sem cor. Senão a das pastas.
-pub fn loaded_color(accent: &str, folder_color: &str, auto: bool, folders: impl FnOnce() -> String) -> String {
+/// pastas na padrão (folder_color ""), como o accent-auto o deixa com um papel sem cor; o hex de uma cor própria
+/// (custom_accent). Senão a das pastas.
+pub fn loaded_color(accent: &str, folder_color: &str, auto: bool, folders: &str) -> String {
     if !auto && accent.eq_ignore_ascii_case(DEFAULT_ACCENT) && folder_color.is_empty() {
         return String::new();
     }
-    folders()
+    custom_accent(accent, auto, folder_color, folders).unwrap_or_else(|| folders.to_string())
 }
 
 impl Choice {
@@ -82,9 +124,11 @@ impl Choice {
             auto: false,
             wallpaper: None,
             kept_default: false,
+            custom: None,
             icons: String::new(),
             loaded_icons: String::new(),
             loaded: Loaded { family: None, other: None, style: Style::Dark, color: String::new(), kept_default: false, auto: false },
+            loaded_theme: String::new(),
         }
     }
 
@@ -99,7 +143,8 @@ impl Choice {
             family,
             other: selection.other,
             style: selection.style,
-            color: selection.color.unwrap_or_else(|| color.to_string()),
+            // Uma cor própria fica; o nome do tema daria a da variante
+            color: if color.starts_with('#') { color.to_string() } else { selection.color.unwrap_or_else(|| color.to_string()) },
             kept_default: !auto && color.is_empty(),
             auto,
         }
@@ -132,6 +177,7 @@ impl Choice {
         let loaded = self.loaded_from(theme_name, color, auto);
         self.set_fields(&loaded);
         self.loaded = loaded;
+        self.loaded_theme = theme_name.to_string();
     }
 
     /// O tema, a cor ou o modo mudaram por fora (terminal, config editado) com uma escolha em andamento: cada
@@ -165,6 +211,7 @@ impl Choice {
             }
         }
         self.loaded = fresh;
+        self.loaded_theme = theme_name.to_string();
     }
 
     /// Os ícones em uso (a entrada da lista): a escolha começa neles.
@@ -230,8 +277,13 @@ impl Choice {
         self.family.as_ref().is_some_and(|f| f.has_style(style))
     }
 
+    /// A amostra da cor própria escolhida (a `color` é o hex dela).
+    pub fn is_custom(&self) -> bool {
+        !self.auto && !self.kept_default && self.color.starts_with('#')
+    }
+
     /// O nome da cor do Papirus que vale: a escolhida ou, com o auto, a do papel ("" sem cor nele ou sem papel
-    /// legível: vale o DEFAULT_ACCENT, e as pastas ficam na mais perto dele).
+    /// legível: vale o DEFAULT_ACCENT, e as pastas ficam na mais perto dele). Com a cor própria, as pastas em uso.
     pub fn color_name(&self) -> String {
         if self.auto {
             return self.wallpaper.flatten().unwrap_or_default().to_string();
@@ -239,10 +291,16 @@ impl Choice {
         if self.kept_default {
             return String::new();
         }
+        if self.is_custom() {
+            return self.custom.as_ref().map(|c| c.folders.clone()).unwrap_or_default();
+        }
         self.color.clone()
     }
 
     pub fn accent(&self) -> String {
+        if self.is_custom() {
+            return self.color.clone();
+        }
         papirus_color(&self.color_name()).unwrap_or(DEFAULT_ACCENT).to_string()
     }
 
@@ -251,8 +309,17 @@ impl Choice {
         self.wallpaper.flatten().and_then(papirus_color).unwrap_or(DEFAULT_ACCENT).to_string()
     }
 
+    /// Com a cor própria, a variante não vem das pastas: o tema aplicado, enquanto a família e o estilo são os dele (a
+    /// cor própria pode ser a do tema, que não tem a cor das pastas no nome); trocados, a variante mais perto do hex.
     pub fn theme(&self) -> Option<String> {
         match &self.family {
+            Some(family) if self.is_custom() => {
+                let untouched = self.loaded.family.as_deref() == Some(family.name.as_str()) && self.loaded.style == self.style;
+                if untouched && !self.loaded_theme.is_empty() {
+                    return Some(self.loaded_theme.clone());
+                }
+                sf::resolve(family, self.style, &self.color, "")
+            }
             Some(family) => sf::resolve(family, self.style, &self.accent(), &self.color_name()),
             None => self.other.clone(),
         }
@@ -261,16 +328,22 @@ impl Choice {
     /// Se o tema GTK tem a cor escolhida. Falso quando é a variante mais perto, ou o tema não muda de cor.
     pub fn exact(&self) -> bool {
         let Some(family) = &self.family else { return false };
+        if self.is_custom() {
+            // A cor de uma variante (a do próprio tema, sem --accent) é exata; uma de fora, não
+            let theme = self.theme();
+            return family.variants.iter().any(|v| Some(&v.theme) == theme.as_ref() && v.accent.as_deref().is_some_and(|a| a.eq_ignore_ascii_case(&self.color)));
+        }
         let (theme, name) = (self.theme(), self.color_name());
         !name.is_empty() && family.variants.iter().any(|v| Some(&v.theme) == theme.as_ref() && v.color == name)
     }
 
     /// O mesmo que o accent-auto faria com o interruptor ligado: a família com a cor do papel (pick) ou, sem cor do
     /// Papirus (o DEFAULT_ACCENT), a variante mais perto dele com as pastas na mais perto (set com --folders "").
+    /// A cor própria vai como o destaque do set, com as pastas em uso.
     pub fn action(&self) -> Option<Action> {
         let (name, auto, icons) = (self.color_name(), self.auto, self.wanted_icons());
         match (&self.family, &self.other) {
-            (Some(family), _) if !name.is_empty() => Some(Action::Pick { family: family.name.clone(), style: self.style, color: name, auto, icons }),
+            (Some(family), _) if !name.is_empty() && !self.is_custom() => Some(Action::Pick { family: family.name.clone(), style: self.style, color: name, auto, icons }),
             (Some(_), _) => self.theme().map(|theme| Action::Set { theme, accent: self.accent(), color: name, auto, icons }),
             (None, Some(theme)) => Some(Action::Set { theme: theme.clone(), accent: self.accent(), color: name, auto, icons }),
             _ => None,
@@ -280,7 +353,8 @@ impl Choice {
     /// Para comparar com o que está aplicado: o tema, a cor, o modo e os ícones. Com o auto, a cor não entra (vem
     /// do papel).
     pub fn key(&self) -> (Option<String>, String, bool, String) {
-        (self.theme(), if self.auto { String::new() } else { self.color_name() }, self.auto, self.icons.clone())
+        let color = if self.auto { String::new() } else if self.is_custom() { self.color.clone() } else { self.color_name() };
+        (self.theme(), color, self.auto, self.icons.clone())
     }
 }
 
@@ -355,6 +429,70 @@ mod tests {
 
     fn choice() -> Choice {
         Choice::new(vec![mint()], vec![theme("Arc-Dark", true, None)], &["teal".into(), "blue".into(), "red".into()])
+    }
+
+    #[test]
+    fn a_custom_accent_is_kept_until_another_swatch() {
+        // O sway-theme set … --accent #c0392b: nenhuma amostra tem a cor
+        assert_eq!(custom_accent("#C0392B", false, "", "red").as_deref(), Some("#c0392b"));
+        assert_eq!(custom_accent("#c0392b", true, "", "red"), None); // o modo automático manda
+        assert_eq!(custom_accent(DEFAULT_ACCENT, false, "", "darkcyan"), None); // o padrão, pastas seguindo
+        assert_eq!(custom_accent(papirus_color("blue").unwrap(), false, "blue", "blue"), None);
+        assert_eq!(custom_accent("red", false, "", "red"), None);
+        // sway-theme set Mint-Y-Dark-Teal sem --accent: o destaque do tema (o padrão) com as pastas verdes de antes
+        assert_eq!(custom_accent(DEFAULT_ACCENT, false, "green", "green").as_deref(), Some(DEFAULT_ACCENT));
+        // A cor de outra amostra também: o Aplicar com a das pastas a trocaria
+        assert_eq!(custom_accent(papirus_color("blue").unwrap(), false, "red", "red").as_deref(), papirus_color("blue"));
+        let mut c = choice();
+        c.custom = Some(Custom { accent: "#1060d0".into(), folders: "blue".into(), theme: None });
+        c.load("Mint-Y-Dark-Blue", "#1060d0", false);
+        assert!(c.is_custom());
+        assert_eq!((c.color.as_str(), c.color_name().as_str(), c.accent().as_str()), ("#1060d0", "blue", "#1060d0"));
+        assert!(!c.exact());
+        // Aplicar de novo (outro estilo, outra família) mantém o hex e as pastas: um set, não um pick
+        assert_eq!(
+            c.action(),
+            Some(Action::Set { theme: "Mint-Y-Dark-Blue".into(), accent: "#1060d0".into(), color: "blue".into(), auto: false, icons: None })
+        );
+        c.pick_other(&theme("Arc-Dark", true, None));
+        assert_eq!(
+            c.action(),
+            Some(Action::Set { theme: "Arc-Dark".into(), accent: "#1060d0".into(), color: "blue".into(), auto: false, icons: None })
+        );
+        // A chave distingue a cor própria da amostra das pastas
+        let custom_key = c.key();
+        c.pick_color("blue");
+        assert!(!c.is_custom());
+        assert_ne!(c.key(), custom_key);
+        assert_eq!(c.accent(), papirus_color("blue").unwrap());
+        // Voltar à amostra da cor própria
+        c.pick_color("#1060d0");
+        assert_eq!(c.key(), custom_key);
+    }
+
+    #[test]
+    fn a_custom_accent_keeps_the_applied_variant_until_the_family_or_style_changes() {
+        // sway-theme set Mint-Y-Dark-Teal sem --accent: o destaque é o do tema, e as pastas ficaram azuis. A
+        // variante não pode virar a azul (o Aplicar ligaria sem mudança e trocaria o tema)
+        let mut c = choice();
+        c.custom = Some(Custom { accent: "#0c99a6".into(), folders: "blue".into(), theme: Some("Mint-Y-Dark-Teal".into()) });
+        c.load("Mint-Y-Dark-Teal", "#0c99a6", false);
+        assert_eq!(c.theme().as_deref(), Some("Mint-Y-Dark-Teal"));
+        assert_eq!(c.key(), (Some("Mint-Y-Dark-Teal".into()), "#0c99a6".into(), false, String::new()));
+        // Outro estilo: a variante mais perto do hex, não a das pastas
+        c.style = Style::Light;
+        assert_eq!(c.theme().as_deref(), Some("Mint-Y-Teal"));
+        c.style = Style::Dark;
+        assert_eq!(c.theme().as_deref(), Some("Mint-Y-Dark-Teal"));
+        // A cor de uma variante é exata (sem a dica "não tem a variante"); uma de fora, não
+        c.custom = Some(Custom { accent: "#0c75de".into(), folders: "teal".into(), theme: Some("Mint-Y-Dark-Blue".into()) });
+        c.load("Mint-Y-Dark-Blue", "#0c75de", false);
+        assert!(c.exact());
+        assert_eq!(c.custom.as_ref().unwrap().caption(), "Mint-Y-Dark-Blue · #0c75de");
+        c.custom = Some(Custom { accent: "#1060d0".into(), folders: "blue".into(), theme: None });
+        assert_eq!(c.custom.as_ref().unwrap().caption(), "Custom · #1060d0");
+        c.load("Mint-Y-Dark-Blue", "#1060d0", false);
+        assert!(!c.exact());
     }
 
     #[test]
@@ -475,14 +613,17 @@ mod tests {
 
     #[test]
     fn the_default_accent_loads_as_no_swatch() {
-        let nearest = || "darkcyan".to_string();
         // O padrão exato, com as pastas na padrão e o modo desligado: nenhuma amostra
-        assert_eq!(loaded_color(DEFAULT_ACCENT, "", false, nearest), "");
-        assert_eq!(loaded_color(&DEFAULT_ACCENT.to_uppercase(), "", false, nearest), "");
-        // Com o modo ligado, com pastas numa cor ou com outro destaque: a das pastas, como antes
-        assert_eq!(loaded_color(DEFAULT_ACCENT, "", true, nearest), "darkcyan");
-        assert_eq!(loaded_color(DEFAULT_ACCENT, "teal", false, || "teal".into()), "teal");
-        assert_eq!(loaded_color("#16a085", "", false, || "teal".into()), "teal");
+        assert_eq!(loaded_color(DEFAULT_ACCENT, "", false, "darkcyan"), "");
+        assert_eq!(loaded_color(&DEFAULT_ACCENT.to_uppercase(), "", false, "darkcyan"), "");
+        // Com o modo ligado: a das pastas, como antes
+        assert_eq!(loaded_color(DEFAULT_ACCENT, "", true, "darkcyan"), "darkcyan");
+        // O padrão com as pastas numa cor (o destaque do Mint-Y-Dark-Teal): a cor própria, não a das pastas
+        assert_eq!(loaded_color(DEFAULT_ACCENT, "teal", false, "teal"), DEFAULT_ACCENT);
+        // Uma cor própria carrega como ela; com o modo ligado, ou na cor das pastas, a amostra, como antes
+        assert_eq!(loaded_color("#1060D0", "", false, "blue"), "#1060d0");
+        assert_eq!(loaded_color("#1060d0", "blue", true, "blue"), "blue");
+        assert_eq!(loaded_color(papirus_color("red").unwrap(), "", false, "red"), "red");
         let mut c = choice();
         c.load("Mint-Y-Dark-Teal", "", false);
         assert!(c.kept_default && !c.auto);

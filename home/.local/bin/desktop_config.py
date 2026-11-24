@@ -1156,6 +1156,12 @@ def gtk_css_ours(file, name):
     return generated.get(name) == text
 
 
+def gtk_css_kept(base):
+    """Os gtk.css que não são daqui (gtk_css_ours), sem gravar nada: os que o sync_gtk_css deixaria como estão. O
+    aviso fixo do app Tema."""
+    return [name for name in GTK_CSS_FILES if not gtk_css_ours(Path(base) / name, name)]
+
+
 def sync_gtk_css(base, colors, others):
     """Grava os gtk.css da cor de destaque, ou tira os daqui com outro desktop instalado: um gravado antes de o GNOME
     chegar não pode ficar mandando a cor nele. Devolve os que são de outro e ficaram como estavam."""

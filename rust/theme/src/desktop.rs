@@ -633,6 +633,12 @@ pub fn gtk_css_ours(file: &Path, name: &str) -> bool {
     gtk_css_files(&colors).iter().any(|(n, content)| *n == name && *content == text)
 }
 
+/// Os gtk.css que não são daqui (gtk_css_ours), sem gravar nada: os que o sync_gtk_css deixaria como estão. O aviso
+/// fixo do app Tema.
+pub fn gtk_css_kept(base: &Path) -> Vec<String> {
+    GTK_CSS_FILES.iter().filter(|name| !gtk_css_ours(&base.join(name), name)).map(|name| name.to_string()).collect()
+}
+
 /// Grava os gtk.css da cor de destaque, ou os tira (os daqui) com outro desktop instalado: um gravado antes de o
 /// GNOME chegar não pode ficar mandando a cor nele. Devolve os que são de outro e ficaram como estavam.
 pub fn sync_gtk_css(base: &Path, colors: &Palette, others: &[String]) -> std::io::Result<Vec<String>> {
@@ -856,6 +862,8 @@ mod tests {
         let base = tempdir("gtk-css");
         let colors = palette(&Config::default());
         let none: Vec<String> = Vec::new();
+        assert!(gtk_css_kept(&base).is_empty()); // o aviso do app só lê: nada é gravado
+        assert!(!base.join("gtk-3.0/gtk.css").exists());
         assert!(sync_gtk_css(&base, &colors, &none).unwrap().is_empty());
         let gtk3 = base.join("gtk-3.0/gtk.css");
         assert!(std::fs::read_to_string(&gtk3).unwrap().starts_with(GENERATED_CSS));
@@ -871,6 +879,7 @@ mod tests {
             assert_eq!(sync_gtk_css(&base, &red, &others).unwrap(), ["gtk-3.0/gtk.css"]);
             assert_eq!(std::fs::read_to_string(&gtk3).unwrap(), edited);
         }
+        assert_eq!(gtk_css_kept(&base), ["gtk-3.0/gtk.css"]); // o mesmo que o sync deixa
         // O nosso de outra cor (a cor mudou desde a última geração) continua nosso
         std::fs::write(&gtk3, &gtk_css_files(&red)[0].1).unwrap();
         assert!(gtk_css_ours(&gtk3, "gtk-3.0/gtk.css"));
@@ -889,6 +898,7 @@ mod tests {
             assert_eq!(sync_gtk_css(&base, &colors, &others).unwrap(), ["gtk-3.0/gtk.css"]);
             assert!(gtk3.symlink_metadata().unwrap().file_type().is_symlink());
         }
+        assert_eq!(gtk_css_kept(&base), ["gtk-3.0/gtk.css"]);
         let _ = std::fs::remove_dir_all(&base);
     }
 

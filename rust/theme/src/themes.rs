@@ -172,6 +172,22 @@ pub fn gtk_css_notes(kept: &[String], others: &[String]) -> Vec<String> {
     notes
 }
 
+/// As notas do gtk.css como as coisas estão agora, sem aplicar nada: o aviso fixo do app Tema (antes, só aparecia
+/// depois de Aplicar, e sumia).
+pub fn gtk_css_status() -> Vec<String> {
+    gtk_css_notes(&dc::gtk_css_kept(&dc::config_home()), &dc::other_desktops())
+}
+
+/// O aviso para o adw-gtk3 com o snapd-desktop-integration (o Ubuntu Desktop): os snaps não o têm, e o snapd pede a
+/// cada login um snap de terceiros do tema (desktop::snap_theme_prompt). None: sem o problema.
+pub fn snap_note(theme: &str) -> Option<String> {
+    snap_note_with(theme, dc::snap_theme_prompt())
+}
+
+pub fn snap_note_with(theme: &str, snaps: bool) -> Option<String> {
+    (snaps && theme.starts_with("adw-gtk3")).then(|| tr("Snap apps don't include adw-gtk3: snapd will ask at every login to install a third-party theme snap. Choose Adwaita to avoid this; snaps already have it."))
+}
+
 static KDE_IMPORT: LazyLock<Regex> = LazyLock::new(|| Regex::new(r#"@import\s+(url\()?['"]?colors\.css"#).unwrap());
 
 /// O aviso para um Breeze com o esquema de cores do KDE. None: sem o problema.
@@ -838,6 +854,9 @@ pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: O
     if let Some(note) = kde_colors_note(theme) {
         notes.push(note);
     }
+    if let Some(note) = snap_note(theme) {
+        notes.push(note);
+    }
     if !set_dconf(&config, Some(icon_name)) {
         failures.push(tr("theme in dconf (gsettings)"));
     }
@@ -903,6 +922,16 @@ pub fn accent_auto() -> Result<Auto, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn adw_gtk3_with_snapd_desktop_integration_gets_a_note() {
+        // Os mesmos casos do test_snap_note do tests/test_sway_theme.py
+        assert!(snap_note_with("adw-gtk3-dark", true).is_some_and(|n| n.contains("Adwaita")));
+        assert!(snap_note_with("adw-gtk3", true).is_some());
+        assert!(snap_note_with("adw-gtk3-dark", false).is_none());
+        assert!(snap_note_with("Adwaita-dark", true).is_none());
+        assert!(snap_note_with("", true).is_none());
+    }
 
     // Os mesmos casos do test_gtk_css_notes do tests/test_sway_theme.py
     #[test]
