@@ -1,0 +1,105 @@
+# us-intl: the console keymap for XKB's English (US, intl., with dead keys), us(intl). Arch only: swaydesk-desktop
+# installs it in /usr/share/kbd/keymaps/xkb, where systemd-localed and Calamares look for a keymap converted from
+# an XKB layout ("<layout>-<variant>") before their table. The table gives us-acentos, which has the dead keys
+# (' then c is ç) but no AltGr layer, so ç typed with AltGr+, in the session didn't exist at the TTY.
+# kbd's us-acentos as it is (plain, Shift, Ctrl and Alt layers, compose), plus AltGr and Shift+AltGr from
+# xkeyboard-config's us(intl). Its dead keys the console doesn't have (double acute, macron, horn, ogonek,
+# breve, ring, dot below, stroke, dot above, caron, hook) are left empty. tests/test_console_keymap.py checks it.
+include "/usr/share/kbd/keymaps/i386/qwerty/us-acentos.map.gz"
+keymaps 3
+	altgr	keycode  41 = U+0060
+	shift	altgr	keycode  41 = U+007e
+	altgr	keycode   2 = U+00a1
+	shift	altgr	keycode   2 = U+00b9
+	altgr	keycode   3 = U+00b2
+	shift	altgr	keycode   3 = VoidSymbol
+	altgr	keycode   4 = U+00b3
+	shift	altgr	keycode   4 = VoidSymbol
+	altgr	keycode   5 = U+00a4
+	shift	altgr	keycode   5 = U+00a3
+	altgr	keycode   6 = U+20ac
+	shift	altgr	keycode   6 = dead_cedilla
+	altgr	keycode   7 = U+00bc
+	shift	altgr	keycode   7 = U+005e
+	altgr	keycode   8 = U+00bd
+	shift	altgr	keycode   8 = VoidSymbol
+	altgr	keycode   9 = U+00be
+	shift	altgr	keycode   9 = VoidSymbol
+	altgr	keycode  10 = U+2018
+	shift	altgr	keycode  10 = VoidSymbol
+	altgr	keycode  11 = U+2019
+	shift	altgr	keycode  11 = VoidSymbol
+	altgr	keycode  12 = U+00a5
+	shift	altgr	keycode  12 = VoidSymbol
+	altgr	keycode  13 = U+00d7
+	shift	altgr	keycode  13 = U+00f7
+	altgr	keycode  16 = U+00e4
+	shift	altgr	keycode  16 = U+00c4
+	altgr	keycode  17 = U+00e5
+	shift	altgr	keycode  17 = U+00c5
+	altgr	keycode  18 = U+00e9
+	shift	altgr	keycode  18 = U+00c9
+	altgr	keycode  19 = U+00ae
+	shift	altgr	keycode  19 = U+2122
+	altgr	keycode  20 = U+00fe
+	shift	altgr	keycode  20 = U+00de
+	altgr	keycode  21 = U+00fc
+	shift	altgr	keycode  21 = U+00dc
+	altgr	keycode  22 = U+00fa
+	shift	altgr	keycode  22 = U+00da
+	altgr	keycode  23 = U+00ed
+	shift	altgr	keycode  23 = U+00cd
+	altgr	keycode  24 = U+00f3
+	shift	altgr	keycode  24 = U+00d3
+	altgr	keycode  25 = U+00f6
+	shift	altgr	keycode  25 = U+00d6
+	altgr	keycode  26 = U+00ab
+	shift	altgr	keycode  26 = U+201c
+	altgr	keycode  27 = U+00bb
+	shift	altgr	keycode  27 = U+201d
+	altgr	keycode  30 = U+00e1
+	shift	altgr	keycode  30 = U+00c1
+	altgr	keycode  31 = U+00df
+	shift	altgr	keycode  31 = U+00a7
+	altgr	keycode  32 = U+00f0
+	shift	altgr	keycode  32 = U+00d0
+	altgr	keycode  33 = U+00eb
+	shift	altgr	keycode  33 = U+00cb
+	altgr	keycode  34 = U+0067
+	shift	altgr	keycode  34 = U+0047
+	altgr	keycode  35 = U+0068
+	shift	altgr	keycode  35 = U+0048
+	altgr	keycode  36 = U+00ef
+	shift	altgr	keycode  36 = U+00cf
+	altgr	keycode  37 = U+0153
+	shift	altgr	keycode  37 = U+0152
+	altgr	keycode  38 = U+00f8
+	shift	altgr	keycode  38 = U+00d8
+	altgr	keycode  39 = U+00b6
+	shift	altgr	keycode  39 = U+00b0
+	altgr	keycode  40 = U+0027
+	shift	altgr	keycode  40 = U+0022
+	altgr	keycode  44 = U+00e6
+	shift	altgr	keycode  44 = U+00c6
+	altgr	keycode  45 = U+00b7
+	shift	altgr	keycode  45 = VoidSymbol
+	altgr	keycode  46 = U+00a9
+	shift	altgr	keycode  46 = U+00a2
+	altgr	keycode  47 = U+0076
+	shift	altgr	keycode  47 = U+0056
+	altgr	keycode  48 = U+0062
+	shift	altgr	keycode  48 = U+0042
+	altgr	keycode  49 = U+00f1
+	shift	altgr	keycode  49 = U+00d1
+	altgr	keycode  50 = U+00b5
+	shift	altgr	keycode  50 = U+00b1
+	altgr	keycode  51 = U+00e7
+	shift	altgr	keycode  51 = U+00c7
+	altgr	keycode  52 = VoidSymbol
+	shift	altgr	keycode  52 = VoidSymbol
+	altgr	keycode  53 = U+00bf
+	shift	altgr	keycode  53 = VoidSymbol
+	altgr	keycode  43 = U+00ac
+	shift	altgr	keycode  43 = U+00a6
+	altgr	keycode  86 = U+005c
+	shift	altgr	keycode  86 = U+007c

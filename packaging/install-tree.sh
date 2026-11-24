@@ -263,6 +263,12 @@ case $pkg in
         exit 2
         ;;
     esac
+    # O teclado do console que segue o XKB, só no Arch (SWAYDESK_CONSOLE_KEYMAPS, do PKGBUILD): o us(intl) vira
+    # us-acentos pela tabela do systemd e do Calamares, sem o AltGr da sessão; com o us-intl.map nesta pasta,
+    # os dois o escolhem. O Debian e o Ubuntu montam o do console pelo XKB (console-setup)
+    if [ -n "${SWAYDESK_CONSOLE_KEYMAPS:-}" ]; then
+      install -Dm644 "$root/packaging/files/console/us-intl.map" "$dest$SWAYDESK_CONSOLE_KEYMAPS/us-intl.map"
+    fi
     ;;
   swaydesk-session)
     # O serviço do PAM do bloqueio (o swaydesk-lock e o sway-lock-gtk): o próprio, sem depender do do swaylock
