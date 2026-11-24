@@ -111,6 +111,15 @@ pub fn helper_beside_exe(name: &str) -> Option<PathBuf> {
     helper_candidates(name, Some(&dir), &dir).into_iter().find(|p| p.is_file())
 }
 
+/// O aviso de um helper_beside_exe que voltou None: os lugares que ele tentou e o que instalar (o pacote dono,
+/// ou o install.sh nos dotfiles), o mesmo texto do helper.
+pub fn missing_beside_exe_message(name: &str) -> String {
+    let dir = exe_dir();
+    let tried = dir.as_deref().map(|d| helper_candidates(name, Some(d), d)).unwrap_or_default();
+    let dotfiles = dir.is_some_and(|dir| std::fs::canonicalize(local_bin()).is_ok_and(|bin| bin == dir));
+    missing_helper_message(name, &tried, dotfiles)
+}
+
 /// Se este processo está na sessão do pacote swaydesk-desktop (o sway-session --package exporta
 /// SWAYDESK_SESSION=package). Lá, nada vem do ~/.local/bin, mesmo que os dotfiles estejam instalados.
 pub fn package_session() -> bool {

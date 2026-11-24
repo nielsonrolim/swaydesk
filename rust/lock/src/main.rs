@@ -858,7 +858,26 @@ impl App {
 }
 
 /// Só com o supervisor: sem ele, um bloqueio que cai não teria quem o assumisse.
-const LOCK_USAGE: &str = "usage: swaydesk-lock --notify-fd N (run it through sway-lock)";
+const LOCK_USAGE: &str = "usage: swaydesk-lock          lock the screen (returns once it is locked)
+       swaydesk-lock --help   this text
+       (sway-lock runs it as swaydesk-lock --notify-fd N)";
+
+/// Sem argumentos: bloqueia pelo sway-lock do pacote (ou o do lado, nos dotfiles), com a fila inteira (Rust,
+/// Python, gtklock), o supervisor (sway-lock-watch) e a segunda rodada. Ele volta 0 assim que a tela está
+/// bloqueada (ou já estava: o "F" do protocolo), como o swaylock -f: o before-sleep do swayidle -w espera
+/// por isso, e esperar o desbloqueio prenderia a suspensão. Nunca do PATH nem da HOME: é o bloqueio da tela.
+fn lock_through_sway_lock() -> ExitCode {
+    use std::os::unix::process::CommandExt;
+    let Some(script) = swaydesk_common::paths::helper_beside_exe("sway-lock") else {
+        // O texto do paths: os lugares tentados e o pacote que traz o sway-lock (ou o install.sh, nos dotfiles)
+        eprintln!("{}", swaydesk_common::paths::missing_beside_exe_message("sway-lock"));
+        return ExitCode::FAILURE;
+    };
+    // O exec troca o processo: o código de saída é o do sway-lock (0 bloqueado, outro nada bloqueou)
+    let err = Command::new(&script).exec();
+    eprintln!("swaydesk-lock: could not run {}: {err}", script.display());
+    ExitCode::FAILURE
+}
 
 fn parse_args(args: &[String]) -> Option<i32> {
     match args {
@@ -906,6 +925,9 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
         None => {}
+    }
+    if args.is_empty() {
+        return lock_through_sway_lock();
     }
     if matches!(args.as_slice(), [flag] if flag == "--help" || flag == "-h") {
         // Só o uso, com 0: um --help nunca bloqueia a tela

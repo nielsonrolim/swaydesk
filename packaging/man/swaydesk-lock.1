@@ -3,15 +3,26 @@
 swaydesk\-lock \- lock screen
 .SH SYNOPSIS
 .B swaydesk\-lock
+.br
+.B swaydesk\-lock
 \-\-notify\-fd N
 .br
 .B swaydesk\-lock
 \-\-blur
 .SH DESCRIPTION
-The lock screen, through ext\-session\-lock\-v1 (gtk4\-layer\-shell 1.2 or newer). Do not run it directly: the sway\-lock helper starts it through its supervisor, which falls back to the lock in Python (sway\-lock\-gtk, on Debian and Ubuntu) and then to gtklock if it fails, and hands the lock to another locker if it exits without unlocking. The password field is on every monitor, takes dead keys through GTK's simple input method (never an input method daemon), and PAM checks the password with the swaydesk\-lock service.
+The lock screen, through ext\-session\-lock\-v1 (gtk4\-layer\-shell 1.2 or newer).
+.PP
+Run with no arguments, it locks the screen through the package's sway\-lock helper (bin/../libexec/swaydesk or bin/../lib/swaydesk, never the PATH or the home folder) and exits with its code: 0 as soon as the screen is locked, or if it was already locked, without starting a second lock; any other code means nothing locked. It does not wait for the unlock, like
+.BR "swaylock \-f" ,
+so it suits a key binding and swayidle's timeout and before\-sleep alike. Without the sway\-lock helper (the swaydesk\-scripts package), it exits 1.
+.PP
+The sway\-lock helper starts it with \-\-notify\-fd through its supervisor, which falls back to the lock in Python (sway\-lock\-gtk, on Debian and Ubuntu) and then to gtklock if it fails, and hands the lock to another locker if it exits without unlocking. The password field is on every monitor, takes dead keys through GTK's simple input method (never an input method daemon), and PAM checks the password with the swaydesk\-lock service.
 .PP
 Without the lock support in gtk4\-layer\-shell, it exits 1 and sway\-lock uses the next locker.
 .SH OPTIONS
+.TP
+.B \-\-help
+Print the usage and exit 0. Any other argument prints the usage and exits 2.
 .TP
 .B \-\-notify\-fd N
 Write L to the file descriptor N when locked, F if another client already locked, and U after the unlock.
