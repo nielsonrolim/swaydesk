@@ -69,7 +69,11 @@ kill $daemon; wait $daemon 2>/dev/null
 write_profile "$k1" 1024 0 "$k2" 0 0
 /bin/swaydesk-displays daemon 2>>/out/daemon.log & daemon=$!
 expect "com perfil, aplica ao subir" "HEADLESS-1:1024,0 HEADLESS-2:0,0" "$(wait_layout 'HEADLESS-1:1024,0 HEADLESS-2:0,0')"
-/bin/swaydesk-displays daemon 2>>/out/daemon.log; expect "um segundo serviço sai na hora" "0" "$?"
+# Um segundo serviço sai na hora com o 4 (resident::EXIT_ANOTHER_INSTANCE): a unidade do systemd não o reinicia
+# ao lado do primeiro (RestartPreventExitStatus=4), e o laço da sessão segue tentando
+/bin/swaydesk-displays daemon 2>/out/second.log; expect "um segundo serviço sai na hora, com o 4" "4" "$?"
+expect "e diz qual cópia está no ar" "1" "$(grep -c 'another instance is running' /out/second.log)"
+cat /out/second.log >> /out/daemon.log
 swaymsg -q create_output; sleep 1.5
 expect "um monitor novo, sem perfil para o trio: nada muda nos dois" "HEADLESS-1:1024,0 HEADLESS-2:0,0 HEADLESS-3:2304,0" "$(layout)"
 swaymsg -q output HEADLESS-1 pos 0 0, output HEADLESS-2 pos 1280 0, output HEADLESS-3 pos 2304 0
