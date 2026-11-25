@@ -70,7 +70,7 @@ pub fn spawn<S: AsRef<OsStr>>(program: impl AsRef<OsStr>, args: &[S]) -> std::io
 pub fn spawn_app<S: AsRef<OsStr>>(program: impl AsRef<OsStr>, args: &[S]) -> std::io::Result<()> {
     let id = std::path::Path::new(program.as_ref()).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     use swaydesk_common::app_scope;
-    if !app_scope::under_unit() {
+    if !app_scope::wants_scope() {
         return spawn_detached(program, args);
     }
     // Num serviço: o app espera no sh do GATE_SCRIPT até a mudança de escopo, e só então vira o app (o mesmo

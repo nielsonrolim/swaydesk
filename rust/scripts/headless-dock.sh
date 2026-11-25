@@ -71,6 +71,45 @@ dump() {  # o estado da dock (SIGUSR2) no log dela
 pointer() { /bin/swaydesk-vpointer --size 1280x720 "$@"; }
 shot() { grim "/out/$impl-$1.png" 2>/dev/null; }
 
+# O escopo do app (só a dock em Rust o pede): a dock sobe como no login normal, pelo laço do config do Sway, sem o
+# INVOCATION_ID de um serviço, com o gerenciador do systemd do usuário no ar (o systemd/private do
+# XDG_RUNTIME_DIR). O systemd é um falso num barramento só deste teste: anota cada StartTransientUnit (o nome, a
+# slice e os PIDs) e responde com o job e o JobRemoved dele, como o de verdade
+if [ "$impl" = rust ]; then
+  eval "$(dbus-daemon --session --fork --print-address=1 --print-pid=3 3>/tmp/dbus.pid | sed 's/^/export DBUS_SESSION_BUS_ADDRESS=/')"
+  mkdir -p "$XDG_RUNTIME_DIR/systemd" && : > "$XDG_RUNTIME_DIR/systemd/private"
+  cat > /tmp/fake-systemd.py <<'PY'
+from gi.repository import Gio, GLib
+XML = """<node><interface name="org.freedesktop.systemd1.Manager">
+<method name="Subscribe"/><method name="Unsubscribe"/>
+<method name="StartTransientUnit"><arg type="s" direction="in"/><arg type="s" direction="in"/>
+<arg type="a(sv)" direction="in"/><arg type="a(sa(sv))" direction="in"/><arg type="o" direction="out"/></method>
+<signal name="JobRemoved"><arg type="u"/><arg type="o"/><arg type="s"/><arg type="s"/></signal>
+</interface></node>"""
+jobs = [0]
+def call(conn, sender, path, iface, method, params, invocation):
+    if method != "StartTransientUnit":
+        return invocation.return_value(None)
+    name, _, props, _ = params.unpack()
+    props = dict(props)
+    with open("/tmp/scope-calls", "a") as f:
+        f.write(f"{name} {props.get('Slice')} {props.get('PIDs')}\n")
+    jobs[0] += 1
+    job = f"/org/freedesktop/systemd1/job/{jobs[0]}"
+    invocation.return_value(GLib.Variant("(o)", (job,)))
+    conn.emit_signal(None, "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "JobRemoved",
+                     GLib.Variant("(uoss)", (jobs[0], job, name, "done")))
+def acquired(conn, name):
+    conn.register_object("/org/freedesktop/systemd1", Gio.DBusNodeInfo.new_for_xml(XML).interfaces[0], call)
+    open("/tmp/fake-systemd.ready", "w").close()
+Gio.bus_own_name(Gio.BusType.SESSION, "org.freedesktop.systemd1", Gio.BusNameOwnerFlags.NONE, acquired, None, None)
+GLib.MainLoop().run()
+PY
+  python3 /tmp/fake-systemd.py & fake_systemd=$!
+  trap 'kill $keeper $kbd $fake_systemd "$(cat /tmp/dbus.pid 2>/dev/null)" 2>/dev/null' EXIT
+  for _ in $(seq 50); do [ -e /tmp/fake-systemd.ready ] && break; sleep 0.1; done
+fi
+
 # Um CRITICAL do GTK derruba a dock: o teste falha em vez de passar com o aviso no log
 env G_DEBUG=fatal-criticals SWAY_DOCK_IMPL=$impl "$HOME/.local/bin/sway-dock" > /tmp/dock.log 2>&1 & dock=$!
 for _ in $(seq 50); do [ -e "$XDG_RUNTIME_DIR/sway-dock.pid" ] && break; sleep 0.1; done
@@ -92,6 +131,14 @@ for _ in $(seq 50); do swaymsg -t get_tree | grep -q '"app_id": "dock-test-app"'
 app=$(pgrep -f dock-test-app.py | head -1)
 if [ -n "$app" ]; then
   ok "o clique abre o app"
+  # Pelo laço do Sway (sem o INVOCATION_ID), com o systemd do usuário: o app pede o seu escopo na app.slice
+  if [ "$impl" = rust ]; then
+    if grep -q '^app-swaydesk-dock\\x2dtest\\x2dapp-[0-9]*\.scope app\.slice \[[0-9]' /tmp/scope-calls 2>/dev/null; then
+      ok "fora de um serviço, o app vai para o seu escopo ($(head -1 /tmp/scope-calls))"
+    else
+      fail "sem o escopo do app pelo laço do Sway: $(cat /tmp/scope-calls 2>/dev/null)"; tail -5 /tmp/dock.log
+    fi
+  fi
   # O "Encerrar" do popup do sistema trata como auxiliar da dock o filho dela na mesma sessão: o app
   # precisa de outra sessão ou de outro pai (o GLib solta o app com um fork duplo)
   ppid=$(ps -o ppid= -p "$app" | tr -d ' ')

@@ -5,6 +5,6 @@ FROM debian:13
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     sway python3 python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-gtk-4.0 gir1.2-gtklayershell-0.1 gir1.2-gtk4layershell-1.0 \
     libgtk4-layer-shell0 gir1.2-pango-1.0 gir1.2-gdkpixbuf-2.0 adwaita-icon-theme fonts-noto-core \
-    procps psmisc ca-certificates libgl1-mesa-dri libegl1 mesa-vulkan-drivers mesa-utils-bin grim wtype swayidle librsvg2-common \
+    procps psmisc ca-certificates libgl1-mesa-dri libegl1 mesa-vulkan-drivers mesa-utils-bin grim wtype swayidle dbus-daemon librsvg2-common \
     && rm -rf /var/lib/apt/lists/*
 CMD ["bash"]

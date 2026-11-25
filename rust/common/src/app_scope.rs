@@ -1,19 +1,28 @@
-//! Os apps abertos por um componente que roda como serviço do usuário (a dock, a grade: os `swaydesk-*.service`)
-//! vão para um escopo próprio do systemd (`app-swaydesk-<id>-<pid>.scope`, na `app.slice`), como fazem o GNOME
-//! e o KDE. Sem isso, eles ficavam no cgroup do serviço: apareciam no `systemctl --user status` dele, e um
-//! restart com o KillMode padrão os levaria junto.
+//! Os apps abertos pela dock e pela grade vão para um escopo próprio do systemd do usuário
+//! (`app-swaydesk-<id>-<pid>.scope`, na `app.slice`), como fazem o GNOME e o KDE. Sem isso, ficavam no cgroup de
+//! quem os abriu: num serviço (os `swaydesk-*.service`), apareciam no `systemctl --user status` dele, e um
+//! restart com o KillMode padrão os levaria junto; pelo laço do config do Sway (o login normal), na
+//! session-N.scope do sistema, fora do gerenciador do usuário.
 //!
 //! Sem corrida: o processo novo espera num `sh` (o [`GATE_SCRIPT`]) até o `StartTransientUnit` do systemd
 //! terminar o job do escopo, e só então vira o app, no mesmo PID. Assim nada que o app criar fica no cgroup do
 //! serviço. Um app do Gio (um .desktop) abre pelo auxiliar [`launch`]: o próprio binário do componente, com o
-//! [`LAUNCH_ARG`], que já nasce no escopo e chama o Gio de lá. Fora de um serviço (sem o `INVOCATION_ID`), nada
-//! muda; se a mudança falhar, o app abre do mesmo jeito, só com uma linha no stderr.
+//! [`LAUNCH_ARG`], que já nasce no escopo e chama o Gio de lá. Sem o gerenciador do usuário ([`wants_scope`]),
+//! nada muda; se a mudança falhar, o app abre do mesmo jeito, só com uma linha no stderr.
 use gio::glib;
 use gio::prelude::*;
 
-/// Se este processo roda como serviço do systemd (o systemd define o `INVOCATION_ID` para cada execução).
-pub fn under_unit() -> bool {
-    std::env::var_os("INVOCATION_ID").is_some_and(|v| !v.is_empty())
+/// Se os apps abertos daqui vão para um escopo próprio: com o gerenciador do systemd do usuário no ar. Num serviço
+/// (a dock como unit) ou fora dele: no login normal, a dock e a grade sobem pelo laço do config do Sway, na
+/// session-N.scope do sistema, e o app ia junto para ela. Sem o gerenciador (um contêiner, os testes), nada muda.
+pub fn wants_scope() -> bool {
+    let runtime = std::env::var_os("XDG_RUNTIME_DIR").filter(|v| !v.is_empty());
+    scoping(std::env::var_os("INVOCATION_ID").as_deref(), runtime.as_deref().map(std::path::Path::new))
+}
+
+/// O [`wants_scope`] com o INVOCATION_ID e o XDG_RUNTIME_DIR dados (para os testes).
+pub fn scoping(invocation_id: Option<&std::ffi::OsStr>, runtime: Option<&std::path::Path>) -> bool {
+    invocation_id.is_some_and(|v| !v.is_empty()) || runtime.is_some_and(|dir| dir.join("systemd/private").exists())
 }
 
 /// As variáveis que o systemd dá ao serviço e que não são do app: com elas, um terminal aberto pela dock
@@ -176,7 +185,7 @@ fn finish(conn: &gio::DBusConnection, pending: &std::rc::Rc<std::cell::RefCell<P
 fn move_then(pid: u32, app_id: &str, done: impl FnOnce() + 'static) {
     use std::cell::RefCell;
     use std::rc::Rc;
-    if !under_unit() || pid == 0 {
+    if !wants_scope() || pid == 0 {
         return done();
     }
     let name = scope_name(app_id, pid);
@@ -292,7 +301,7 @@ pub fn launch(
         }
         None => info.launch_uris(&uris.iter().map(String::as_str).collect::<Vec<_>>(), context),
     };
-    if !under_unit() || info.boolean("DBusActivatable") {
+    if !wants_scope() || info.boolean("DBusActivatable") {
         return direct();
     }
     match spawn_launcher(info, action, uris, context) {
@@ -393,7 +402,7 @@ pub fn launcher_main(args: &[std::ffi::OsString]) -> Option<i32> {
 /// ser criado): o app vai para o seu escopo depois de aberto, com o intervalo que o GNOME e o KDE aceitam. Os
 /// apps ativados pelo D-Bus (DBusActivatable) não passam por aqui: quem os abre é o barramento.
 pub fn scope_launch_context(context: &impl IsA<gio::AppLaunchContext>) {
-    if !under_unit() {
+    if !wants_scope() {
         return;
     }
     for name in UNIT_ENV {
@@ -410,6 +419,25 @@ pub fn scope_launch_context(context: &impl IsA<gio::AppLaunchContext>) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_unit_or_a_running_user_manager_wants_a_scope() {
+        use std::ffi::OsStr;
+        let dir = std::env::temp_dir().join(format!("swaydesk-scope-runtime-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        // Sem o gerenciador do usuário (o XDG_RUNTIME_DIR sem o systemd/private) e fora de um serviço: não
+        assert!(!super::scoping(None, Some(&dir)));
+        assert!(!super::scoping(None, None));
+        assert!(!super::scoping(Some(OsStr::new("")), Some(&dir)));
+        // Num serviço: sim
+        assert!(super::scoping(Some(OsStr::new("abc")), None));
+        // Pelo laço do config do Sway, com o gerenciador do usuário no ar: sim (o caso do login normal)
+        std::fs::create_dir_all(dir.join("systemd")).unwrap();
+        std::fs::write(dir.join("systemd/private"), "").unwrap();
+        assert!(super::scoping(None, Some(&dir)));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
     use super::*;
 
     #[test]
@@ -584,11 +612,11 @@ mod tests {
     }
 
     #[test]
-    fn outside_a_unit_nothing_is_called() {
-        // Sem o INVOCATION_ID (o ambiente dos testes), nem o barramento é aberto
-        if under_unit() {
-            return; // um cargo test rodando dentro de um serviço
-        }
+    fn without_a_user_manager_nothing_is_called() {
+        // Sem o INVOCATION_ID nem o gerenciador do usuário (o ambiente dos testes), nem o barramento é aberto. Um
+        // cargo test que vê o systemd do usuário (no host, fora dos contêineres) para aqui: senão ele pediria um
+        // escopo ao gerenciador da sessão de quem testa
+        assert!(!wants_scope(), "cargo test sees a systemd user manager or a unit: run it in the build containers");
         move_to_scope(1, "x.desktop");
     }
 }

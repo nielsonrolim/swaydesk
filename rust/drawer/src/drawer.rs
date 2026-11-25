@@ -142,7 +142,7 @@ fn run_app<S: AsRef<OsStr>>(argv: &[S], app_id: &str) -> bool {
 
 fn run_program<S: AsRef<OsStr>>(argv: &[S], app_id: Option<&str>) -> bool {
     let mut argv: Vec<&OsStr> = argv.iter().map(AsRef::as_ref).collect();
-    let scoped = app_id.is_some() && app_scope::under_unit();
+    let scoped = app_id.is_some() && app_scope::wants_scope();
     // O setsid -f sempre "dá certo", mesmo sem o programa: confere antes, como o Python
     let program = Path::new(argv[0]);
     let exists = if program.components().count() > 1 {
