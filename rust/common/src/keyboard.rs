@@ -140,13 +140,21 @@ pub fn is_us_intl(text: &str) -> bool {
 const BLOCK_HEAD: &str = "\n# --- Teclado do sistema (";
 const BLOCK_HEAD_END: &str = "), lido na instalação ---\n";
 
-/// O `keyboard_block` de um texto no formato do /etc/default/keyboard; `file` só vai para o comentário.
+/// O `keyboard_block` de um texto no formato do /etc/default/keyboard; `file` só vai para o comentário. É o
+/// do install.sh, que lê o teclado na instalação; a sessão do pacote grava o seu com o `keyboard_block_titled`.
 pub fn keyboard_block_text(file: &Path, text: &str) -> String {
+    // O mesmo cabeçalho do BLOCK_HEAD e do BLOCK_HEAD_END, que acham o bloco das contas de antes do carimbo
+    keyboard_block_titled(&format!("Teclado do sistema ({}), lido na instalação", file.display()), text)
+}
+
+/// O bloco do teclado com o título dado na linha `# --- título ---` (numa linha só: o chamador cuida disso), ou
+/// vazio se o texto não tem um teclado.
+pub fn keyboard_block_titled(title: &str, text: &str) -> String {
     let settings = xkb_settings(text);
     if settings.is_empty() {
         return String::new();
     }
-    let mut block = format!("{BLOCK_HEAD}{}{BLOCK_HEAD_END}input type:keyboard {{\n", file.display());
+    let mut block = format!("\n# --- {title} ---\ninput type:keyboard {{\n");
     for (key, value) in &settings {
         block.push_str(&format!("    xkb_{key:<8} {value}\n"));
     }

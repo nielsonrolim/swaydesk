@@ -3328,6 +3328,11 @@ msgstr "mi-programa"
 msgid "Apps on workspaces"
 msgstr "Apps en los espacios de trabajo"
 
+#. TRANSLATORS: the title of the system keyboard block in ~/.config/sway/config.d/50-local.conf; %s is the file it comes from
+#: rust/theme/src/setup.rs
+msgid "System keyboard (%s): it follows the system's at each login until you edit it"
+msgstr "Teclado del sistema (%s): sigue al del sistema en cada inicio de sesión, hasta que lo edites"
+
 #: home/.config/sway/keys/base.conf
 msgid "Session and apps"
 msgstr "Sesión y aplicaciones"
