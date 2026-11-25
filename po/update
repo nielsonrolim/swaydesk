@@ -4,6 +4,9 @@
 # novos em cada <língua>.po e compila o .mo que o install.sh liga em ~/.local/share/locale.
 # Uso: po/update        depois, traduza as entradas novas ou "fuzzy" do .po e rode de novo
 set -euo pipefail
+# A ordem dos arquivos (o glob, o sort) segue o LC_COLLATE: em C, os catálogos saem iguais em qualquer máquina ou
+# contêiner (em pt_BR o hífen e o sublinhado não contam, e a ordem era outra)
+export LC_ALL=C
 cd "$(dirname "$(readlink -f "$0")")/.."
 # Os textos saem de todos os scripts de home/.local/bin: numa árvore parcial (o espelho público, o tarball do
 # OBS), o .pot perderia os que ficaram de fora. O repositório completo é o que tem o install.sh

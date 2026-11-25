@@ -405,10 +405,6 @@ msgstr "La cuenta requiere atención: inicia sesión en una consola de texto"
 msgid "Could not check the password"
 msgstr "No se pudo verificar la contraseña"
 
-#: home/.local/bin/sway_search.py home/.local/bin/sway-launcher
-msgid "Search…"
-msgstr "Buscar…"
-
 #: home/.local/bin/sway-switcher
 msgid "usage: sway-switcher daemon|next|prev"
 msgstr "uso: sway-switcher daemon|next|prev"
@@ -630,6 +626,10 @@ msgstr "Aplicando %s..."
 #, python-format
 msgid "%(theme)s applied. %(message)s"
 msgstr "%(theme)s aplicado. %(message)s"
+
+#: home/.local/bin/sway_search.py home/.local/bin/sway-launcher
+msgid "Search…"
+msgstr "Buscar…"
 
 #: home/.local/bin/sway_themes.py
 #, python-format
@@ -1486,46 +1486,6 @@ msgstr "No se pudo borrar: %s"
 msgid "Confirm: clear history"
 msgstr "Confirmar: borrar historial"
 
-#: home/.local/bin/waybar_clipboard.py
-#, python-format
-msgid "Could not run %(program)s: %(error)s"
-msgstr "No se pudo ejecutar %(program)s: %(error)s"
-
-#: home/.local/bin/waybar_clipboard.py
-#, python-format
-msgid "%s failed"
-msgstr "%s falló"
-
-#: home/.local/bin/waybar_clipboard.py
-msgid "The item is empty."
-msgstr "El elemento está vacío."
-
-#: home/.local/bin/waybar_clipboard.py
-#, python-format
-msgid "%s did not answer"
-msgstr "%s no respondió"
-
-#: home/.local/bin/waybar_clipboard.py
-msgid "image"
-msgstr "imagen"
-
-#: home/.local/bin/waybar_clipboard.py
-msgid "binary"
-msgstr "binario"
-
-#: home/.local/bin/waybar_clipboard.py
-msgid "The pinned items file is unreadable; it will not be overwritten."
-msgstr "El archivo de elementos fijados no se puede leer; no se sobrescribirá."
-
-#: home/.local/bin/waybar_holidays.py
-msgid "Install python3-holidays to see the holidays"
-msgstr "Instala python3-holidays para ver los días festivos"
-
-#: home/.local/bin/waybar_holidays.py
-#, python-format
-msgid "No holidays known for %s"
-msgstr "No se conocen días festivos para %s"
-
 #: home/.local/bin/waybar-media-popup
 msgid "Nothing playing"
 msgstr "No se está reproduciendo nada"
@@ -1749,35 +1709,6 @@ msgstr "Descarta las notificaciones de %s"
 msgid "no name"
 msgstr "sin nombre"
 
-#: home/.local/bin/waybar_notifications.py
-msgctxt "notification time"
-msgid "now"
-msgstr "ahora"
-
-#: home/.local/bin/waybar_notifications.py
-#, python-format
-msgctxt "notification time"
-msgid "%d min ago"
-msgstr "hace %d min"
-
-#: home/.local/bin/waybar_notifications.py
-#, python-format
-msgctxt "notification time"
-msgid "%d h ago"
-msgstr "hace %d h"
-
-#: home/.local/bin/waybar_notifications.py
-#, python-format
-msgid "%d day ago"
-msgid_plural "%d days ago"
-msgstr[0] "hace %d día"
-msgstr[1] "hace %d días"
-
-#: home/.local/bin/waybar_popup.py
-#, python-format
-msgid "Could not open %(program)s: %(error)s"
-msgstr "No se pudo abrir %(program)s: %(error)s"
-
 #: home/.local/bin/waybar-system
 #, python-format
 msgid "CPU: %s%%"
@@ -1997,6 +1928,75 @@ msgstr "actualizado a las %s"
 #: home/.local/bin/waybar-weather
 msgid "Refresh"
 msgstr "Actualizar"
+
+#: home/.local/bin/waybar_clipboard.py
+#, python-format
+msgid "Could not run %(program)s: %(error)s"
+msgstr "No se pudo ejecutar %(program)s: %(error)s"
+
+#: home/.local/bin/waybar_clipboard.py
+#, python-format
+msgid "%s failed"
+msgstr "%s falló"
+
+#: home/.local/bin/waybar_clipboard.py
+msgid "The item is empty."
+msgstr "El elemento está vacío."
+
+#: home/.local/bin/waybar_clipboard.py
+#, python-format
+msgid "%s did not answer"
+msgstr "%s no respondió"
+
+#: home/.local/bin/waybar_clipboard.py
+msgid "image"
+msgstr "imagen"
+
+#: home/.local/bin/waybar_clipboard.py
+msgid "binary"
+msgstr "binario"
+
+#: home/.local/bin/waybar_clipboard.py
+msgid "The pinned items file is unreadable; it will not be overwritten."
+msgstr "El archivo de elementos fijados no se puede leer; no se sobrescribirá."
+
+#: home/.local/bin/waybar_holidays.py
+msgid "Install python3-holidays to see the holidays"
+msgstr "Instala python3-holidays para ver los días festivos"
+
+#: home/.local/bin/waybar_holidays.py
+#, python-format
+msgid "No holidays known for %s"
+msgstr "No se conocen días festivos para %s"
+
+#: home/.local/bin/waybar_notifications.py
+msgctxt "notification time"
+msgid "now"
+msgstr "ahora"
+
+#: home/.local/bin/waybar_notifications.py
+#, python-format
+msgctxt "notification time"
+msgid "%d min ago"
+msgstr "hace %d min"
+
+#: home/.local/bin/waybar_notifications.py
+#, python-format
+msgctxt "notification time"
+msgid "%d h ago"
+msgstr "hace %d h"
+
+#: home/.local/bin/waybar_notifications.py
+#, python-format
+msgid "%d day ago"
+msgid_plural "%d days ago"
+msgstr[0] "hace %d día"
+msgstr[1] "hace %d días"
+
+#: home/.local/bin/waybar_popup.py
+#, python-format
+msgid "Could not open %(program)s: %(error)s"
+msgstr "No se pudo abrir %(program)s: %(error)s"
 
 #: home/.local/bin/session-action
 msgid "usage: session-action lock|logout|suspend|reboot|poweroff"
