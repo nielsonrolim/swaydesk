@@ -284,7 +284,7 @@ Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depend
 Recommends: swaydesk-lock
 Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
 Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
-Description: Swaydesk session menu
+Description: Swaydesk session menu (lock, log out, suspend, restart, shut down)
  Lock, log out, suspend, restart and shut down, full screen. When an app
  asks to restart or shut down, it asks first, with a countdown.
 
