@@ -458,7 +458,14 @@ impl Panel {
     }
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-capture shot   the screenshot panel\n",
+    "       swaydesk-capture rec    the screen recording panel; while recording, stops it",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.first().map(String::as_str) == Some("--check") {
         return ExitCode::SUCCESS;

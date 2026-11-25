@@ -740,7 +740,14 @@ fn forget_image(id: u32) {
     let _ = std::fs::remove_file(image_file(id));
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-notifd [--headless]\n",
+    "    The notification server (org.freedesktop.Notifications), with the toasts; --headless keeps the list without toasts.",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|a| a == "--check") {
         return ExitCode::SUCCESS; // o sway-notifd em Python confere que o binário carrega

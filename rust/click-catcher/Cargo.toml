@@ -11,6 +11,7 @@ name = "swaydesk-click-catcher"
 path = "src/main.rs"
 
 [dependencies]
+swaydesk-common.workspace = true
 swaydesk-ui.workspace = true
 gtk4.workspace = true
 libc.workspace = true

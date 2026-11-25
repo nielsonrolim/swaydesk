@@ -523,7 +523,15 @@ fn daemon() -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-switcher daemon   the resident, which keeps the windows in order of use\n",
+    "       swaydesk-switcher next     Alt+Tab: the window used before; again, the next one\n",
+    "       swaydesk-switcher prev     Alt+Shift+Tab: the oldest; again, the previous one",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.as_slice() {
         [arg] if arg == "--check" => ExitCode::SUCCESS,

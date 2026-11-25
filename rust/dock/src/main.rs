@@ -45,11 +45,19 @@ fn tr(msgid: &str) -> String {
     i18n::tr(msgid)
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-dock               opens the dock (one per session)\n",
+    "       swaydesk-dock reload        rereads the dock's config.toml\n",
+    "       swaydesk-dock pin|unpin ID  asks the running dock to pin or unpin an app (its .desktop id)",
+);
+
 fn main() -> ExitCode {
     // O auxiliar que abre um app de dentro do escopo dele (app_scope::launch), antes de tudo
     if let Some(code) = swaydesk_common::app_scope::launcher_main(&std::env::args_os().skip(1).collect::<Vec<_>>()) {
         return ExitCode::from(code as u8);
     }
+    swaydesk_common::early_args!(USAGE);
     let args: Vec<String> = std::env::args().skip(1).collect();
     let run = resident::runtime_dir();
     // Fixar pela grade de apps: antes de carregar o GTK

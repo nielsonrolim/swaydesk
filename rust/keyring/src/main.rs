@@ -166,7 +166,14 @@ fn systemctl(args: &[&str]) -> Option<i32> {
     }
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-keyring\n",
+    "    Fixes the first-login keyring that gnome-keyring doesn't publish on D-Bus (restarts it if needed).",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().skip(1).any(|a| a == "--check") {
         return ExitCode::SUCCESS;
     }

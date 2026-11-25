@@ -685,7 +685,14 @@ fn build(app: &gtk4::Application) -> gtk4::ApplicationWindow {
     window
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-help\n",
+    "    Opens the help window: the Sway shortcuts in use and a card for each desktop app.",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o sway-help em Python confere que o binário carrega
     }

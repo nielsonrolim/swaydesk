@@ -515,7 +515,14 @@ fn notify_icon() {
     swaydesk_common::resident::notify_icons("waybar-volume");
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-audio-popup\n",
+    "    Opens the audio popup: volume, mute, and the output and input devices (opening it again closes it).",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o waybar-audio em Python confere que o binário carrega
     }

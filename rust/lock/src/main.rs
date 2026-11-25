@@ -916,6 +916,8 @@ fn blur_mode(argv0: &str, args: &[String]) -> Option<Result<(), ()>> {
 }
 
 fn main() -> ExitCode {
+    // Só o uso (ou a versão), com 0: um --help nunca bloqueia a tela
+    swaydesk_common::early_args!(LOCK_USAGE);
     let argv0 = std::env::args().next().unwrap_or_default();
     let args: Vec<String> = std::env::args().skip(1).collect();
     match blur_mode(&argv0, &args) {
@@ -928,11 +930,6 @@ fn main() -> ExitCode {
     }
     if args.is_empty() {
         return lock_through_sway_lock();
-    }
-    if matches!(args.as_slice(), [flag] if flag == "--help" || flag == "-h") {
-        // Só o uso, com 0: um --help nunca bloqueia a tela
-        println!("{LOCK_USAGE}");
-        return ExitCode::SUCCESS;
     }
     if args.first().map(String::as_str) == Some("--check") {
         // O install.sh pergunta se esta versão serve aqui: só se o gtk4-layer-shell tem o bloqueio

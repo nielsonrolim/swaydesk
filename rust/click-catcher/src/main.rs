@@ -42,7 +42,14 @@ fn usage() -> ExitCode {
     ExitCode::from(2)
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-click-catcher --pid PID\n",
+    "    A click outside the launcher closes it, as Esc does; exits when PID exits.",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     let args: Vec<String> = std::env::args().skip(1).collect();
     let pid = match args.as_slice() {
         [flag, pid] if flag == "--pid" => match pid.parse::<libc::pid_t>() {

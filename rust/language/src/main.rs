@@ -8,7 +8,14 @@ use swaydesk_language::{ipc, keyboards, line, registry, shown};
 /// Onde o xkb guarda o registro dos layouts; o extras traz os layouts exóticos.
 const RULES: &[&str] = &["/usr/share/X11/xkb/rules/evdev.xml", "/usr/share/X11/xkb/rules/evdev.extras.xml"];
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-language\n",
+    "    The keyboard layout for Waybar: one line per change of the layout or of the keyboards.",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o waybar-language em Python confere que o binário carrega
     }

@@ -51,9 +51,13 @@ fn usage_error(message: &str) -> ExitCode {
     ExitCode::from(2)
 }
 
+fn help_text() -> String {
+    format!("{}\n\n{}\n\npositional arguments:\n  {COMMANDS}\n\noptions:\n  -h, --help            show this help message and exit\n  --version             show the version and exit",
+            usage_line(), tr("Lists the installed GTK themes and changes theme, icons and accent color across the desktop."))
+}
+
 fn help() -> ExitCode {
-    println!("{}\n\n{}\n\npositional arguments:\n  {COMMANDS}\n\noptions:\n  -h, --help            show this help message and exit",
-             usage_line(), tr("Lists the installed GTK themes and changes theme, icons and accent color across the desktop."));
+    println!("{}", help_text());
     ExitCode::SUCCESS
 }
 
@@ -320,6 +324,7 @@ fn take_icons(args: &[String]) -> Result<(Vec<String>, Option<String>), String> 
 }
 
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(help_text());
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|a| a == "--check") {
         return ExitCode::SUCCESS;

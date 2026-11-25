@@ -9,3 +9,6 @@ license.workspace = true
 [[bin]]
 name = "swaydesk-clip-store"
 path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true

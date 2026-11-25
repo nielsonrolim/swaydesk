@@ -48,7 +48,15 @@ pub fn preview_active() -> bool {
     take_preview_lock().is_none()
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-displays          opens Displays: position, resolution, rate, scale and rotation of each screen\n",
+    "       swaydesk-displays daemon   the service that applies the saved layout when screens change\n",
+    "       swaydesk-displays apply    applies the saved layout once",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     match std::env::args().nth(1).as_deref() {
         Some("--check") => return ExitCode::SUCCESS,
         Some("daemon") => return daemon::run(),

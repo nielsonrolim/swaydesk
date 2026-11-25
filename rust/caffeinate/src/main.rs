@@ -209,7 +209,14 @@ fn fail(message: &str) -> ExitCode {
     ExitCode::FAILURE
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-caffeinate\n",
+    "    Holds a Wayland idle inhibitor on every monitor until it is stopped (caffeine outside the Swaydesk session).",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o sway-caffeine confere que o binário carrega
     }

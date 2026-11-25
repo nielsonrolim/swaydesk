@@ -201,7 +201,14 @@ impl Osd {
     }
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-osd-bar\n",
+    "    The on-screen volume and brightness indicator (sway-osd shows it).",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().skip(1).any(|a| a == "--check") {
         return ExitCode::SUCCESS;
     }

@@ -141,7 +141,14 @@ fn run() -> ExitCode {
     ExitCode::SUCCESS
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-system\n",
+    "    The System icon for Waybar (custom/system): CPU, memory and temperature.",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o waybar-system em Python confere que o binário carrega
     }

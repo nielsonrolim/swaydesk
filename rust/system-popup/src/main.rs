@@ -774,7 +774,15 @@ fn notify_icon() {
     swaydesk_common::resident::notify_icons("waybar-system");
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-system-popup [--monitor]\n",
+    "    Opens the System popup: CPU, memory, disk, temperature and the top processes (opening it again closes it);\n",
+    "    --monitor opens only the system monitor.",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
         ["--check"] => ExitCode::SUCCESS, // o waybar-system-popup em Python confere que o binário carrega

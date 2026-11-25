@@ -312,8 +312,10 @@ Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depend
 Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
 Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-session (<< 0.1.7~)
 Description: Swaydesk keyring fix
- Unlocks gnome-keyring at the first login of each user, so the apps'
- passwords open with the login.
+ Fixes the keyring of a user's first login when gnome-keyring creates it
+ but doesn't publish it on D-Bus (Debian 13): it asks for the password once,
+ and from then on the keyring opens with the login. Otherwise it does
+ nothing.
 
 Package: swaydesk-sessionmgr
 Architecture: any

@@ -1325,12 +1325,16 @@ version = "0.1.8"
 dependencies = [
  "gtk4",
  "libc",
+ "swaydesk-common",
  "swaydesk-ui",
 ]
 
 [[package]]
 name = "swaydesk-clip-store"
 version = "0.1.8"
+dependencies = [
+ "swaydesk-common",
+]
 
 [[package]]
 name = "swaydesk-clipboard"
@@ -1500,6 +1504,7 @@ name = "swaydesk-language"
 version = "0.1.8"
 dependencies = [
  "serde_json",
+ "swaydesk-common",
 ]
 
 [[package]]

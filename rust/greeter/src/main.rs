@@ -939,7 +939,14 @@ fn env_path(name: &str, fallback: &str) -> PathBuf {
     std::env::var_os(name).filter(|v| !v.is_empty()).map(PathBuf::from).unwrap_or_else(|| PathBuf::from(fallback))
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-greeter\n",
+    "    The login screen, started by greetd through /usr/share/swaydesk-greeter/sway.conf.",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().len() > 1 {
         eprintln!("usage: swaydesk-greeter (started by greetd, through /usr/share/swaydesk-greeter/sway.conf)");
         return ExitCode::from(2);

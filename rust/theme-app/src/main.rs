@@ -1358,7 +1358,14 @@ fn auto_note(wallpaper: Option<Option<&'static str>>) -> String {
     }
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-theme-app\n",
+    "    Opens Desktop Theme: the GTK theme family, light or dark, and the accent color.",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o sway-theme-app em Python confere que o binário carrega
     }

@@ -65,7 +65,19 @@ fn write_files(config: &Config, session: bool) -> Option<bool> {
     Some(ok)
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-desktop-config get KEY          prints a value of the desktop config\n",
+    "       swaydesk-desktop-config generate       writes the files that depend on the accent color\n",
+    "       swaydesk-desktop-config apply          writes them and reloads Sway\n",
+    "       swaydesk-desktop-config css            prints the accent colors as GTK CSS\n",
+    "       swaydesk-desktop-config enabled NAME   exits 0 if the component is on in [enabled], 1 if not\n",
+    "       swaydesk-desktop-config waybar [MODEL] writes the Waybar config without the components turned off\n",
+    "       swaydesk-desktop-config setup          at each login in the Swaydesk session",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|a| a == "--check") {
         return ExitCode::SUCCESS;

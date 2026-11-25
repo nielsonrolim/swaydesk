@@ -1172,7 +1172,14 @@ impl Drop for Popup {
     }
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-clipboard-popup\n",
+    "    Opens the clipboard history (cliphist), with search, thumbnails and pins (opening it again closes it).",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o waybar-clipboard-popup em Python confere que o binário carrega
     }

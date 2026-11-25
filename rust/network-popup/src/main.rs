@@ -939,7 +939,14 @@ fn notify_icon() {
     resident::signal_pid(&resident::pidfile("waybar-network"), "waybar-network", libc::SIGUSR1);
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-network-popup\n",
+    "    Opens the network popup: Wi-Fi, wired and VPN, through NetworkManager (opening it again closes it).",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o waybar-network-popup em Python confere que o binário carrega
     }

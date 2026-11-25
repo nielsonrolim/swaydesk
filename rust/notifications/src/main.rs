@@ -143,7 +143,14 @@ fn run() -> Result<(), glib::Error> {
     Ok(())
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-notifications\n",
+    "    The notifications icon for Waybar (custom/notification): one JSON line per change, read from swaydesk-notifd.",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
         ["--check"] => return ExitCode::SUCCESS, // o waybar-notifications em Python confere que o binário carrega

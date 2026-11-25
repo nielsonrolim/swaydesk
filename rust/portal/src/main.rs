@@ -93,7 +93,14 @@ fn watch_sway(main_loop: glib::MainLoop) {
     });
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-portal\n",
+    "    The Settings portal backend with the accent color of the desktop config (started by D-Bus).",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().skip(1).any(|a| a == "--check") {
         return ExitCode::SUCCESS;
     }

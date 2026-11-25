@@ -47,11 +47,18 @@ fn assume_sway_desktop() {
     }
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-drawer start   the hidden resident process, started at login\n",
+    "       swaydesk-drawer         shows or hides the app grid (without the resident, starts it shown)",
+);
+
 fn main() -> ExitCode {
     // O auxiliar que abre um app de dentro do escopo dele (app_scope::launch), antes de tudo (nem o nome muda)
     if let Some(code) = swaydesk_common::app_scope::launcher_main(&std::env::args_os().skip(1).collect::<Vec<_>>()) {
         return ExitCode::from(code as u8);
     }
+    swaydesk_common::early_args!(USAGE);
     // O pgrep -x e o pkill -x do sway-theme e do sway-desktop-config procuram sway-drawer no comm
     resident::set_process_name(PROGRAM);
     let args: Vec<String> = std::env::args().skip(1).collect();

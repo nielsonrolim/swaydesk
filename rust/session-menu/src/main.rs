@@ -432,19 +432,12 @@ fn confirm_arg(args: &[String]) -> Option<Result<Request, String>> {
     Some(Request::from_action(&action).ok_or(action))
 }
 
-/// O `--help`/`-h` só mostra o uso: sem isso, ele abria o menu (visto ao rodar à mão, num Sway comum)
-fn wants_help(args: &[String]) -> bool {
-    matches!(args, [flag] if flag == "--help" || flag == "-h")
-}
-
 const USAGE: &str = "usage: swaydesk-session-menu [--confirm reboot|poweroff]\n\
     Opens the session menu (lock, log out, suspend, reboot, power off); with --confirm, only the confirmation.";
 
 fn main() -> ExitCode {
-    if wants_help(&std::env::args().skip(1).collect::<Vec<_>>()) {
-        println!("{USAGE}");
-        return ExitCode::SUCCESS;
-    }
+    // O --help/-h só mostra o uso: sem isso, ele abria o menu (visto ao rodar à mão, num Sway comum)
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o session-menu em Python confere que o binário carrega
     }
@@ -480,16 +473,6 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn help_only_shows_the_usage() {
-        let args = |list: &[&str]| list.iter().map(|a| a.to_string()).collect::<Vec<_>>();
-        assert!(wants_help(&args(&["--help"])));
-        assert!(wants_help(&args(&["-h"])));
-        assert!(!wants_help(&args(&[])));
-        assert!(!wants_help(&args(&["--confirm", "reboot"])));
-        assert!(!wants_help(&args(&["--confirm", "--help"])));
-    }
 
     #[test]
     fn uptime_keeps_two_parts() {

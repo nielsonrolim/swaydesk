@@ -512,7 +512,14 @@ fn notify_icon() {
     resident::signal_pid(&resident::pidfile("waybar-battery-watch"), "waybar-battery", libc::SIGUSR1);
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-battery-popup\n",
+    "    Opens the battery popup: charge, time, health, a 12 h graph and the power profiles (opening it again closes it).",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o waybar-battery-popup em Python confere que o binário carrega
     }

@@ -403,7 +403,14 @@ fn refresh_clock() {
     resident::signal_pid(&resident::pidfile("waybar-clock"), "waybar-clock", libc::SIGUSR1);
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-calendar\n",
+    "    Opens the calendar popup, for a click on the Waybar clock (opening it again closes it).",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o waybar-calendar em Python confere que o binário carrega
     }

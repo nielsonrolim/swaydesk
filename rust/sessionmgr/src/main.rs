@@ -109,7 +109,14 @@ fn watch_sway(main_loop: glib::MainLoop) {
     });
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-sessionmgr\n",
+    "    The minimum of org.gnome.SessionManager on Sway: Reboot and Shutdown (started by the Sway config, exits with it).",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().skip(1).any(|a| a == "--check") {
         return ExitCode::SUCCESS;
     }

@@ -158,7 +158,14 @@ fn notify_icon() {
     swaydesk_common::resident::notify_icons("waybar-caffeine");
 }
 
+/// O --help (swaydesk_common::early_args!)
+const USAGE: &str = concat!(
+    "usage: swaydesk-caffeine-popup\n",
+    "    Opens the caffeine popup: off, 1 h, 2 h or always (opening it again closes it).",
+);
+
 fn main() -> ExitCode {
+    swaydesk_common::early_args!(USAGE);
     if std::env::args().nth(1).as_deref() == Some("--check") {
         return ExitCode::SUCCESS; // o waybar-caffeine-popup em Python confere que o binário carrega
     }
