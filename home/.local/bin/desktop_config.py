@@ -119,7 +119,8 @@ class Config:
     # Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui está
     # ligado: a chave ausente liga, para um config antigo continuar como era (menos as do DEFAULT_OFF)
     enabled: frozenset = frozenset()
-    # Os ligados com true no [enabled]: só contam para as chaves do DEFAULT_OFF. Não é uma chave do arquivo
+    # Os ligados com true no [enabled] e no [enabled.bar]: no enabled só contam para as chaves do DEFAULT_OFF;
+    # no with_system, marcam as chaves que o usuário deu, que vencem a camada do sistema. Não é uma chave do arquivo
     turned_on: frozenset = frozenset()
     effects: Effects = Effects()  # os efeitos do SwayFX ([effects])
 
@@ -187,8 +188,9 @@ def parse_enabled(table, warnings):
                     warnings.append(f"config: unknown option: enabled.bar.{module}")
                 elif not isinstance(shown, bool):
                     warnings.append(f"config: invalid value in enabled.bar.{module} (use true or false)")
-                elif not shown:
-                    off.add(f"bar.{module}")
+                else:
+                    # O true também entra: é a chave que o usuário deu, e vence a camada do sistema
+                    (on if shown else off).add(f"bar.{module}")
         elif key not in ENABLED_KEYS:
             warnings.append(f"config: unknown option: enabled.{key}")
         elif not isinstance(value, bool):

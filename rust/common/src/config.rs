@@ -100,7 +100,8 @@ pub struct Config {
     /// Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui
     /// está ligado: a chave ausente liga, para um config antigo continuar como era (menos as do DEFAULT_OFF)
     pub disabled: BTreeSet<String>,
-    /// Os ligados com true no [enabled]: só contam para as chaves do DEFAULT_OFF
+    /// Os ligados com true no [enabled] e no [enabled.bar]: no enabled só contam para as chaves do DEFAULT_OFF;
+    /// no with_system, marcam as chaves que o usuário deu, que vencem a camada do sistema
     pub turned_on: BTreeSet<String>,
     /// Os efeitos do SwayFX ([effects]); o Sway puro os ignora
     pub effects: Effects,
@@ -142,13 +143,12 @@ fn parse_enabled(value: &toml::Value, warnings: &mut Vec<String>) -> (BTreeSet<S
     };
     for (key, value) in table {
         if let (true, Some(bar)) = (key == "bar", value.as_table()) {
-            for (module, on) in bar {
+            for (module, shown) in bar {
                 if !BAR_MODULES.iter().any(|(k, _)| k == module) {
                     warnings.push(format!("config: unknown option: enabled.bar.{module}"));
-                } else if let Some(on) = on.as_bool() {
-                    if !on {
-                        off.insert(format!("bar.{module}"));
-                    }
+                } else if let Some(shown) = shown.as_bool() {
+                    // O true também entra: é a chave que o usuário deu, e vence a camada do sistema
+                    if shown { &mut on } else { &mut off }.insert(format!("bar.{module}"));
                 } else {
                     warnings.push(format!("config: invalid value in enabled.bar.{module} (use true or false)"));
                 }
@@ -786,6 +786,21 @@ mod tests {
         let user = parse_config("[enabled]\ninput_method = false\nbing_wallpaper = true\n").0;
         let merged = user.with_system(&system);
         assert!(!merged.enabled("input_method") && merged.enabled("bing_wallpaper"));
+    }
+
+    #[test]
+    fn the_system_layer_only_fills_the_bar_modules_the_user_left_out() {
+        let system = parse_config("[enabled.bar]\nweather = false\nmedia = true\n").0;
+        let merged = Config::default().with_system(&system);
+        assert!(!merged.enabled("bar.weather") && merged.enabled("bar.media") && merged.enabled("bar.clock"));
+        // A chave do usuário vence, nos dois sentidos, como no [enabled]
+        let user = parse_config("[enabled.bar]\nweather = true\nmedia = false\n").0;
+        let merged = user.with_system(&system);
+        assert!(merged.enabled("bar.weather"), "the user's true beats the system's false");
+        assert!(!merged.enabled("bar.media"), "the user's false beats the system's true");
+        // Um valor que não é bool não conta: fica o do sistema
+        let user = parse_config("[enabled.bar]\nweather = \"yes\"\n").0;
+        assert!(!user.with_system(&system).enabled("bar.weather"));
     }
 
     #[test]
