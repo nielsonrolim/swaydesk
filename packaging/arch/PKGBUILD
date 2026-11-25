@@ -209,7 +209,8 @@ package_swaydesk-click-catcher() {
 package_swaydesk-capture() {
   pkgdesc="Sway desktop components - screenshot and screen recording panels"
   depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell grim slurp jq)
-  optdepends=('wf-recorder: screen recording' 'wl-clipboard: copy the screenshot' 'libnotify: notices')
+  optdepends=('wf-recorder: screen recording' 'wl-clipboard: copy the screenshot' 'libnotify: notices'
+              'xdg-utils: open a capture from its notice')
   _install swaydesk-capture
 }
 

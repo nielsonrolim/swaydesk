@@ -412,8 +412,7 @@ impl Panel {
         };
         let opened = std::fs::create_dir_all(&folder).and_then(|_| spawn_detached("xdg-open", &[&folder]));
         if opened.is_err() {
-            let message = tr("Could not open %s").replacen("%s", &folder.display().to_string(), 1);
-            let _ = spawn_detached("notify-send", &["-u".to_string(), "critical".into(), tr("Capture"), message]);
+            let _ = spawn_detached("notify-send", &folder_error_args(&folder));
         }
         self.panel.close("pasta");
     }
@@ -482,6 +481,13 @@ fn main() -> ExitCode {
     swaydesk_ui::run_single(PROGRAM, &[], move |open| open.first() == Some(&name), move |main_loop| Some(Panel::new(kind, main_loop)), || {})
 }
 
+/// Os argumentos do notify-send quando a pasta não abre: do Swaydesk, como os avisos do sway-shot e do sway-rec
+/// (sem o -a, o servidor mostra "notify-send" como o app). O sway-capture em Python tem o mesmo.
+fn folder_error_args(folder: &std::path::Path) -> Vec<String> {
+    let message = tr("Could not open %s").replacen("%s", &folder.display().to_string(), 1);
+    vec!["-a".into(), "Swaydesk".into(), "-u".into(), "critical".into(), tr("Capture"), message]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -492,6 +498,14 @@ mod tests {
         assert_eq!(parse_prefs(r#"{"audio": "loud", "gradia": "yes"}"#), Prefs::default());
         assert_eq!(parse_prefs("[1, 2]"), Prefs::default());
         assert_eq!(parse_prefs("not json"), Prefs::default());
+    }
+
+    #[test]
+    fn the_folder_error_comes_from_swaydesk() {
+        // Como os avisos do sway-shot e do sway-rec: sem o -a, o servidor mostra "notify-send" como o app
+        let args = folder_error_args(std::path::Path::new("/tmp/x"));
+        assert_eq!(args[..4], ["-a", "Swaydesk", "-u", "critical"]);
+        assert!(args.last().unwrap().contains("/tmp/x"));
     }
 
     #[test]

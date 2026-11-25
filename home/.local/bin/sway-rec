@@ -21,7 +21,7 @@ refresh() {
   [[ ${args[1]:-} == */sway-rec && ${args[2]:-} == watch ]] || return 0
   kill -USR1 "$pid" 2>/dev/null || true
 }
-notify()    { notify-send "$@" 2>/dev/null || true; }
+notify()    { notify-send -a Swaydesk "$@" 2>/dev/null || true; }
 # Sem -u critical: esse tipo não some sozinho e o sway-notifd não mostra o tempo normal
 fail()      { notify -i dialog-error "$(t 'Recording failed')" "$1"; exit 1; }
 # Nada deu errado: só não havia o que gravar
@@ -221,5 +221,21 @@ elif [ "$rc" -ne 0 ] || [ "$playable" -eq 0 ]; then
 else
   body=$(printf "$(t '%s · audio: %s')" "${file/#$HOME/\~}" "$audio")
   [ -z "$cpu_note" ] || body+=$'\n'$(t 'Encoded by the processor: no GPU here encodes H.264 by VA-API.')
-  notify -i video-x-generic "$(t 'Recording saved')" "$body"
+  # Um clique no aviso abre o vídeo no player padrão (o xdg-open respeita o do usuário). Em segundo plano: o
+  # --wait dura até o aviso fechar, e o painel não espera por ele
+  (
+    # Um notify-send sem -A/--wait (libnotify antigo) recusaria a opção sem mostrar nada: o aviso de sempre, sem o
+    # clique. Conferido antes, pelo --help (numa variável: um grep -q num pipe, com o pipefail, falharia), e não
+    # pela falha: um que cai depois de mostrar (logout, notifd reiniciado) não pode trazer um segundo aviso
+    help=$(notify-send --help 2>&1) || true
+    case $help in
+      *--wait*) ;;
+      *) notify -i video-x-generic "$(t 'Recording saved')" "$body"; exit 0 ;;
+    esac
+    # O teto: o notifd do Swaydesk guarda o aviso na central depois que ele some da tela, e o --wait duraria até
+    # ele sair de lá (ou até o logout); por uma hora, um clique na central ainda abre o vídeo
+    action=$(timeout 1h notify-send -a Swaydesk -A "default=$(t 'Open the file')" --wait -i video-x-generic \
+      "$(t 'Recording saved')" "$body" 2>/dev/null) || true
+    if [ "$action" = default ]; then exec xdg-open "$file"; fi
+  ) </dev/null >/dev/null 2>&1 &
 fi

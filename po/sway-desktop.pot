@@ -109,6 +109,15 @@ msgid "click outside or Esc to cancel"
 msgstr ""
 
 #: home/.local/bin/sway-capture
+msgid "Capture"
+msgstr ""
+
+#: home/.local/bin/sway-capture home/.local/bin/sway-files
+#, python-format, sh-printf-format
+msgid "Could not open %s"
+msgstr ""
+
+#: home/.local/bin/sway-capture
 msgid "Region"
 msgstr ""
 
@@ -171,15 +180,6 @@ msgstr ""
 
 #: home/.local/bin/sway-capture
 msgid "Audio · a"
-msgstr ""
-
-#: home/.local/bin/sway-capture
-msgid "Capture"
-msgstr ""
-
-#: home/.local/bin/sway-capture home/.local/bin/sway-files
-#, python-format, sh-printf-format
-msgid "Could not open %s"
 msgstr ""
 
 #: home/.local/bin/sway-capture
@@ -2229,6 +2229,10 @@ msgstr ""
 
 #: home/.local/bin/sway-rec
 msgid "Recording saved"
+msgstr ""
+
+#: home/.local/bin/sway-rec home/.local/bin/sway-shot
+msgid "Open the file"
 msgstr ""
 
 #: home/.local/bin/sway-resize

@@ -109,6 +109,15 @@ msgid "click outside or Esc to cancel"
 msgstr "haz clic fuera o presiona Esc para cancelar"
 
 #: home/.local/bin/sway-capture
+msgid "Capture"
+msgstr "Captura"
+
+#: home/.local/bin/sway-capture home/.local/bin/sway-files
+#, python-format, sh-printf-format
+msgid "Could not open %s"
+msgstr "No se pudo abrir %s"
+
+#: home/.local/bin/sway-capture
 msgid "Region"
 msgstr "Región"
 
@@ -172,15 +181,6 @@ msgstr "para anotar, recortar y decorar · g"
 #: home/.local/bin/sway-capture
 msgid "Audio · a"
 msgstr "Audio · a"
-
-#: home/.local/bin/sway-capture
-msgid "Capture"
-msgstr "Captura"
-
-#: home/.local/bin/sway-capture home/.local/bin/sway-files
-#, python-format, sh-printf-format
-msgid "Could not open %s"
-msgstr "No se pudo abrir %s"
 
 #: home/.local/bin/sway-capture
 msgid "usage: sway-capture shot|rec"
@@ -2244,6 +2244,10 @@ msgstr "Codificada por el procesador: ninguna tarjeta gráfica de este equipo co
 #: home/.local/bin/sway-rec
 msgid "Recording saved"
 msgstr "Grabación guardada"
+
+#: home/.local/bin/sway-rec home/.local/bin/sway-shot
+msgid "Open the file"
+msgstr "Abrir el archivo"
 
 #: home/.local/bin/sway-resize
 msgid "usage: sway-resize left|right|up|down [pixels]"
