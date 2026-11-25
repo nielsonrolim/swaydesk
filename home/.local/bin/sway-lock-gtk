@@ -26,6 +26,16 @@ import sys
 import threading
 import time
 
+# O --help e o --version, como os do swaydesk-lock: antes do gi, que precisaria da typelib da gtk-session-lock. Só
+# nos dotfiles, com o sway_rust.py ao lado: o swaydesk-lock do Debian leva este script sem ele (ali o --help sai no
+# parse_args), e um import sem o arquivo aqui iria buscá-lo no resto do sys.path (PYTHONPATH, site-packages do
+# usuário), código de fora dentro do processo do bloqueio
+_HERE = os.path.dirname(os.path.realpath(__file__))
+if __name__ == "__main__" and os.path.isfile(os.path.join(_HERE, "sway_rust.py")):
+    import sway_rust
+
+    sway_rust.answer_flags("sway-lock-gtk", sys.argv[1:])
+
 # A gtk-session-lock compilada pelo install.sh (Mint 22) fica em /usr/local, fora do caminho padrão das
 # typelibs no Debian e no Ubuntu. A .so é achada pelo ld.so.conf.d do multiarch
 _extra = glob.glob("/usr/local/lib/*/girepository-1.0") + glob.glob("/usr/local/lib/girepository-1.0")
@@ -658,7 +668,7 @@ def parse_args(argv):
     if len(argv) == 2 and argv[0] == "--notify-fd" and argv[1].isdigit():
         return int(argv[1])
     usage = "usage: sway-lock-gtk --notify-fd N (run it through sway-lock)"
-    if argv in (["--help"], ["-h"]):  # só o uso, com 0, como o swaydesk-lock
+    if argv in (["--help"], ["-h"]):  # no pacote, sem o sway_rust: só o uso, com 0, como o swaydesk-lock
         print(usage)
         sys.exit(0)
     print(usage, file=sys.stderr)
