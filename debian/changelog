@@ -1,8 +1,25 @@
-swaydesk (0.1.7-1) UNRELEASED; urgency=medium
+swaydesk (0.1.7-1) unstable; urgency=medium
 
-  * Development after 0.1.6.
+  * Release 0.1.7.
+  * One package per component (swaydesk-dock, -drawer, -lock, -capture,
+    the bar items, ...); swaydesk-widgets, -theme, -session and the
+    transitional swaydesk-scripts become empty metapackages, with
+    Breaks+Replaces on the files that moved; new groups swaydesk-bar and
+    swaydesk-apps. Each helper script ships with the component that
+    calls it; only the calendar (and the GTK 3 lock) brings Python.
+  * Opt-in user units and Sway/Waybar snippets for a component installed
+    on its own in another session; never enabled, never active inside
+    the Swaydesk session.
+  * swaydesk-lock with no arguments locks the screen; caffeine outside
+    the session holds an idle inhibitor (swaydesk-caffeinate) instead of
+    replacing the user's swayidle.
+  * Cursor size setting (cursor_size, swaydesk-theme cursor, Desktop
+    Theme list); one search field style across the desktop.
+  * A standalone dock starts with default pins; the indicator and the
+    popups run under their role names; helpers, capture and notifd say
+    what is missing or who holds the name.
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Tue, 24 Nov 2026 08:29:26 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Tue, 24 Nov 2026 23:08:06 -0300
 
 swaydesk (0.1.6-1) unstable; urgency=medium
 

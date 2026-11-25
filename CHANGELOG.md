@@ -2,6 +2,57 @@
 
 Each release is published as packages and, shortly after, as install images. Updates arrive through `apt upgrade` or `pacman -Syu`.
 
+## 0.1.7 — 2026-11-24
+
+Every Swaydesk component is now its own package, so you can install just the ones you want on plain Sway, and start them with a user service or a Sway snippet. Also: one search field across the desktop, modelled on the launcher's, and on Arch, ç on AltGr+, at the console. Desktop Theme also sets the cursor size, and `swaydesk-lock` locks the screen on its own.
+
+### Upgrading from 0.1.6
+
+- **Debian and Ubuntu: upgrade with `apt upgrade`, `apt full-upgrade` or the Software app.** This release adds new packages, and `apt-get upgrade` never installs new packages, so it would keep the Swaydesk packages at 0.1.6.
+- **Debian and Ubuntu: upgrade from the repository, not with a few 0.1.7 `.deb` files.** Installing only some of the new packages over 0.1.6 (for example `swaydesk-common` and `swaydesk-caffeine` from local files) makes apt remove the 0.1.6 `swaydesk-widgets` and `swaydesk-scripts`, whose files the new packages take; it lists them under "REMOVED" before asking. Upgrading every package from the repository removes nothing.
+- **Nothing to do for a full install.** `swaydesk-desktop` brings every component, as before. `swaydesk-widgets`, `swaydesk-theme` and `swaydesk-session` become empty metapackages that bring the same components, so an upgrade keeps everything.
+- **If you call `sway-lock`, `sway-shot` or `sway-rec` from your own Sway config**, and you don't have the full desktop, install `swaydesk-lock` or `swaydesk-capture`; for `sway-osd` (the volume and brightness keys), `swaydesk-osd`. Each helper script, and each bar icon, now ships with the component that uses it. An upgrade of a system that had only one component (the app grid, say) keeps that component's scripts and drops the ones it never used.
+- **`swaydesk-scripts` is now transitional and empty, and goes away in 0.2.0.** You can remove it now. Removing it doesn't uninstall anything. If you installed it on its own, install the components whose scripts you use: `swaydesk-lock`, `swaydesk-capture`, `swaydesk-drawer`, `swaydesk-caffeine` or `swaydesk-osd`.
+- **`swaydesk-lock` on its own doesn't lock the screen when idle.** On plain Sway (or any other session), bind it to a key and let your own swayidle call it, for example:
+  `bindsym Ctrl+Alt+l exec swaydesk-lock`
+  `exec swayidle -w timeout 600 swaydesk-lock before-sleep swaydesk-lock`
+  Or include the lock's snippet, which has both lines: `include /usr/share/swaydesk/sway/config.d/50-swaydesk-lock.conf`. Inside the Swaydesk session, nothing changes.
+- **Arch: upgrade with a full `pacman -Syu`.** Files move between Swaydesk packages in this release, so a single 0.1.7 package installed over 0.1.6 (`pacman -S swaydesk-dock`) stops with "conflicting files".
+- **Arch: `swaydesk-desktop` now needs paku 0.3.2 or later.** paku now brings `archlinux-contrib` itself. If you hold paku at 0.3.0 or 0.3.1 (`IgnorePkg`), let it update first. Otherwise `swaydesk-desktop` can't upgrade.
+
+### Added
+
+- **One package per component.**
+  - **Bar items:** `swaydesk-calendar`, `-weather`, `-audio`, `-network`, `-bluetooth`, `-battery`, `-brightness`, `-caffeine`, `-system`, `-media`, `-clipboard`, `-osd` (the volume and brightness indicator) and `-language`.
+  - **Window switcher:** `swaydesk-switcher`.
+  - **Apps:** `swaydesk-theme-app` (Desktop Theme), `-displays`, `-help` and `-capture`.
+  - **Session:** `swaydesk-session-menu`, `-lock`, `-keyring` and `-sessionmgr`.
+  - **Theme tools:** `swaydesk-theme-tool` and `swaydesk-portal`.
+  - **Groups:** `swaydesk-bar` brings every bar item; `swaydesk-apps` brings the four apps.
+  - Each package brings only what it needs. The app grid alone no longer pulls in a file manager (it suggests one) or Python. Only the calendar brings Python, for the holidays; on Debian and Ubuntu, so does the lock screen's GTK 3 version. The screenshot panel (`swaydesk-capture`) now depends on grim, slurp and jq, which every screenshot needs.
+- **A dock installed on its own starts with the file manager and a terminal**, instead of empty. It writes no pins file until you change the pins, and a terminal you install later shows up by itself.
+- **User services for the components that keep running**, for when you install one on its own in another session (plain Sway, niri, Hyprland with uwsm): `swaydesk-dock`, `-drawer` (the app grid), `-notifd`, `-osd`, `-switcher`, `-displays` and `-clipboard`, each a `.service`, started with `systemctl --user enable --now swaydesk-dock.service`. No package enables them, and they never run inside the Swaydesk session. Beside a copy already running, the dock, the grid, the switcher, the displays and the indicator exit quietly; the notification service waits until the other one exits; for the clipboard, use the service or your own `wl-paste` lines, not both. Apps opened from the dock, the grid or a notification stay open when the service stops or restarts. On plain Sway, it's simpler to include the component's snippet instead (see below).
+- **Opt-in snippets for plain Sway.** Each of those components, and the lock, ships `/usr/share/swaydesk/sway/config.d/50-<package>.conf`: add `include /usr/share/swaydesk/sway/config.d/50-swaydesk-dock.conf` (say) to your Sway config, and it starts the component's service with this Sway, adds its keys, and stops it when Sway exits (the lock's starts your swayidle instead). The bar items ship a Waybar module to paste in, `/usr/share/swaydesk/waybar/<package>.jsonc`. Nothing turns on by itself, and inside the Swaydesk session the snippets do nothing.
+- **Caffeine outside the Swaydesk session no longer touches your own swayidle.** It used to replace it with one without timeouts, and turning caffeine off left you with ours until the next login. Now it holds an idle inhibitor (the new `swaydesk-caffeinate`, in `swaydesk-caffeine`), which swayidle and other idle managers respect. Inside the session, nothing changes.
+- **`swaydesk-lock` with no arguments locks the screen**, so it works on its own: from a key binding, and as swayidle's `timeout` and `before-sleep`. It returns as soon as the screen is locked, or right away if it already was, as `swaylock -f` does, so it doesn't hold a suspend. `swaydesk-lock --help` shows the usage.
+- **Cursor size.** Desktop Theme has a **Cursor size** list, below the icons, with only the sizes the cursor theme has; a choice applies at once. From a terminal: `swaydesk-theme cursor` lists them, and `swaydesk-theme cursor N` (16 to 96) sets one; it's `cursor_size` in `config.toml`. GTK 4 apps follow at once, and so do Qt 6 apps on Wayland, though some may show the plain arrow until they're reopened; GTK 3, Qt 5, Electron and X11 apps follow when reopened. Sway's own cursor follows with any cursor theme, and a seat line of your own in `50-local.conf` still wins after a reload.
+
+### Changed
+
+- **Every search field looks like the launcher's**: the clipboard, the app grid, the Desktop Theme app and Help. Same height, rounded corners, a magnifier in the accent colour, and one "Search…" placeholder. In every one of them, the first Esc clears the text and the second closes. Until now, Esc closed the clipboard history at once.
+- **Arch: at the console (TTY), the English (US, intl., with dead keys) layout now has ç on AltGr+,**, as in the session, so a password with ç works there too. A new install gets it. On an existing one, run `sudo localectl set-x11-keymap us "" intl` once (the package brings the console keymap; the command only switches to it).
+- **A component that can't find one of its helper scripts now says so**, once, on its error output: which script, where it looked, and which package to install.
+- **Desktop Theme without a wallpaper:** with no wallpaper file (a standalone install, say), **Use the wallpaper's color** starts off instead of warning at every login. Once a wallpaper exists, it turns on by itself, unless you set it. With no GTK theme installed, the list now says so and suggests gnome-themes-extra, instead of "No theme found".
+- **A screenshot or recording with a program missing says which one** ("Not installed: wf-recorder."), instead of "Could not find the focused screen."
+- **`--help`** on `swaydesk-session-menu` and `swaydesk-lock` prints the usage and exits, instead of opening the menu or locking.
+- **The notification service, when another one is already running** (mako, say), now says on its error output which program holds the name. It still waits, and takes over when that one exits.
+
+### Fixed
+
+- **The automatic accent colour** (Desktop Theme, **Use the wallpaper's color**) found no wallpaper when `XDG_DATA_HOME` was set to something other than `~/.local/share`. It now reads the same file the wallpaper and the lock screen use.
+- **The system monitor's bar icon** now updates when its popup opens and closes. Before, the popup removed the icon's signal file instead of signalling it.
+- **Started by its package name** (`exec swaydesk-osd-bar` on plain Sway), the volume and brightness indicator never showed: the volume changed, but no bar appeared. It, and every bar popup, now runs under the name the keys and icons look for.
+
 ## 0.1.6.1 — 2026-11-24
 
 Install images only: the Debian 13 and Arch images of 0.1.6. The packages stay at 0.1.6.
