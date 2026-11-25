@@ -146,18 +146,19 @@ fn desktop_info(key: &str) -> Option<gio::DesktopAppInfo> {
 fn launch_context() -> Option<gdk::AppLaunchContext> {
     let context = gdk::Display::default().map(|d| d.app_launch_context())?;
     cmd::clean_launch_context(&context);
+    swaydesk_common::app_scope::scope_launch_context(&context); // num serviço do usuário, cada app no seu escopo
     Some(context)
 }
 
 /// Abre o app, ou uma janela nova se o .desktop oferecer essa ação. O GLib solta o app do processo da
-/// dock (ele não fica como filho dela).
+/// dock (ele não fica como filho dela); num serviço do usuário, o app abre já no seu escopo (app_scope::launch).
 fn launch(key: &str) {
     let Some(info) = desktop_info(key) else { return };
     let context = launch_context();
+    let context = context.as_ref().map(|c| c.upcast_ref::<gio::AppLaunchContext>());
     let actions = info.list_actions();
-    if let Some(action) = NEW_WINDOW_ACTIONS.iter().find(|a| actions.iter().any(|x| x == **a)) {
-        info.launch_action(action, context.as_ref());
-    } else if let Err(err) = info.launch(&[], context.as_ref()) {
+    let action = NEW_WINDOW_ACTIONS.iter().find(|a| actions.iter().any(|x| x == **a)).copied();
+    if let Err(err) = swaydesk_common::app_scope::launch(&info, action, &[], context) {
         warn(&format!("could not open {key}: {}", err.message()));
     }
 }
@@ -592,8 +593,9 @@ impl Bar {
                 if argv[0] == "sway-drawer" || argv[0].ends_with("/.local/bin/sway-drawer") {
                     argv[0] = swaydesk_common::paths::component("sway-drawer", "swaydesk-drawer").to_string_lossy().into_owned();
                 }
-                // Numa sessão própria: o app aberto não conta como auxiliar da dock no popup "Sistema"
-                if let Err(err) = cmd::spawn_detached(&argv[0], &argv[1..]) {
+                // Numa sessão própria: o app aberto não conta como auxiliar da dock no popup "Sistema"; com a dock
+                // num serviço do usuário, num escopo próprio
+                if let Err(err) = cmd::spawn_app(&argv[0], &argv[1..]) {
                     warn(&format!("could not run {}: {err}", argv[0]));
                 }
             }

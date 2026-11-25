@@ -19,7 +19,7 @@ use gtk4::{gdk, gio, glib, graphene, pango};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use swaydesk_common::config::{self, Config};
 use swaydesk_common::i18n::{ntr, ptr, tr};
-use swaydesk_common::{renderer, resident};
+use swaydesk_common::{app_scope, renderer, resident};
 use swaydesk_drawer_logic as logic;
 use swaydesk_drawer_logic::groups::{self, Group};
 use swaydesk_drawer_logic::{dock, App, AppFields};
@@ -130,7 +130,19 @@ fn group_label(text: &str) -> String {
 /// Sem esperar, numa sessão própria (`setsid -f`, como o `spawn_detached` do Python): o app aberto pela
 /// grade não conta como auxiliar dela no popup "Sistema". O GLib recolhe o processo.
 fn run_detached<S: AsRef<OsStr>>(argv: &[S]) -> bool {
+    run_program(argv, None)
+}
+
+/// Um app (o de terminal, pelo id do .desktop): com a grade num serviço do usuário, ele vai para um escopo
+/// próprio (swaydesk_common::app_scope). Para isso o PID tem de ser o do app: o `setsid` sem o `-f`, que troca
+/// de sessão e executa o programa no mesmo processo.
+fn run_app<S: AsRef<OsStr>>(argv: &[S], app_id: &str) -> bool {
+    run_program(argv, Some(app_id))
+}
+
+fn run_program<S: AsRef<OsStr>>(argv: &[S], app_id: Option<&str>) -> bool {
     let mut argv: Vec<&OsStr> = argv.iter().map(AsRef::as_ref).collect();
+    let scoped = app_id.is_some() && app_scope::under_unit();
     // O setsid -f sempre "dá certo", mesmo sem o programa: confere antes, como o Python
     let program = Path::new(argv[0]);
     let exists = if program.components().count() > 1 {
@@ -142,13 +154,40 @@ fn run_detached<S: AsRef<OsStr>>(argv: &[S]) -> bool {
         warn(&format!("could not run {}: not found", program.display()));
         return false;
     }
+    // Num serviço, o app espera no sh do GATE_SCRIPT até a mudança de escopo (o mesmo PID, sem corrida); o
+    // setsid sem o -f troca de sessão no mesmo processo
+    let gate = if scoped { app_scope::gate().ok() } else { None };
+    if gate.is_some() {
+        argv.splice(0..0, app_scope::GATE_SCRIPT.iter().map(OsStr::new));
+    }
     if glib::find_program_in_path("setsid").is_some() {
-        argv.splice(0..0, [OsStr::new("setsid"), OsStr::new("-f")]);
+        if gate.is_some() {
+            argv.insert(0, OsStr::new("setsid"));
+        } else {
+            argv.splice(0..0, [OsStr::new("setsid"), OsStr::new("-f")]);
+        }
     }
     let launcher = gio::SubprocessLauncher::new(gio::SubprocessFlags::STDOUT_SILENCE | gio::SubprocessFlags::STDERR_SILENCE);
     renderer::clean_subprocess_launcher(&launcher); // um app GTK 4 aberto pelo script desenharia por CPU
+    if scoped {
+        for name in app_scope::UNIT_ENV {
+            launcher.unsetenv(name);
+        }
+    }
+    let (read, release) = gate.map_or((None, None), |(r, w)| (Some(r), Some(w)));
+    if let Some(read) = read {
+        launcher.take_fd(read, 3);
+    }
     match launcher.spawn(&argv) {
-        Ok(_) => true,
+        Ok(child) => {
+            let pid = child.identifier().and_then(|p| p.parse::<u32>().ok());
+            match (release, app_id, pid) {
+                (Some(release), Some(id), Some(pid)) => app_scope::move_then_release(pid, id, release),
+                (None, Some(id), Some(pid)) if scoped => app_scope::move_to_scope(pid, id),
+                _ => {} // o release, se houver, fecha aqui: o app segue
+            }
+            true
+        }
         Err(err) => {
             warn(&format!("could not run {}: {}", argv[0].to_string_lossy(), err.message()));
             false
@@ -1337,12 +1376,21 @@ impl Drawer {
     }
 
     fn open_uri(&self, path: &Path) -> bool {
-        let uri = gio::File::for_path(path).uri();
-        match gio::AppInfo::launch_default_for_uri(&uri, Some(&launch_context())) {
+        let file = gio::File::for_path(path);
+        let uri = file.uri();
+        let context = launch_context();
+        // O app padrão do arquivo abre pelo app_scope::launch (no seu escopo, sem corrida); sem um .desktop, o Gio
+        // decide sozinho
+        let handler = file.query_default_handler(gio::Cancellable::NONE).ok().and_then(|a| a.downcast::<gio::DesktopAppInfo>().ok());
+        let opened = match handler {
+            Some(info) => app_scope::launch(&info, None, &[uri.to_string()], Some(context.upcast_ref())),
+            None => gio::AppInfo::launch_default_for_uri(&uri, Some(&context)),
+        };
+        match opened {
             Ok(()) => true,
             Err(err) => {
                 warn(&format!("could not open {}: {}", path.display(), err.message()));
-                run_detached(&[OsStr::new("xdg-open"), path.as_os_str()])
+                run_app(&[OsStr::new("xdg-open"), path.as_os_str()], "xdg-open")
             }
         }
     }
@@ -1361,12 +1409,13 @@ impl Drawer {
             // O Gio escolhe o terminal de uma lista própria, que pode não ter nenhum instalado
             let commandline = info.commandline().map(|c| c.to_string_lossy().into_owned()).unwrap_or_default();
             if let Some(argv) = logic::terminal_command(&commandline, TERMINAL) {
-                if run_detached(&argv) {
+                if run_app(&argv, app_id) {
                     return;
                 }
             }
         }
-        if let Err(err) = info.launch(&[], Some(&launch_context())) {
+        let context = launch_context();
+        if let Err(err) = app_scope::launch(&info, None, &[], Some(context.upcast_ref())) {
             warn(&format!("could not open {app_id}: {}", err.message()));
         }
     }
@@ -1890,6 +1939,7 @@ fn watch_dock_area() -> Option<gio::FileMonitor> {
 fn launch_context() -> gdk::AppLaunchContext {
     let context = gdk::Display::default().expect("a display").app_launch_context();
     renderer::clean_launch_context(&context);
+    app_scope::scope_launch_context(&context); // num serviço do usuário, cada app no seu escopo
     context
 }
 

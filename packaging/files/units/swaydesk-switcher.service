@@ -25,12 +25,11 @@ RestartSec=1
 RestartPreventExitStatus=4
 # ...and it isn't a failure: the unit ends inactive, with the other copy running
 SuccessExitStatus=4
-# Only the component itself on stop and restart: the apps it opens (a dock pin, the grid, a notification's
-# action) start with setsid but stay in this unit's cgroup, and the default control-group mode would take them
-# down with it; its own helpers (the swaymsg of the Sway events) die with it (setpriv --pdeathsig). The cost:
-# the apps are listed in status, a restart logs "left-over process", and a limit set here would cover them;
-# launching each app in its own scope (app-*.scope) would drop this
-KillMode=process
+# SIGTERM to the component only, then SIGKILL to whatever is left in the cgroup: it opens no apps. Its helpers
+# (the swaymsg of the Sway events) die with it (setpriv --pdeathsig); the default control-group mode would
+# SIGTERM them at the same time, and their EOF could reach the component first and end it with an error
+# (failed on a plain stop)
+KillMode=mixed
 
 [Install]
 WantedBy=graphical-session.target

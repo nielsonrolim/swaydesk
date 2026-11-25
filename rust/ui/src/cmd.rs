@@ -64,6 +64,38 @@ pub fn spawn<S: AsRef<OsStr>>(program: impl AsRef<OsStr>, args: &[S]) -> std::io
         .spawn()
 }
 
+/// Um app (não um auxiliar): o [`spawn_detached`] e, se este processo roda como serviço do usuário, o app num
+/// escopo próprio do systemd (swaydesk_common::app_scope), com o nome do programa como id. Os auxiliares (o
+/// swaymsg, os scripts) continuam no [`spawn_detached`], no cgroup do componente.
+pub fn spawn_app<S: AsRef<OsStr>>(program: impl AsRef<OsStr>, args: &[S]) -> std::io::Result<()> {
+    let id = std::path::Path::new(program.as_ref()).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    use swaydesk_common::app_scope;
+    if !app_scope::under_unit() {
+        return spawn_detached(program, args);
+    }
+    // Num serviço: o app espera no sh do GATE_SCRIPT até a mudança de escopo, e só então vira o app (o mesmo
+    // PID). Sem o pipe, abre direto, como antes
+    let Ok((read, release)) = app_scope::gate() else { return spawn_detached(program, args) };
+    let [sh, flag, script, name] = app_scope::GATE_SCRIPT;
+    let mut command = Command::new(sh);
+    command.args([flag, script, name]).arg(program).args(args);
+    child_env(&mut command).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).pre_session();
+    for name in app_scope::UNIT_ENV {
+        command.env_remove(name);
+    }
+    use std::os::fd::AsRawFd;
+    let fd = read.as_raw_fd();
+    // SAFETY: entre o fork e o exec só roda o dup2 ou o fcntl (gate_fd_in_child)
+    unsafe {
+        command.pre_exec(move || app_scope::gate_fd_in_child(fd));
+    }
+    let mut child = command.spawn()?;
+    drop(read);
+    app_scope::move_then_release(child.id(), &id, release);
+    std::thread::spawn(move || child.wait());
+    Ok(())
+}
+
 /// O [`spawn`] sem guardar o filho: uma linha espera por ele, para não ficar zumbi enquanto o popup
 /// está aberto.
 pub fn spawn_detached<S: AsRef<OsStr>>(program: impl AsRef<OsStr>, args: &[S]) -> std::io::Result<()> {
