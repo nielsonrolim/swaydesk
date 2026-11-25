@@ -303,7 +303,7 @@ rofi_open() {
     exit 1
   fi
   # O clique fora fecha, como o Esc: o rofi 1.7 (Xwayland) e o 2.0 não veem um clique fora do menu, e o
-  # swaydesk-click-catcher (no swaydesk-widgets) os fecha por ele, até o rofi terminar. O 2.1 trata o clique fora
+  # swaydesk-click-catcher (o pacote de mesmo nome) os fecha por ele, até o rofi terminar. O 2.1 trata o clique fora
   # na própria camada, mas ela não cobre a Waybar, e sem um movimento do mouse o clique não chega a ela: o catcher
   # cobre a barra e faz o Sway reavaliar o ponteiro. Sem o catcher (os dotfiles sem o Rust), como antes. O código
   # de saída é o do rofi

@@ -87,7 +87,7 @@ fn parse_command(text: &str) -> Option<Cmd> {
     }
 }
 
-/// next/prev: avisa o residente; sem ele, troca direto pela árvore. Sempre 0: o atalho não tem a quem
+/// next/prev: avisa o residente; sem ele, troca direto, na ordem de criação das janelas. Sempre 0: o atalho não tem a quem
 /// mostrar um erro.
 fn send(command: Cmd) -> ExitCode {
     let signal = if command == Cmd::Next { libc::SIGUSR1 } else { libc::SIGUSR2 };

@@ -133,8 +133,8 @@ pub fn retap(selected: usize, count: usize, command: Command) -> usize {
     if selected == first { 0 } else { first }
 }
 
-/// Sem o residente não há ordem de uso: o next vai à janela seguinte na árvore e o prev à anterior, dando
-/// a volta. None se não houver outra.
+/// Sem o residente não há ordem de uso: o next vai à janela seguinte na ordem de criação e o prev à
+/// anterior, dando a volta. None se não houver outra.
 pub fn without_daemon_target(tree: &Value, command: Command) -> Option<i64> {
     let windows = windows_from_tree(tree);
     if windows.len() < 2 {
