@@ -114,9 +114,11 @@ Recommends: network-manager
 Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
 Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-widgets (<< 0.1.7~)
 Description: Swaydesk network icon and popup
- Wi-Fi, wired and VPN: turn them on and off, connect, enter the password
- and see the details. Works with NetworkManager, and also with iwd and
- systemd-networkd (VPN only with NetworkManager).
+ Wi-Fi, wired and VPN: turn them on and off, connect and see the details.
+ Works with NetworkManager, and also with iwd and systemd-networkd (VPN
+ only with NetworkManager). With iwd, the popup asks for the Wi-Fi
+ password itself; with NetworkManager, a secrets agent must be running
+ to ask for it, such as nm-applet, which the Swaydesk session starts.
 
 Package: swaydesk-bluetooth
 Architecture: any
@@ -255,8 +257,9 @@ Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depend
 Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-theme (<< 0.1.7~)
 Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-theme (<< 0.1.7~)
 Description: Swaydesk accent color portal
- An org.freedesktop.impl.portal.Settings backend that gives the accent
- color and the light or dark style to libadwaita apps.
+ An org.freedesktop.impl.portal.Settings backend that gives the desktop's
+ accent color to libadwaita apps. Light and dark come from another
+ Settings backend, such as xdg-desktop-portal-gtk.
 
 Package: swaydesk-theme-app
 Architecture: any

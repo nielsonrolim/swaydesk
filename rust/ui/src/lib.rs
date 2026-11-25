@@ -69,14 +69,32 @@ pub fn log(program: &str, message: &str) {
     }
 }
 
-/// O campo de busca de todos os componentes, como o do rofi: a classe do config::SEARCH_CSS (que vem no
+/// O tamanho do campo de busca, o de quem o tem: o visual é o mesmo (a lupa no destaque, a borda, o foco).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SearchSize {
+    /// O da grade, um lançador de tela cheia: um pouco menor que o do rofi.
+    Large,
+    /// A altura de um campo do GTK, na fonte da janela: os apps em janela (Tema, Ajuda).
+    Regular,
+    /// A altura de uma linha de lista, na fonte do popup: os popups (clipboard).
+    Compact,
+}
+
+/// O campo de busca de todos os componentes, com o visual do rofi: a classe do config::SEARCH_CSS (que vem no
 /// theme_css e no config::accent_css) e o mesmo texto de exemplo. `dark`: o fundo escuro do rofi, nos popups
-/// escuros; sem ele, o fundo do tema GTK (os apps em janela, claros ou escuros).
-pub fn search_entry(dark: bool) -> gtk4::SearchEntry {
+/// escuros; sem ele, o fundo do tema GTK (os apps em janela, claros ou escuros). `size`: o de quem o tem, como o
+/// sway_search.search_entry: Large (a grade), Regular (um campo do GTK, os apps em janela) ou Compact
+/// (uma linha de lista, os popups).
+pub fn search_entry(dark: bool, size: SearchSize) -> gtk4::SearchEntry {
     let entry = gtk4::SearchEntry::new();
     entry.add_css_class(config::SEARCH_CLASS);
     if dark {
         entry.add_css_class(config::SEARCH_DARK_CLASS);
+    }
+    match size {
+        SearchSize::Large => {}
+        SearchSize::Regular => entry.add_css_class(config::SEARCH_REGULAR_CLASS),
+        SearchSize::Compact => entry.add_css_class(config::SEARCH_COMPACT_CLASS),
     }
     entry.set_placeholder_text(Some(&i18n::tr("Search…")));
     entry

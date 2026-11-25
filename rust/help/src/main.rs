@@ -616,7 +616,7 @@ fn build(app: &gtk4::Application) -> gtk4::ApplicationWindow {
     switcher.set_stack(Some(&stack));
     switcher.set_hexpand(true);
     switcher.set_halign(gtk4::Align::Start);
-    let search = swaydesk_ui::search_entry(false);
+    let search = swaydesk_ui::search_entry(false, swaydesk_ui::SearchSize::Regular);
     search.set_width_chars(28);
     // Digitar em qualquer lugar da janela vai para a busca
     search.set_key_capture_widget(Some(&window));

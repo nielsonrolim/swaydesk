@@ -279,7 +279,7 @@ impl Window {
         sidebar.set_size_request(230, -1);
         sidebar.set_hexpand(false); // sem isso, o hexpand dos nomes sobe e a lateral divide a sobra com o resto
         sidebar.add_css_class("theme-sidebar");
-        let entry = swaydesk_ui::search_entry(false);
+        let entry = swaydesk_ui::search_entry(false, swaydesk_ui::SearchSize::Regular);
         margins(&entry, 8);
         sidebar.append(&entry);
         // Um clique só escolhe, para ver a prévia; aplicar reinicia a barra: duplo clique ou Enter

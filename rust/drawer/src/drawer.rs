@@ -1977,7 +1977,7 @@ fn make_widgets() -> Widgets {
     outer.set_valign(gtk4::Align::Center);
     window.set_child(Some(&outer));
 
-    let entry = swaydesk_ui::search_entry(true);
+    let entry = swaydesk_ui::search_entry(true, swaydesk_ui::SearchSize::Large);
     entry.set_size_request(SEARCH_WIDTH, -1);
     entry.set_halign(gtk4::Align::Center);
     entry.set_key_capture_widget(Some(&window));

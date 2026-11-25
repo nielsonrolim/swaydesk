@@ -6,6 +6,7 @@
 //!      sway-desktop-config css           mostra as cores do destaque em CSS do GTK (@define-color)
 //!      sway-desktop-config enabled <nome> sai com 0 se o componente está ligado no [enabled], 1 se não
 //!      sway-desktop-config waybar [MODELO] grava o config da Waybar sem os módulos desligados e mostra o caminho
+//!      sway-desktop-config keys          grava só o config.d/00-keys.conf (os includes do perfil de atalhos)
 //!      sway-desktop-config setup         (só em Rust) cada login na sessão do pacote swaydesk-desktop: copia do
 //!                                        skel o que falta no ~, acerta o teclado e o ~/.XCompose e faz o generate
 //! --check: só confere que o binário carrega.

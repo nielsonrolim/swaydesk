@@ -23,6 +23,9 @@ enabled NAME
 .B swaydesk\-desktop\-config
 waybar
 [TEMPLATE]
+.br
+.B swaydesk\-desktop\-config
+keys
 .SH DESCRIPTION
 Reads ~/.config/swaydesk/config.toml for the shell scripts and writes the files that depend on the accent color.
 .PP
@@ -60,9 +63,15 @@ components that are off.
 .B waybar [TEMPLATE]
 Write ~/.config/swaydesk\-desktop/waybar/config.jsonc: the Waybar configuration TEMPLATE (by default the
 package's in the packaged session, ~/.config/waybar/config.jsonc otherwise) without the modules turned off in
-[enabled.bar], and print its path. Without checkupdates (pacman\-contrib) in the PATH, the updates module is left
-out too: it is only for Arch. The session's sway\-waybar runs it before each start and falls back to the
+[enabled.bar], and print its path. Without checkupdates (pacman\-contrib) in the PATH, or with
+update_notifier = false in [enabled], the updates module is left out too: it is only for Arch, and without the
+background check its count would go stale. The session's sway\-waybar runs it before each start and falls back to the
 template when it fails. generate writes it too.
+.TP
+.B keys
+Write only ~/.config/sway/config.d/00\-keys.conf, the includes of the shortcut profile (shortcuts in the
+configuration), without the theme files. The session's Sway configuration runs it at every start and reload,
+and reloads Sway when the file changed.
 .TP
 .B \-\-check
 Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
@@ -91,12 +100,12 @@ effect at the next login; for the bar, also when Waybar restarts.
 The shortcuts key picks the keyboard shortcut profile: swaydesk (the default), i3, hyprland, niri or dwm. generate
 writes ~/.config/sway/config.d/00-keys.conf, which includes the keys of every profile (keys/base.conf) and then the
 profile's own file (keys/<profile>.conf, in /usr/share/swaydesk\-desktop/sway/keys for the package session).
-Run swaymsg reload after generate, or change the profile in the help window (Super+F1). The dwm profile uses Alt
+Run swaymsg reload after generate (keys, which the session runs, reloads by itself), or change the profile in the help window (Super+F1). The dwm profile uses Alt
 as the modifier, as dwm does. The user's ~/.config/sway/config.d/50-local.conf is read after any profile and
 wins over it.
 .TP
 .I ~/.config/sway/config.d/00\-keys.conf
-The includes of the shortcut profile, written by generate.
+The includes of the shortcut profile, written by generate and keys.
 .TP
 .I ~/.config/swaydesk\-desktop/waybar/config.jsonc
 The Waybar configuration without the modules turned off, written by waybar and generate.

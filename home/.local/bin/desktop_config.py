@@ -433,23 +433,32 @@ def css_colors(colors):
             "@define-color busy_sub #e0f4f6;\n")
 
 
-# Os campos de busca (o sway_search.search_entry) como o do rofi: o SEARCH_CSS do swaydesk_common::config, no GTK 3.
-# 50 px de altura com a borda, cantos de 8 px, 14 px dos lados, o texto em 15 pt, a lupa na cor de destaque e a 11 px
-# do texto, a borda no destaque com o foco. A lupa é o ícone primário (image.left), a de limpar, o secundário
-# (image.right). O GTK 3 não deixa mudar o tamanho do ícone (fica em 16 px) nem a cor do texto de exemplo.
+# Os campos de busca (o sway_search.search_entry) com o visual do rofi: o SEARCH_CSS do swaydesk_common::config, no
+# GTK 3. Cantos de 8 px, a lupa na cor de destaque, a borda no destaque com o foco. A regra base é o tamanho da grade
+# ("large"), um pouco menor que o do rofi: 40 px de altura com a borda, 12 px dos lados, o texto em 13 pt. A lupa é
+# o ícone primário (image.left), a de limpar, o secundário (image.right). O GTK 3 não deixa mudar o tamanho do ícone
+# (fica em 16 px) nem a cor do texto de exemplo.
 # Fora do css_colors, que também é o waybar/accent.css, só com @define-color
 SEARCH_CLASS = "swaydesk-search"
 SEARCH_DARK_CLASS = "search-dark"
+# Os tamanhos menores (o sway_search.search_entry): sem nenhuma das duas, o da grade (um pouco menor que o do rofi);
+# search-regular, a altura de um campo do GTK (os apps em janela); search-compact, a de uma linha de popup
+SEARCH_REGULAR_CLASS = "search-regular"
+SEARCH_COMPACT_CLASS = "search-compact"
 SEARCH_CSS = (
-    "entry.swaydesk-search { min-height: 48px; padding: 0 14px; border-radius: 8px; "
-    "border: 1px solid alpha(currentColor, 0.15); box-shadow: none; font-size: 15pt; }\n"
+    "entry.swaydesk-search { min-height: 38px; padding: 0 12px; border-radius: 8px; "
+    "border: 1px solid alpha(currentColor, 0.15); box-shadow: none; font-size: 13pt; }\n"
     "entry.swaydesk-search:focus { border-color: @accent; box-shadow: none; }\n"
     "entry.swaydesk-search image.left { color: @accent; opacity: 1; margin-right: 10px; }\n"
     "entry.swaydesk-search image.right { color: #8a8a8f; }\n"
     "entry.swaydesk-search.search-dark { background: #38383d; color: #e8e8e8; caret-color: #e8e8e8; "
     "border-color: rgba(255, 255, 255, 0.06); }\n"
     "entry.swaydesk-search.search-dark:focus { border-color: @accent; }\n"
-    "entry.swaydesk-search selection { background-color: @accent; color: @on_accent; }\n")
+    "entry.swaydesk-search selection { background-color: @accent; color: @on_accent; }\n"
+    "entry.swaydesk-search.search-regular { min-height: 34px; padding: 0 12px; font-size: inherit; }\n"
+    "entry.swaydesk-search.search-compact { min-height: 32px; padding: 0 10px; border-radius: 6px; "
+    "font-size: inherit; }\n"
+    "entry.swaydesk-search.search-compact image.left { margin-right: 6px; }\n")
 
 
 def accent_css(colors):

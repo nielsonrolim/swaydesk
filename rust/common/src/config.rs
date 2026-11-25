@@ -654,21 +654,33 @@ pub fn css_colors(colors: &Palette) -> String {
 pub const SEARCH_CLASS: &str = "swaydesk-search";
 /// Com ela também, o fundo escuro do campo do rofi (nos popups escuros); sem ela, o fundo do tema GTK.
 pub const SEARCH_DARK_CLASS: &str = "search-dark";
+/// Os tamanhos menores (o swaydesk_ui::SearchSize): sem nenhuma das duas, o da grade (um pouco menor que o do rofi).
+/// search-regular: a altura de um campo do GTK (os apps em janela); search-compact: a de uma linha de popup.
+pub const SEARCH_REGULAR_CLASS: &str = "search-regular";
+pub const SEARCH_COMPACT_CLASS: &str = "search-compact";
 
-/// Os campos de busca como o do rofi (templates/rofi.rasi, medido na captura): 50 px de altura com a borda de 1 px,
-/// cantos de 8 px, 14 px dos lados, o texto em 15 pt, a lupa de 17 px na cor de destaque e a 11 px do texto, a borda
-/// no destaque com o foco (o rofi está sempre focado) e o texto de exemplo em #8a8a8f. No GTK 4, a lupa é a primeira
-/// imagem do entry e a de limpar, a última. Fora do css_colors, que também é o waybar/accent.css, só com @define-color.
+/// Os campos de busca com o visual do rofi (templates/rofi.rasi): cantos de 8 px, a lupa na cor de destaque, a borda
+/// no destaque com o foco (o rofi está sempre focado) e o texto de exemplo em #8a8a8f. A regra base é o tamanho da
+/// grade (SearchSize::Large), um pouco menor que o do rofi (50 px, 15 pt): 40 px de altura com a borda de 1 px, 12 px
+/// dos lados, o texto em 13 pt e a lupa de 16 px; os outros tamanhos têm as suas regras, depois. No GTK 4, a lupa é
+/// a primeira imagem do entry e a de limpar, a última. O search-regular repete os 16 px da lupa de propósito: um
+/// campo de janela não cresce se a grade crescer. Fora do css_colors, que também é o waybar/accent.css, só com
+/// @define-color.
 pub const SEARCH_CSS: &str = "\
-entry.swaydesk-search { min-height: 48px; padding: 0 14px; border-radius: 8px; border: 1px solid alpha(currentColor, 0.15); \
-box-shadow: none; outline: none; font-size: 15pt; }
+entry.swaydesk-search { min-height: 38px; padding: 0 12px; border-radius: 8px; border: 1px solid alpha(currentColor, 0.15); \
+box-shadow: none; outline: none; font-size: 13pt; }
 entry.swaydesk-search:focus-within { border-color: @accent; box-shadow: none; outline: none; }
-entry.swaydesk-search > image:first-child { color: @accent; opacity: 1; -gtk-icon-size: 17px; margin-right: 4px; }
+entry.swaydesk-search > image:first-child { color: @accent; opacity: 1; -gtk-icon-size: 16px; margin-right: 4px; }
 entry.swaydesk-search > image:last-child:not(:first-child) { color: #8a8a8f; -gtk-icon-size: 16px; }
 entry.swaydesk-search > text > placeholder { color: #8a8a8f; }
 entry.swaydesk-search.search-dark { background: #38383d; color: #e8e8e8; caret-color: #e8e8e8; border-color: rgba(255, 255, 255, 0.06); }
 entry.swaydesk-search.search-dark:focus-within { border-color: @accent; }
 entry.swaydesk-search text selection { background-color: @accent; color: @on_accent; }
+entry.swaydesk-search.search-regular { min-height: 34px; padding: 0 12px; font-size: inherit; }
+entry.swaydesk-search.search-regular > image:first-child { -gtk-icon-size: 16px; }
+entry.swaydesk-search.search-compact { min-height: 32px; padding: 0 10px; border-radius: 6px; font-size: inherit; }
+entry.swaydesk-search.search-compact > image:first-child { -gtk-icon-size: 14px; margin-right: 2px; }
+entry.swaydesk-search.search-compact > image:last-child:not(:first-child) { -gtk-icon-size: 14px; }
 ";
 
 /// O css_colors e os campos de busca: o CSS do destaque de quem tem uma busca.

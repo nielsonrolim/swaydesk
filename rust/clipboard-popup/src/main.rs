@@ -392,7 +392,7 @@ impl Popup {
         card.add_css_class("card");
         card.set_size_request(CARD_WIDTH, -1);
         popup.window.set_child(Some(&card));
-        let entry = swaydesk_ui::search_entry(true);
+        let entry = swaydesk_ui::search_entry(true, swaydesk_ui::SearchSize::Compact);
         card.append(&entry);
         let body = gtk4::Box::new(gtk4::Orientation::Vertical, 8);
         let scroll = scroller(&body, SCROLL_HEIGHT);
