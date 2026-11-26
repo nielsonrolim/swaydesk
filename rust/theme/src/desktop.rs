@@ -271,11 +271,17 @@ pub fn theme_color(theme: &str, name: &str) -> Option<String> {
     None
 }
 
+/// Se o tema GTK em uso é escuro: pela cor de fundo do CSS dele e, sem ela, pelo nome.
+pub fn theme_dark(config: &Config) -> bool {
+    let theme = effective_gtk_theme(config);
+    theme_color(&theme, "theme_bg_color").map_or_else(|| is_dark(&theme), |bg| contrast_with_white(&bg) > 4.58)
+}
+
 /// A paleta dos apps Qt no Sway, com as cores do tema GTK e o destaque.
 pub fn qt_colors(config: &Config, colors: &Palette) -> BTreeMap<&'static str, String> {
     let theme = effective_gtk_theme(config);
     let bg = theme_color(&theme, "theme_bg_color");
-    let dark = bg.as_deref().map_or_else(|| is_dark(&theme), |bg| contrast_with_white(bg) > 4.58);
+    let dark = theme_dark(config);
     let bg = bg.unwrap_or_else(|| (if dark { "#2e2e33" } else { "#f6f5f4" }).into());
     let base = theme_color(&theme, "theme_base_color").unwrap_or_else(|| (if dark { "#2e2e33" } else { "#ffffff" }).into());
     let text = theme_color(&theme, "theme_text_color").unwrap_or_else(|| (if dark { "#dadada" } else { "#303030" }).into());
@@ -477,12 +483,13 @@ pub fn sway_effects(effects: &Effects, swayfx: bool) -> String {
     text
 }
 
-/// A linha font do Sway: a fonte do texto e, se faltar, a do sistema, no tamanho do sistema.
+/// A linha font do Sway: a fonte do texto e, se faltar, a do sistema, no tamanho do sistema. Ela só vale para as
+/// barras de título (as abas), em seminegrito; a Waybar e os apps têm a fonte deles.
 pub fn sway_font(fonts: &Fonts) -> String {
     let (family, size) = fonts.font_name.rsplit_once(' ').unwrap_or(("", &fonts.font_name));
     let families: Vec<String> =
         font_families(Some(family)).into_iter().filter(|n| n != ICON_FONT && n != "sans-serif").collect();
-    format!("{GENERATED}: the font comes from the system\nfont pango:{} {size}\n", families.join(", "))
+    format!("{GENERATED}: the font comes from the system\nfont pango:{} Semi-Bold {size}\n", families.join(", "))
 }
 
 /// "Ubuntu 10" no formato do QFont.
@@ -538,14 +545,78 @@ pub fn waybar_wrapper() -> String {
     )
 }
 
-/// A cor de destaque nas bordas do Sway.
-pub fn accent_conf(colors: &Palette) -> String {
+/// As abas do Sway (as barras de título dos grupos em abas e empilhados), no estilo escuro e no claro: o fundo e o
+/// texto das abas que não mostram a janela do grupo; a cor com que o destaque se mistura na aba visível de um grupo
+/// sem foco, o texto dela, de quantos vigésimos a mistura começa (ela cresce até o texto dar 4,5:1) e quanto de preto
+/// escurece o fundo de cada aba no contorno dela. As bordas das janelas ficam nos cinzas de sempre. Os mesmos do
+/// TITLEBAR_STYLES do Python.
+struct TitlebarStyle {
+    background: &'static str,
+    faded: &'static str,
+    base: &'static str,
+    text: &'static str,
+    start: u32,
+    shade: f64,
+}
+
+const DARK_TITLEBARS: TitlebarStyle =
+    TitlebarStyle { background: "#232327", faded: "#8e8e93", base: "#232327", text: "#ffffff", start: 8, shade: 0.25 };
+const LIGHT_TITLEBARS: TitlebarStyle =
+    TitlebarStyle { background: "#e4e4e7", faded: "#5c5c63", base: "#ffffff", text: "#1e1e22", start: 11, shade: 0.15 };
+/// O contorno da aba com o foco: o destaque com esta parte de branco, um tom mais claro (de preto, se o texto sobre o
+/// destaque é preto: o tom mais claro de uma cor clara sumiria contra um fundo claro)
+const FOCUSED_OUTLINE: f64 = 0.3;
+const MIN_TEXT_CONTRAST: f64 = 4.5;
+
+fn titlebar_style(dark: bool) -> &'static TitlebarStyle {
+    if dark { &DARK_TITLEBARS } else { &LIGHT_TITLEBARS }
+}
+
+/// Contraste do WCAG entre duas cores, de 1 a 21.
+fn contrast(color: &str, other: &str) -> f64 {
+    let luminance = |c: &str| {
+        let [r, g, b] = config::linear_rgb(c);
+        0.2126 * r + 0.7152 * g + 0.0722 * b
+    };
+    let (a, b) = (luminance(color), luminance(other));
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
+}
+
+/// O destaque da aba visível de um grupo sem foco: escurecido no estilo escuro, clareado no claro.
+pub fn titlebar_inactive(accent: &str, dark: bool) -> String {
+    let style = titlebar_style(dark);
+    let mut color = String::new();
+    for step in style.start..=20 {
+        color = mix(accent, style.base, step as f64 / 20.0);
+        if contrast(&color, style.text) >= MIN_TEXT_CONTRAST {
+            break;
+        }
+    }
+    color
+}
+
+/// O 00-accent.conf: as cores das abas e das bordas. A aba com o foco leva o destaque inteiro; a visível de um grupo
+/// sem foco (e a do grupo que contém o foco, focused_tab_title), o destaque do titlebar_inactive; as outras, o fundo
+/// neutro com o texto apagado. A primeira coluna é o contorno de 1 px da aba (o titlebar_border_thickness do config):
+/// o destaque mais claro na aba com o foco, o próprio fundo um pouco mais escuro nas outras.
+pub fn accent_conf(colors: &Palette, dark: bool) -> String {
+    let style = titlebar_style(dark);
+    let inactive = titlebar_inactive(&colors.accent, dark);
+    let focused = mix(&colors.accent, if colors.on_accent == "#ffffff" { "#ffffff" } else { "#000000" }, FOCUSED_OUTLINE);
+    let inactive_outline = mix(&inactive, "#000000", style.shade);
+    let outline = mix(style.background, "#000000", style.shade);
     format!(
-        "# Generated by sway-desktop-config: change the color in ~/.config/swaydesk/config.toml\n\
-         client.focused {a} {a} {} {} {a}\n",
+        "{GENERATED}: change the color in ~/.config/swaydesk/config.toml\n\
+         client.focused {focused} {a} {} {} {a}\n\
+         client.focused_inactive {inactive_outline} {inactive} {text} #3a3a40 #3a3a40\n\
+         client.focused_tab_title {inactive_outline} {inactive} {text}\n\
+         client.unfocused {outline} {bg} {faded} #2e2e33 #2e2e33\n",
         colors.on_accent,
         colors.bright,
-        a = colors.accent
+        a = colors.accent,
+        text = style.text,
+        bg = style.background,
+        faded = style.faded,
     )
 }
 
@@ -557,7 +628,7 @@ pub fn waybar_fonts_css(fonts: &Fonts) -> String {
 /// O que depende do tema e não pode lê-lo: {caminho relativo à pasta de config: conteúdo}, na ordem do Python.
 pub fn generated_files(colors: &Palette, config: &Config, fonts: &Fonts) -> std::io::Result<Vec<(&'static str, String)>> {
     let css = config::css_colors(colors);
-    let sway = accent_conf(colors);
+    let sway = accent_conf(colors, theme_dark(config));
     let settings = gtk_settings(config);
     let scheme = qt_color_scheme(config, colors);
     let fonts_css = waybar_fonts_css(fonts);
@@ -850,7 +921,8 @@ mod tests {
         let colors = palette(&config);
         let fonts = Fonts::default();
         let mut texts = vec![
-            accent_conf(&colors),
+            accent_conf(&colors, true),
+            accent_conf(&colors, false),
             waybar_fonts_css(&fonts),
             sway_font(&fonts),
             sway_cursor(Some("capitaine-cursors"), 24),
@@ -1113,7 +1185,54 @@ mod tests {
         assert_eq!(qt_font("Ubuntu 10.5"), "\"Ubuntu,10,-1,5,50,0,0,0,0,0\"");
         assert_eq!(qt_font("Ubuntu 11.5"), "\"Ubuntu,12,-1,5,50,0,0,0,0,0\"");
         let fonts = Fonts { font_name: "Ubuntu 11".into(), monospace: "Mono 10".into() };
-        assert_eq!(sway_font(&fonts), format!("{GENERATED}: the font comes from the system\nfont pango:Noto Sans, Ubuntu 11\n"));
+        assert_eq!(sway_font(&fonts), format!("{GENERATED}: the font comes from the system\nfont pango:Noto Sans, Ubuntu Semi-Bold 11\n"));
+    }
+
+    #[test]
+    fn tabs_like_python() {
+        // Os mesmos valores do desktop_config.accent_conf (tests/test_accent.py, TitlebarTests)
+        let default = palette(&Config::default());
+        assert_eq!(
+            accent_conf(&default, true),
+            format!(
+                "{GENERATED}: change the color in ~/.config/swaydesk/config.toml\n\
+             client.focused #5ebac2 #199ca8 #ffffff #29d0df #199ca8\n\
+             client.focused_inactive #165157 #1d6c74 #ffffff #3a3a40 #3a3a40\n\
+             client.focused_tab_title #165157 #1d6c74 #ffffff\n\
+             client.unfocused #1a1a1d #232327 #8e8e93 #2e2e33 #2e2e33\n"
+            )
+        );
+        let light = accent_conf(&default, false);
+        assert!(light.contains("client.focused_inactive #81b2b8 #98d2d8 #1e1e22 #3a3a40 #3a3a40\n"), "{light}");
+        assert!(light.contains("client.unfocused #c2c2c4 #e4e4e7 #5c5c63 #2e2e33 #2e2e33\n"), "{light}");
+        // O amarelo precisa de mais mistura para o texto branco dar 4,5:1
+        let yellow = palette(&Config { accent: "#f5c211".into(), ..Config::default() });
+        assert_eq!(titlebar_inactive(&yellow.accent, true), "#8c721c");
+    }
+
+    #[test]
+    fn a_light_accent_gets_a_darker_outline() {
+        // Os mesmos casos do test_a_light_accent_gets_a_darker_outline do tests/test_accent.py
+        for accent in ["#f0f0f0", "#f5c211"] {
+            let colors = palette(&Config { accent: accent.into(), ..Config::default() });
+            let conf = accent_conf(&colors, false);
+            let expected = format!("client.focused {} {accent} ", mix(accent, "#000000", 0.3));
+            assert!(conf.contains(&expected), "{conf}");
+        }
+    }
+
+    #[test]
+    fn every_tab_text_is_readable() {
+        for accent in ["#199ca8", "#f5c211", "#1a5fb4", "#e01b24", "#2ec27e", "#000080", "#f0f0f0", "#7c3aed"] {
+            for dark in [true, false] {
+                let conf = accent_conf(&palette(&Config { accent: accent.into(), ..Config::default() }), dark);
+                for line in conf.lines().filter(|l| l.starts_with("client.focused_inactive") || l.starts_with("client.unfocused")) {
+                    let cols: Vec<&str> = line.split(' ').collect();
+                    assert!(contrast(cols[2], cols[3]) >= 4.5, "{accent} {dark} {line}");
+                    assert_ne!(cols[2], accent, "{line}");
+                }
+            }
+        }
     }
 
     #[test]

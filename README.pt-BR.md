@@ -318,6 +318,7 @@ include /usr/share/swaydesk/sway/config.d/50-swaydesk-dock.conf
 | Telas | `swaydesk-displays` | `50-swaydesk-displays.conf` | O arranjo salvo, aplicado quando as telas mudam e quando a tampa abre ou fecha |
 | Histórico da área de transferência | `swaydesk-clipboard` | `50-swaydesk-clipboard.conf` | O histórico, no Super+Shift+V |
 | Tela de bloqueio | `swaydesk-lock` | `50-swaydesk-lock.conf` | O Ctrl+Alt+L, e o bloqueio depois de 10 minutos sem uso e antes de suspender, pelo swayidle |
+| Abas | `swaydesk-theme-tool` | `50-swaydesk-theme-tool.conf` | As abas dos grupos em abas e empilhados mais altas, com o título no centro e as cores que o app Tema do Desktop gera a partir do destaque |
 
 - **Os componentes que ficam rodando** (todos menos o bloqueio) sobem como serviços de usuário do systemd, reiniciados se caírem, e param quando aquele Sway sai. Cada trecho se explica nos comentários e termina com a linha de `exec` simples para usar no lugar, num sistema sem sessão de usuário do systemd.
 - **Se o seu config já inicia o componente** com uma linha de `exec` própria, tire essa linha: a dock, a grade, a troca de janelas, as telas e o indicador saem na hora ao lado de uma cópia já rodando, o serviço de notificações espera o outro (o mako, por exemplo) sair, e dois vigias da área de transferência guardariam cada cópia duas vezes.

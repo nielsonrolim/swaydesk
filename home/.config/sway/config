@@ -9,19 +9,28 @@ set $lock $bin/sway-lock
 include /etc/sway/config.d/*
 
 # --- Aparência ---
-# Com a do sistema se faltar, no tamanho dela: config.d/00-font.conf, gerado pelo sway-desktop-config
-font pango:Noto Sans 10
+# Com a do sistema se faltar, no tamanho dela: config.d/00-font.conf, gerado pelo sway-desktop-config. Ela só vale
+# para as barras de título (as abas), em seminegrito
+font pango:Noto Sans Semi-Bold 10
+# As abas (dos grupos em abas e empilhados): mais altas, com o título no centro e um contorno de 1 px em cada uma
+# (a primeira coluna das cores)
+titlebar_padding 12 6
+title_align center
+titlebar_border_thickness 1
 default_border pixel 3
 default_floating_border pixel 3
 gaps inner 5
 gaps outer 5
 smart_borders on
-# Cores do Mint-Y-Dark-Teal (/usr/share/themes/Mint-Y-Dark-Teal). O destaque em uso vem de config.d/00-accent.conf
-#                       borda    fundo    texto    indicador borda-filho
-client.focused          #199ca8  #199ca8  #ffffff  #29d0df   #199ca8
-client.focused_inactive #3a3a40  #3a3a40  #dadada  #3a3a40   #3a3a40
-client.unfocused        #2e2e33  #2e2e33  #8a8a8f  #2e2e33   #2e2e33
-client.urgent           #fc4138  #fc4138  #ffffff  #fc4138   #fc4138
+# Cores do Mint-Y-Dark-Teal (/usr/share/themes/Mint-Y-Dark-Teal). As em uso, tiradas do destaque e do estilo do
+# tema, vêm de config.d/00-accent.conf: a aba com o foco no destaque, a visível de um grupo sem foco nele escurecido,
+# as outras em cinza com o texto apagado
+#                        contorno fundo    texto    indicador borda-filho
+client.focused           #5ebac2  #199ca8  #ffffff  #29d0df  #199ca8
+client.focused_inactive  #165157  #1d6c74  #ffffff  #3a3a40  #3a3a40
+client.focused_tab_title #165157  #1d6c74  #ffffff
+client.unfocused         #1a1a1d  #232327  #8e8e93  #2e2e33  #2e2e33
+client.urgent            #fc4138  #fc4138  #ffffff  #fc4138  #fc4138
 seat seat0 xcursor_theme Bibata-Modern-Classic 24
 
 # --- Tela ---

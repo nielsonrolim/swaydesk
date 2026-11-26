@@ -416,6 +416,12 @@ def contrast_with_white(color):
     return 1.05 / (0.2126 * r + 0.7152 * g + 0.0722 * b + 0.05)
 
 
+def contrast(color, other):
+    """Contraste do WCAG entre duas cores, de 1 a 21."""
+    low, high = sorted(0.2126 * r + 0.7152 * g + 0.0722 * b for r, g, b in (linear_rgb(color), linear_rgb(other)))
+    return (high + 0.05) / (low + 0.05)
+
+
 def palette(config):
     """Os tons do destaque. O padrão usa os tons do tema Mint-Y; as outras cores, tons calculados."""
     accent = config.accent
@@ -809,12 +815,19 @@ def theme_color(theme, name):
     return None
 
 
+def theme_dark(config):
+    """Se o tema GTK em uso é escuro: pela cor de fundo do CSS dele e, sem ela, pelo nome."""
+    theme = effective_gtk_theme(config)
+    bg = theme_color(theme, "theme_bg_color")
+    return contrast_with_white(bg) > 4.58 if bg else is_dark(theme)
+
+
 def qt_colors(config, colors):
     """A paleta dos apps Qt no Sway, com as cores do tema GTK e o destaque. O plugin gtk3 do Qt 5, e
     do Qt 6 até o 6.4, não passa a paleta: sem isso, o VLC e os outros apps Qt ficavam claros."""
     theme = effective_gtk_theme(config)
     bg = theme_color(theme, "theme_bg_color")
-    dark = contrast_with_white(bg) > 4.58 if bg else is_dark(theme)
+    dark = theme_dark(config)
     bg = bg or ("#2e2e33" if dark else "#f6f5f4")
     base = theme_color(theme, "theme_base_color") or ("#2e2e33" if dark else "#ffffff")
     text = theme_color(theme, "theme_text_color") or ("#dadada" if dark else "#303030")
@@ -1033,10 +1046,11 @@ def sway_cursor(theme, size=CURSOR_SIZE):
 
 
 def sway_font(fonts):
-    """A linha font do Sway: a fonte do texto e, se faltar, a do sistema, no tamanho do sistema."""
+    """A linha font do Sway: a fonte do texto e, se faltar, a do sistema, no tamanho do sistema. Ela só vale para
+    as barras de título (as abas), em seminegrito; a Waybar e os apps têm a fonte deles."""
     family, _, size = fonts["font-name"].rpartition(" ")
     families = [name for name in font_families(family) if name not in (ICON_FONT, "sans-serif")]
-    return f"{GENERATED}: the font comes from the system\nfont pango:{', '.join(families)} {size}\n"
+    return f"{GENERATED}: the font comes from the system\nfont pango:{', '.join(families)} Semi-Bold {size}\n"
 
 
 def qt_font(gtk_font):
@@ -1073,12 +1087,49 @@ ROFI_THEME = "rofi/sway-desktop.rasi"  # na data_dir(); o sway-launcher o lê
 GTKLOCK_STYLE = "gtklock/style.css"  # na data_dir(); o sway-gtklock o passa com -s
 
 
+# As abas do Sway (as barras de título dos grupos em abas e empilhados), no estilo escuro (True) e no claro: o fundo
+# e o texto das abas que não mostram a janela do grupo; a cor com que o destaque se mistura na aba visível de um
+# grupo sem foco, o texto dela, de quantos vigésimos a mistura começa (ela cresce até o texto dar 4,5:1) e quanto
+# de preto escurece o fundo de cada aba no contorno dela. As bordas das janelas ficam nos cinzas de sempre
+TITLEBAR_STYLES = {True: ("#232327", "#8e8e93", "#232327", "#ffffff", 8, 0.25),
+                   False: ("#e4e4e7", "#5c5c63", "#ffffff", "#1e1e22", 11, 0.15)}
+# O contorno da aba com o foco: o destaque com esta parte de branco, um tom mais claro (de preto, se o texto sobre o
+# destaque é preto: o tom mais claro de uma cor clara sumiria contra um fundo claro)
+FOCUSED_OUTLINE = 0.3
+MIN_TEXT_CONTRAST = 4.5
+
+
+def titlebar_inactive(accent, dark):
+    """O destaque da aba visível de um grupo sem foco: escurecido no estilo escuro, clareado no claro."""
+    _, _, base, text, start, _ = TITLEBAR_STYLES[dark]
+    for step in range(start, 21):
+        color = mix(accent, base, step / 20)
+        if contrast(color, text) >= MIN_TEXT_CONTRAST:
+            break
+    return color
+
+
+def accent_conf(colors, dark=True):
+    """O 00-accent.conf: as cores das abas e das bordas. A aba com o foco leva o destaque inteiro; a visível de um
+    grupo sem foco (e a do grupo que contém o foco, focused_tab_title), o destaque do titlebar_inactive; as outras,
+    o fundo neutro com o texto apagado. A primeira coluna é o contorno de 1 px da aba (o titlebar_border_thickness do
+    config): o destaque mais claro na aba com o foco, o próprio fundo um pouco mais escuro nas outras."""
+    background, faded, _, text, _, shade = TITLEBAR_STYLES[dark]
+    inactive = titlebar_inactive(colors.accent, dark)
+    focused = mix(colors.accent, "#ffffff" if colors.on_accent == "#ffffff" else "#000000", FOCUSED_OUTLINE)
+    inactive_outline, outline = mix(inactive, "#000000", shade), mix(background, "#000000", shade)
+    return (f"{GENERATED}: change the color in ~/.config/swaydesk/config.toml\n"
+            f"client.focused {focused} {colors.accent} {colors.on_accent} {colors.bright} {colors.accent}\n"
+            f"client.focused_inactive {inactive_outline} {inactive} {text} #3a3a40 #3a3a40\n"
+            f"client.focused_tab_title {inactive_outline} {inactive} {text}\n"
+            f"client.unfocused {outline} {background} {faded} #2e2e33 #2e2e33\n")
+
+
 def generated_files(colors, config=None, fonts=None):
     """O que depende do tema e não pode lê-lo: {caminho relativo à pasta de config: conteúdo}."""
     css = css_colors(colors)
-    sway = (f"# Generated by sway-desktop-config: change the color in ~/.config/swaydesk/config.toml\n"
-            f"client.focused {colors.accent} {colors.accent} {colors.on_accent} {colors.bright} {colors.accent}\n")
     config = config or Config()
+    sway = accent_conf(colors, theme_dark(config))
     settings = gtk_settings(config)
     fonts = fonts or gtk_fonts()
     scheme = qt_color_scheme(config, colors)

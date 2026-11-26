@@ -318,6 +318,7 @@ include /usr/share/swaydesk/sway/config.d/50-swaydesk-dock.conf
 | Displays | `swaydesk-displays` | `50-swaydesk-displays.conf` | The saved layout, applied when screens change and when the lid opens or closes |
 | Clipboard history | `swaydesk-clipboard` | `50-swaydesk-clipboard.conf` | The history, on Super+Shift+V |
 | Lock screen | `swaydesk-lock` | `50-swaydesk-lock.conf` | Ctrl+Alt+L, and the lock after 10 minutes idle and before sleep, through swayidle |
+| Tabs | `swaydesk-theme-tool` | `50-swaydesk-theme-tool.conf` | Taller tabs in tabbed and stacked groups, with the title centred and the colors the Desktop Theme app derives from the accent |
 
 - **The running components** (all but the lock) start as systemd user services, restarted if they crash, and stop when that Sway exits. Each snippet explains itself in its comments, and ends with the plain `exec` line to use instead on a system without a systemd user session.
 - **If your config already starts the component** with its own `exec` line, remove that line: the dock, the grid, the switcher, the displays and the indicator exit at once beside a copy already running, the notifications service waits until the other one (mako, say) exits, and two clipboard watchers would store every copy twice.
