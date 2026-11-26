@@ -232,7 +232,7 @@ Description: Swaydesk launcher click catcher
 Package: swaydesk-capture
 Architecture: any
 Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, grim, slurp, jq
-Recommends: wf-recorder, wl-clipboard, libnotify-bin, xdg-utils
+Recommends: wf-recorder, wl-clipboard, libnotify-bin, libglib2.0-bin, xdg-utils
 Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)
 Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)
 Description: Sway desktop components - screenshot and screen recording panels

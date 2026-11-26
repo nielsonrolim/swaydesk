@@ -36,7 +36,7 @@ SCRIPTS=(swaydesk-common:session-action swaydesk-common:waybar-notify
          swaydesk-calendar:waybar-clock swaydesk-media:waybar-media swaydesk-audio:waybar-volume
          swaydesk-battery:waybar-battery swaydesk-caffeine:waybar-caffeine
          swaydesk-caffeine:sway-caffeine
-         swaydesk-capture:sway-shot swaydesk-capture:sway-rec
+         swaydesk-capture:sway-shot swaydesk-capture:sway-rec swaydesk-capture:sway-notify-open
          swaydesk-lock:sway-lock swaydesk-lock:sway-lock-watch swaydesk-lock:sway-gtklock
          swaydesk-caffeine:sway-idle swaydesk-caffeine:sway-idle-suspend)
 # Sem o bit de execução (o debian/rules os tira do dh_fixperms), no swaydesk-common: o calendário e o bloqueio em

@@ -2125,6 +2125,10 @@ msgstr ""
 msgid "usage: sway-nightlight off|on|auto|status|restore|schedule"
 msgstr ""
 
+#: home/.local/bin/sway-notify-open
+msgid "Open the file"
+msgstr ""
+
 #: home/.local/bin/sway-polkit-agent
 msgid "Polkit agent"
 msgstr ""
@@ -2229,10 +2233,6 @@ msgstr ""
 
 #: home/.local/bin/sway-rec
 msgid "Recording saved"
-msgstr ""
-
-#: home/.local/bin/sway-rec home/.local/bin/sway-shot
-msgid "Open the file"
 msgstr ""
 
 #: home/.local/bin/sway-resize

@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# uso: sway-notify-open <arquivo> <ícone> <título> <corpo>
+# O aviso da captura e da gravação: um clique nele abre o arquivo no app padrão (o xdg-open respeita o do usuário).
+# O sway-shot e o sway-rec o rodam em segundo plano, com a saída descartada.
+#
+# O aviso com a ação vai pelo gdbus, e não pelo notify-send: no Ubuntu 26.04, o perfil do AppArmor do notify-send
+# (/etc/apparmor.d/notify-send) só deixa passar o Notify e o GetServerInformation. Com -A, ele não consegue perguntar
+# as capacidades, diz "Actions are not supported" e fica no --wait até o teto, e o clique só fechava o aviso (RC1 da
+# 0.1.8). O gdbus não tem perfil. Sem o gdbus, ou com um servidor sem ações, vai o aviso de sempre, sem o clique e
+# sem ninguém esperando.
+set -uo pipefail
+if [ -r "${0%/*}/sway-i18n.sh" ]; then . "${0%/*}/sway-i18n.sh"; else t() { printf '%s' "$1"; }; fi
+
+file=$1 icon=$2 title=$3 body=$4
+plain() { notify-send -a Swaydesk -i "$icon" "$title" "$body" 2>/dev/null || true; exit 0; }
+
+dest=(--session --dest org.freedesktop.Notifications --object-path /org/freedesktop/Notifications)
+command -v gdbus >/dev/null 2>&1 || plain
+caps=$(gdbus call "${dest[@]}" --method org.freedesktop.Notifications.GetCapabilities 2>/dev/null) || plain
+case $caps in
+  *"'actions'"*) ;;
+  *) plain ;;
+esac
+
+# O -1 do prazo vai como "int32 -1": solto, o gdbus o leria como uma opção e recusaria a chamada. Um texto vai como
+# literal do GVariant, entre aspas duplas: o gdbus lê cada argumento como GVariant, e um título ou
+# um caminho com aspas ou com cara de número viraria outra coisa (a quebra de linha vai como \n)
+gv() { local s=${1//\\/\\\\}; s=${s//\"/\\\"}; s=${s//$'\n'/\\n}; printf '"%s"' "$s"; }
+
+# O monitor antes do aviso: um clique logo depois do Notify não se perde. O teto: o notifd do Swaydesk guarda o
+# aviso na central depois que ele some da tela, e por uma hora um clique na central ainda abre o arquivo
+coproc monitor { exec timeout 1h gdbus monitor "${dest[@]}" 2>/dev/null; }
+stop() { kill "$monitor_PID" 2>/dev/null; wait "$monitor_PID" 2>/dev/null; }
+# A segunda linha ("is owned by") vem depois da resposta do GetNameOwner, que o barramento só manda depois de
+# registrar a assinatura dos sinais: daí em diante, nenhum sinal se perde
+ready=
+while IFS= read -r -t 5 line <&"${monitor[0]}"; do
+  case $line in *"is owned by"*) ready=1; break ;; esac
+done
+[ -n "$ready" ] || { stop; plain; }
+
+reply=$(gdbus call "${dest[@]}" --method org.freedesktop.Notifications.Notify \
+  "$(gv Swaydesk)" 0 "$(gv "$icon")" "$(gv "$title")" "$(gv "$body")" \
+  "['default', $(gv "$(t 'Open the file')")]" "{}" "int32 -1" 2>/dev/null) || { stop; plain; }
+# "(uint32 7,)"
+id=${reply#*uint32 }
+id=${id%%,*}
+case $id in
+  ''|*[!0-9]*) stop; exit 0 ;;  # o aviso saiu, mas sem um id para esperar: sem clique, e sem um segundo aviso
+esac
+
+# Só os sinais deste aviso: o clique na ação default abre o arquivo, e o fechar (de qualquer jeito) termina a espera.
+# O monitor para nos dois casos: nenhum processo fica esperando a hora inteira
+action=
+while IFS= read -r line <&"${monitor[0]}"; do
+  case $line in
+    *".ActionInvoked (uint32 $id, 'default')"*) action=default; break ;;
+    *".NotificationClosed (uint32 $id, "*) break ;;
+  esac
+done
+stop
+if [ "$action" = default ]; then exec xdg-open "$file"; fi
+exit 0

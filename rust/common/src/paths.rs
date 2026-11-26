@@ -59,7 +59,7 @@ fn helper_package(name: &str) -> Option<&'static str> {
         "waybar-volume" => "swaydesk-audio",
         "waybar-media" => "swaydesk-media",
         "waybar-battery" => "swaydesk-battery",
-        "sway-shot" | "sway-rec" => "swaydesk-capture",
+        "sway-shot" | "sway-rec" | "sway-notify-open" => "swaydesk-capture",
         "sway-lock" | "sway-lock-watch" | "sway-gtklock" => "swaydesk-lock",
         "waybar_holidays.py" | "waybar-clock" => "swaydesk-calendar",
         _ => return None,

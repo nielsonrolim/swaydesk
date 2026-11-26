@@ -79,24 +79,14 @@ esac
 # Copiar e avisar são extras: uma falha aqui não pode impedir de abrir o editor
 copied=" · $(t 'copied')"
 wl-copy --type image/png <"$file" 2>/dev/null || copied=" · $(t 'not copied')"
-# Um clique no aviso abre a captura no visualizador padrão (o xdg-open respeita o do usuário). Em segundo plano:
-# o --wait dura até o aviso fechar, e nem o editor nem o painel esperam por ele
-(
-  # Um notify-send sem -A/--wait (libnotify antigo) recusaria a opção sem mostrar nada: o aviso de sempre, sem o
-  # clique. Conferido antes, pelo --help, e não pela falha: um que cai depois de mostrar (logout, notifd
-  # reiniciado) não pode trazer um segundo aviso. O --help vai para uma variável: um grep -q num pipe, com o
-  # pipefail, mataria o notify-send no meio e daria falha
-  help=$(notify-send --help 2>&1) || true
-  case $help in
-    *--wait*) ;;
-    *) notify -i "$file" "$(t 'Screenshot')" "${file/#$HOME/\~}$copied"; exit 0 ;;
-  esac
-  # O teto: o notifd do Swaydesk guarda o aviso na central depois que ele some da tela, e o --wait duraria até ele
-  # sair de lá (ou até o logout); por uma hora, um clique na central ainda abre a captura
-  action=$(timeout 1h notify-send -a Swaydesk -A "default=$(t 'Open the file')" --wait -i "$file" \
-    "$(t 'Screenshot')" "${file/#$HOME/\~}$copied" 2>/dev/null) || true
-  if [ "$action" = default ]; then exec xdg-open "$file"; fi
-) </dev/null >/dev/null 2>&1 &
+# Um clique no aviso abre a captura no visualizador padrão. Em segundo plano: a espera pelo clique dura até o aviso
+# fechar, e nem o editor nem o painel esperam por ela. Sem o sway-notify-open ao lado (uma cópia solta do script),
+# o aviso de sempre, sem o clique
+if [ -x "${0%/*}/sway-notify-open" ]; then
+  "${0%/*}/sway-notify-open" "$file" "$file" "$(t 'Screenshot')" "${file/#$HOME/\~}$copied" </dev/null >/dev/null 2>&1 &
+else
+  notify -i "$file" "$(t 'Screenshot')" "${file/#$HOME/\~}$copied"
+fi
 
 if [ "${2:-}" = edit ]; then
   # Gradia em flatpak (sistema ou usuário) ou um gradia no PATH; sem ele, só avisa

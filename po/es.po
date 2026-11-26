@@ -2139,6 +2139,10 @@ msgstr "uso: sway-nightlight schedule [INICIO FIN]"
 msgid "usage: sway-nightlight off|on|auto|status|restore|schedule"
 msgstr "uso: sway-nightlight off|on|auto|status|restore|schedule"
 
+#: home/.local/bin/sway-notify-open
+msgid "Open the file"
+msgstr "Abrir el archivo"
+
 #: home/.local/bin/sway-polkit-agent
 msgid "Polkit agent"
 msgstr "Agente de polkit"
@@ -2244,10 +2248,6 @@ msgstr "Codificada por el procesador: ninguna tarjeta gráfica de este equipo co
 #: home/.local/bin/sway-rec
 msgid "Recording saved"
 msgstr "Grabación guardada"
-
-#: home/.local/bin/sway-rec home/.local/bin/sway-shot
-msgid "Open the file"
-msgstr "Abrir el archivo"
 
 #: home/.local/bin/sway-resize
 msgid "usage: sway-resize left|right|up|down [pixels]"
