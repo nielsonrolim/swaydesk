@@ -362,8 +362,8 @@ pub struct Drawer {
 
 impl Drawer {
     pub fn new(config: &Config) -> Rc<Drawer> {
+        swaydesk_ui::always_dark();
         if let Some(settings) = gtk4::Settings::default() {
-            settings.set_gtk_application_prefer_dark_theme(true);
             // O cursor piscando na busca redesenha a janela inteira a cada piscada: com a grade
             // aberta e parada, 2 a 3% de um núcleo no GL, e cada abertura custava 30 ms em vez de 17
             // (medido nas VMs). Só neste processo: o resto do desktop segue o gsettings

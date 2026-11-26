@@ -169,8 +169,8 @@ impl PopupWindow {
             #[allow(deprecated)] // sem substituto no GTK 4.18
             gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
         }
+        always_dark();
         if let Some(settings) = gtk4::Settings::default() {
-            settings.set_gtk_application_prefer_dark_theme(true);
             settings.set_gtk_cursor_blink(false); // a piscada redesenha a janela inteira (lição do drawer)
         }
 
@@ -668,11 +668,16 @@ pub fn prefers_dark(color_scheme: &str, gtk_minor: u32) -> Option<bool> {
 /// Daqui, cada troca da sessão grava os dois de novo (window_theme, prefers_dark). Sem o schema (sem o
 /// gsettings-desktop-schemas), nada; sem a chave color-scheme (um schema antigo), só o tema.
 pub fn follow_session_theme(settings: &gtk4::Settings) {
+    watch_session(settings, true);
+}
+
+/// O follow_session_theme, com ou sem o color-scheme (as superfícies sempre escuras não o seguem)
+fn watch_session(settings: &gtk4::Settings, follow_scheme: bool) {
     const SCHEMA: &str = "org.gnome.desktop.interface";
     let Some(schema) = gtk4::gio::SettingsSchemaSource::default().and_then(|s| s.lookup(SCHEMA, true)) else {
         return;
     };
-    let scheme = schema.has_key("color-scheme");
+    let scheme = follow_scheme && schema.has_key("color-scheme");
     let interface = gtk4::gio::Settings::new(SCHEMA);
     let apply = {
         let settings = settings.clone();
@@ -700,6 +705,20 @@ pub fn follow_session_theme(settings: &gtk4::Settings) {
     apply(&interface);
     // O GSettings só avisa enquanto vive: fica até o fim do processo
     std::mem::forget(interface);
+}
+
+/// As superfícies sempre escuras do desktop (os popups da barra, os modais, a dock, os avisos, a grade, o OSD e o
+/// Alt+Tab): o prefer-dark, e o stand_in_theme agora e a cada troca do gtk-theme da sessão (o color-scheme não
+/// conta: ficam escuras). Sem o stand-in, com o adw-gtk3-dark num GTK antes do 4.20, o texto vinha do CSS claro dele
+/// (o gtk-dark.css é o mesmo): os títulos pretos nos cartões escuros do popup das notificações. Depois do gtk::init.
+pub fn always_dark() {
+    if let Some(settings) = gtk4::Settings::default() {
+        #[allow(deprecated)] // o prefer-dark é obsoleto a partir do 4.20, mas ainda vale lá
+        settings.set_gtk_application_prefer_dark_theme(true);
+        stand_in_theme(&settings);
+        settings.connect_gtk_theme_name_notify(stand_in_theme);
+        watch_session(&settings, false);
+    }
 }
 
 /// O stand_in_theme agora e a cada troca do tema (follow_session_theme). Depois do gtk::init (no startup do

@@ -15,6 +15,7 @@
 #   docker run --rm --memory 6g --memory-swap 6g -u 64000:64000 -e HOME=/tmp -v <passwd com o 64000>:/etc/passwd:ro \
 #     -v $PWD:/repo:ro -v $PWD/rust/target/debian13/release/swaydesk-displays:/bin/swaydesk-displays:ro \
 #     -v $PWD/rust/target/debian13/release/swaydesk-help:/bin/swaydesk-help:ro \
+#     -v $PWD/rust/target/debian13/release/swaydesk-calendar:/bin/swaydesk-calendar:ro \
 #     -v /tmp/out:/out swaydesk-smoke:debian13-gsettings /repo/rust/scripts/headless-dark-windows.sh
 #
 # Sai com 1 se algum caso falhar.
@@ -37,8 +38,10 @@ LIGHT=#fafafb
 for name in adw-gtk3 adw-gtk3-dark; do
   mkdir -p "$HOME/.themes/$name/gtk-4.0"
   cat > "$HOME/.themes/$name/gtk-4.0/gtk.css" <<EOF
-window, window.background, .background { background-color: $LIGHT; color: #202020; }
+* { color: #ff00ff; }
+window, window.background, .background { background-color: $LIGHT; color: #ff00ff; }
 @media (prefers-color-scheme: dark) {
+  * { color: #ffffff; }
   window, window.background, .background { background-color: #1e1e1f; color: #ffffff; }
 }
 EOF
@@ -139,6 +142,31 @@ for app in "swaydesk-displays org.swaydesktop.Displays displays" "swaydesk-help 
   done
   kill $pid 2>/dev/null; wait $pid 2>/dev/null
 done
+
+# 4. As superfícies sempre escuras (os popups da barra, como o calendário): com o adw-gtk3-dark, o texto não tem a
+#    cor do tema claro (o magenta do falso, fora do @media). Os cartões do popup são escuros; com o texto do tema
+#    claro, os títulos ficavam pretos neles (o popup das notificações no vídeo)
+magenta() {  # pixels quase magenta, em milésimos
+  python3 - "$1" <<'EOF'
+import sys
+data = open(sys.argv[1], "rb").read()
+parts = data.split(maxsplit=4)
+w, h, p = int(parts[1]), int(parts[2]), parts[4]
+n = sum(1 for i in range(0, w * h * 3, 3) if p[i] > 150 and p[i + 1] < 100 and p[i + 2] > 150)
+print(n * 10000 // (w * h))
+EOF
+}
+settings adw-gtk3-dark 1 prefer-dark
+/bin/swaydesk-calendar >> /out/app.log 2>&1 &
+pid=$!
+for _ in $(seq 50); do [ -e "$XDG_RUNTIME_DIR/waybar-calendar.pid" ] && break; sleep 0.1; done
+sleep 1.5
+grim -t ppm /out/calendar.ppm
+grim /out/calendar.png 2>/dev/null
+kill $pid 2>/dev/null; wait $pid 2>/dev/null
+n=$(magenta /out/calendar.ppm)
+[ "$n" -eq 0 ] && ok "calendário: o texto não tem a cor do tema claro" \
+  || fail "calendário: $n‱ do print na cor do texto do tema claro (o popup sem a troca pelo Adwaita-dark)"
 
 rm -f /out/*.ppm
 [ "$failed" = 0 ] || exit 1

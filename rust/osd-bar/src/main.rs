@@ -226,9 +226,7 @@ fn main() -> ExitCode {
         eprintln!("{PROGRAM}: could not start GTK: {err}");
         return ExitCode::FAILURE;
     }
-    if let Some(settings) = gtk4::Settings::default() {
-        settings.set_gtk_application_prefer_dark_theme(true);
-    }
+    swaydesk_ui::always_dark();
     let osd = Osd::new();
     let main_loop = glib::MainLoop::new(None, false);
     // Os sinais antes do PID: um SIGUSR1 sem o tratamento encerraria o programa

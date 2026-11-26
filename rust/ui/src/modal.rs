@@ -32,8 +32,8 @@ impl ModalPanel {
             #[allow(deprecated)] // sem substituto no GTK 4.18
             gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
         }
+        crate::always_dark();
         if let Some(settings) = gtk4::Settings::default() {
-            settings.set_gtk_application_prefer_dark_theme(true);
             settings.set_gtk_cursor_blink(false);
         }
 

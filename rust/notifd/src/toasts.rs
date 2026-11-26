@@ -125,9 +125,7 @@ impl ToastWindow {
             #[allow(deprecated)] // sem substituto no GTK 4.18
             gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
         }
-        if let Some(settings) = gtk4::Settings::default() {
-            settings.set_gtk_application_prefer_dark_theme(true);
-        }
+        swaydesk_ui::always_dark();
         let window = gtk4::Window::new();
         window.init_layer_shell();
         window.set_layer(Layer::Overlay);

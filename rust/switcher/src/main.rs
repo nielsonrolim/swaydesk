@@ -487,9 +487,7 @@ fn daemon() -> ExitCode {
         warn(&format!("could not start GTK: {err}"));
         return ExitCode::FAILURE;
     }
-    if let Some(settings) = gtk4::Settings::default() {
-        settings.set_gtk_application_prefer_dark_theme(true);
-    }
+    swaydesk_ui::always_dark();
     i18n::init(&config::load());
     let order = sway_tree().map(|tree| Order::from_tree(&tree)).unwrap_or_default();
     let switcher = Switcher::new(order);

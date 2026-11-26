@@ -1386,9 +1386,7 @@ impl App {
             #[allow(deprecated)] // sem substituto no GTK 4.18
             gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
         }
-        if let Some(settings) = gtk4::Settings::default() {
-            settings.set_gtk_application_prefer_dark_theme(true);
-        }
+        swaydesk_ui::always_dark();
         let app = Rc::new(App {
             me: RefCell::new(Weak::new()),
             main_loop: main_loop.clone(),
