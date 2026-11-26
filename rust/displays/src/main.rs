@@ -77,6 +77,18 @@ fn main() -> ExitCode {
             None => *window.borrow_mut() = Some(window::Window::new(app)),
         }
     });
+    // O SIGTERM (um pkill, o systemd), o SIGINT e o SIGHUP fecham as janelas: a que tem uma prévia sem resposta
+    // desfaz no close-request, como no Super+Q
+    for signal in [libc::SIGTERM, libc::SIGINT, libc::SIGHUP] {
+        let app = app.clone();
+        glib::unix_signal_add_local(signal, move || {
+            for window in app.windows() {
+                window.close();
+            }
+            app.quit();
+            glib::ControlFlow::Break
+        });
+    }
     let code = app.run_with_args(&std::env::args().take(1).collect::<Vec<_>>());
     ExitCode::from(code.value() as u8)
 }

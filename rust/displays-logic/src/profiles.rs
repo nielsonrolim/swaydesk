@@ -41,7 +41,7 @@ pub fn set_of(keys: &[String]) -> Vec<String> {
     set
 }
 
-fn config_to_json(config: &OutputConfig) -> Value {
+pub(crate) fn config_to_json(config: &OutputConfig) -> Value {
     let mut map = Map::new();
     map.insert("enabled".into(), json!(config.enabled));
     if let Some(mode) = config.mode {
@@ -60,7 +60,7 @@ fn int(value: Option<&Value>) -> Option<i32> {
 
 /// Uma configuração do arquivo. Um valor fora do esperado invalida só ela (e o perfil inteiro, que não
 /// pode ser aplicado pela metade).
-fn config_from_json(value: &Value) -> Option<OutputConfig> {
+pub(crate) fn config_from_json(value: &Value) -> Option<OutputConfig> {
     let enabled = value.get("enabled")?.as_bool()?;
     let mode = match value.get("mode") {
         None | Some(Value::Null) => None,

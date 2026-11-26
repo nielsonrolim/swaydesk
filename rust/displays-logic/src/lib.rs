@@ -6,5 +6,6 @@ pub mod conf;
 pub mod config;
 pub mod geometry;
 pub mod outputs;
+pub mod pending;
 pub mod plan;
 pub mod profiles;

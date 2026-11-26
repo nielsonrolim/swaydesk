@@ -11,7 +11,7 @@
 #
 # O serviço: sem perfil, nada muda; com perfil, aplica ao subir; um monitor novo (create_output) muda o
 # conjunto; tirá-lo (unplug) volta ao perfil do par; uma mudança à mão com o mesmo conjunto fica; o reload
-# reaplica; sem nenhuma tela ligada, o apply liga todas. O app: Aplicar e Esc desfaz; Aplicar e o tempo esgotado desfaz; Aplicar e Manter grava o perfil
+# reaplica; sem nenhuma tela ligada, o apply liga todas. O app: Aplicar e Esc desfaz; Aplicar e o tempo esgotado desfaz; fechar a janela ou o SIGTERM com a pergunta aberta desfaz, e depois de um SIGKILL o app desfaz ao abrir; Aplicar e Manter grava o perfil
 # e o 90-displays.conf. Sai com 1 se algum caso falhar.
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
@@ -131,6 +131,33 @@ expect "Aplicar de novo" "1.5" "$(scale_of $first)"
 sleep 17
 expect "sem resposta em 15 s, volta sozinho" "$before" "$(scale_of $first)"
 grim /out/displays-4-reverted.png
+# A janela some com a pergunta aberta: o layout sem confirmar não pode ficar (uma tela apagada ou na escala errada
+# é o caso para que a contagem existe). Fechar a janela pelo Sway (Super+Q) não a fecha enquanto a pergunta modal
+# está aberta (a contagem segue); o SIGTERM desfaz na hora; depois de um SIGKILL (um crash), a próxima vez que o
+# app abre desfaz pelo arquivo pendente do XDG_RUNTIME_DIR
+pending=$XDG_RUNTIME_DIR/sway-displays-pending.json
+app_gone() { for _ in $(seq 50); do pgrep -u "$(id -u)" -f '/bin/swaydesk-displays$' > /dev/null || return 0; sleep 0.1; done; return 1; }
+reopen() { app; for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done; sleep 1.5; set_scale_up; }
+apply; sleep 1.5
+expect "Aplicar antes de fechar a janela" "1.5" "$(scale_of $first)"
+swaymsg -q '[app_id="org.swaydesktop.Displays" title="^Displays$"] kill'; sleep 1
+expect "fechar a janela pelo Sway com a pergunta aberta: a janela e a pergunta ficam" "2" "$(windows)"
+keys -k Escape; sleep 1.5
+expect "e a pergunta ainda desfaz" "$before no" "$(scale_of $first) $([ -e "$pending" ] && echo yes || echo no)"
+apply; sleep 1.5
+expect "Aplicar antes do SIGTERM" "1.5" "$(scale_of $first)"
+pkill -u "$(id -u)" -TERM -f '/bin/swaydesk-displays$'
+app_gone; sleep 1
+expect "o SIGTERM com a pergunta aberta desfaz" "$before" "$(scale_of $first)"
+reopen; apply; sleep 1.5
+expect "Aplicar antes do SIGKILL" "1.5" "$(scale_of $first)"
+pkill -u "$(id -u)" -KILL -f '/bin/swaydesk-displays$'
+app_gone; sleep 1
+expect "o SIGKILL não deixa desfazer (fica o arquivo pendente)" "1.5 yes" "$(scale_of $first) $([ -e "$pending" ] && echo yes || echo no)"
+app; for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done; sleep 2.5
+expect "a próxima vez que o app abre, desfaz o que ficou pendente" "$before no" "$(scale_of $first) $([ -e "$pending" ] && echo yes || echo no)"
+grim /out/displays-4b-restored-on-start.png
+set_scale_up
 apply; sleep 1.5
 # Na pergunta, o foco começa no Desfazer: Tab vai ao Manter
 keys -k Tab -k Return; sleep 1.5

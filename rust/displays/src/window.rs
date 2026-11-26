@@ -12,6 +12,7 @@ use swaydesk_displays_logic::conf;
 use swaydesk_displays_logic::config::{commands, OutputConfig, Transform, SCALE_MAX, SCALE_MIN};
 use swaydesk_displays_logic::geometry::{self, Rect};
 use swaydesk_displays_logic::outputs::{self, Mode, Output};
+use swaydesk_displays_logic::pending;
 use swaydesk_displays_logic::profiles::{self, Profile, Profiles};
 
 use crate::{identify, sway, take_preview_lock, warn};
@@ -130,6 +131,9 @@ pub struct Window {
     view: Cell<Option<View>>,
     /// A trava da prévia, enquanto o "Manter ou desfazer" está aberto
     preview: RefCell<Option<File>>,
+    /// O layout de antes do Aplicar, até o Manter ou o fim do desfazer (também no arquivo do pending): a janela
+    /// que some com a pergunta aberta desfaz por ele
+    pending: RefCell<Option<Vec<(String, OutputConfig)>>>,
     /// A área de trabalho do app e a tela dela antes do Aplicar: o Desfazer a leva de volta
     home: RefCell<Option<(String, String)>>,
     accent: String,
@@ -269,10 +273,22 @@ impl Window {
             drag: RefCell::new(None),
             view: Cell::new(None),
             preview: RefCell::new(None),
+            pending: RefCell::new(None),
             home: RefCell::new(None),
             accent,
         });
         me.connect(&identify_button);
+        restore_pending_on_start();
+        // Fechar a janela (Super+Q, o sinal do main.rs) com a pergunta aberta: desfaz antes de o app sair. No
+        // close-request, não no destroy: a janela fica viva enquanto esta struct a segura, e o destroy só viria
+        // depois do fim do app
+        let weak = me.me.clone();
+        me.window.connect_close_request(move |_| {
+            if let Some(w) = weak.upgrade() {
+                w.undo_now();
+            }
+            glib::Propagation::Proceed
+        });
         me.reload();
         me.watch();
         me.window.present();
@@ -743,6 +759,7 @@ impl Window {
         self.show_info(&tr("Applying…"));
         let previous: Vec<OutputConfig> = self.outputs.borrow().iter().map(Output::config).collect();
         let previous = self.named(&previous);
+        self.set_pending(Some(previous.clone()));
         let wanted = self.named(&self.edits.borrow());
         self.refresh();
         let me = self.me.clone();
@@ -769,6 +786,35 @@ impl Window {
         });
     }
 
+    /// O layout de antes, na memória e no arquivo (None: apaga os dois)
+    fn set_pending(&self, previous: Option<Vec<(String, OutputConfig)>>) {
+        if let Some(file) = pending::path() {
+            match &previous {
+                Some(previous) => {
+                    if let Err(err) = std::fs::write(&file, pending::to_json(previous)) {
+                        warn(&format!("could not write {}: {err}", file.display()));
+                    }
+                }
+                None => {
+                    let _ = std::fs::remove_file(&file);
+                }
+            }
+        }
+        *self.pending.borrow_mut() = previous;
+    }
+
+    /// A janela vai sumir com uma prévia sem resposta: desfaz agora, sem esperar o laço do GTK (o app sai logo
+    /// depois), e solta a trava
+    fn undo_now(&self) {
+        let Some(previous) = self.pending.borrow_mut().take() else { return };
+        warn("the window closed before Keep: undoing");
+        undo(&previous, "close");
+        if let Some(file) = pending::path() {
+            let _ = std::fs::remove_file(file);
+        }
+        self.preview.borrow_mut().take();
+    }
+
     /// Volta ao que era e solta a trava
     fn restore(self: &Rc<Self>, previous: Vec<(String, OutputConfig)>, message: Option<String>) {
         let me = self.me.clone();
@@ -792,6 +838,7 @@ impl Window {
             if let Err(err) = &result {
                 warn(&format!("could not restore: {err}"));
             }
+            w.set_pending(None);
             w.preview.borrow_mut().take();
             let edits = w.edits.borrow().clone();
             w.reload_keeping(edits);
@@ -813,6 +860,7 @@ impl Window {
 
     /// Guarda o perfil do conjunto e o arquivo do Sway
     fn keep(self: &Rc<Self>) {
+        self.set_pending(None);
         self.preview.borrow_mut().take();
         self.home.borrow_mut().take();
         let mut message = tr("Saved. This layout comes back whenever these screens are connected.");
@@ -1002,4 +1050,31 @@ impl Window {
 /// O `%s` do texto traduzido trocado pelo valor
 fn fill_one(template: &str, value: &str) -> String {
     template.replacen("%s", value, 1)
+}
+
+/// Volta ao layout de antes, agora; se nem isso pega, a rede de segurança do serviço
+fn undo(previous: &[(String, OutputConfig)], why: &str) {
+    if let Err(err) = sway::run_checked(&commands(previous), &switches(previous)) {
+        warn(&format!("could not restore: {err}"));
+        crate::daemon::rescue_screens(why);
+    }
+}
+
+/// Ao abrir: uma prévia que ficou sem resposta (o app caiu com a pergunta aberta) volta ao layout de antes. Só
+/// se nenhuma outra janela segura a trava (a dela ainda está na tela)
+fn restore_pending_on_start() {
+    let Some(file) = pending::path() else { return };
+    let Ok(text) = std::fs::read_to_string(&file) else { return };
+    let Some(_lock) = take_preview_lock() else { return };
+    let names: Option<Vec<String>> = sway::get_outputs().map(|list| list.into_iter().map(|o| o.name).collect());
+    match (pending::from_json(&text), names) {
+        (Some(previous), Some(names)) if pending::same_outputs(&previous, &names) => {
+            warn("a preview was left without an answer: undoing");
+            undo(&previous, "pending");
+        }
+        (Some(_), Some(_)) => warn("a preview was left without an answer, but the screens changed: not undoing"),
+        (Some(_), None) => return, // sem o Sway agora: fica para a próxima vez
+        (None, _) => warn(&format!("ignoring an unreadable {}", file.display())),
+    }
+    let _ = std::fs::remove_file(&file);
 }
