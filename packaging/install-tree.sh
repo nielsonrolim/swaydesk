@@ -224,6 +224,10 @@ case $pkg in
     install -Dm644 "$root/packaging/files/org.freedesktop.impl.portal.desktop.swaydesktop.service" \
       "$dest/usr/share/dbus-1/services/org.freedesktop.impl.portal.desktop.swaydesktop.service"
     install -Dm644 "$root/packaging/files/swaydesktop.portal" "$dest/usr/share/xdg-desktop-portal/portals/swaydesktop.portal"
+    # O portals.conf da sessão como trecho opcional para o Sway puro: nada o lê até o usuário copiá-lo para o
+    # ~/.config/xdg-desktop-portal (um em /etc/xdg ou /usr/share/xdg-desktop-portal mudaria o Sway de todos)
+    install -Dm644 "$root/packaging/snippets/xdg-desktop-portal/sway-portals.conf" \
+      "$dest/usr/share/swaydesk/xdg-desktop-portal/sway-portals.conf"
     ;;
   swaydesk-theme-app)
     # O app Tema do Desktop no menu. O nome do arquivo é o app_id do app, que é como a dock acha o ícone. O
