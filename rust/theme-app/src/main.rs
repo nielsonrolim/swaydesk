@@ -41,6 +41,13 @@ const CSS: &str = r#"
 .theme-swatches flowboxchild:selected { background: transparent; }
 .theme-swatches.theme-auto { opacity: 0.45; }
 "#;
+/// O botão marcado do Estilo na cor de destaque: no Adwaita-dark (o do GTK, e o que fica no lugar do adw-gtk3 antes do
+/// 4.20), o marcado é só um cinza mais escuro que o vizinho, e o Escuro em uso parecia desmarcado. Depois do
+/// config::accent_css, que define o @accent (o mesmo provider). O da versão em Python é o STYLE_TOGGLE_CSS dele.
+const STYLE_TOGGLE_CSS: &str = "
+.theme-style > button:checked:not(:disabled) { background-image: none; background-color: @accent; color: @on_accent; }
+.theme-style > button:checked:hover:not(:disabled) { background-color: @accent_hover; }
+";
 
 /// O círculo da cor, com uma marca quando é a escolhida.
 fn swatch(name: &str) -> (gtk4::FlowBoxChild, gtk4::DrawingArea) {
@@ -330,6 +337,7 @@ impl Window {
         style_row.append(&style_label);
         let toggles = gtk4::Box::new(gtk4::Orientation::Horizontal, 0);
         toggles.add_css_class("linked");
+        toggles.add_css_class("theme-style");
         let mut style_buttons = Vec::new();
         for (style, text, icon) in [(Style::Light, tr("Light"), "weather-clear-symbolic"), (Style::Dark, tr("Dark"), "weather-clear-night-symbolic")] {
             let button = gtk4::ToggleButton::new();
@@ -745,7 +753,7 @@ impl Window {
             folders,
         });
         *self.current_icons.borrow_mut() = it::entry_of(&dc::installed_icon_theme(&config)).to_string();
-        self.accent_provider.load_from_string(&config::accent_css(&config::palette(&config)));
+        self.accent_provider.load_from_string(&format!("{}{STYLE_TOGGLE_CSS}", config::accent_css(&config::palette(&config))));
         self.cursor_size.load(&config);
         // Sem a chave no config, o interruptor desligado e intocado não grava o false no Aplicar
         self.choice.borrow_mut().auto_inferred = !config.accent_auto_set;

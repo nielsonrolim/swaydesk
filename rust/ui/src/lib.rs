@@ -642,11 +642,58 @@ pub fn theme_stand_in(theme: &str, gtk_minor: u32) -> Option<&'static str> {
     (gtk_minor < 20 && theme.starts_with("adw-gtk3")).then(|| if theme.ends_with("-dark") { "Adwaita-dark" } else { "Adwaita" })
 }
 
-/// Troca o tema das janelas pelo do theme_stand_in. Mudar a propriedade avisa de novo, já com o Adwaita: não troca outra vez.
+/// O que o adw-gtk3 tem e o Adwaita do GTK não: o negrito dos botões (o `button { font-weight: bold }` do
+/// libadwaita.css dele), que dá peso aos títulos das linhas dos popups e aos botões das janelas. Vai junto com a troca
+/// (stand_in_theme), na prioridade do tema: o CSS dos componentes, na APPLICATION, vence.
+pub const STAND_IN_CSS: &str = "button { font-weight: bold; }\n";
+
+thread_local! {
+    /// O Adwaita posto no lugar do adw-gtk3, enquanto é o tema das janelas, e o provider do STAND_IN_CSS
+    static STAND_IN: RefCell<(Option<&'static str>, Option<gtk4::CssProvider>)> = const { RefCell::new((None, None)) };
+}
+
+/// Põe o tema do theme_stand_in nas janelas e lembra que é uma troca
+fn set_stand_in(settings: &gtk4::Settings, name: &'static str) {
+    STAND_IN.with(|s| s.borrow_mut().0 = Some(name));
+    settings.set_gtk_theme_name(Some(name));
+    stand_in_css(settings);
+}
+
+/// O STAND_IN_CSS enquanto o tema das janelas é o posto por uma troca; tirado com outro (um Adwaita escolhido de
+/// verdade não o leva)
+fn stand_in_css(settings: &gtk4::Settings) {
+    let Some(display) = gdk::Display::default() else { return };
+    let current = settings.gtk_theme_name().unwrap_or_default();
+    STAND_IN.with(|s| {
+        let mut s = s.borrow_mut();
+        let active = s.0.is_some_and(|name| name == current);
+        if !active {
+            s.0 = None;
+        }
+        match (active, s.1.is_some()) {
+            (true, false) => {
+                let provider = gtk4::CssProvider::new();
+                provider.load_from_string(STAND_IN_CSS);
+                #[allow(deprecated)] // sem substituto no GTK 4.18
+                gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_THEME);
+                s.1 = Some(provider);
+            }
+            (false, true) => {
+                #[allow(deprecated)]
+                gtk4::style_context_remove_provider_for_display(&display, &s.1.take().unwrap());
+            }
+            _ => {}
+        }
+    });
+}
+
+/// Troca o tema das janelas pelo do theme_stand_in, com o STAND_IN_CSS. Mudar a propriedade avisa de novo, já com o
+/// Adwaita: não troca outra vez, e o CSS fica.
 pub fn stand_in_theme(settings: &gtk4::Settings) {
     let theme = settings.gtk_theme_name().unwrap_or_default();
-    if let Some(name) = theme_stand_in(&theme, gtk4::minor_version()) {
-        settings.set_gtk_theme_name(Some(name));
+    match theme_stand_in(&theme, gtk4::minor_version()) {
+        Some(name) => set_stand_in(settings, name),
+        None => stand_in_css(settings),
     }
 }
 
@@ -688,9 +735,18 @@ fn watch_session(settings: &gtk4::Settings, follow_scheme: bool) {
                     settings.set_gtk_application_prefer_dark_theme(dark);
                 }
             }
-            let theme = window_theme(&interface.string("gtk-theme"), gtk4::minor_version());
-            if settings.gtk_theme_name().as_deref() != Some(theme.as_str()) {
-                settings.set_gtk_theme_name(Some(&theme));
+            let session = interface.string("gtk-theme");
+            match theme_stand_in(&session, gtk4::minor_version()) {
+                Some(name) if settings.gtk_theme_name().as_deref() != Some(name) => set_stand_in(&settings, name),
+                Some(_) => {}
+                None => {
+                    // Um Adwaita escolhido de verdade não é troca, mesmo com o nome igual: sai o STAND_IN_CSS
+                    STAND_IN.with(|s| s.borrow_mut().0 = None);
+                    if settings.gtk_theme_name().as_deref() != Some(session.as_str()) {
+                        settings.set_gtk_theme_name(Some(&session));
+                    }
+                    stand_in_css(&settings);
+                }
             }
         }
     };
