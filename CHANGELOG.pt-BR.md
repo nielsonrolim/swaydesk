@@ -2,6 +2,36 @@
 
 O que muda em cada versão do Swaydesk, em português a partir da 0.1.4. As versões anteriores estão no [CHANGELOG.md](CHANGELOG.md), em inglês. Cada versão sai primeiro em pacotes e, logo depois, em imagens de instalação. As atualizações chegam pelo `apt upgrade` ou pelo `pacman -Syu`.
 
+## 0.1.8 — 2026-11-26
+
+Um clique no aviso de captura ou de gravação abre o arquivo, e as imagens de instalação abrem fotos no Loupe e PDFs no Papers. Os apps abertos pela dock e pela grade de apps agora rodam no seu próprio escopo do systemd, todo programa do Swaydesk responde a `--help` e `--version`, e os campos de busca vêm em três tamanhos.
+
+### Atualizando
+
+- **Da 0.1.7: nada a fazer.** `apt upgrade`, o app de Programas ou `pacman -Syu`.
+- **Da 0.1.6:** leia antes as notas da 0.1.7, abaixo. No Debian e no Ubuntu, atualize com o `apt upgrade` ou o `apt full-upgrade`, não com o `apt-get upgrade`; no Arch, com um `pacman -Syu` completo.
+- **O `swaydesk-scripts` não segura mais nada.** Este pacote de transição, vazio, agora aceita qualquer versão do `swaydesk-common`: quando ele sair do repositório na 0.2.0, uma cópia que ficou instalada não prende os outros pacotes na 0.1.8. Você pode removê-lo quando quiser; removê-lo não desinstala nada.
+
+### Novo
+
+- **Um clique no aviso de captura ou de gravação abre o arquivo** no app padrão, no aviso ou depois, na central de notificações. Os avisos agora vêm do "Swaydesk", não do "notify-send". Para isso, no Debian e no Ubuntu o `swaydesk-capture` recomenda o `xdg-utils` e a `libglib2.0-bin` (o gdbus); no Arch, o `xdg-utils` é uma dependência opcional.
+- **Imagens de instalação: Loupe e Papers** são os visualizadores padrão de imagens e de PDF numa instalação nova pelas imagens do Debian 13 e do Arch. Os pacotes não mudam, e o app que você escolhe no "Abrir com" ou com o `xdg-mime default` continua vencendo.
+- **Cada app aberto pela dock ou pela grade de apps ganha seu próprio escopo do systemd** (`app-swaydesk-….scope` no `app.slice`), como no GNOME e no KDE. Reiniciar a dock ou a grade não lista mais os apps delas como processos que sobraram, e os apps continuam abertos.
+- **`--help` e `--version` em todo programa do Swaydesk**, sem tela: o `--version` mostra o programa e a versão do pacote, e o `--help`, o uso. Antes, nenhum tinha `--version`, e a maioria abria uma janela ou esperava a tela.
+- **O portal da cor de destaque no Sway puro.** O `swaydesk-portal` traz um `sway-portals.conf` opcional em `/usr/share/swaydesk/xdg-desktop-portal/`: copie-o para `~/.config/xdg-desktop-portal/` (ele diz o que precisa) e os apps que pedem a cor de destaque ao portal recebem a do Swaydesk. O compartilhamento de tela, as capturas e o bloqueio de inatividade continuam funcionando como com o arquivo do próprio Sway. Nada liga sozinho; na sessão do Swaydesk, nada muda.
+
+### Mudou
+
+- **Os campos de busca vêm em três tamanhos:** grande na grade de apps, normal no app Tema do Desktop e na Ajuda, e compacto no popup da área de transferência. A 0.1.7 deu a todos o tamanho do lançador, grande demais fora dele.
+- **O bloco do teclado do sistema** no `~/.config/sway/config.d/50-local.conf` tem um cabeçalho na língua da sua sessão que diz o que ele faz: segue o teclado do sistema a cada login até você editá-lo. Um bloco que já existe ganha o cabeçalho novo no próximo login.
+- **As descrições dos pacotes e as páginas de manual** agora dizem o que os pacotes fazem: o `swaydesk-portal` dá só a cor de destaque, o `swaydesk-network` pede a senha do Wi-Fi ele mesmo só com o iwd, o `swaydesk-keyring` só age onde o gnome-keyring precisa (Debian 13), e o `swaydesk-desktop-config(1)` documenta o comando `keys`.
+
+### Corrigido
+
+- **Um `true` para um módulo da barra** no seu `config.toml` (`[enabled.bar] weather = true`) agora vence um `false` no `/etc/swaydesk/config.toml` do sistema. O módulo ficava escondido.
+- **A Ajuda mostra "Mostrar esta ajuda" uma vez só**, com Super+F1 e Super+/. Eram duas linhas.
+- **O Telas desfaz um layout que você não confirmou** quando o app some enquanto pergunta "Manter estas configurações das telas?": fechado, encerrado ou morto (aí, na próxima vez que abrir). O layout não confirmado, que pode ser uma tela preta ou a escala errada, ficava na tela.
+
 ## 0.1.7 — 2026-11-24
 
 Cada componente do Swaydesk agora é um pacote próprio: dá para instalar só os que você quer no Sway puro, e iniciá-los com um serviço de usuário ou um trecho do Sway. Também: um campo de busca só em todo o desktop, no modelo do lançador, e, no Arch, o ç no AltGr+, no console. O Tema do Desktop também escolhe o tamanho do cursor, e o `swaydesk-lock` bloqueia a tela sozinho.

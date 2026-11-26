@@ -2,6 +2,36 @@
 
 Each release is published as packages and, shortly after, as install images. Updates arrive through `apt upgrade` or `pacman -Syu`.
 
+## 0.1.8 — 2026-11-26
+
+A click on a screenshot or recording notice opens the file, and the install images open pictures in Loupe and PDFs in Papers. Apps opened from the dock and the app grid now run in their own systemd scope, every Swaydesk program answers `--help` and `--version`, and search fields come in three sizes.
+
+### Upgrading
+
+- **From 0.1.7: nothing to do.** `apt upgrade`, the Software app or `pacman -Syu`.
+- **From 0.1.6:** read the 0.1.7 notes below first. On Debian and Ubuntu, upgrade with `apt upgrade` or `apt full-upgrade`, not `apt-get upgrade`; on Arch, with a full `pacman -Syu`.
+- **`swaydesk-scripts` no longer holds anything back.** This empty transitional package now depends on any version of `swaydesk-common`, so when it leaves the repository in 0.2.0, a copy left installed won't keep the other packages at 0.1.8. You can still remove it at any time; removing it doesn't uninstall anything.
+
+### Added
+
+- **A click on the screenshot or recording notice opens the file** in its default app, from the toast or later from the notification center. The notices now come from "Swaydesk" instead of "notify-send". For this, on Debian and Ubuntu `swaydesk-capture` recommends `xdg-utils` and `libglib2.0-bin` (gdbus); on Arch, `xdg-utils` is an optional dependency.
+- **Install images: Loupe and Papers** are the default image and PDF viewers on a new install from the Debian 13 and Arch images. The packages don't change, and an app you choose with "Open with" or `xdg-mime default` still wins.
+- **Each app opened from the dock or the app grid gets its own systemd scope** (`app-swaydesk-….scope` in `app.slice`), as on GNOME and KDE. Restarting the dock or the grid no longer lists their apps as left-over processes, and the apps stay open.
+- **`--help` and `--version` on every Swaydesk program**, without a display: `--version` prints the program and the package version, and `--help` the usage. Before, none had `--version`, and most opened a window or waited for the screen.
+- **The accent-color portal on plain Sway.** `swaydesk-portal` ships an opt-in `sway-portals.conf` in `/usr/share/swaydesk/xdg-desktop-portal/`: copy it to `~/.config/xdg-desktop-portal/` (it says what it needs) and apps that ask the portal for the accent color get Swaydesk's. Screen sharing, screenshots and idle inhibit keep working as with Sway's own file. Nothing turns on by itself; inside the Swaydesk session, nothing changes.
+
+### Changed
+
+- **Search fields come in three sizes:** large in the app grid, regular in the Desktop Theme app and Help, and compact in the clipboard popup. 0.1.7 gave them all the launcher's size, too big outside it.
+- **The system keyboard block** in `~/.config/sway/config.d/50-local.conf` has a header in your session's language that says what it does: it follows the system keyboard at every login until you edit it. An existing block takes the new header at the next login.
+- **Package descriptions and man pages** now say what the packages do: `swaydesk-portal` gives only the accent color, `swaydesk-network` asks for the Wi-Fi password itself only with iwd, `swaydesk-keyring` acts only where gnome-keyring needs it (Debian 13), and `swaydesk-desktop-config(1)` documents the `keys` command.
+
+### Fixed
+
+- **A `true` for a bar module** in your own `config.toml` (`[enabled.bar] weather = true`) now beats a `false` in the system's `/etc/swaydesk/config.toml`. The module stayed hidden.
+- **Help shows "Show this help" once**, with both Super+F1 and Super+/. It was two rows.
+- **Displays undoes a layout you never confirmed** when the app goes away while it asks "Keep these display settings?": closed, stopped, or killed (then at its next start). The unconfirmed layout, possibly a blank screen or the wrong scale, stayed on screen.
+
 ## 0.1.7 — 2026-11-24
 
 Every Swaydesk component is now its own package, so you can install just the ones you want on plain Sway, and start them with a user service or a Sway snippet. Also: one search field across the desktop, modelled on the launcher's, and on Arch, ç on AltGr+, at the console. Desktop Theme also sets the cursor size, and `swaydesk-lock` locks the screen on its own.

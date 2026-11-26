@@ -1,8 +1,30 @@
-swaydesk (0.1.8-1) UNRELEASED; urgency=medium
+swaydesk (0.1.8-1) unstable; urgency=medium
 
-  * Development after 0.1.7.
+  * Release 0.1.8.
+  * A click on the screenshot or recording notice opens the file
+    (xdg-open); the notices come from "Swaydesk" and go through gdbus,
+    since Ubuntu's AppArmor profile for notify-send blocks the click.
+    swaydesk-capture recommends xdg-utils and libglib2.0-bin.
+  * Apps opened by the dock and the app grid get their own systemd
+    scope in app.slice, also when started from the Sway config.
+  * Every Swaydesk binary answers --help and --version without a
+    display.
+  * Search fields in three sizes (grid large, windows regular, the
+    clipboard compact); a translated header on the system keyboard
+    block of 50-local.conf.
+  * A user's [enabled.bar] true beats the system layer's false.
+  * Help lists a binding found in two files once, with both keys.
+  * Displays undoes an unconfirmed layout when the app is closed,
+    stopped or killed while it asks to keep it (after a kill, at the
+    next start).
+  * swaydesk-portal ships an opt-in portals.conf for plain Sway that
+    routes the accent color to it (Settings=swaydesktop;gtk).
+  * swaydesk-scripts depends on swaydesk-common without a version, so
+    a copy left installed holds nothing back once it is retired.
+  * Descriptions of swaydesk-portal, -network, -keyring and
+    -session-menu, and swaydesk-desktop-config(1), as the code does.
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Tue, 24 Nov 2026 23:41:16 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Thu, 26 Nov 2026 08:25:42 -0300
 
 swaydesk (0.1.7-1) unstable; urgency=medium
 
