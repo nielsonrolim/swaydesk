@@ -46,9 +46,11 @@ fn write_files(config: &Config, session: bool) -> Option<bool> {
         }
     })
     .and_then(|r| r);
-    // A Waybar sem os módulos desligados. Sem o modelo, ou com ele quebrado, o sway-waybar usa o modelo
-    if result.is_ok() {
-        if let Err(err) = waybar::write(config, None) {
+    // A Waybar sem os módulos desligados. Com ele quebrado, o sway-waybar usa o modelo. Sem modelo (o Sway puro sem
+    // Waybar), nada a gerar nem a avisar
+    let template = waybar::template_path();
+    if result.is_ok() && template.is_file() {
+        if let Err(err) = waybar::write(config, Some(&template)) {
             eprintln!("{PROGRAM}: waybar config not generated: {err}");
         }
     }

@@ -424,14 +424,6 @@ pub fn apply(action: &Action) -> (String, i32, String) {
     }
 }
 
-/// O tema GTK 4 desta janela no lugar do adw-gtk3, num GTK antes do 4.20 (o Debian 13 tem o 4.18): o CSS de GTK 4
-/// do adw-gtk3 6.5 é o mesmo nas duas variantes e só escurece dentro de `@media (prefers-color-scheme: dark)`, que o
-/// GTK só entende a partir do 4.20, e a janela ficava clara com o adw-gtk3-dark. O Adwaita embutido no GTK tem as
-/// duas variantes. Os outros apps GTK 4 comuns seguem o tema como ele é.
-pub fn stand_in(theme: &str, gtk_minor: u32) -> Option<&'static str> {
-    (gtk_minor < 20 && theme.starts_with("adw-gtk3")).then(|| if swaydesk_theme::desktop::is_dark(theme) { "Adwaita-dark" } else { "Adwaita" })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -845,14 +837,5 @@ mod tests {
         assert_eq!(outcome("T", Ok(ok(&["a", "b"], &[]))), (0, "a\nb".to_string()));
         assert_eq!(outcome("T", Ok(ok(&["a"], &["x", "y"]))), (1, "Could not update: x, y".to_string()));
         assert_eq!(outcome("T", Err(Error::Value("theme not installed: T".into()))), (2, "theme not installed: T".to_string()));
-    }
-
-    #[test]
-    fn adw_gtk3_stands_in_as_adwaita_before_gtk_4_20() {
-        assert_eq!(stand_in("adw-gtk3-dark", 18), Some("Adwaita-dark"));
-        assert_eq!(stand_in("adw-gtk3", 18), Some("Adwaita"));
-        assert_eq!(stand_in("adw-gtk3-dark", 20), None);
-        assert_eq!(stand_in("Mint-Y-Dark-Teal", 18), None);
-        assert_eq!(stand_in("Adwaita-dark", 18), None);
     }
 }

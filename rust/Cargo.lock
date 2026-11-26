@@ -1388,6 +1388,7 @@ dependencies = [
  "serde_json",
  "swaydesk-common",
  "swaydesk-displays-logic",
+ "swaydesk-ui",
 ]
 
 [[package]]

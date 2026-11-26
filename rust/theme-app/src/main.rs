@@ -652,12 +652,13 @@ impl Window {
         // O tema também pode mudar fora daqui, com o sway-theme ou à mão. A cor das pastas muda só o
         // config.toml: o tema GTK pode continuar o mesmo
         if let Some(settings) = gtk4::Settings::default() {
-            stand_in_theme(&settings);
+            swaydesk_ui::stand_in_theme(&settings);
             let changed = self.with(|w, ()| w.on_theme_changed());
             *self.settings_handler.borrow_mut() = Some(settings.connect_gtk_theme_name_notify(move |s| {
-                stand_in_theme(s);
+                swaydesk_ui::stand_in_theme(s);
                 changed(())
             }));
+            swaydesk_ui::follow_session_theme(&settings);
         }
         if let Ok(monitor) = gio::File::for_path(config::path()).monitor_file(gio::FileMonitorFlags::WATCH_MOVES, gio::Cancellable::NONE) {
             let changed = self.with(|w, ()| w.on_config_file_changed());
@@ -1324,14 +1325,6 @@ impl Window {
             });
             *self.hide_source.borrow_mut() = Some(id);
         }
-    }
-}
-
-/// Troca o tema da janela pelo do choice::stand_in. Mudar a propriedade avisa de novo, já com o Adwaita: não entra aqui outra vez.
-fn stand_in_theme(settings: &gtk4::Settings) {
-    let theme = settings.gtk_theme_name().unwrap_or_default();
-    if let Some(name) = choice::stand_in(&theme, gtk4::minor_version()) {
-        settings.set_gtk_theme_name(Some(name));
     }
 }
 

@@ -69,6 +69,8 @@ fn main() -> ExitCode {
     i18n::init(&config::load());
     swaydesk_common::theme_resources::register_theme_resources();
     let app = gtk4::Application::new(Some(APP_ID), gio::ApplicationFlags::default());
+    // O adw-gtk3 num GTK antes do 4.20 deixa a janela clara até no escuro: o Adwaita embutido no lugar
+    app.connect_startup(|_| swaydesk_ui::follow_theme_stand_in());
     let window: Rc<RefCell<Option<Rc<window::Window>>>> = Rc::new(RefCell::new(None));
     app.connect_activate(move |app| {
         let existing = window.borrow().clone();

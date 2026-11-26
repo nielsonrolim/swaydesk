@@ -634,9 +634,113 @@ pub fn run_single<T>(
     code
 }
 
+/// O tema GTK 4 das janelas do Swaydesk no lugar do adw-gtk3, num GTK antes do 4.20 (o Debian 13 tem o 4.18): o
+/// CSS de GTK 4 do adw-gtk3 6.5 é o mesmo nas duas variantes (gtk.css e gtk-dark.css) e só escurece dentro de
+/// `@media (prefers-color-scheme: dark)`, que o GTK só entende a partir do 4.20, e a janela ficava clara com o
+/// adw-gtk3-dark. O Adwaita embutido no GTK tem as duas variantes. Os apps GTK 4 de fora seguem o tema como ele é.
+pub fn theme_stand_in(theme: &str, gtk_minor: u32) -> Option<&'static str> {
+    (gtk_minor < 20 && theme.starts_with("adw-gtk3")).then(|| if theme.ends_with("-dark") { "Adwaita-dark" } else { "Adwaita" })
+}
+
+/// Troca o tema das janelas pelo do theme_stand_in. Mudar a propriedade avisa de novo, já com o Adwaita: não troca outra vez.
+pub fn stand_in_theme(settings: &gtk4::Settings) {
+    let theme = settings.gtk_theme_name().unwrap_or_default();
+    if let Some(name) = theme_stand_in(&theme, gtk4::minor_version()) {
+        settings.set_gtk_theme_name(Some(name));
+    }
+}
+
+/// O tema das janelas para o tema da sessão: o do theme_stand_in, ou o próprio
+pub fn window_theme(session: &str, gtk_minor: u32) -> String {
+    theme_stand_in(session, gtk_minor).map_or_else(|| session.to_string(), str::to_string)
+}
+
+/// O prefer-dark do GTK para o color-scheme da sessão (org.gnome.desktop.interface), num GTK antes do 4.20. A partir
+/// dele, o GTK segue o color-scheme sozinho, e o prefer-dark é obsoleto (gravá-lo daria um aviso): None.
+pub fn prefers_dark(color_scheme: &str, gtk_minor: u32) -> Option<bool> {
+    (gtk_minor < 20).then(|| color_scheme == "prefer-dark")
+}
+
+/// Segue o gtk-theme e o color-scheme da sessão (org.gnome.desktop.interface, que o sway-theme e o app Tema gravam)
+/// com a janela aberta. Depois do set_gtk_theme_name do stand_in_theme, o valor do app vale mais que o da sessão, e o
+/// GTK não troca mais o tema sozinho (nem avisa): o Claro do app Tema deixava a janela escura. E o GTK 4.18 lê o
+/// prefer-dark só do settings.ini, ao abrir: com o Adwaita no lugar do adw-gtk3, a janela ficava no escuro dele.
+/// Daqui, cada troca da sessão grava os dois de novo (window_theme, prefers_dark). Sem o schema (sem o
+/// gsettings-desktop-schemas), nada; sem a chave color-scheme (um schema antigo), só o tema.
+pub fn follow_session_theme(settings: &gtk4::Settings) {
+    const SCHEMA: &str = "org.gnome.desktop.interface";
+    let Some(schema) = gtk4::gio::SettingsSchemaSource::default().and_then(|s| s.lookup(SCHEMA, true)) else {
+        return;
+    };
+    let scheme = schema.has_key("color-scheme");
+    let interface = gtk4::gio::Settings::new(SCHEMA);
+    let apply = {
+        let settings = settings.clone();
+        move |interface: &gtk4::gio::Settings| {
+            if let Some(dark) = scheme.then(|| prefers_dark(&interface.string("color-scheme"), gtk4::minor_version())).flatten() {
+                #[allow(deprecated)] // obsoleto só a partir do 4.20, que não entra aqui
+                if settings.is_gtk_application_prefer_dark_theme() != dark {
+                    settings.set_gtk_application_prefer_dark_theme(dark);
+                }
+            }
+            let theme = window_theme(&interface.string("gtk-theme"), gtk4::minor_version());
+            if settings.gtk_theme_name().as_deref() != Some(theme.as_str()) {
+                settings.set_gtk_theme_name(Some(&theme));
+            }
+        }
+    };
+    let on_change = apply.clone();
+    interface.connect_changed(None, move |interface, key| {
+        if key == "gtk-theme" || key == "color-scheme" {
+            on_change(interface);
+        }
+    });
+    // O GSettings só avisa de uma chave lida depois de ligado o sinal (com o dconf, uma não lida pode nunca avisar):
+    // ler já aplica, e pega uma troca entre o início do GTK e aqui
+    apply(&interface);
+    // O GSettings só avisa enquanto vive: fica até o fim do processo
+    std::mem::forget(interface);
+}
+
+/// O stand_in_theme agora e a cada troca do tema (follow_session_theme). Depois do gtk::init (no startup do
+/// Application).
+pub fn follow_theme_stand_in() {
+    if let Some(settings) = gtk4::Settings::default() {
+        stand_in_theme(&settings);
+        settings.connect_gtk_theme_name_notify(stand_in_theme);
+        follow_session_theme(&settings);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn adw_gtk3_stands_in_as_adwaita_before_gtk_4_20() {
+        assert_eq!(theme_stand_in("adw-gtk3-dark", 18), Some("Adwaita-dark"));
+        assert_eq!(theme_stand_in("adw-gtk3", 18), Some("Adwaita"));
+        assert_eq!(theme_stand_in("adw-gtk3-dark", 20), None);
+        assert_eq!(theme_stand_in("Mint-Y-Dark-Teal", 18), None);
+        assert_eq!(theme_stand_in("Adwaita-dark", 18), None);
+    }
+
+    #[test]
+    fn a_session_theme_change_gives_the_stand_in_or_the_theme_itself() {
+        assert_eq!(window_theme("adw-gtk3", 18), "Adwaita");
+        assert_eq!(window_theme("adw-gtk3-dark", 18), "Adwaita-dark");
+        assert_eq!(window_theme("Mint-Y-Dark-Teal", 18), "Mint-Y-Dark-Teal");
+        assert_eq!(window_theme("adw-gtk3", 20), "adw-gtk3");
+    }
+
+    #[test]
+    fn the_session_color_scheme_gives_prefer_dark_before_gtk_4_20() {
+        assert_eq!(prefers_dark("prefer-dark", 18), Some(true));
+        assert_eq!(prefers_dark("default", 18), Some(false));
+        assert_eq!(prefers_dark("prefer-light", 18), Some(false));
+        // A partir do 4.20 o GTK segue o color-scheme sozinho (e o prefer-dark é obsoleto)
+        assert_eq!(prefers_dark("prefer-dark", 20), None);
+    }
 
     #[test]
     fn focused_window_follows_the_focus_list() {

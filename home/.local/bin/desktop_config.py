@@ -1331,11 +1331,13 @@ def generate(config):
     # O tema do rofi do sway-launcher (Alt+Espaço)
     write_file(data_dir() / ROFI_THEME, render_template("rofi.rasi", colors))
     write_file(data_dir() / GTKLOCK_STYLE, render_template("gtklock.css", colors))
-    # A Waybar sem os módulos desligados. Sem o modelo, ou com ele quebrado, o sway-waybar usa o modelo
-    try:
-        write_waybar(config)
-    except (OSError, ValueError, UnicodeDecodeError) as err:
-        print(f"sway-desktop-config: waybar config not generated: {err}", file=sys.stderr)
+    # A Waybar sem os módulos desligados. Com ele quebrado, o sway-waybar usa o modelo. Sem modelo (o Sway puro sem
+    # Waybar), nada a gerar nem a avisar
+    if waybar_template().is_file():
+        try:
+            write_waybar(config)
+        except (OSError, ValueError, UnicodeDecodeError) as err:
+            print(f"sway-desktop-config: waybar config not generated: {err}", file=sys.stderr)
     return kept
 
 

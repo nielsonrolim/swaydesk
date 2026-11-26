@@ -10,16 +10,18 @@ the base distribution image (`debian:13`, `ubuntu:26.04`, `archlinux`).
 | `swaydesk-build:arch` | `build-arch.Dockerfile` | `makepkg` of `packaging/arch/PKGBUILD`, the Rust tests on Arch, and the Python test files that need Arch (`pacman`'s `vercmp`, `jq`) |
 | `swaydesk-smoke:debian13` | `smoke-debian13.Dockerfile` | the headless Sway tests, `rust/scripts/headless-*.sh` |
 | `swaydesk-smoke:debian13-qalc` | `smoke-debian13-qalc.Dockerfile` | `rust/scripts/headless-drawer-qalc.sh` (the smoke image plus qalc and wl-clipboard) |
+| `swaydesk-smoke:debian13-gsettings` | `smoke-debian13-gsettings.Dockerfile` | `rust/scripts/headless-dark-windows.sh` (the smoke image plus the GSettings schemas and `gsettings`, for a session theme change with the window open) |
 
 ## Making them
 
-From the repository root; the qalc image is built on top of the smoke one, so that one comes first:
+From the repository root; the qalc and gsettings images are built on top of the smoke one, so that one comes first:
 
 ```sh
 docker build -t swaydesk-build:debian13 -f packaging/docker/build-debian13.Dockerfile packaging/docker
 docker build -t swaydesk-build:arch -f packaging/docker/build-arch.Dockerfile packaging/docker
 docker build -t swaydesk-smoke:debian13 -f packaging/docker/smoke-debian13.Dockerfile packaging/docker
 docker build -t swaydesk-smoke:debian13-qalc -f packaging/docker/smoke-debian13-qalc.Dockerfile packaging/docker
+docker build -t swaydesk-smoke:debian13-gsettings -f packaging/docker/smoke-debian13-gsettings.Dockerfile packaging/docker
 ```
 
 A test that calls a command for real needs it in the image: the test suite lists, per image, the
@@ -31,7 +33,7 @@ Running the containers with your own UID (`-u "$(id -u):$(id -g)"`, so the files
 `-v /etc/passwd:/etc/passwd:ro`: without a passwd line for that UID, the lock-logic test that reads the current
 user (`current_user_is_from_getpwuid`) fails.
 
-`--build-arg BASE=<tag>` gives the qalc image another smoke image to start from. The bases are the moving
+`--build-arg BASE=<tag>` gives the qalc and gsettings images another smoke image to start from. The bases are the moving
 tags `debian:13` and `archlinux:latest`, so a rebuild picks up the distributions' updates; the Arch one, a
 rolling release, also its newer Rust and GTK.
 

@@ -87,16 +87,15 @@ pub fn default_template(package: bool, exe: Option<&Path>, config_home: &Path) -
     }
 }
 
+/// O modelo desta sessão (o default_template, com a sessão e o binário em uso).
+pub fn template_path() -> PathBuf {
+    let package = std::env::var_os("SWAYDESK_SESSION").is_some_and(|v| v == "package");
+    default_template(package, std::env::current_exe().ok().as_deref(), &dc::config_home())
+}
+
 /// Grava o filtrado e devolve o caminho.
 pub fn write(config: &Config, template: Option<&Path>) -> Result<PathBuf, String> {
-    let config_home = dc::config_home();
-    let template = match template {
-        Some(t) => t.to_path_buf(),
-        None => {
-            let package = std::env::var_os("SWAYDESK_SESSION").is_some_and(|v| v == "package");
-            default_template(package, std::env::current_exe().ok().as_deref(), &config_home)
-        }
-    };
+    let template = template.map_or_else(template_path, Path::to_path_buf);
     let text = std::fs::read_to_string(&template).map_err(|e| format!("{}: {e}", template.display()))?;
     let out = swaydesk_common::dirs::waybar_dir().join(GENERATED);
     dc::write_file(&out, &filtered(&text, config, swaydesk_theme::which("checkupdates"))?).map_err(|e| format!("{}: {e}", out.display()))?;
