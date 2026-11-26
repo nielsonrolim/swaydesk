@@ -417,7 +417,7 @@ Description: Swaydesk apps: Desktop Theme, Displays, Help, Screenshot (metapacka
 Package: swaydesk-scripts
 Section: oldlibs
 Architecture: all
-Depends: swaydesk-common (>= ${source:Version}), swaydesk-common (<< ${source:Version}.1~), ${misc:Depends}
+Depends: swaydesk-common, ${misc:Depends}
 Description: Swaydesk helper scripts (transitional metapackage)
  Until 0.1.6, the helper scripts the components call. Since 0.1.7, each
  script ships with the package that calls it (the shared ones in
