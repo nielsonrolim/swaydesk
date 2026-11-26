@@ -1501,7 +1501,7 @@ impl App {
         let palette = config::palette(&config::load());
         self.provider.load_from_string(&format!(
             "{}{}{CSS}.glyph {{ font-size: {}px; }}\n",
-            config::css_colors(&palette),
+            config::accent_css(&palette),
             config::font_css(system_font_family().as_deref()),
             (config.icon_size as f64 * GLYPH_SCALE) as i64
         ));

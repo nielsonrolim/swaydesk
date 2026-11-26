@@ -71,7 +71,7 @@ entry {
 }
 entry:focus-within { border-color: @accent; }
 entry image { color: #8a8a8f; }
-entry text selection { background-color: @accent; color: @on_accent; }
+entry text selection, entry text selection:focus-within { background-color: @accent; color: @on_accent; }
 button {
   background: none; border: none; box-shadow: none; text-shadow: none; color: #dadada;
   border-radius: 8px; padding: 4px; outline: none;

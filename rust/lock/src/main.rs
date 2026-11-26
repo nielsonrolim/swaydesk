@@ -985,7 +985,7 @@ fn main() -> ExitCode {
     let palette = config::palette(&config);
     let display = gdk::Display::default().expect("display");
     let provider = gtk4::CssProvider::new();
-    provider.load_from_string(&format!("{}{CSS}", config::css_colors(&palette)));
+    provider.load_from_string(&format!("{}{CSS}", config::accent_css(&palette)));
     gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
 
     let user = sl::current_user().unwrap_or(sl::User { name: String::new(), gecos: String::new(), dir: config::home() });

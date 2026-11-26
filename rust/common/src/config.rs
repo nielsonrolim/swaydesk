@@ -650,6 +650,41 @@ pub fn css_colors(colors: &Palette) -> String {
     )
 }
 
+/// As variáveis e as cores com nome do destaque do GTK 4 (as que o libadwaita e o adw-gtk3 leem): o mesmo texto do
+/// gtk-4.0/gtk.css do app Tema.
+pub fn gtk4_accent_css(colors: &Palette) -> String {
+    format!(
+        ":root {{\n  --accent-bg-color: {a};\n  --accent-fg-color: {f};\n}}\n\
+         @define-color accent_bg_color {a};\n@define-color accent_fg_color {f};\n",
+        a = colors.accent,
+        f = colors.on_accent
+    )
+}
+
+/// O destaque nos widgets do GTK 4 que o tema pinta de azul. O tema Default do GTK (o do Debian 13, sem libadwaita)
+/// não lê nem as variáveis nem as cores com nome do gtk4_accent_css: tem o #3584e4 escrito em cada regra. Na
+/// prioridade APPLICATION, estas vencem as do tema (qualquer tema, seja qual for a especificidade), e um gtk.css do
+/// usuário (USER) vence estas. Por isso os ligados levam :not(:disabled) (o tema pinta o desligado), e o levelbar fica
+/// de fora (o low e o full têm as cores do tema; a bateria e o sistema pintam os seus). Os seletores são os do tema do
+/// GTK 4.18, uma regra por linha; o contorno do suggested-action fica claro. O :backdrop (janela sem foco) fica no
+/// destaque, sem o cinza do tema.
+pub const WIDGET_CSS: &str = "\
+switch:checked:not(:disabled) { background-color: @accent; border-color: @accent; color: @on_accent; }
+switch:checked:not(:disabled) > slider { border-color: @accent; }
+button.suggested-action:not(:disabled) { background-image: none; background-color: @accent; border-color: @accent; color: @on_accent; }
+button.suggested-action:hover:not(:disabled) { background-image: none; background-color: @accent_hover; border-color: @accent_hover; }
+button.suggested-action:active:not(:disabled), button.suggested-action:checked:not(:disabled) { background-image: none; background-color: @accent_hover; border-color: @accent_hover; }
+button.suggested-action.flat:not(:disabled) { background-color: transparent; border-color: transparent; color: @accent; }
+check:checked:not(:disabled), radio:checked:not(:disabled), check:indeterminate:not(:disabled), radio:indeterminate:not(:disabled) { background-image: none; background-color: @accent; border-color: @accent; color: @on_accent; }
+scale > trough > highlight, progressbar > trough > progress { background-image: none; background-color: @accent; border-color: @accent; }
+calendar > grid > label.day-number:selected { background-color: @accent; color: @on_accent; }
+row:selected, .view:selected, gridview > child:selected, flowbox > flowboxchild:selected { background-color: @accent; color: @on_accent; }
+entry:focus-within, spinbutton:focus-within { outline-color: alpha(@accent, 0.5); }
+*:focus-visible { outline-color: alpha(@accent, 0.5); }
+button.suggested-action:focus-visible { outline-color: alpha(@on_accent, 0.8); }
+text > selection:focus-within, label > selection:focus-within { background-color: alpha(@accent, 0.3); }
+";
+
 /// A classe dos campos de busca (o swaydesk_ui::search_entry): todos com o SEARCH_CSS.
 pub const SEARCH_CLASS: &str = "swaydesk-search";
 /// Com ela também, o fundo escuro do campo do rofi (nos popups escuros); sem ela, o fundo do tema GTK.
@@ -683,9 +718,9 @@ entry.swaydesk-search.search-compact > image:first-child { -gtk-icon-size: 14px;
 entry.swaydesk-search.search-compact > image:last-child:not(:first-child) { -gtk-icon-size: 14px; }
 ";
 
-/// O css_colors e os campos de busca: o CSS do destaque de quem tem uma busca.
+/// As cores com nome, as do GTK 4, os widgets e os campos de busca: o CSS do destaque dos apps do Swaydesk.
 pub fn accent_css(colors: &Palette) -> String {
-    format!("{}{SEARCH_CSS}", css_colors(colors))
+    format!("{}{}{WIDGET_CSS}{SEARCH_CSS}", css_colors(colors), gtk4_accent_css(colors))
 }
 
 /// As famílias, em ordem: a do texto, a do sistema, a dos ícones e a genérica.
@@ -722,6 +757,59 @@ mod tests {
         assert!(SEARCH_CSS.contains(&format!("entry.{SEARCH_CLASS}.{SEARCH_DARK_CLASS} {{ background: #38383d;")));
         // O waybar/accent.css continua só com as cores
         assert!(!css_colors(&colors).contains("entry"));
+    }
+
+    #[test]
+    fn the_accent_css_gives_the_gtk4_widgets_the_accent() {
+        let colors = Palette { accent: "#e01b24".into(), on_accent: "#ffffff".into(), ..palette(&Config::default()) };
+        let gtk = gtk4_accent_css(&colors);
+        assert_eq!(
+            gtk,
+            ":root {\n  --accent-bg-color: #e01b24;\n  --accent-fg-color: #ffffff;\n}\n\
+             @define-color accent_bg_color #e01b24;\n@define-color accent_fg_color #ffffff;\n"
+        );
+        assert!(accent_css(&colors).contains(&gtk), "every app with the shared CSS gets it");
+    }
+
+    #[test]
+    fn the_accent_css_colors_the_stock_gtk4_widgets() {
+        // Os temas do GTK 4 sem libadwaita (o Default do GTK 4.18) não leem o --accent-bg-color: só regras
+        // explícitas pintam os widgets. Uma regra por linha, com o destaque.
+        let css = accent_css(&palette(&Config::default()));
+        // Os ligados só sem o :disabled: na prioridade APPLICATION, a regra venceria a do tema para desligado
+        for selector in [
+            "switch:checked:not(:disabled)",
+            "button.suggested-action:not(:disabled)",
+            "button.suggested-action:hover:not(:disabled)",
+            "check:checked:not(:disabled)",
+            "radio:checked:not(:disabled)",
+            "scale > trough > highlight",
+            "progressbar > trough > progress",
+            "calendar > grid > label.day-number:selected",
+            "row:selected",
+            "entry:focus-within",
+            "text > selection:focus-within",
+        ] {
+            let rule = css
+                .lines()
+                .find(|line| line.split(" {").next().is_some_and(|head| head.split(", ").any(|s| s == selector)))
+                .unwrap_or_else(|| panic!("no rule for {selector}"));
+            assert!(rule.contains("@accent"), "{rule}");
+        }
+        // Antes da busca, que tem a sua borda no foco
+        assert!(css.find(WIDGET_CSS) < css.find(SEARCH_CSS));
+        // Nenhum fundo ou borda de ligado sem o :not(:disabled) (o contorno do foco não importa: desligado não tem
+        // foco); nada no levelbar (low, high e full têm cores do tema, e os popups da
+        // bateria e do sistema pintam os seus com seletores menos específicos)
+        for line in WIDGET_CSS.lines() {
+            let head = line.split(" {").next().unwrap_or_default();
+            for s in head.split(", ").filter(|_| line.contains("border-color")) {
+                if s.starts_with("switch:checked") || s.starts_with("button.suggested-action") || s.starts_with("check:") || s.starts_with("radio:") {
+                    assert!(s.ends_with(":not(:disabled)") || s.contains(":not(:disabled) "), "{s}");
+                }
+            }
+            assert!(!line.contains("levelbar"), "{line}");
+        }
     }
 
     #[test]

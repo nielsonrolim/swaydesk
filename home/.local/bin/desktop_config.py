@@ -463,9 +463,37 @@ SEARCH_CSS = (
     "entry.swaydesk-search.search-compact image.left { margin-right: 6px; }\n")
 
 
+# O destaque nos widgets do GTK 3 que o tema pinta de azul: o WIDGET_CSS do swaydesk_common::config, no GTK 3. O
+# Adwaita do GTK 3 tem o #3584e4 escrito em cada regra e não lê as cores com nome (medido no Debian 13). Na prioridade
+# APPLICATION, estas vencem as do tema seja qual for a especificidade: os ligados levam :not(:disabled) (o tema pinta
+# o desligado) e o levelbar fica de fora. Seletores com a menor especificidade que pega o widget: o CSS de cada
+# componente vem depois, no mesmo provider, e vence um empate. Uma regra por linha.
+WIDGET_CSS = (
+    "switch:checked:not(:disabled) { background-image: none; background-color: @accent; border-color: @accent; "
+    "color: @on_accent; }\n"
+    "switch:checked:not(:disabled) slider { border-color: @accent; }\n"
+    "button.suggested-action:not(:disabled) { background-image: none; background-color: @accent; "
+    "border-color: @accent; color: @on_accent; }\n"
+    "button.suggested-action:hover:not(:disabled) { background-image: none; background-color: @accent_hover; "
+    "border-color: @accent_hover; }\n"
+    "button.suggested-action:active:not(:disabled), button.suggested-action:checked:not(:disabled) { "
+    "background-image: none; background-color: @accent_hover; border-color: @accent_hover; }\n"
+    "button.suggested-action.flat:not(:disabled) { background-color: transparent; border-color: transparent; "
+    "color: @accent; }\n"
+    "check:checked:not(:disabled), radio:checked:not(:disabled), check:indeterminate:not(:disabled), "
+    "radio:indeterminate:not(:disabled) { background-image: none; background-color: @accent; border-color: @accent; "
+    "color: @on_accent; }\n"
+    "scale highlight, progressbar progress { background-image: none; background-color: @accent; "
+    "border-color: @accent; }\n"
+    "calendar:selected, row:selected, flowboxchild:selected, .view:selected { background-color: @accent; "
+    "color: @on_accent; }\n"
+    "entry:focus { border-color: @accent; box-shadow: inset 0 0 0 1px @accent; }\n"
+    "selection { background-color: @accent; color: @on_accent; }\n")
+
+
 def accent_css(colors):
-    """O css_colors e os campos de busca: o CSS do destaque de quem tem uma busca."""
-    return css_colors(colors) + SEARCH_CSS
+    """As cores com nome, os widgets e os campos de busca: o CSS do destaque dos componentes do Swaydesk."""
+    return css_colors(colors) + WIDGET_CSS + SEARCH_CSS
 
 
 def render_template(name, colors):

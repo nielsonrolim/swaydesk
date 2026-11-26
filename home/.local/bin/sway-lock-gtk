@@ -354,7 +354,7 @@ class LockApp:
         self.photo_path = sl.photo(user)
         self.avatar, self.avatar_text = initials_pixbuf(sl.initials(self.name), AVATAR, self.palette.accent)
         provider = Gtk.CssProvider()
-        provider.load_from_data(dc.css_colors(self.palette).encode() + CSS)
+        provider.load_from_data(dc.accent_css(self.palette).encode() + CSS)
         Gtk.StyleContext.add_provider_for_screen(Gdk.Screen.get_default(), provider,
                                                  Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
         self.display = Gdk.Display.get_default()

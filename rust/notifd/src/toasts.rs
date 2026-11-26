@@ -117,7 +117,7 @@ impl ToastWindow {
         let provider = gtk4::CssProvider::new();
         provider.load_from_string(&format!(
             "{}{}{BASE_CSS}{}",
-            config::css_colors(&palette),
+            config::accent_css(&palette),
             config::font_css(system_font_family().as_deref()),
             css()
         ));

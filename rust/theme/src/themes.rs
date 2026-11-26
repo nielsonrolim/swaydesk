@@ -161,7 +161,7 @@ pub fn gtk_css_notes(kept: &[String], others: &[String]) -> Vec<String> {
     let mut notes = Vec::new();
     if !others.is_empty() {
         notes.push(fill_one(
-            &tr("Another desktop is installed (%s), so the accent color is not written to ~/.config/gtk-3.0/gtk.css and gtk-4.0/gtk.css, which every desktop reads: in Sway, the libadwaita apps use the nearest of their own accent colors, and the GTK 3 apps keep the theme's color"),
+            &tr("Another desktop is installed (%s), so the accent color is not written to ~/.config/gtk-3.0/gtk.css and gtk-4.0/gtk.css, which every desktop reads: in Sway, Swaydesk's apps get the exact color, the libadwaita apps the nearest of their own accent colors, and the GTK 3 apps keep the theme's color"),
             &others.join(", "),
         ));
     }
@@ -1177,6 +1177,8 @@ mod tests {
         let notes = gtk_css_notes(&[], &["gnome-wayland".into(), "plasma".into()]);
         assert_eq!(notes.len(), 1);
         assert!(notes[0].starts_with("Another desktop is installed (gnome-wayland, plasma), so the accent color"));
+        // Os apps do Swaydesk carregam o destaque eles mesmos (config::accent_css): sem o gtk.css também
+        assert!(notes[0].contains("in Sway, Swaydesk's apps get the exact color, the libadwaita apps the nearest"));
         let notes = gtk_css_notes(&["gtk-3.0/gtk.css".into(), "gtk-4.0/gtk.css".into()], &[]);
         assert_eq!(notes, ["~/.config/gtk-3.0/gtk.css, ~/.config/gtk-4.0/gtk.css is not from the Theme app and was left as it was: the GTK apps don't get the accent color from it"]);
     }

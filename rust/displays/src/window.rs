@@ -138,15 +138,17 @@ pub struct Window {
 impl Window {
     #[allow(deprecated)]
     pub fn new(app: &gtk4::Application) -> Rc<Window> {
+        let palette = config::palette(&config::load());
         let provider = gtk4::CssProvider::new();
-        provider.load_from_string(CSS);
+        // O destaque da config nos widgets (o interruptor, o Aplicar), em qualquer tema
+        provider.load_from_string(&format!("{}{CSS}", config::accent_css(&palette)));
         if let Some(display) = gdk::Display::default() {
             gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
         }
         let window = gtk4::ApplicationWindow::new(app);
         window.set_title(Some(&tr("Displays")));
         window.set_default_size(780, 600);
-        let accent = config::palette(&config::load()).accent;
+        let accent = palette.accent;
 
         let area = gtk4::DrawingArea::new();
         area.set_vexpand(true);

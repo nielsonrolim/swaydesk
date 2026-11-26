@@ -638,8 +638,8 @@ msgstr "%(wanted)s não está instalado: em uso, %(used)s"
 
 #: home/.local/bin/sway_themes.py
 #, python-format
-msgid "Another desktop is installed (%s), so the accent color is not written to ~/.config/gtk-3.0/gtk.css and gtk-4.0/gtk.css, which every desktop reads: in Sway, the libadwaita apps use the nearest of their own accent colors, and the GTK 3 apps keep the theme's color"
-msgstr "Há outro desktop instalado (%s), então a cor de destaque não vai para o ~/.config/gtk-3.0/gtk.css e o gtk-4.0/gtk.css, que todo desktop lê: no Sway, os apps libadwaita usam a mais perto das cores de destaque deles, e os apps GTK 3 ficam com a cor do tema"
+msgid "Another desktop is installed (%s), so the accent color is not written to ~/.config/gtk-3.0/gtk.css and gtk-4.0/gtk.css, which every desktop reads: in Sway, Swaydesk's apps get the exact color, the libadwaita apps the nearest of their own accent colors, and the GTK 3 apps keep the theme's color"
+msgstr "Há outro desktop instalado (%s), então a cor de destaque não vai para o ~/.config/gtk-3.0/gtk.css e o gtk-4.0/gtk.css, que todo desktop lê: no Sway, os apps do Swaydesk ficam com a cor exata, os apps libadwaita com a mais perto das cores de destaque deles, e os apps GTK 3 ficam com a cor do tema"
 
 #: home/.local/bin/sway_themes.py
 #, python-format

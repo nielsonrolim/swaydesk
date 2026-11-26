@@ -990,7 +990,7 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
     let provider = gtk4::CssProvider::new();
-    provider.load_from_string(&format!("{}{}{CSS}", config::font_css(None), config::css_colors(&config::palette(&config))));
+    provider.load_from_string(&format!("{}{}{CSS}", config::font_css(None), config::accent_css(&config::palette(&config))));
     #[allow(deprecated)] // sem substituto no GTK 4.18
     gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
     if let Some(settings) = gtk4::Settings::default() {

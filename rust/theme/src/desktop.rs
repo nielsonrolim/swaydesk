@@ -575,7 +575,7 @@ pub fn gtk_css_files(colors: &Palette) -> [(&'static str, String); 2] {
     let named = format!("@define-color accent_bg_color {};\n@define-color accent_fg_color {};\n", colors.accent, colors.on_accent);
     [
         ("gtk-3.0/gtk.css", format!("{head}{named}")),
-        ("gtk-4.0/gtk.css", format!("{head}:root {{\n  --accent-bg-color: {};\n  --accent-fg-color: {};\n}}\n{named}", colors.accent, colors.on_accent)),
+        ("gtk-4.0/gtk.css", format!("{head}{}", swaydesk_common::config::gtk4_accent_css(colors))),
     ]
 }
 
@@ -866,6 +866,8 @@ mod tests {
         // O GTK 3 não entende o :root (um erro de CSS no log de cada app)
         assert!(!css3.contains(":root"));
         assert!(css4.contains(":root {\n  --accent-bg-color: #e01b24;\n  --accent-fg-color: #ffffff;\n}\n"));
+        // O mesmo texto que os apps do Swaydesk carregam (config::accent_css): os dois não se separam
+        assert!(css4.ends_with(&swaydesk_common::config::gtk4_accent_css(&colors)));
     }
 
     #[test]
