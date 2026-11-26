@@ -162,6 +162,8 @@ pub fn store(settings: &Settings, body: &str, place: Option<&str>) -> Result<Val
         data["_place"] = Value::from(place.trim());
     }
     data["_fetched"] = Value::from(glib::real_time() as f64 / 1e6);
+    // A cidade pedida: outra, depois, não usa este cache
+    data["_location"] = Value::from(settings.location.as_str());
     text::atomic_write(&settings.cache, data.to_string().as_bytes(), 0o644).map_err(|e| e.to_string())?;
     Ok(data)
 }
@@ -171,6 +173,10 @@ pub fn cached(settings: &Settings, now: &Now) -> (Option<Value>, bool) {
     let Ok(text) = std::fs::read_to_string(&settings.cache) else { return (None, false) };
     let Ok(data) = serde_json::from_str::<Value>(&text) else { return (None, false) };
     if check(&data, &settings.lang).is_err() {
+        return (None, false);
+    }
+    // Outra cidade (o weather_location mudou): o cache é o da de antes, e não vale; sem a chave, o do IP
+    if data.get("_location").and_then(Value::as_str).unwrap_or("") != settings.location {
         return (None, false);
     }
     // Virou o dia: os dados de ontem não contam como frescos

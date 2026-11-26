@@ -50,6 +50,55 @@ fn unknown_code_has_an_icon_and_a_bad_temperature_is_refused() {
 }
 
 #[test]
+fn a_cache_for_another_city_fetches_again() {
+    // O weather_location mudou: o cache da cidade de antes, ainda fresco, não vale (sem _location: o do IP)
+    let mut s = settings("city");
+    std::fs::write(&s.cache, sample("27", "176", T).to_string()).unwrap();
+    s.location = "Lisbon".into();
+    let mut fetched = false;
+    let line = bar_line(&s, &noon(T + 60.0), |_| {
+        fetched = true;
+        let mut new = sample("15", "176", T + 60.0);
+        new["_location"] = "Lisbon".into();
+        Ok(new)
+    });
+    assert!(fetched);
+    assert!(line.ends_with(" 15°C"), "{line}");
+}
+
+#[test]
+fn another_city_without_network_does_not_show_the_old_one() {
+    let mut s = settings("city-offline");
+    let mut old = sample("27", "176", T);
+    old["_location"] = "Porto".into();
+    std::fs::write(&s.cache, old.to_string()).unwrap();
+    s.location = "Lisbon".into();
+    assert_eq!(bar_line(&s, &noon(T + 60.0), |_| Err("offline".into())), PLACEHOLDER);
+}
+
+#[test]
+fn the_same_city_keeps_the_cache() {
+    let mut s = settings("city-same");
+    let mut old = sample("27", "176", T);
+    old["_location"] = "Lisbon".into();
+    std::fs::write(&s.cache, old.to_string()).unwrap();
+    s.location = "Lisbon".into();
+    assert!(bar_line(&s, &noon(T + 60.0), |_| panic!("não devia buscar")).ends_with(" 27°C"));
+}
+
+#[test]
+fn the_cache_keeps_the_city_it_was_fetched_for() {
+    let mut s = settings("city-store");
+    s.location = "João Pessoa".into();
+    let mut body = sample("27", "176", T);
+    body.as_object_mut().unwrap().remove("_fetched");
+    let data = store(&s, &body.to_string(), Some("João Pessoa")).unwrap();
+    assert_eq!(data["_location"], "João Pessoa");
+    let saved: Value = serde_json::from_str(&std::fs::read_to_string(&s.cache).unwrap()).unwrap();
+    assert_eq!(saved["_location"], "João Pessoa");
+}
+
+#[test]
 fn recent_cache_does_not_use_the_network() {
     let s = settings("recent");
     std::fs::write(&s.cache, sample("28", "176", T).to_string()).unwrap();
