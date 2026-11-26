@@ -700,7 +700,19 @@ fn update_herdr(colors: &Palette) -> Result<Option<bool>, std::io::Error> {
     if run(&["pgrep", "-u", &own_uid(), "-x", "herdr"], None) != 0 {
         return Ok(Some(true));
     }
-    Ok(Some(run(&["herdr", "server", "reload-config"], None) == 0))
+    let mut command = std::process::Command::new("herdr");
+    command.args(["server", "reload-config"]);
+    Ok(Some(run_timeout(&mut command, Duration::from_secs(10)).is_some_and(|(code, out)| herdr_reloaded(code, &out))))
+}
+
+/// O herdr 0.9.5 sai com 0 mesmo quando não carrega o config: o "status" do JSON diz. Sem JSON (um herdr mais
+/// velho), vale o código de saída.
+fn herdr_reloaded(code: i32, output: &str) -> bool {
+    if code != 0 {
+        return false;
+    }
+    let Ok(reply) = serde_json::from_str::<serde_json::Value>(output) else { return true };
+    reply.pointer("/result/status").and_then(|s| s.as_str()) != Some("failed")
 }
 
 /// Encerra o programa e espera ele sair. False: continuou rodando.
@@ -1049,6 +1061,17 @@ pub fn accent_auto() -> Result<Auto, Error> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn herdr_reload_reads_the_json_status() {
+        let failed = r#"{"id":"cli:server:reload-config","result":{"diagnostics":["x"],"status":"failed","type":"config_reload"}}"#;
+        assert!(!herdr_reloaded(0, failed));
+        assert!(herdr_reloaded(0, r#"{"result":{"status":"applied"}}"#));
+        assert!(herdr_reloaded(0, "config reloaded\n"));
+        assert!(herdr_reloaded(0, ""));
+        assert!(!herdr_reloaded(1, "error\n"));
+        assert!(!herdr_reloaded(1, r#"{"result":{"status":"applied"}}"#));
+    }
+
     use super::*;
 
     /// Um /proc falso com processos sway (pid, perfil: None sem o DCONF_PROFILE), todos do usuário que roda o teste.
