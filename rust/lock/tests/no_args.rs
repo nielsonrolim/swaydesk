@@ -6,32 +6,66 @@
 use std::fs;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::sync::Mutex;
 
-fn tree(name: &str) -> PathBuf {
+/// Os testes rodam em threads do mesmo processo. Um spawn de uma thread herda, entre o fork e o exec, o fd de
+/// escrita que outra thread ainda tem aberto num executável novo (o swaydesk-lock copiado, um sway-lock falso); se
+/// essa outra thread executa o arquivo nesse intervalo, o exec falha com ETXTBSY ("Text file busy"). Esta trava
+/// separa as duas coisas: a escrita de um executável e o spawn (que só volta depois do exec do filho, quando os fds
+/// herdados com CLOEXEC já fecharam).
+static EXEC: Mutex<()> = Mutex::new(());
+
+/// A árvore de um teste, apagada quando ele termina (passando ou não): a cópia do binário de debug tem dezenas de MB,
+/// e cada execução deixava a sua no CARGO_TARGET_TMPDIR.
+struct Tree(PathBuf);
+
+impl std::ops::Deref for Tree {
+    type Target = Path;
+    fn deref(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for Tree {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.0);
+    }
+}
+
+fn tree(name: &str) -> Tree {
     let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("lock-no-args-{name}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&root);
     fs::create_dir_all(root.join("bin")).unwrap();
+    let _exec = EXEC.lock().unwrap_or_else(|e| e.into_inner());
     fs::copy(env!("CARGO_BIN_EXE_swaydesk-lock"), root.join("bin/swaydesk-lock")).unwrap();
-    root
+    Tree(root)
 }
 
 /// Um sway-lock falso: grava os argumentos (uma linha) e sai com o código pedido.
 fn fake_sway_lock(path: &Path, code: i32) {
     fs::create_dir_all(path.parent().unwrap()).unwrap();
     let log = path.with_file_name("sway-lock.args");
+    let _exec = EXEC.lock().unwrap_or_else(|e| e.into_inner());
     fs::write(path, format!("#!/bin/sh\necho \"[$*]\" >> '{}'\nexit {code}\n", log.display())).unwrap();
     fs::set_permissions(path, fs::Permissions::from_mode(0o755)).unwrap();
 }
 
 fn run(root: &Path, args: &[&str]) -> std::process::Output {
-    Command::new(root.join("bin/swaydesk-lock"))
-        .args(args)
-        .env("HOME", root.join("home"))
-        .env("PATH", "/usr/bin:/bin")
-        .env_remove("SWAYDESK_SESSION")
-        .output()
-        .unwrap()
+    let child = {
+        let _exec = EXEC.lock().unwrap_or_else(|e| e.into_inner());
+        Command::new(root.join("bin/swaydesk-lock"))
+            .args(args)
+            .env("HOME", root.join("home"))
+            .env("PATH", "/usr/bin:/bin")
+            .env_remove("SWAYDESK_SESSION")
+            .stdin(Stdio::null())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap()
+    };
+    child.wait_with_output().unwrap()
 }
 
 #[test]
