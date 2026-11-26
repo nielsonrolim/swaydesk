@@ -2775,6 +2775,38 @@ msgstr "indicador de volumen y brillo: sway-osd-bar en lugar de wob"
 msgid "volume and brightness indicator: log in to Sway again to open the sway-osd-bar"
 msgstr "indicador de volumen y brillo: vuelve a iniciar sesión en Sway para abrir sway-osd-bar"
 
+#: rust/desktop-config/src/main.rs
+msgid "when you log in again"
+msgstr "al volver a iniciar sesión"
+
+#: rust/desktop-config/src/main.rs
+msgid ""
+"The popups already open with the new color. The rest changes when you log in again or restart it:\n"
+"  Waybar: %s\n"
+"  drawer (it opens again by itself): pkill -u \"$USER\" -x sway-drawer\n"
+"  volume and brightness indicator (it opens again by itself): pkill -u \"$USER\" -x sway-osd-bar\n"
+"  dock and notifications: when you log in again"
+msgstr ""
+"Los popups ya se abren con el color nuevo. El resto cambia al volver a iniciar sesión o al reiniciarlo:\n"
+"  Waybar: %s\n"
+"  cuadrícula de aplicaciones (se vuelve a abrir sola): pkill -u \"$USER\" -x sway-drawer\n"
+"  indicador de volumen y brillo (se vuelve a abrir solo): pkill -u \"$USER\" -x sway-osd-bar\n"
+"  dock y notificaciones: al volver a iniciar sesión"
+
+#: rust/desktop-config/src/main.rs
+msgid ""
+"The popups already open with the new color. The rest changes when you log in again or restart it:\n"
+"  Waybar: when you log in again\n"
+"  drawer: systemctl --user restart swaydesk-drawer.service\n"
+"  volume and brightness indicator: systemctl --user restart swaydesk-osd.service\n"
+"  dock and notifications: when you log in again"
+msgstr ""
+"Los popups ya se abren con el color nuevo. El resto cambia al volver a iniciar sesión o al reiniciarlo:\n"
+"  Waybar: al volver a iniciar sesión\n"
+"  cuadrícula de aplicaciones: systemctl --user restart swaydesk-drawer.service\n"
+"  indicador de volumen y brillo: systemctl --user restart swaydesk-osd.service\n"
+"  dock y notificaciones: al volver a iniciar sesión"
+
 #: rust/displays/src/window.rs
 msgid "Normal"
 msgstr "Normal"

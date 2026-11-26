@@ -37,9 +37,7 @@ pub fn helper_candidates(name: &str, exe_dir: Option<&Path>, home_bin: &Path) ->
 pub fn helper(name: &str) -> PathBuf {
     find_helper(name).unwrap_or_else(|| {
         if first_miss(name) {
-            // O install.sh copia os binários para o ~/.local/bin; o exe_dir já vem resolvido, a HOME pode não vir
-            let dotfiles = exe_dir().is_some_and(|dir| std::fs::canonicalize(local_bin()).is_ok_and(|bin| bin == dir));
-            eprintln!("{}", missing_helper_message(name, &helper_search(name), dotfiles));
+            eprintln!("{}", missing_helper_message(name, &helper_search(name), dotfiles_install()));
         }
         local_bin().join(name)
     })
@@ -118,6 +116,12 @@ pub fn missing_beside_exe_message(name: &str) -> String {
     let tried = dir.as_deref().map(|d| helper_candidates(name, Some(d), d)).unwrap_or_default();
     let dotfiles = dir.is_some_and(|dir| std::fs::canonicalize(local_bin()).is_ok_and(|bin| bin == dir));
     missing_helper_message(name, &tried, dotfiles)
+}
+
+/// Este binário é o dos dotfiles: o install.sh copia os binários para o ~/.local/bin. O exe_dir já vem resolvido,
+/// a HOME pode não vir.
+pub fn dotfiles_install() -> bool {
+    exe_dir().is_some_and(|dir| std::fs::canonicalize(local_bin()).is_ok_and(|bin| bin == dir))
 }
 
 /// Se este processo está na sessão do pacote swaydesk-desktop (o sway-session --package exporta

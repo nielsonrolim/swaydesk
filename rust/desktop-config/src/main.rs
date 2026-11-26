@@ -27,7 +27,43 @@ fn usage() -> String {
 }
 
 fn after_apply() -> String {
-    tr("The popups already open with the new color. The rest changes when you log in again or restart it:\n  Waybar: ~/.local/bin/sway-waybar restart\n  drawer: pkill -x sway-drawer; ~/.local/bin/sway-drawer start\n  volume and brightness indicator: pkill -x sway-osd-bar (it opens again by itself)\n  dock and notifications: when you log in again")
+    let install = if swaydesk_common::paths::dotfiles_install() {
+        Install::Dotfiles
+    } else if swaydesk_common::paths::package_session() {
+        Install::PackageSession
+    } else {
+        Install::PlainSway
+    };
+    let waybar = (install == Install::PackageSession).then(|| swaydesk_common::paths::find_helper("sway-waybar")).flatten();
+    after_apply_for(install, waybar.as_deref())
+}
+
+/// Como a grade, o OSD e a Waybar sobem, que é o que o aviso do apply manda reiniciar
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Install {
+    /// O binário no ~/.local/bin (o install.sh): os lançadores de lá
+    Dotfiles,
+    /// A sessão do pacote (SWAYDESK_SESSION=package): a grade e o OSD no laço do config do Sway, que os abre de
+    /// novo (as units deles pulam nessa sessão), e a Waybar pelo sway-waybar do pacote
+    PackageSession,
+    /// Os pacotes num Sway puro: a grade e o OSD pelas units dos snippets, e a Waybar é a da pessoa
+    PlainSway,
+}
+
+/// O aviso depois do apply. Nos dotfiles, o mesmo texto da versão em Python. Na sessão do pacote, o sway-waybar dele
+/// (sem ele, a Waybar muda no próximo login) e o pkill que faz o laço reabrir a grade e o OSD. No Sway puro, as units.
+fn after_apply_for(install: Install, waybar: Option<&Path>) -> String {
+    match install {
+        Install::Dotfiles => tr("The popups already open with the new color. The rest changes when you log in again or restart it:\n  Waybar: ~/.local/bin/sway-waybar restart\n  drawer: pkill -x sway-drawer; ~/.local/bin/sway-drawer start\n  volume and brightness indicator: pkill -x sway-osd-bar (it opens again by itself)\n  dock and notifications: when you log in again"),
+        Install::PackageSession => {
+            let waybar = match waybar {
+                Some(script) => format!("{} restart", script.display()),
+                None => tr("when you log in again"),
+            };
+            fill_one(&tr("The popups already open with the new color. The rest changes when you log in again or restart it:\n  Waybar: %s\n  drawer (it opens again by itself): pkill -u \"$USER\" -x sway-drawer\n  volume and brightness indicator (it opens again by itself): pkill -u \"$USER\" -x sway-osd-bar\n  dock and notifications: when you log in again"), &waybar)
+        }
+        Install::PlainSway => tr("The popups already open with the new color. The rest changes when you log in again or restart it:\n  Waybar: when you log in again\n  drawer: systemctl --user restart swaydesk-drawer.service\n  volume and brightness indicator: systemctl --user restart swaydesk-osd.service\n  dock and notifications: when you log in again"),
+    }
 }
 
 /// Refaz o tema de ícones gerado antes dos settings.ini e do qt5ct, que o usam. Na sessão (apply), também
@@ -165,5 +201,49 @@ fn main() -> ExitCode {
             eprintln!("{}", usage());
             ExitCode::from(2)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn the_dotfiles_hints_name_the_launchers_in_local_bin() {
+        let text = after_apply_for(Install::Dotfiles, None);
+        assert!(text.contains("~/.local/bin/sway-waybar restart"), "{text}");
+        assert!(text.contains("~/.local/bin/sway-drawer start"), "{text}");
+    }
+
+    // Na sessão do pacote, a grade e o OSD rodam no laço do config do Sway, não nas units (que pulam com o
+    // SWAYDESK_SESSION): o systemctl restart não fazia nada, e o pkill faz o laço abrir de novo
+    #[test]
+    fn the_package_session_hints_name_its_sway_waybar_and_the_loops() {
+        let text = after_apply_for(Install::PackageSession, Some(&PathBuf::from("/usr/lib/swaydesk/sway-waybar")));
+        assert!(!text.contains("~/.local/bin"), "{text}");
+        assert!(!text.contains("systemctl"), "{text}");
+        assert!(text.contains("Waybar: /usr/lib/swaydesk/sway-waybar restart"), "{text}");
+        // O comando fecha a linha: copiado dali, não leva a nota junto (um parêntese é erro de sintaxe no shell)
+        let lines: Vec<&str> = text.lines().collect();
+        assert!(lines.iter().any(|l| l.ends_with(": pkill -u \"$USER\" -x sway-drawer")), "{text}");
+        assert!(lines.iter().any(|l| l.ends_with(": pkill -u \"$USER\" -x sway-osd-bar")), "{text}");
+    }
+
+    #[test]
+    fn without_the_sway_waybar_script_the_package_hint_says_log_in_again() {
+        let text = after_apply_for(Install::PackageSession, None);
+        assert!(!text.contains("sway-waybar"), "{text}");
+        assert!(text.contains("Waybar: when you log in again"), "{text}");
+    }
+
+    // No Sway puro com os pacotes, os snippets sobem a grade e o OSD pelas units; a Waybar é a da pessoa
+    #[test]
+    fn on_a_plain_sway_the_hints_name_the_units() {
+        let text = after_apply_for(Install::PlainSway, Some(&PathBuf::from("/usr/lib/swaydesk/sway-waybar")));
+        assert!(!text.contains("~/.local/bin"), "{text}");
+        assert!(!text.contains("sway-waybar"), "{text}");
+        assert!(text.contains("systemctl --user restart swaydesk-drawer.service"), "{text}");
+        assert!(text.contains("systemctl --user restart swaydesk-osd.service"), "{text}");
     }
 }

@@ -2761,6 +2761,28 @@ msgstr ""
 msgid "volume and brightness indicator: log in to Sway again to open the sway-osd-bar"
 msgstr ""
 
+#: rust/desktop-config/src/main.rs
+msgid "when you log in again"
+msgstr ""
+
+#: rust/desktop-config/src/main.rs
+msgid ""
+"The popups already open with the new color. The rest changes when you log in again or restart it:\n"
+"  Waybar: %s\n"
+"  drawer (it opens again by itself): pkill -u \"$USER\" -x sway-drawer\n"
+"  volume and brightness indicator (it opens again by itself): pkill -u \"$USER\" -x sway-osd-bar\n"
+"  dock and notifications: when you log in again"
+msgstr ""
+
+#: rust/desktop-config/src/main.rs
+msgid ""
+"The popups already open with the new color. The rest changes when you log in again or restart it:\n"
+"  Waybar: when you log in again\n"
+"  drawer: systemctl --user restart swaydesk-drawer.service\n"
+"  volume and brightness indicator: systemctl --user restart swaydesk-osd.service\n"
+"  dock and notifications: when you log in again"
+msgstr ""
+
 #: rust/displays/src/window.rs
 msgid "Normal"
 msgstr ""
