@@ -696,6 +696,10 @@ fn update_herdr(colors: &Palette) -> Result<Option<bool>, std::io::Error> {
     let line = format!("accent = \"{}\"", colors.accent);
     let body = HERDR_ACCENT.replacen(body, 1, regex::NoExpand(&line));
     dc::write_file(&dc::resolved(&file), &format!("{}{}{}", &text[..start], body, &text[end..]))?;
+    // Sem o servidor aberto, o reload-config falha, e o próximo início já lê o arquivo novo: não é erro
+    if run(&["pgrep", "-u", &own_uid(), "-x", "herdr"], None) != 0 {
+        return Ok(Some(true));
+    }
     Ok(Some(run(&["herdr", "server", "reload-config"], None) == 0))
 }
 
