@@ -62,10 +62,15 @@ button.link > label { text-decoration-line: none; }
 
 /// O motivo de cada fechamento, para investigar os inesperados.
 pub fn log(program: &str, message: &str) {
-    let path = resident::runtime_dir().join("waybar-popups.log");
+    log_to(&resident::runtime_dir().join("waybar-popups.log"), program, message);
+}
+
+fn log_to(path: &Path, program: &str, message: &str) {
     if let Ok(mut file) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
         let now = glib::DateTime::now_local().ok().and_then(|t| t.format("%F %T").ok()).unwrap_or_default();
-        let _ = writeln!(file, "{now} {program}: {message}");
+        // Uma escrita só: com o O_APPEND, a linha não se mistura com a de outro popup que escreve ao mesmo tempo (o
+        // writeln! faz uma escrita por pedaço)
+        let _ = file.write_all(format!("{now} {program}: {message}\n").as_bytes());
     }
 }
 
@@ -652,6 +657,38 @@ mod tests {
         let python = std::fs::read_to_string(path).unwrap();
         for name in POPUPS {
             assert!(python.contains(&format!("\"{name}\"")), "{name}");
+        }
+    }
+
+    #[test]
+    fn concurrent_log_lines_never_interleave() {
+        // O popup novo ("opened again") e o velho ("SIGTERM") escrevem no mesmo log ao mesmo tempo
+        let dir = std::env::temp_dir().join(format!("swaydesk-ui-log-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("waybar-popups.log");
+        let _ = std::fs::remove_file(&path);
+        let threads: Vec<_> = (0..8)
+            .map(|i| {
+                let path = path.clone();
+                std::thread::spawn(move || {
+                    for _ in 0..300 {
+                        log_to(&path, &format!("popup-{i}"), "opened again: SIGTERM to the open one");
+                    }
+                })
+            })
+            .collect();
+        for thread in threads {
+            thread.join().unwrap();
+        }
+        let text = std::fs::read_to_string(&path).unwrap();
+        std::fs::remove_dir_all(&dir).unwrap();
+        assert_eq!(text.lines().count(), 8 * 300);
+        for line in text.lines() {
+            let (_, rest) = line.split_at(19);
+            assert!(
+                rest.starts_with(" popup-") && rest.ends_with(": opened again: SIGTERM to the open one") && rest.matches(':').count() == 2,
+                "{line}"
+            );
         }
     }
 }
