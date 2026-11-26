@@ -16,6 +16,9 @@ set -u
 impl=${1:-rust} size=${2:-1280x800} count=${3:-20}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" "$HOME/.local/share/applications" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+failed=0
+. /repo/rust/scripts/lib-dark-text.sh
+fake_adw_gtk3_dark  # o tema da sessão como no Debian 13: o adw-gtk3-dark do GTK 4.18
 for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
 for f in /bin/swaydesk-*; do cp "$f" "$HOME/.local/bin/"; done
 icons=(utilities-terminal system-file-manager accessories-text-editor preferences-system audio-volume-high
@@ -41,5 +44,7 @@ SWAY_DRAWER_IMPL=$impl "$HOME/.local/bin/sway-drawer"
 for _ in $(seq 30); do [ -e "$XDG_RUNTIME_DIR/sway-drawer.shown" ] && break; sleep 0.1; done
 sleep 1.5
 grim "/out/$impl-$size-$count.png"
+no_light_text "$impl: os nomes e as abas da grade"
 [ -e "$XDG_RUNTIME_DIR/sway-drawer.shown" ] && echo "ok      $impl $size $count apps: /out/$impl-$size-$count.png" \
   || { echo "FALHOU  a grade não abriu"; cat /tmp/drawer.log; exit 1; }
+exit $failed

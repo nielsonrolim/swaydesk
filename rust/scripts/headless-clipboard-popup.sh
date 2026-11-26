@@ -15,6 +15,8 @@ set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" /tmp/fakebin && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do [ -f "$f" ] && ln -sf "$f" "$HOME/.local/bin/"; done
+. /repo/rust/scripts/lib-dark-text.sh
+fake_adw_gtk3_dark  # o tema da sessão como no Debian 13: o adw-gtk3-dark do GTK 4.18
 for f in /bin/swaydesk-*; do [ "${f##*/}" = swaydesk-vpointer ] || cp "$f" "$HOME/.local/bin/"; done
 # O histórico: um arquivo por item em /tmp/hist/<id>, e a prévia em /tmp/hist/<id>.preview
 reset_history() {
@@ -68,6 +70,7 @@ for impl in ${IMPLS:-rust python}; do
   open_popup "$impl"
   echo "$impl: popup $(readlink /proc/$popup/exe)"
   grim "/out/clip-$impl.png"
+  no_light_text "$impl: as linhas, a selecionada e as outras"
   click 1050 113  # o primeiro item: o texto comum
   expect "$impl: o clique copia o texto" "texto comum para copiar" "$(cat /tmp/copied 2>/dev/null)"
   for _ in $(seq 50); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done  # o Python sai devagar

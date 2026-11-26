@@ -17,6 +17,8 @@
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+. /repo/rust/scripts/lib-dark-text.sh
+fake_adw_gtk3_dark  # o tema da sessão como no Debian 13: o adw-gtk3-dark do GTK 4.18
 cp /repo/home/.local/bin/* "$HOME/.local/bin/"
 cp /bin/swaydesk-switcher "$HOME/.local/bin/"
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
@@ -81,6 +83,7 @@ for impl in ${IMPLS:-rust python}; do
   SWAY_SWITCHER_IMPL=$impl "$HOME/.local/bin/sway-switcher" next
   sleep 0.5
   grim "/out/switcher-$impl-1.png"
+  no_light_text "$impl: as linhas do cartão, a selecionada e as outras"
   # Três linhas: o meio do cartão é a segunda, a janela usada antes (B)
   /bin/swaydesk-vpointer --size 1280x720 move 640 360 click sleep 300
   expect "$impl: o clique foca a usada antes" "B" "$(focused)"

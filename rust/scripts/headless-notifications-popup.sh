@@ -13,6 +13,8 @@
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
+. /repo/rust/scripts/lib-dark-text.sh
+fake_adw_gtk3_dark  # o tema da sessão como no Debian 13: o adw-gtk3-dark do GTK 4.18
 for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
 for f in /bin/swaydesk-*; do [ "${f##*/}" = swaydesk-vpointer ] || cp "$f" "$HOME/.local/bin/"; done
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
@@ -47,6 +49,7 @@ for impl in rust python; do
   c2=$(notify notify "Outra mensagem" "<b>Importante</b>: reunião às 15h" --app Chat)
   open_popup "$impl"
   grim "/out/popup-$impl.png"
+  no_light_text "$impl: os cartões (título, corpo e ícone)"
   echo "$impl: popup $(readlink /proc/$popup/exe)"
   click 1237 54  # o "Limpar" do grupo Chat
   expect "$impl: Limpar do grupo tira só o grupo" "$n1" "$(notify list)"

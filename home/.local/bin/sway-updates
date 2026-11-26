@@ -3,15 +3,17 @@
 # parte de atualizações dela (allow-updates=false): o aviso é este, com os repositórios oficiais (o checkupdates
 # do pacman-contrib, que sincroniza uma cópia temporária dos bancos e não mexe nos do sistema), o AUR (pelo paru
 # ou o yay já instalados), o Flatpak e o firmware (fwupd). Nunca atualiza sozinho e não guarda senha.
-# uso: sway-updates loop     a verificação em segundo plano: 5 minutos depois do login e depois a cada 6 horas.
+# uso: sway-updates loop     a verificação em segundo plano: ao começar, tira do cache, sem rede, o que já está
+#                            instalado (prune); depois, a verificação 30 segundos depois do login e a cada 6 horas.
 #                            O sway-update-notifier o abre (com update_notifier = false no [enabled], não abre),
 #                            e ele termina com a sessão. Não roda na ISO live
 #      sway-updates check    confere agora: a lista vai para o cache que o ícone da Waybar (waybar-updates) lê,
 #                            e uma notificação vem quando a lista tem algo novo
 #      sway-updates upgrade  abre o kitty com o paku maintain (a manutenção inteira, com o Flatpak), senão o paru
 #                            -Syu, o yay -Syu ou o sudo pacman -Syu seguidos do flatpak update; depois, o fwupdmgr
-#                            update e, no fim, confere de novo. Com um já aberto, traz esse para a frente. Fora do
-#                            Arch (sem o pacman), não abre nada
+#                            update e, no fim, confere de novo. O cache é podado ao abrir e logo depois do
+#                            gerenciador de pacotes, antes do reinício que ele sugira. Com um já aberto, traz
+#                            esse para a frente. Fora do Arch (sem o pacman), não abre nada
 #
 # O cache, em ~/.cache/swaydesk: updates (as linhas do checkupdates, "nome antiga -> nova"), updates.aur,
 # updates.flatpak, updates.firmware e updates.notified (as linhas "fonte nome nova" da última notificação). Sem o checkupdates, nada acontece: no Debian e no Ubuntu a loja
@@ -31,9 +33,11 @@ notify_id=$run/sway-updates-notify.id
 pacman_lock=${SWAY_UPDATES_PACMAN_LOCK:-/var/lib/pacman/db.lck}
 live_mark=${SWAY_UPDATES_LIVE:-/run/archiso}
 pacman_cmd=${SWAY_UPDATES_PACMAN:-pacman}  # a atualização é do Arch: sem o pacman (Debian, Ubuntu, Mint), nada abre
-first=${SWAY_UPDATES_FIRST:-300}       # a primeira verificação depois do login
+first=${SWAY_UPDATES_FIRST:-30}        # a primeira verificação depois do login (a rede subindo; sem ela, o retry)
 every=${SWAY_UPDATES_EVERY:-21600}     # depois, a cada 6 horas
 retry=${SWAY_UPDATES_RETRY:-900}       # sem rede: 15 minutos
+first_retry=${SWAY_UPDATES_FIRST_RETRY:-120}  # sem rede na primeira: a rede do login pode passar dos 30 s (o
+                                              # Wi-Fi, um DHCP lento), e o cache já foi podado sem ela
 busy_retry=${SWAY_UPDATES_BUSY:-600}   # com o pacman rodando: 10 minutos
 nap=${SWAY_UPDATES_NAP:-900}           # o sono mais longo: quem decide é o relógio, porque o sleep para na suspensão
 wait_limit=${SWAY_UPDATES_WAIT:-$every}  # quanto a notificação espera um clique
@@ -204,12 +208,14 @@ fetch_aur() {
   return 0
 }
 
+# Com "offline" (o prune), o resumo dos remotos guardado da última consulta (--cached), sem rede
 fetch_flatpak() {
-  local app branch
+  local app branch cached=()
   command -v flatpak >/dev/null 2>&1 || return 0
+  [[ ${1-} == offline ]] && cached=(--cached)
   # O do sistema e o do usuário, com os runtimes (o flatpak update também os atualiza). Precisa de rede: um
   # remoto que falha faz o comando todo falhar
-  capture flatpak remote-ls --updates --columns=application,branch
+  capture flatpak remote-ls --updates "${cached[@]}" --columns=application,branch
   if ((rc != 0)); then
     log "flatpak remote-ls failed ($rc): ${err:-no network}"
     return 1
@@ -230,14 +236,17 @@ fwupd_reason() {
   printf '%s' "$message"
 }
 
+# Com "offline" (o prune), sem o refresh: o get-updates só lê os metadados que já há
 fetch_firmware() {
   local name old new safe
   command -v fwupdmgr >/dev/null 2>&1 || return 0
+  if [[ ${1-} != offline ]]; then
   # Os metadados do LVFS: o fwupd-refresh.timer vem desligado no Arch, e a loja não os baixa mais (sem a página
   # Atualizações). O polkit deixa quem está na sessão (refresh-remote), e o fwupd pula o que tem menos de 24 h
   # (sai com 2); sem rede, sai com 1 e o motivo no JSON. Uma falha aqui só vai para o log: as atualizações saem dos metadados que há
   capture fwupdmgr refresh --json
   case $rc in 0|2) ;; *) log "fwupdmgr refresh failed ($rc): $(fwupd_reason)" ;; esac
+  fi
   # Com --json, sai com 0 também sem nenhuma atualização e sem dispositivos (numa VM: {"Devices": []}), e não
   # pergunta nada; um erro (o daemon fora do ar) sai com 1
   capture fwupdmgr get-updates --json
@@ -272,7 +281,7 @@ check() {
     file=$(source_file "$source")
     if "fetch_$source"; then
       # Um arquivo temporário por processo: a verificação do laço e a do fim da atualização podem rodar juntas
-      { if ((${#found[@]})); then printf '%s\n' "${found[@]}"; fi; } >"$file.tmp.$$" && mv -f "$file.tmp.$$" "$file"
+      write_source "$source"
     elif [[ $source == repo ]]; then
       failed=1
     fi
@@ -316,8 +325,61 @@ check() {
   return "$failed"
 }
 
+# Grava as linhas de $found no cache da fonte, de uma vez (um arquivo temporário por processo)
+write_source() {
+  local file
+  file=$(source_file "$1")
+  { if ((${#found[@]})); then printf '%s\n' "${found[@]}"; fi; } >"$file.tmp.$$" && mv -f "$file.tmp.$$" "$file"
+}
+
+# Sem rede: tira do cache o que a última verificação listou e já não vale. Depois de uma atualização e de um
+# reinício, a lista de antes ficava no ícone até a primeira verificação do laço. Dos oficiais e do AUR, cada pacote
+# que já está na versão nova (ou depois) ou foi desinstalado (o pacman -Q e o vercmp); do Flatpak, o resumo guardado
+# dos remotos; do firmware, os metadados que já há. Cada fonte falha sozinha, e aí fica como estava. Com
+# "packages" (a janela de atualização, em volta do gerenciador de pacotes), só os oficiais e o AUR: o Flatpak e o
+# firmware a verificação do fim confere.
+prune() {
+  local source file line name lines=() names=() total=0
+  local -A have=()
+  [[ -d $cache ]] || return 0
+  if command -v vercmp >/dev/null 2>&1 && command -v "$pacman_cmd" >/dev/null 2>&1; then
+    for source in repo aur; do
+      file=$(source_file "$source")
+      [[ -s $file ]] || continue
+      mapfile -t lines <"$file"
+      names=() have=() found=()
+      for line in "${lines[@]}"; do names+=("${line%% *}"); done
+      # O pacman -Q sai com 1 quando um dos nomes não está instalado, e lista os outros
+      while read -r name line; do [[ -n $name ]] && have[$name]=$line; done \
+        < <(LC_ALL=C "$pacman_cmd" -Q -- "${names[@]}" 2>/dev/null)
+      for line in "${lines[@]}"; do
+        name=${line%% *}
+        [[ -n ${have[$name]-} ]] || continue
+        (($(vercmp "${have[$name]}" "${line##* }") < 0)) && found+=("$line")
+      done
+      ((${#found[@]} == ${#lines[@]})) || write_source "$source"
+    done
+  fi
+  for source in flatpak firmware; do
+    [[ ${1-} == packages ]] && break
+    [[ -s $(source_file "$source") ]] || continue
+    found=()
+    "fetch_$source" offline && write_source "$source"
+  done
+  for source in "${SOURCES[@]}"; do
+    file=$(source_file "$source")
+    [[ -s $file ]] && total=$((total + $(wc -l <"$file")))
+  done
+  # Nada mais a atualizar: a notificação da lista velha sai, e a próxima lista volta a notificar
+  if ((total == 0)); then
+    [[ -e $notified ]] && : >"$notified"
+    close_notification
+  fi
+  refresh_icons
+}
+
 loop() {
-  local now due rc pause sleeper=
+  local now due rc pause sleeper= checked=0
   [[ -e $live_mark ]] && exit 0
   command -v checkupdates >/dev/null 2>&1 || exit 0
   mkdir -p "$run"
@@ -326,6 +388,7 @@ loop() {
   # Os filhos não herdam a trava (o 8>&- em cada um): um sleep ou um notify-wait que sobrasse do logout a
   # seguraria, e o laço do login seguinte sairia calado. O sleep sai junto com o laço
   trap '[[ -n $sleeper ]] && kill "$sleeper" 2>/dev/null; close_notification 8>&-; exit 0' TERM INT HUP
+  prune 8>&-
   printf -v now '%(%s)T' -1
   due=$((now + first))
   while :; do
@@ -335,8 +398,9 @@ loop() {
       case $rc in
         0) due=$((now + every)) ;;
         3) due=$((now + busy_retry)) ;;
-        *) due=$((now + retry)) ;;
+        *) if ((checked)); then due=$((now + retry)); else due=$((now + first_retry)); fi ;;
       esac
+      ((rc == 0)) && checked=1
     fi
     pause=$((due - now))
     ((pause > nap)) && pause=$nap
@@ -418,6 +482,7 @@ run_upgrade() {
   exec 9>"$upgrade_lock"
   flock -n 9 || exit 0
   local helper rc=0
+  prune packages 9>&-
   if use_paku; then
     printf '%s\n\n' "$(t 'Maintaining the system with paku maintain: the Arch news, the updates (Flatpak too) and the cleanup, each step asking first. sudo asks for your password.')"
     # O Ctrl-C vai ao grupo todo do terminal. Numa pergunta do paku, ele morre do SIGINT (não sai com 130), e o
@@ -435,6 +500,7 @@ run_upgrade() {
       130) printf '%s\n\n' "$(t 'paku maintain was stopped.')" ;;
       *) printf '%s\n\n' "$(t 'paku maintain ended; see above.')" ;;
     esac
+    prune packages 9>&-
   else
     # O ajudante do AUR atualiza também os repositórios oficiais, e chama o sudo sozinho: roda como o usuário
     if helper=$(aur_helper); then
@@ -444,6 +510,7 @@ run_upgrade() {
       printf '%s\n\n' "$(t 'Updating the system with sudo pacman -Syu. sudo asks for your password.')"
       sudo pacman -Syu 9>&-
     fi
+    prune packages 9>&-  # logo depois do pacman: a janela pode fechar ou o sistema reiniciar antes da verificação do fim
     echo
     # Os apps Flatpak, do sistema e do usuário: o polkit libera os do sistema para quem está na sessão. Cada fonte
     # falha sozinha: um -Syu que falhou ou foi cancelado não segura os apps nem o firmware
