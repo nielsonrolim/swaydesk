@@ -16,7 +16,7 @@ Rules-Requires-Root: no
 Package: swaydesk-common
 Architecture: all
 Pre-Depends: ${misc:Pre-Depends}, swaydesk-dpkg-includes (= ${source:Version})
-Depends: ${misc:Depends}
+Depends: hicolor-icon-theme, ${misc:Depends}
 Recommends: libnotify-bin
 Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)
 Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)

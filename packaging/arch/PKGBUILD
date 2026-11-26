@@ -47,6 +47,9 @@ check() {
   cargo test --frozen --release
 }
 
+# O depends de cada pacote com binário lista o que o binário liga direto (o namcap do RC1 da 0.1.8): a glibc e a
+# libgcc em todos, e as bibliotecas do GTK que ele usa além do gtk4 (cairo, pango, graphene, gdk-pixbuf2, glib2).
+# A lista de cada um está no ARCH_LINKS do tests/test_packaging.py
 _install() {
   cd "$srcdir/$_src"
   # No Arch, os programas internos de um pacote ficam em /usr/lib/<pacote>
@@ -66,34 +69,36 @@ package_swaydesk-common() {
   # A ttf-nerd-fonts-symbols são os ícones; no Debian, a fonte vai dentro do pacote
   # O bash: os scripts em comum, que vieram do swaydesk-scripts. O libnotify: o aviso do session-action quando o
   # bloqueio de fora do Sway falha
-  depends=(noto-fonts ttf-nerd-fonts-symbols bash)
+  # O hicolor-icon-theme: a pasta dos ícones da Captura e do Gravar Tela. O python não: os módulos em Python daqui
+  # (sway_i18n.py, desktop_config.py) só rodam pelo calendário, que o traz nos optdepends (o namcap acusa aqui)
+  depends=(noto-fonts ttf-nerd-fonts-symbols bash hicolor-icon-theme)
   optdepends=('libnotify: session notices')
   SWAYDESK_BUNDLED_FONT=0 _install swaydesk-common
 }
 
 package_swaydesk-notifd() {
   pkgdesc="Sway desktop components - notification daemon, center and Waybar icon"
-  depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell gdk-pixbuf2 glib2 pango glibc libgcc)
   provides=(notification-daemon)
   _install swaydesk-notifd
 }
 
 package_swaydesk-dock() {
   pkgdesc="Sway desktop components - dock"
-  depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell sway)
+  depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell sway glib2 graphene pango glibc libgcc)
   _install swaydesk-dock
 }
 
 package_swaydesk-drawer() {
   pkgdesc="Sway desktop components - app grid"
-  depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell cairo glib2 graphene pango glibc libgcc)
   optdepends=('xdg-user-dirs: the user folders' 'thunar: open folders from the search' 'libnotify: notices')
   _install swaydesk-drawer
 }
 
 package_swaydesk-switcher() {
   pkgdesc="Sway desktop components - window switcher (Alt+Tab)"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell sway)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell sway pango glibc libgcc)
   _install swaydesk-switcher
 }
 
@@ -101,14 +106,14 @@ package_swaydesk-calendar() {
   pkgdesc="Sway desktop components - calendar popup"
   # O feriado só aparece com o python e o python-holidays, que só existe no AUR e fica fora, por decisão do
   # usuário: sem eles, o calendário abre sem a caixa dos feriados
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell pango glibc libgcc)
   optdepends=('python: the holidays box (with python-holidays, from the AUR)')
   _install swaydesk-calendar
 }
 
 package_swaydesk-weather() {
   pkgdesc="Sway desktop components - weather icon and popup"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell pango glibc libgcc)
   optdepends=('noto-fonts-emoji: weather icons')
   _install swaydesk-weather
 }
@@ -116,35 +121,35 @@ package_swaydesk-weather() {
 package_swaydesk-audio() {
   pkgdesc="Sway desktop components - audio popup"
   # O jq: o ícone da barra (waybar-volume) escreve a linha da Waybar com ele
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell jq)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell jq cairo graphene pango glibc libgcc)
   optdepends=('wireplumber: audio' 'libpulse: audio devices (pactl)')
   _install swaydesk-audio
 }
 
 package_swaydesk-network() {
   pkgdesc="Sway desktop components - network icon and popup"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell pango glibc libgcc)
   optdepends=('networkmanager: network')
   _install swaydesk-network
 }
 
 package_swaydesk-bluetooth() {
   pkgdesc="Sway desktop components - Bluetooth icon and popup"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell pango glibc libgcc)
   optdepends=('bluez: Bluetooth')
   _install swaydesk-bluetooth
 }
 
 package_swaydesk-battery() {
   pkgdesc="Sway desktop components - battery popup"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell cairo pango glibc libgcc)
   optdepends=('upower: battery' 'jq: the power profile in the bar icon' 'libnotify: battery notices')
   _install swaydesk-battery
 }
 
 package_swaydesk-brightness() {
   pkgdesc="Sway desktop components - brightness and night light popup"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell pango glibc libgcc)
   optdepends=('brightnessctl: brightness' 'gammastep: night light')
   _install swaydesk-brightness
 }
@@ -153,21 +158,21 @@ package_swaydesk-caffeine() {
   pkgdesc="Sway desktop components - caffeine popup"
   # A cafeína funciona pelo sway-idle (o swayidle com os tempos do Swaydesk), que bloqueia com o swaydesk-lock;
   # num Sway puro, pelo swaydesk-caffeinate (um inibidor do Wayland), sem mexer no swayidle do usuário
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell swayidle)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell swayidle pango glibc libgcc)
   optdepends=('swaydesk-lock: lock the screen when idle')
   _install swaydesk-caffeine
 }
 
 package_swaydesk-system() {
   pkgdesc="Sway desktop components - system monitor icon and popup"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell pango glibc libgcc)
   _install swaydesk-system
 }
 
 package_swaydesk-media() {
   pkgdesc="Sway desktop components - media popup"
   # O jq: o ícone da barra (waybar-media) escreve a linha da Waybar com ele
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell jq)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell jq gdk-pixbuf2 pango glibc libgcc)
   optdepends=('playerctl: player controls')
   _install swaydesk-media
 }
@@ -175,40 +180,40 @@ package_swaydesk-media() {
 package_swaydesk-clipboard() {
   pkgdesc="Sway desktop components - clipboard history"
   # O popup roda o cliphist e o wl-paste: sem eles, ele não abre (relatório do item 5 da 0.1.7)
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell cliphist wl-clipboard)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell cliphist wl-clipboard gdk-pixbuf2 graphene pango glibc libgcc)
   _install swaydesk-clipboard
 }
 
 package_swaydesk-osd() {
   pkgdesc="Sway desktop components - volume and brightness indicator"
   # O sway-osd (as teclas de volume e brilho) roda o wpctl e, pelo sway-brightness, o brightnessctl
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell cairo pango glibc libgcc)
   optdepends=('wireplumber: the volume keys' 'brightnessctl: the brightness keys')
   _install swaydesk-osd
 }
 
 package_swaydesk-language() {
   pkgdesc="Sway desktop components - keyboard layout indicator"
-  depends=("swaydesk-common=$pkgver-$pkgrel" sway)
+  depends=("swaydesk-common=$pkgver-$pkgrel" sway glibc libgcc)
   _install swaydesk-language
 }
 
 package_swaydesk-help() {
   pkgdesc="Sway desktop components - Help app"
-  depends=("swaydesk-common=$pkgver-$pkgrel" gdk-pixbuf2 glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" gdk-pixbuf2 glib2 gtk4 gtk4-layer-shell pango glibc libgcc)
   optdepends=('swaydesk-lock: the lock card')
   _install swaydesk-help
 }
 
 package_swaydesk-click-catcher() {
   pkgdesc="Sway desktop components - launcher click catcher"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell glibc libgcc)
   _install swaydesk-click-catcher
 }
 
 package_swaydesk-capture() {
   pkgdesc="Sway desktop components - screenshot and screen recording panels"
-  depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell grim slurp jq)
+  depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell grim slurp jq glib2 pango glibc libgcc)
   optdepends=('wf-recorder: screen recording' 'wl-clipboard: copy the screenshot' 'libnotify: notices'
               'xdg-utils: open a capture from its notice')
   _install swaydesk-capture
@@ -216,14 +221,14 @@ package_swaydesk-capture() {
 
 package_swaydesk-theme-tool() {
   pkgdesc="Sway desktop components - theme tools (swaydesk-theme, swaydesk-desktop-config)"
-  depends=("swaydesk-common=$pkgver-$pkgrel" gdk-pixbuf2 glib2)
+  depends=("swaydesk-common=$pkgver-$pkgrel" gdk-pixbuf2 glib2 glibc libgcc)
   optdepends=('papirus-icon-theme: folder colors' 'dconf: the Sway dconf profile' 'gnome-themes-extra: Adwaita-dark for GTK 3')
   _install swaydesk-theme-tool
 }
 
 package_swaydesk-portal() {
   pkgdesc="Sway desktop components - accent color portal"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 glibc libgcc)
   _install swaydesk-portal
 }
 
@@ -231,19 +236,19 @@ package_swaydesk-theme-app() {
   pkgdesc="Sway desktop components - Desktop Theme app"
   # O app roda o swaydesk-theme, da mesma versão. O gnome-themes-extra: sem nenhum tema GTK, a lista sai vazia (item 5
   # da 0.1.7); o pacman não tem Recommends, que é o que o Debian usa
-  depends=("swaydesk-common=$pkgver-$pkgrel" "swaydesk-theme-tool=$pkgver-$pkgrel" gdk-pixbuf2 glib2 gtk4 gtk4-layer-shell gnome-themes-extra)
+  depends=("swaydesk-common=$pkgver-$pkgrel" "swaydesk-theme-tool=$pkgver-$pkgrel" gdk-pixbuf2 glib2 gtk4 gtk4-layer-shell gnome-themes-extra cairo graphene pango glibc libgcc)
   _install swaydesk-theme-app
 }
 
 package_swaydesk-displays() {
   pkgdesc="Sway desktop components - Displays app"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell cairo pango glibc libgcc)
   _install swaydesk-displays
 }
 
 package_swaydesk-session-menu() {
   pkgdesc="Sway desktop components - session menu"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell pango glibc libgcc)
   optdepends=('swaydesk-lock: the Lock button')
   _install swaydesk-session-menu
 }
@@ -252,7 +257,7 @@ package_swaydesk-lock() {
   pkgdesc="Sway desktop components - lock screen"
   # O bloqueio abre a libpam na hora e usa o serviço PAM próprio (/etc/pam.d/swaydesk-lock); o gtklock (extra)
   # é a reserva do sway-lock, no lugar do swaylock, que não tem teclas mortas
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell pam gtklock systemd)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell pam gtklock systemd gdk-pixbuf2 glibc libgcc)
   optdepends=('swayidle: lock when idle' 'libnotify: the notice when the screen does not lock')
   backup=(etc/pam.d/swaydesk-lock)
   SWAYDESK_PYTHON_LOCK=0 _install swaydesk-lock
@@ -260,13 +265,13 @@ package_swaydesk-lock() {
 
 package_swaydesk-keyring() {
   pkgdesc="Sway desktop components - keyring fix"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 systemd)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 systemd glibc libgcc)
   _install swaydesk-keyring
 }
 
 package_swaydesk-sessionmgr() {
   pkgdesc="Sway desktop components - session manager service"
-  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 sway)
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 sway glibc libgcc)
   # Sem ele, reinicia ou desliga quando pedido, sem confirmação (o usuário já clicou em Reiniciar e atualizar)
   optdepends=('swaydesk-session-menu: ask before restarting or shutting down (without it, no confirmation)')
   _install swaydesk-sessionmgr
@@ -332,7 +337,7 @@ package_swaydesk-greeter() {
   pkgdesc="Sway desktop - login screen for greetd (GTK 4, in the look of the lock screen)"
   # O pacman não liga serviços: o .install mostra o systemctl enable greetd
   install=swaydesk-greeter.install
-  depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell glib2 greetd sway)
+  depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell glib2 greetd sway gdk-pixbuf2 glibc libgcc)
   optdepends=('gnome-keyring: unlock the login keyring with the login password')
   # O serviço do PAM das sessões abertas pela tela: o /etc/pam.d/greetd do Arch não chama o gnome-keyring, e
   # o pacote não mexe nele. O greetd.toml do pacote aponta as sessões para este serviço e deixa a do greeter
