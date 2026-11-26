@@ -3,21 +3,29 @@
 //! muda (plugar, desplugar) ou o config é relido, aplica o perfil guardado para o conjunto, como o kanshi.
 //! Sem perfil, fica o que o Sway escolheu. Uma mudança feita à mão (swaymsg, o bindswitch da tampa) com o
 //! mesmo conjunto não é desfeita: só a troca de conjunto e o reload contam.
+//! Antes do perfil, o serviço e o apply desfazem uma prévia que ficou sem resposta (o app caiu com a pergunta
+//! aberta), pelo arquivo pendente.
 use std::process::ExitCode;
 use std::sync::mpsc;
 use std::time::Duration;
 
 use swaydesk_common::resident;
-use swaydesk_displays_logic::config::commands;
+use swaydesk_displays_logic::config::{commands, OutputConfig};
 use swaydesk_displays_logic::outputs;
+use swaydesk_displays_logic::pending;
 use swaydesk_displays_logic::plan::{self, Plan};
 use swaydesk_displays_logic::profiles::{self, Profiles};
 
 use crate::sway::{self, Event};
-use crate::{preview_active, warn, PROGRAM};
+use crate::{preview_active, take_preview_lock, warn, PROGRAM};
 
 /// Espera depois do último evento: plugar um monitor gera vários seguidos
 const SETTLE: Duration = Duration::from_millis(500);
+
+/// Cada saída ligada ou desligada, para conferir depois de aplicar
+pub fn switches(configs: &[(String, OutputConfig)]) -> Vec<(String, bool)> {
+    configs.iter().map(|(name, config)| (name.clone(), config.enabled)).collect()
+}
 
 /// O conjunto atual, ordenado
 fn current_set(list: &[outputs::Output]) -> Vec<String> {
@@ -36,10 +44,7 @@ pub fn apply_profile(why: &str) -> Option<Vec<String>> {
     match plan::plan(&list, &profiles, plan::lid_closed(plan::LID_ROOT.as_ref())) {
         Plan::NoProfile | Plan::Already => {}
         Plan::Refused => warn("the profile would turn every screen off: not applied"),
-        Plan::Apply(configs) => match sway::run_checked(
-            &commands(&configs),
-            &configs.iter().map(|(name, config)| (name.clone(), config.enabled)).collect::<Vec<_>>(),
-        ) {
+        Plan::Apply(configs) => match sway::run_checked(&commands(&configs), &switches(&configs)) {
             Ok(()) => warn(&format!("applied the profile for {} screen(s) ({why})", configs.len())),
             Err(err) => warn(&format!("could not apply the profile: {err}")),
         },
@@ -76,10 +81,43 @@ pub fn rescue_screens(why: &str) {
     }
 }
 
-/// `apply`: aplica o perfil do conjunto agora (a tampa abriu ou fechou). Fora da prévia do app.
+/// Volta ao layout de antes, agora; se nem isso pega, a rede de segurança
+pub fn undo(previous: &[(String, OutputConfig)], why: &str) {
+    if let Err(err) = sway::run_checked(&commands(previous), &switches(previous)) {
+        warn(&format!("could not restore: {err}"));
+        rescue_screens(why);
+    }
+}
+
+/// Uma prévia que ficou sem resposta (o app caiu com a pergunta aberta) volta ao layout de antes: ao abrir o
+/// app e, no serviço, a cada evento das telas, no reload e no apply (o app pode não abrir de novo, e a tela
+/// pode estar apagada). Só se nenhuma janela segura a trava (a dela ainda está na tela). A trava vem antes da
+/// leitura: um Manter no meio apaga o arquivo, e o texto lido antes desfaria um layout já confirmado
+pub fn restore_pending(why: &str) {
+    let Some(file) = pending::path() else { return };
+    if !file.exists() {
+        return;
+    }
+    let Some(_lock) = take_preview_lock() else { return };
+    let Ok(text) = std::fs::read_to_string(&file) else { return };
+    let names: Option<Vec<String>> = sway::get_outputs().map(|list| list.into_iter().map(|o| o.name).collect());
+    match (pending::from_json(&text), names) {
+        (Some(previous), Some(names)) if pending::same_outputs(&previous, &names) => {
+            warn(&format!("a preview was left without an answer: undoing ({why})"));
+            undo(&previous, "pending");
+        }
+        (Some(_), Some(_)) => warn("a preview was left without an answer, but the screens changed: not undoing"),
+        (Some(_), None) => return, // sem o Sway agora: fica para a próxima vez
+        (None, _) => warn(&format!("ignoring an unreadable {}", file.display())),
+    }
+    let _ = std::fs::remove_file(&file);
+}
+
+/// `apply`: aplica o perfil do conjunto agora (a tampa abriu ou fechou, ou chamado à mão). Fora da prévia do app.
 pub fn apply_now() -> ExitCode {
     if !preview_active() {
-        apply_profile("lid");
+        restore_pending("apply");
+        apply_profile("apply");
     }
     ExitCode::SUCCESS
 }
@@ -109,7 +147,12 @@ pub fn run() -> ExitCode {
         }
     });
     // Assinado antes de ler: um monitor plugado no meio não se perde
-    let mut last = if preview_active() { sway::get_outputs().map(|list| current_set(&list)) } else { apply_profile("start") };
+    let mut last = if preview_active() {
+        sway::get_outputs().map(|list| current_set(&list))
+    } else {
+        restore_pending("start");
+        apply_profile("start")
+    };
     while let Ok(first) = rx.recv() {
         let mut reload = first == Event::Reload;
         loop {
@@ -129,6 +172,7 @@ pub fn run() -> ExitCode {
         if preview_active() {
             continue;
         }
+        restore_pending(if reload { "reload" } else { "screens changed" });
         let Some(list) = sway::get_outputs() else { continue };
         let set = current_set(&list);
         if reload || last.as_ref() != Some(&set) {

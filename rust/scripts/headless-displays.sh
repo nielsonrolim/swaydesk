@@ -11,7 +11,7 @@
 #
 # O serviço: sem perfil, nada muda; com perfil, aplica ao subir; um monitor novo (create_output) muda o
 # conjunto; tirá-lo (unplug) volta ao perfil do par; uma mudança à mão com o mesmo conjunto fica; o reload
-# reaplica; sem nenhuma tela ligada, o apply liga todas. O app: Aplicar e Esc desfaz; Aplicar e o tempo esgotado desfaz; fechar a janela ou o SIGTERM com a pergunta aberta desfaz, e depois de um SIGKILL o app desfaz ao abrir; Aplicar e Manter grava o perfil
+# reaplica; sem nenhuma tela ligada, o apply liga todas. O app: Aplicar e Esc desfaz; Aplicar e o tempo esgotado desfaz; fechar a janela ou o SIGTERM com a pergunta aberta desfaz, e depois de um SIGKILL o app desfaz ao abrir, e o serviço no reload e no apply; Aplicar e Manter grava o perfil
 # e o 90-displays.conf. Sai com 1 se algum caso falhar.
 set -u
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
@@ -91,6 +91,8 @@ swaymsg -q output HEADLESS-1 disable, output HEADLESS-2 disable, output $extra d
 expect "as três desligadas" "0" "$(layout | wc -w)"
 /bin/swaydesk-displays apply 2>>/out/daemon.log
 expect "sem nenhuma tela ligada, o apply liga todas" "3" "$(layout | wc -w)"
+# O apply também é chamado à mão e por scripts, não só pela tampa: o log diz "apply"
+expect "o log do apply diz apply, não lid" "1 0" "$(grep -c 'turned every screen on (apply)' /out/daemon.log) $(grep -c '(lid)' /out/daemon.log)"
 swaymsg -q output $extra unplug
 expect "e o par volta ao perfil" "HEADLESS-1:1024,0 HEADLESS-2:0,0" "$(wait_layout 'HEADLESS-1:1024,0 HEADLESS-2:0,0')"
 applied=$(grep -c "applied the profile" /out/daemon.log)
@@ -157,6 +159,25 @@ expect "o SIGKILL não deixa desfazer (fica o arquivo pendente)" "1.5 yes" "$(sc
 app; for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done; sleep 2.5
 expect "a próxima vez que o app abre, desfaz o que ficou pendente" "$before no" "$(scale_of $first) $([ -e "$pending" ] && echo yes || echo no)"
 grim /out/displays-4b-restored-on-start.png
+# O serviço também consome o arquivo pendente (o app pode não abrir de novo, e a tela pode estar apagada): no
+# reload e no apply (a tampa). Sem perfil para o par, só o arquivo desfaz; com a pergunta aberta, o serviço não mexe.
+# O reload do Sway já volta a escala pelo config: nele, conta o arquivo consumido e a linha do serviço
+mv "$profiles" "$profiles.bak"
+undone() { grep -c "a preview was left without an answer: undoing" /out/daemon.log; }
+set_scale_up; apply; sleep 1.5
+swaymsg -q reload; sleep 1.5
+expect "o reload com a pergunta aberta não consome o arquivo" "yes 0" "$([ -e "$pending" ] && echo yes || echo no) $(undone)"
+pkill -u "$(id -u)" -KILL -f '/bin/swaydesk-displays$'
+app_gone; sleep 1
+swaymsg -q reload; sleep 2
+expect "depois de um SIGKILL, o reload consome o arquivo pendente" "$before no 1" "$(scale_of $first) $([ -e "$pending" ] && echo yes || echo no) $(undone)"
+reopen; apply; sleep 1.5
+pkill -u "$(id -u)" -KILL -f '/bin/swaydesk-displays$'
+app_gone; sleep 1
+/bin/swaydesk-displays apply 2>>/out/daemon.log
+expect "depois de um SIGKILL, o apply (a tampa) desfaz pelo arquivo pendente" "$before no" "$(scale_of $first) $([ -e "$pending" ] && echo yes || echo no)"
+mv "$profiles.bak" "$profiles"
+app; for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done; sleep 1.5
 set_scale_up
 apply; sleep 1.5
 # Na pergunta, o foco começa no Desfazer: Tab vai ao Manter

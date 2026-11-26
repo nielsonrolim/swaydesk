@@ -15,6 +15,7 @@ use swaydesk_displays_logic::outputs::{self, Mode, Output};
 use swaydesk_displays_logic::pending;
 use swaydesk_displays_logic::profiles::{self, Profile, Profiles};
 
+use crate::daemon::switches;
 use crate::{identify, sway, take_preview_lock, warn};
 
 /// Quanto tempo a prévia espera antes de voltar sozinha
@@ -28,11 +29,6 @@ const SNAP_PIXELS: f64 = 12.0;
 /// A área de trabalho guardada no Aplicar (lida uma vez: o Desfazer a usa e a esquece)
 fn w_home(me: &Weak<Window>) -> Option<(String, String)> {
     me.upgrade().and_then(|w| w.home.borrow_mut().take())
-}
-
-/// Cada saída ligada ou desligada, para conferir depois de aplicar
-fn switches(configs: &[(String, OutputConfig)]) -> Vec<(String, bool)> {
-    configs.iter().map(|(name, config)| (name.clone(), config.enabled)).collect()
 }
 
 fn transform_label(t: Transform) -> String {
@@ -278,7 +274,7 @@ impl Window {
             accent,
         });
         me.connect(&identify_button);
-        restore_pending_on_start();
+        crate::daemon::restore_pending("app start");
         // Fechar a janela (Super+Q, o sinal do main.rs) com a pergunta aberta: desfaz antes de o app sair. No
         // close-request, não no destroy: a janela fica viva enquanto esta struct a segura, e o destroy só viria
         // depois do fim do app
@@ -808,7 +804,7 @@ impl Window {
     fn undo_now(&self) {
         let Some(previous) = self.pending.borrow_mut().take() else { return };
         warn("the window closed before Keep: undoing");
-        undo(&previous, "close");
+        crate::daemon::undo(&previous, "close");
         if let Some(file) = pending::path() {
             let _ = std::fs::remove_file(file);
         }
@@ -1050,31 +1046,4 @@ impl Window {
 /// O `%s` do texto traduzido trocado pelo valor
 fn fill_one(template: &str, value: &str) -> String {
     template.replacen("%s", value, 1)
-}
-
-/// Volta ao layout de antes, agora; se nem isso pega, a rede de segurança do serviço
-fn undo(previous: &[(String, OutputConfig)], why: &str) {
-    if let Err(err) = sway::run_checked(&commands(previous), &switches(previous)) {
-        warn(&format!("could not restore: {err}"));
-        crate::daemon::rescue_screens(why);
-    }
-}
-
-/// Ao abrir: uma prévia que ficou sem resposta (o app caiu com a pergunta aberta) volta ao layout de antes. Só
-/// se nenhuma outra janela segura a trava (a dela ainda está na tela)
-fn restore_pending_on_start() {
-    let Some(file) = pending::path() else { return };
-    let Ok(text) = std::fs::read_to_string(&file) else { return };
-    let Some(_lock) = take_preview_lock() else { return };
-    let names: Option<Vec<String>> = sway::get_outputs().map(|list| list.into_iter().map(|o| o.name).collect());
-    match (pending::from_json(&text), names) {
-        (Some(previous), Some(names)) if pending::same_outputs(&previous, &names) => {
-            warn("a preview was left without an answer: undoing");
-            undo(&previous, "pending");
-        }
-        (Some(_), Some(_)) => warn("a preview was left without an answer, but the screens changed: not undoing"),
-        (Some(_), None) => return, // sem o Sway agora: fica para a próxima vez
-        (None, _) => warn(&format!("ignoring an unreadable {}", file.display())),
-    }
-    let _ = std::fs::remove_file(&file);
 }
