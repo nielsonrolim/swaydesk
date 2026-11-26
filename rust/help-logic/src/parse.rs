@@ -80,6 +80,7 @@ pub fn parse(text: &str, main: &Path, env: &Env) -> Vec<Entry> {
     let base = main.parent().unwrap_or(Path::new("/")).to_path_buf();
     parser.text(text, &base, 0);
     drop_overridden(&mut parser.entries);
+    join_same_description(&mut parser.entries);
     parser.entries
 }
 
@@ -493,6 +494,28 @@ fn identity(mode: Option<&str>, kind: Kind, release: bool, keys: &str) -> (Optio
         mods.join("+")
     };
     (mode.map(str::to_string), kind, release, normal)
+}
+
+/// A mesma descrição na mesma seção e no mesmo modo é uma linha só, com as teclas de todas, na posição da primeira:
+/// o Super+F1 do keys/base.conf e o Super+/ do perfil, cada um sob o seu ##, como dois bindsym sob um ## só.
+fn join_same_description(entries: &mut Vec<Entry>) {
+    let mut first: HashMap<(Option<String>, Option<String>, String), usize> = HashMap::new();
+    let mut joined: Vec<Entry> = Vec::with_capacity(entries.len());
+    for entry in entries.drain(..) {
+        let Some(description) = entry.description.clone() else {
+            joined.push(entry);
+            continue;
+        };
+        let key = (entry.section.clone(), entry.mode.clone(), description);
+        match first.get(&key) {
+            Some(&index) => joined[index].binds.extend(entry.binds),
+            None => {
+                first.insert(key, joined.len());
+                joined.push(entry);
+            }
+        }
+    }
+    *entries = joined;
 }
 
 /// Um bind repetido mais adiante (o --no-warn do 50-local.conf) troca o de antes, como no Sway: o de

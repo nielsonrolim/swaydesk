@@ -76,6 +76,42 @@ fn sections_descriptions_and_variables() {
 }
 
 #[test]
+fn the_same_description_in_two_files_is_one_row() {
+    // O Super+F1 do keys/base.conf e o Super+/ do keys/<perfil>.conf: a mesma descrição, na mesma seção, vira uma
+    // linha com as duas teclas (como dois bindsym sob um só ##), na posição da primeira
+    let tmp = Tmp::new();
+    tmp.write(".config/sway/keys/base.conf", "### Session and apps\n## Show this help\nbindsym Mod4+F1 exec help\n");
+    tmp.write(
+        ".config/sway/keys/profile.conf",
+        "### Session and apps\n## Close the window\nbindsym Mod4+q kill\n## Show this help\nbindsym Mod4+slash exec help\n\
+         ### Focus\n## Show this help\nbindsym Mod4+h exec help\n",
+    );
+    let text = "include keys/base.conf\ninclude keys/profile.conf\nmode \"resize\" {\n## Show this help\nbindsym h exec help\n}\n";
+    let main = tmp.write(".config/sway/config", text);
+    let entries = parse(text, &main, &tmp.env());
+    let rows: Vec<_> = entries
+        .iter()
+        .map(|e| (e.section.as_deref(), e.mode.as_deref(), e.description.as_deref(), e.binds.iter().map(|b| b.keys.as_str()).collect::<Vec<_>>()))
+        .collect();
+    assert_eq!(
+        rows,
+        [
+            (Some("Session and apps"), None, Some("Show this help"), vec!["Mod4+F1", "Mod4+slash"]),
+            (Some("Session and apps"), None, Some("Close the window"), vec!["Mod4+q"]),
+            // Outra seção ou outro modo continua à parte
+            (Some("Focus"), None, Some("Show this help"), vec!["Mod4+h"]),
+            (None, Some("resize"), Some("Show this help"), vec!["h"]),
+        ]
+    );
+}
+
+#[test]
+fn binds_without_a_description_are_not_joined() {
+    let entries = parse_text("bindsym a exec a\nbindsym b exec b\n");
+    assert_eq!(entries.len(), 2);
+}
+
+#[test]
 fn a_blank_line_or_another_directive_ends_the_description() {
     let entries = parse_text(
         "## One\nbindsym a exec a\n\nbindsym b exec b\n## Two\nbindsym c exec c\nexec x\nbindsym d exec d\n",
