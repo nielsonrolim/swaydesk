@@ -195,6 +195,10 @@ fn read_layout() -> (String, bool) {
 /// A foto decodificada: os pixels RGB(A), a largura, a altura, o rowstride e se tem alfa.
 type Photo = (glib::Bytes, i32, i32, usize, bool);
 
+fn screen_css(config: &config::Config) -> String {
+    format!("{}{}{CSS}", config::font_css(None), config::accent_css(&config::palette(config)))
+}
+
 /// A foto da conta, só a do AccountsService (/var/lib/AccountsService/icons/<login>, do root, como no GDM):
 /// nunca o ~/.face, que é da própria conta e seria decodificado pelo processo que vê as senhas de todos.
 /// Mesmo assim, com cuidado: aberto sem seguir link nem bloquear (um FIFO), só arquivo comum de até 2 MiB,
@@ -402,6 +406,10 @@ struct App {
     client: RefCell<Option<Client<UnixStream>>>,
     busy: Cell<bool>,
     photo_generation: Cell<u64>,
+    /// A config da tela (a do sistema) e o CSS dela, refeito com o destaque de cada conta escolhida
+    config: config::Config,
+    provider: gtk4::CssProvider,
+    accent_generation: Cell<u64>,
     /// Uma pergunta do PAM está na tela (não a da senha do começo)
     prompting: Cell<bool>,
     prompt_secret: Cell<bool>,
@@ -454,11 +462,31 @@ impl App {
                 }
             });
         }
+        // O destaque da conta (o do app Tema, gravado no AccountsService), de uma linha à parte: o D-Bus pode
+        // demorar. Até ele chegar, e sem ele, o da tela
+        let generation = self.accent_generation.get() + 1;
+        self.accent_generation.set(generation);
+        self.load_css(None);
+        if let Some(login) = user.map(|u| u.name.clone()) {
+            let app = Rc::downgrade(self);
+            glib::spawn_future_local(async move {
+                let accent = gio::spawn_blocking(move || swaydesk_common::accounts::user_accent(&login)).await.ok().flatten();
+                let Some(app) = app.upgrade() else { return };
+                if accent.is_some() && app.accent_generation.get() == generation {
+                    app.load_css(accent.as_deref());
+                }
+            });
+        }
         // A sessão lembrada, se ainda estiver instalada; senão, a primeira (a nossa)
         let remembered = user.and_then(|u| self.state.borrow().sessions.get(&u.name).cloned());
         let position = remembered.and_then(|id| self.sessions.iter().position(|s| s.id == id)).unwrap_or(0);
         form.sessions.set_selected(position as u32);
         self.focus_field(form);
+    }
+
+    /// O CSS da tela com o destaque da conta (validado no with_account_accent) ou, sem ele, o da config.
+    fn load_css(&self, account_accent: Option<&str>) {
+        self.provider.load_from_string(&screen_css(&system::with_account_accent(&self.config, account_accent)));
     }
 
     fn focus_field(&self, form: &Form) {
@@ -990,7 +1018,7 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     };
     let provider = gtk4::CssProvider::new();
-    provider.load_from_string(&format!("{}{}{CSS}", config::font_css(None), config::accent_css(&config::palette(&config))));
+    provider.load_from_string(&screen_css(&config));
     #[allow(deprecated)] // sem substituto no GTK 4.18
     gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
     if let Some(settings) = gtk4::Settings::default() {
@@ -1014,6 +1042,9 @@ fn main() -> ExitCode {
         client: RefCell::new(None),
         busy: Cell::new(false),
         photo_generation: Cell::new(0),
+        config: config.clone(),
+        provider: provider.clone(),
+        accent_generation: Cell::new(0),
         prompting: Cell::new(false),
         prompt_secret: Cell::new(true),
     });

@@ -1392,6 +1392,54 @@ def generate(config):
     return kept
 
 
+# O destaque da conta no AccountsService, o que a tela de login (swaydesk-greeter) lê antes de qualquer login: a
+# interface vem do pacote swaydesk-common (/usr/share/accountsservice/interfaces), e o polkit deixa cada um mudar
+# só a própria conta (change-own-user-data), sem senha. O mesmo do swaydesk_common::accounts
+ACCOUNTS = "org.freedesktop.Accounts"
+ACCOUNTS_PATH = "/org/freedesktop/Accounts"
+ACCOUNTS_IFACE = "org.swaydesktop.Accounts"
+# O prazo da conversa inteira (não de cada chamada): o setup roda a cada login antes do Sway, e um
+# accounts-daemon lento para subir no boot não pode atrasar a entrada
+ACCOUNTS_DEADLINE = 1.0
+
+
+def set_account_accent(accent):
+    """Grava o destaque na conta do usuário, se mudou. Sem o AccountsService, sem a interface (só os dotfiles, um
+    contêiner) ou com a gravação recusada, nada: a tela de login fica com a cor dela. Devolve se gravou."""
+    try:
+        import gi
+        gi.require_version("Gio", "2.0")
+        from gi.repository import Gio, GLib
+    except (ImportError, ValueError):
+        return False
+    import time
+    props = "org.freedesktop.DBus.Properties"
+    deadline = time.monotonic() + ACCOUNTS_DEADLINE
+    try:
+        bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
+
+        def call(path, iface, method, args, reply=None):
+            left = int((deadline - time.monotonic()) * 1000)
+            if left <= 0:
+                raise GLib.Error("swaydesk: accounts deadline")
+            # NONE de propósito, sem o ALLOW_INTERACTIVE_AUTHORIZATION: o polkit nunca pede senha por isto; se a
+            # conta precisasse de autorização, o Set só falha e fica por isso mesmo
+            return bus.call_sync(ACCOUNTS, path, iface, method, args, reply and GLib.VariantType(reply),
+                                 Gio.DBusCallFlags.NONE, left, None)
+        user = call(ACCOUNTS_PATH, ACCOUNTS, "FindUserById", GLib.Variant("(x)", (os.getuid(),)), "(o)").unpack()[0]
+        # Uma conta que nunca gravou a cor responde ao Get com um erro ("not set"): é só "sem cor"
+        try:
+            current = call(user, props, "Get", GLib.Variant("(ss)", (ACCOUNTS_IFACE, "Accent")), "(v)").unpack()[0]
+        except GLib.Error:
+            current = None
+        if current == accent:
+            return False
+        call(user, props, "Set", GLib.Variant("(ssv)", (ACCOUNTS_IFACE, "Accent", GLib.Variant("s", accent))))
+        return True
+    except GLib.Error:
+        return False
+
+
 def ours(file):
     """O arquivo não existe ou foi gerado por aqui, inclusive um settings.ini de antes do cabeçalho.
     Um link também: as instalações antigas ligavam os settings.ini ao repositório."""

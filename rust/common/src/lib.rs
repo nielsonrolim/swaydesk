@@ -3,6 +3,7 @@
 //! `waybar_common.py` e `text` as funções de `waybar_clipboard.py`. `theme_resources` registra os recursos dos
 //! temas GTK do sistema, e `renderer` escolhe o renderizador do GTK 4 de todos os componentes: são o que
 //! traz o gio (não o GTK) para cá. `power`: os perfis de energia e se a máquina tem bateria.
+pub mod accounts;
 pub mod app_scope;
 pub mod cli;
 pub mod config;

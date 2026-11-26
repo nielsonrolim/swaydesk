@@ -1,0 +1,17 @@
+#!/bin/sh
+# swaydesk-common: accounts-daemon reads its extension interfaces (org.swaydesktop.Accounts, the accent the
+# login screen shows) only when it starts. Restart it if it is running, through deb-systemd-invoke (which
+# respects policy-rc.d, as in a chroot); never fails the installation.
+set -e
+
+case "$1" in
+  configure)
+    if [ -d "${SWAYDESK_SYSTEMD_RUN:-/run/systemd/system}" ]; then
+      deb-systemd-invoke try-restart accounts-daemon.service >/dev/null 2>&1 || true
+    fi
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

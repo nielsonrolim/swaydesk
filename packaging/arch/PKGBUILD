@@ -73,6 +73,8 @@ package_swaydesk-common() {
   # (sway_i18n.py, desktop_config.py) só rodam pelo calendário, que o traz nos optdepends (o namcap acusa aqui)
   depends=(noto-fonts ttf-nerd-fonts-symbols bash hicolor-icon-theme)
   optdepends=('libnotify: session notices')
+  # O try-restart do accounts-daemon, que só lê a interface do destaque (org.swaydesktop.Accounts) ao subir
+  install=swaydesk-common.install
   SWAYDESK_BUNDLED_FONT=0 _install swaydesk-common
 }
 
@@ -338,7 +340,8 @@ package_swaydesk-greeter() {
   # O pacman não liga serviços: o .install mostra o systemctl enable greetd
   install=swaydesk-greeter.install
   depends=("swaydesk-common=$pkgver-$pkgrel" gtk4 gtk4-layer-shell glib2 greetd sway gdk-pixbuf2 glibc libgcc)
-  optdepends=('gnome-keyring: unlock the login keyring with the login password')
+  optdepends=('gnome-keyring: unlock the login keyring with the login password'
+              'accountsservice: account photos and the accent each user picked')
   # O serviço do PAM das sessões abertas pela tela: o /etc/pam.d/greetd do Arch não chama o gnome-keyring, e
   # o pacote não mexe nele. O greetd.toml do pacote aponta as sessões para este serviço e deixa a do greeter
   # no greetd; um arquivo editado à mão fica como .pacsave na remoção

@@ -10,7 +10,9 @@
 # - a certa abre a sessão escolhida (o comando e o ambiente do .desktop) e grava a memória;
 # - uma conta com segundo fator recebe a pergunta visível depois da senha;
 # - uma senha com acento: a tecla morta compõe no locale C.UTF-8 (o do Ubuntu Server);
-# - outra cor de destaque pela config do sistema.
+# - outra cor de destaque pela config do sistema;
+# - a cor que cada conta escolheu no app Tema (a do AccountsService, falso aqui) vence a da config do sistema, e
+#   uma conta sem cor fica com a da config.
 # Sai com 1 se algo falhar.
 set -u
 export XDG_RUNTIME_DIR=/tmp/xdg HOME=/root
@@ -93,6 +95,37 @@ printf 'accent = "#8e44ad"\n' > /tmp/greeter.toml
 rm -f /tmp/state.json
 start 3
 grim /out/greeter-4-violet.png
+kill "$greeter"
+
+# A cor de cada conta, do AccountsService (o falso, num barramento próprio que a tela lê como o do sistema). Pela
+# captura em PPM: os pixels exatamente da cor (o botão Entrar é dela, sem sombra)
+pixels() { grim -t ppm "$1" && python3 - "$1" "$2" <<'PY'
+import sys
+data = open(sys.argv[1], "rb").read()
+fields, pos = [], 0
+while len(fields) < 4:
+    while data[pos:pos + 1].isspace():
+        pos += 1
+    end = pos
+    while not data[end:end + 1].isspace():
+        end += 1
+    fields.append(data[pos:end]); pos = end
+body = data[pos + 1:]
+color = bytes.fromhex(sys.argv[2].lstrip("#"))
+print(sum(1 for i in range(0, len(body), 3) if body[i:i + 3] == color) > 2000)
+PY
+}
+bus_address=$(dbus-daemon --session --fork --print-address) || failed=1
+DBUS_SESSION_BUS_ADDRESS=$bus_address python3 /repo/rust/scripts/fake-accounts.py ana=#e11d48 bia=not-a-color > /tmp/accounts.ready &
+for _ in $(seq 50); do grep -q ready /tmp/accounts.ready 2>/dev/null && break; sleep 0.1; done
+export DBUS_SYSTEM_BUS_ADDRESS=$bus_address
+printf '{"last_user": "ana"}' > /tmp/state.json
+start 3
+expect "a cor da conta (ana, #e11d48) vence a da config" "True" "$(pixels /out/greeter-5-ana.ppm '#e11d48')"
+kill "$greeter"
+printf '{"last_user": "bia"}' > /tmp/state.json
+start 3
+expect "um valor que não é cor (bia) fica com a da config" "True" "$(pixels /out/greeter-6-bia.ppm '#8e44ad')"
 kill "$greeter"
 expect "nenhum python3 é filho da tela" "" "$(ps -o comm= --ppid "$greeter" 2>/dev/null | grep python || true)"
 exit $failed

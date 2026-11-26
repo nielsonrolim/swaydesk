@@ -1,6 +1,7 @@
 //! O que a tela de login tira do sistema, porque o greetd não passa: o idioma (o LANG do
 //! /etc/locale.conf ou do /etc/default/locale), a config própria (/etc/swaydesk-greeter/config.toml, no
-//! formato da config.toml de cada usuário: `accent` e `locale`) e o comando que aplica o teclado.
+//! formato da config.toml de cada usuário: `accent` e `locale`; o destaque de cada conta, do AccountsService,
+//! vence o dela) e o comando que aplica o teclado.
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -50,6 +51,17 @@ pub fn system_locale_env(files: &[&Path]) -> HashMap<String, String> {
     HashMap::new()
 }
 
+/// A config da tela com o destaque que a conta escolhida gravou no AccountsService (o app Tema, pelo
+/// swaydesk-desktop-config), se for uma cor (`#rrggbb`): o valor vem de cada usuário e vai para o CSS da tela.
+/// Sem ele, a cor da tela (a da config do sistema ou a padrão).
+pub fn with_account_accent(screen: &Config, account: Option<&str>) -> Config {
+    let mut config = screen.clone();
+    if let Some(accent) = account.filter(|a| config::is_accent(a)) {
+        config.accent = accent.to_string();
+    }
+    config
+}
+
 /// A config da tela: a do arquivo (avisos no stderr) e, sem `locale` nela, o idioma do sistema.
 pub fn greeter_config(file: &Path, lang: &str) -> Config {
     let env = HashMap::from([("LANG".to_string(), lang.to_string())]);
@@ -88,6 +100,16 @@ pub fn keyboard_command(settings: &[(&str, String)]) -> Option<String> {
 mod tests {
     use super::*;
     use swaydesk_common::keyboard::xkb_settings;
+
+    #[test]
+    fn the_accounts_accent_wins_over_the_screens_own() {
+        let screen = Config { accent: "#8e44ad".to_string(), ..Config::default() };
+        assert_eq!(with_account_accent(&screen, Some("#e11d48")).accent, "#e11d48");
+        // Sem cor na conta, ou com um valor que não é cor (o AccountsService guarda o que cada um mandou), a da tela
+        for account in [None, Some(""), Some("red"), Some("#e11d48; } * { color: red"), Some("#e11d4")] {
+            assert_eq!(with_account_accent(&screen, account).accent, "#8e44ad", "{account:?}");
+        }
+    }
 
     #[test]
     fn the_system_language() {

@@ -349,7 +349,7 @@ Description: Sway desktop - the full session
 Package: swaydesk-greeter
 Architecture: any
 Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}, greetd, sway
-Recommends: libpam-gnome-keyring
+Recommends: libpam-gnome-keyring, accountsservice
 Description: Sway desktop - login screen for greetd
  A graphical login screen in GTK 4, in the look of the Sway desktop lock
  screen: the account list with AccountsService photos, the password and

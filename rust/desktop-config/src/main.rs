@@ -64,6 +64,8 @@ fn write_files(config: &Config, session: bool) -> Option<bool> {
     if !ok {
         eprintln!("{}", tr("Could not write the theme to dconf (gsettings)"));
     }
+    // A cor da tela de login (swaydesk-greeter), se ela estiver instalada
+    swaydesk_common::accounts::set_own_accent(&config.accent);
     Some(ok)
 }
 

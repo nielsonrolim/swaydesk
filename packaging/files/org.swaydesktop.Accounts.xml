@@ -1,0 +1,15 @@
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+ "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<!-- Swaydesk's extension to AccountsService: each account's accent color, which swaydesk-desktop-config writes
+     and the login screen (swaydesk-greeter) reads before anyone logs in. accounts-daemon stores it in
+     /var/lib/AccountsService/users/<login>; polkit lets each user change only their own account. -->
+<node>
+  <interface name="org.swaydesktop.Accounts">
+    <!-- Without this one, accounts-daemon doesn't export the interface -->
+    <annotation name="org.freedesktop.Accounts.VendorExtension" value="true"/>
+    <annotation name="org.freedesktop.Accounts.Authentication" value="org.freedesktop.accounts.change-own-user-data"/>
+    <!-- No default: an account that never set it answers Get with an error, which the writers and the login
+         screen read as "no accent" -->
+    <property name="Accent" type="s" access="readwrite"/>
+  </interface>
+</node>

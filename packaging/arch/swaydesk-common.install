@@ -1,0 +1,15 @@
+# O accounts-daemon só lê as interfaces de extensão (a org.swaydesktop.Accounts, o destaque que a tela de login
+# mostra) ao subir: reinicia se estiver rodando. Num chroot, sem o systemd, nada. Nunca falha a instalação
+_swaydesk_accounts() {
+  if [ -d "${SWAYDESK_SYSTEMD_RUN:-/run/systemd/system}" ]; then
+    systemctl try-restart accounts-daemon.service >/dev/null 2>&1 || true
+  fi
+}
+
+post_install() {
+  _swaydesk_accounts
+}
+
+post_upgrade() {
+  _swaydesk_accounts
+}

@@ -32,7 +32,9 @@ Replace the configuration and the memory file; for tests only.
 .TP
 .I /etc/swaydesk\-greeter/config.toml
 Optional: accent (\fBaccent = "#8e44ad"\fR) and language (\fBlocale = "pt_BR"\fR), in the format of the user's
-config.toml.
+config.toml. The accent each user picked (in the Theme app or their config.toml) wins once that account is
+selected: swaydesk\-desktop\-config stores it in AccountsService (the \fBAccent\fR property of
+org.swaydesktop.Accounts), and the screen reads it from there.
 .TP
 .I /etc/swaydesk\-greeter/sway.d/*.conf
 Sway commands for this machine's login screen (outputs, scale).

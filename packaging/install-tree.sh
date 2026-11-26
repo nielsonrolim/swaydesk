@@ -175,6 +175,11 @@ case $pkg in
     for icon in "${HICOLOR_ICONS[@]}"; do
       install -Dm644 "$data/icons/hicolor/scalable/apps/$icon" "$dest/usr/share/icons/hicolor/scalable/apps/$icon"
     done
+    # O destaque de cada conta no AccountsService (o swaydesk-desktop-config grava, a tela de login lê): a
+    # interface no lugar das do D-Bus e o link na pasta que o accounts-daemon lê ao subir
+    install -Dm644 "$root/packaging/files/org.swaydesktop.Accounts.xml" "$dest/usr/share/dbus-1/interfaces/org.swaydesktop.Accounts.xml"
+    install -d "$dest/usr/share/accountsservice/interfaces"
+    ln -sfn ../../dbus-1/interfaces/org.swaydesktop.Accounts.xml "$dest/usr/share/accountsservice/interfaces/org.swaydesktop.Accounts.xml"
     # A visão geral, swaydesk(7): o pacote de que todos os outros dependem
     install -Dm644 "$man/swaydesk.7" "$dest/usr/share/man/man7/swaydesk.7"
     # As traduções: os binários procuram em bin/../share/locale, que aqui é /usr/share/locale
