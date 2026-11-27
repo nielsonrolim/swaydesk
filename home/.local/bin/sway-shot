@@ -38,6 +38,18 @@ case ${1:-region} in
   *) need grim swaymsg jq ;;
 esac
 
+# Uma captura por vez: o atalho apertado de novo durante a seleção (o slurp aberto) ou o salvamento não abre outra
+# por cima. A trava é o descritor 9, que acaba com o script; o que fica em segundo plano depois (o wl-copy, o aviso
+# com o clique, o editor) sai sem ele. Sem o flock ou sem onde gravar a trava, segue sem ela: melhor duas capturas
+# que nenhuma. Sem o XDG_RUNTIME_DIR (fora de uma sessão do logind), também sem ela: no /tmp, outro usuário poderia
+# criar a trava antes e travar as capturas. Devolve 1 só com outra captura em andamento
+single() {
+  command -v flock >/dev/null 2>&1 && [ -n "${XDG_RUNTIME_DIR-}" ] || return 0
+  { exec 9>>"$XDG_RUNTIME_DIR/$1"; } 2>/dev/null || return 0
+  flock -n 9
+}
+single sway-shot.lock || exit 0
+
 dir="$(xdg-user-dir PICTURES 2>/dev/null || echo "$HOME/Pictures")/Screenshots"
 mkdir -p "$dir" || fail "$(printf "$(t 'Could not create %s')" "$dir")"
 # Duas capturas no mesmo segundo não podem sobrescrever uma à outra
@@ -78,16 +90,18 @@ esac
 
 # Copiar e avisar são extras: uma falha aqui não pode impedir de abrir o editor
 copied=" · $(t 'copied')"
-wl-copy --type image/png <"$file" 2>/dev/null || copied=" · $(t 'not copied')"
+wl-copy --type image/png <"$file" 2>/dev/null 9>&- || copied=" · $(t 'not copied')"
 # Um clique no aviso abre a captura no visualizador padrão. Em segundo plano: a espera pelo clique dura até o aviso
 # fechar, e nem o editor nem o painel esperam por ela. Sem o sway-notify-open ao lado (uma cópia solta do script),
 # o aviso de sempre, sem o clique
 if [ -x "${0%/*}/sway-notify-open" ]; then
-  "${0%/*}/sway-notify-open" "$file" "$file" "$(t 'Screenshot')" "${file/#$HOME/\~}$copied" </dev/null >/dev/null 2>&1 &
+  "${0%/*}/sway-notify-open" "$file" "$file" "$(t 'Screenshot')" "${file/#$HOME/\~}$copied" </dev/null >/dev/null 2>&1 9>&- &
 else
   notify -i "$file" "$(t 'Screenshot')" "${file/#$HOME/\~}$copied"
 fi
 
+# A captura acabou: o editor, que fica aberto, não segura a próxima
+exec 9>&-
 if [ "${2:-}" = edit ]; then
   # Gradia em flatpak (sistema ou usuário) ou um gradia no PATH; sem ele, só avisa
   id=be.alexandervanhee.gradia

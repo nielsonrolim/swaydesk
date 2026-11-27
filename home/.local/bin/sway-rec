@@ -126,9 +126,20 @@ case $1 in
   *) need wf-recorder swaymsg jq ;;
 esac
 
-# Antes de pedir a seleção: não adianta escolher a região para depois não gravar
-if recording; then
-  notify -i dialog-information "$(t 'Recording')" "$(t 'A recording is already in progress.')"
+# Uma captura por vez: o atalho apertado de novo durante a seleção (o slurp aberto) ou a gravação não abre outra
+# por cima. A trava é o descritor 9, que acaba com o script; o que fica em segundo plano depois (o aviso com o clique) sai sem ele. Sem o flock ou sem onde gravar a trava, segue sem ela: melhor duas capturas
+# que nenhuma. Sem o XDG_RUNTIME_DIR (fora de uma sessão do logind), também sem ela: no /tmp, outro usuário poderia
+# criar a trava antes e travar as capturas. Devolve 1 só com outra captura em andamento
+single() {
+  command -v flock >/dev/null 2>&1 && [ -n "${XDG_RUNTIME_DIR-}" ] || return 0
+  { exec 9>>"$XDG_RUNTIME_DIR/$1"; } 2>/dev/null || return 0
+  flock -n 9
+}
+
+# Antes de pedir a seleção: não adianta escolher a região para depois não gravar. A trava fica até o fim da gravação;
+# separada da do sway-shot, para um print durante a gravação. Com outra na seleção, nada; gravando, o aviso
+if ! single sway-rec.lock || recording; then
+  ! recording || notify -i dialog-information "$(t 'Recording')" "$(t 'A recording is already in progress.')"
   exit 0
 fi
 
@@ -203,7 +214,7 @@ echo "$audio" > "$state/audio"
 refresh
 
 rc=0
-wf-recorder "${args[@]}" -f "$file" </dev/null >"$state/log" 2>&1 || rc=$?
+wf-recorder "${args[@]}" -f "$file" </dev/null >"$state/log" 2>&1 9>&- || rc=$?
 rm -f "$state/start" "$state/audio"
 refresh
 
@@ -225,7 +236,7 @@ else
   # fechar, e o painel não espera por ela. Sem o sway-notify-open ao lado (uma cópia solta do script), o aviso de
   # sempre, sem o clique
   if [ -x "${0%/*}/sway-notify-open" ]; then
-    "${0%/*}/sway-notify-open" "$file" video-x-generic "$(t 'Recording saved')" "$body" </dev/null >/dev/null 2>&1 &
+    "${0%/*}/sway-notify-open" "$file" video-x-generic "$(t 'Recording saved')" "$body" </dev/null >/dev/null 2>&1 9>&- &
   else
     notify -i video-x-generic "$(t 'Recording saved')" "$body"
   fi
