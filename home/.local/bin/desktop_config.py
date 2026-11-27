@@ -309,12 +309,21 @@ def load_system(file):
     return Config(enabled=off, turned_on=on), warnings
 
 
+# Os avisos já impressos neste processo (o load)
+_PRINTED = set()
+
+
 def load():
-    """A config do usuário, com a camada do sistema por baixo do [enabled]; os avisos vão para o stderr."""
+    """A config do usuário, com a camada do sistema por baixo do [enabled]; os avisos vão para o stderr, cada um uma
+    vez por processo: um componente lê a config várias vezes (a paleta, as traduções, cada recarga), e o mesmo aviso
+    saía de novo no sway.log a cada leitura. Um aviso novo (o arquivo mudou) ainda sai; o mesmo texto, corrigido e
+    depois de volta, só sai de novo quando o processo reinicia. O load do config.rs."""
     config, warnings = load_config(path())
     system, system_warnings = load_system(system_path())
     for warning in warnings + system_warnings:
-        print(warning, file=sys.stderr)
+        if warning not in _PRINTED:
+            _PRINTED.add(warning)
+            print(warning, file=sys.stderr)
     return with_system(config, system)
 
 

@@ -47,6 +47,9 @@ Icon=utilities-terminal
 DESKTOP
 echo dock-test-app > "$HOME/.local/share/sway-dock/pinned"
 # O botão da grade grava o ambiente que recebeu, em vez de abrir a grade
+# Uma chave inválida no config.toml do desktop: o aviso sai uma vez, mesmo com a dock lendo a config de novo (a
+# paleta a cada reload)
+printf 'cursor_theme = "Breeze Light"\n' > "$HOME/.config/swaydesk/config.toml"
 mkdir -p "$HOME/.config/sway-dock"
 printf 'launcher = "sh -c \x27env > /tmp/launcher.env\x27"\n' > "$HOME/.config/sway-dock/config.toml"
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
@@ -233,6 +236,8 @@ if [ "$impl" = rust ]; then
   "$HOME/.local/bin/sway-dock" reload; sleep 1
   "$HOME/.local/bin/sway-dock" reload; sleep 1
   dump | grep -q "old docks still alive: 0 of" && ok "o reload solta as docks anteriores" || fail "uma dock anterior continua viva"
+  n=$(grep -c "config: invalid theme name in cursor_theme: Breeze Light" /tmp/dock.log)
+  [ "$n" = 1 ] && ok "o aviso da config sai uma vez, com os reloads" || fail "o aviso da config saiu $n vezes (esperado 1)"
 fi
 grep -E "^(Rss|Pss|Private_Dirty):" /proc/$pid/smaps_rollup | tr -s ' ' | paste -sd ' ' | sed 's/^/memória: /'
 kill "$pid"; sleep 0.5

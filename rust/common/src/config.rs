@@ -500,13 +500,21 @@ pub fn load_system(file: &Path) -> (Config, Vec<String>) {
     (system, warnings)
 }
 
-/// A config do usuário, com a camada do sistema por baixo do [enabled]; os avisos vão para o stderr (o sway.log).
+/// A config do usuário, com a camada do sistema por baixo do [enabled]; os avisos vão para o stderr (o sway.log),
+/// cada um uma vez por processo: um componente lê a config várias vezes (a paleta, as traduções, cada recarga), e
+/// o mesmo aviso saía de novo a cada leitura. Um aviso novo (o arquivo mudou) ainda sai; o mesmo texto, corrigido e
+/// depois de volta, só sai de novo quando o processo reinicia. O load do desktop_config.py.
 pub fn load() -> Config {
     let (config, mut warnings) = load_config(&path());
     let (system, system_warnings) = load_system(&system_path());
     warnings.extend(system_warnings);
+    static PRINTED: std::sync::Mutex<BTreeSet<String>> = std::sync::Mutex::new(BTreeSet::new());
+    let mut printed = PRINTED.lock().unwrap_or_else(std::sync::PoisonError::into_inner);
     for warning in warnings {
-        eprintln!("{warning}");
+        if !printed.contains(&warning) {
+            eprintln!("{warning}");
+            printed.insert(warning);
+        }
     }
     config.with_system(&system)
 }

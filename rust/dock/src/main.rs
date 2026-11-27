@@ -40,11 +40,6 @@ fn reexec_as_program() {
     warn(&format!("could not run as {PROGRAM}: {err}"));
 }
 
-fn tr(msgid: &str) -> String {
-    i18n::init(&config::load());
-    i18n::tr(msgid)
-}
-
 /// O --help (swaydesk_common::early_args!)
 const USAGE: &str = concat!(
     "usage: swaydesk-dock               opens the dock (one per session)\n",
@@ -86,11 +81,11 @@ fn main() -> ExitCode {
             if resident::signal_pid(&pidfile, PROGRAM, libc::SIGUSR1) {
                 return ExitCode::SUCCESS;
             }
-            eprintln!("{}", tr("sway-dock is not running"));
+            eprintln!("{}", i18n::tr("sway-dock is not running"));
             return ExitCode::FAILURE;
         }
         _ => {
-            eprintln!("{}", tr("usage: sway-dock [reload | pin ID | unpin ID]"));
+            eprintln!("{}", i18n::tr("usage: sway-dock [reload | pin ID | unpin ID]"));
             return ExitCode::from(2);
         }
     }
