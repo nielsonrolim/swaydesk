@@ -171,6 +171,8 @@ pub(crate) struct Page {
     /// O accent_auto em uso
     current_auto: Cell<bool>,
     note: RefCell<Option<String>>,
+    /// Sem tema aplicado (um Sway puro): a página mostra os padrões, e a dica diz isso (st::unapplied_note)
+    unapplied: RefCell<Option<String>>,
     icons_cache: RefCell<HashMap<String, String>>,
     applying: Cell<bool>,
     /// Evita que os sinais disparem de volta enquanto a janela é posta de acordo com a escolha
@@ -492,6 +494,7 @@ impl Page {
             current_color: RefCell::new(String::new()),
             current_auto: Cell::new(false),
             note: RefCell::new(None),
+            unapplied: RefCell::new(None),
             icons_cache: RefCell::new(HashMap::new()),
             applying: Cell::new(false),
             updating: Cell::new(false),
@@ -753,6 +756,7 @@ impl Page {
         *self.wanted.borrow_mut() = config.gtk_theme.clone();
         *self.current.borrow_mut() = dc::effective_gtk_theme(&config);
         *self.note.borrow_mut() = st::missing_note(&config);
+        *self.unapplied.borrow_mut() = st::unapplied_note(&config::path());
         // Sem o Papirus em uso, a cor mais perto do destaque, entre as que o app mostra; o destaque padrão exato
         // (que não é amostra), com o modo desligado, carrega como nenhuma ("")
         let folders = st::folder_color(&config).unwrap_or_else(|| sp::nearest_color(&config.accent, &self.colors));
@@ -1140,6 +1144,10 @@ impl Page {
 
     /// folders: as pastas pegam a cor (ícones Papirus); sem isso, a dica não fala delas.
     fn theme_hint(&self, theme: &str, family: &Option<String>, color: &str, exact: bool, family_accents: usize, other: bool, folders: bool) -> String {
+        // Antes do tema que falta: num Sway puro, o padrão que falta nunca foi pedido
+        if let Some(note) = self.unapplied.borrow().as_ref() {
+            return format!("{note}.");
+        }
         if let Some(note) = self.note.borrow().as_ref() {
             return fill_one(&tr("%s. Choose a theme to save it in the config."), note);
         }

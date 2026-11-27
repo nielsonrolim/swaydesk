@@ -155,6 +155,18 @@ pub fn missing_note(config: &Config) -> Option<String> {
     Some(fill(&tr("%(wanted)s is not installed: using %(used)s"), &[("wanted", &config.gtk_theme), ("used", &dc::effective_gtk_theme(config))]))
 }
 
+/// O aviso de quem nunca aplicou um tema (um Sway puro, só com os pacotes): sem o gtk_theme no config do usuário,
+/// a página mostra os padrões, não o que a sessão usa. Um config ilegível é do usuário: None. O mesmo do
+/// unapplied_note do sway_themes.py.
+pub fn unapplied_note(file: &Path) -> Option<String> {
+    let table = match std::fs::read_to_string(file) {
+        Ok(text) => text.parse::<toml::Table>().ok()?,
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => toml::Table::new(),
+        Err(_) => return None,
+    };
+    (!table.contains_key("gtk_theme")).then(|| tr("Nothing applied yet: the desktop keeps its current look until you press Apply"))
+}
+
 /// Por que a cor de destaque não foi para os gtk.css: outro desktop instalado (o GTK os lê em toda sessão), ou um
 /// gtk.css que não é daqui. Os mesmos textos do gtk_css_notes do sway_themes.py.
 pub fn gtk_css_notes(kept: &[String], others: &[String]) -> Vec<String> {
@@ -1127,6 +1139,25 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn the_unapplied_note_only_while_the_config_has_no_gtk_theme() {
+        // Num Sway sem nada aplicado, a página mostra os padrões (o estilo Escuro) com a janela clara: a nota diz
+        // que nada foi aplicado. Os mesmos casos do test_unapplied_note do tests/test_sway_theme.py
+        let dir = std::env::temp_dir().join(format!("swaydesk-unapplied-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("config.toml");
+        let note = unapplied_note(&dir.join("missing.toml")).expect("without a config: the note");
+        assert!(note.starts_with("Nothing applied yet"), "{note}");
+        std::fs::write(&file, "[enabled]\nosd = false\n").unwrap();
+        assert!(unapplied_note(&file).is_some(), "another panel wrote the config, not the theme");
+        std::fs::write(&file, "gtk_theme = \"Adwaita\"\n").unwrap();
+        assert_eq!(unapplied_note(&file), None);
+        // Um arquivo inválido é do usuário: a página não diz que nada foi aplicado
+        std::fs::write(&file, "gtk_theme = \n").unwrap();
+        assert_eq!(unapplied_note(&file), None);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     /// Um /proc falso com processos sway (pid, perfil: None sem o DCONF_PROFILE), todos do usuário que roda o teste.
     fn fake_proc(name: &str, sways: &[(u32, Option<&str>)]) -> PathBuf {

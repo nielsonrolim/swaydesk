@@ -664,6 +664,10 @@ msgid "%(wanted)s is not installed: using %(used)s"
 msgstr "%(wanted)s no está instalado: se usa %(used)s"
 
 #: home/.local/bin/sway_themes.py
+msgid "Nothing applied yet: the desktop keeps its current look until you press Apply"
+msgstr "Nada aplicado todavía: el escritorio mantiene su aspecto actual hasta que pulses Aplicar"
+
+#: home/.local/bin/sway_themes.py
 #, python-format
 msgid "Another desktop is installed (%s), so the accent color is not written to ~/.config/gtk-3.0/gtk.css and gtk-4.0/gtk.css, which every desktop reads: in Sway, Swaydesk's apps get the exact color, the libadwaita apps the nearest of their own accent colors, and the GTK 3 apps keep the theme's color"
 msgstr "Hay otro escritorio instalado (%s), así que el color de acento no se escribe en ~/.config/gtk-3.0/gtk.css ni en gtk-4.0/gtk.css, que todos los escritorios leen: en Sway, las apps de Swaydesk reciben el color exacto, las apps libadwaita el más cercano de sus propios colores de acento, y las apps GTK 3 mantienen el color del tema"
