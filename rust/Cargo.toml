@@ -8,7 +8,7 @@ members = ["common", "drawer-logic", "drawer", "ui", "calendar", "vpointer", "no
 default-members = ["common", "drawer-logic", "notifd-logic", "notifications", "system-logic", "system", "nm", "network", "bluez", "bluetooth", "weather", "dock-logic", "clipboard", "media", "keyring", "sessionmgr", "portal", "theme", "desktop-config", "lock-logic", "clip-store", "switcher-logic", "greeter-logic", "help-logic", "displays-logic"]
 
 [workspace.package]
-version = "0.1.10"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.85"
 license = "MIT"
