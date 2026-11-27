@@ -2,6 +2,7 @@
 
 Arquivo ausente ou inválido usa os padrões: nenhum widget pode deixar de abrir por causa dele.
 """
+import functools
 import os
 import re
 import shutil
@@ -142,6 +143,8 @@ class Palette:
     bright: str  # o indicador de onde a próxima janela abre, no Sway
     soft: str  # texto secundário sobre o destaque
     on_accent: str  # texto sobre o destaque
+    # o tema do GTK desenha o switch numa imagem (theme_draws_switch_image_in): o accent_css fica sem o SWITCH_CSS
+    image_switch: bool = False
 
 
 def config_home():
@@ -439,11 +442,12 @@ def contrast(color, other):
 def palette(config):
     """Os tons do destaque. O padrão usa os tons do tema Mint-Y; as outras cores, tons calculados."""
     accent = config.accent
+    image_switch = _theme_draws_switch_image(config.gtk_theme, tuple(gtk_theme_dirs()))
     if accent == DEFAULT_ACCENT:
-        return Palette(accent, "#22b3c0", "#29d0df", "#e0f4f6", "#ffffff")
+        return Palette(accent, "#22b3c0", "#29d0df", "#e0f4f6", "#ffffff", image_switch)
     on_accent = "#ffffff" if contrast_with_white(accent) >= MIN_WHITE_CONTRAST else "#000000"
     hover = mix(accent, "#ffffff" if on_accent == "#ffffff" else "#000000", 0.12)
-    return Palette(accent, hover, mix(accent, "#ffffff", 0.25), mix(accent, on_accent, 0.85), on_accent)
+    return Palette(accent, hover, mix(accent, "#ffffff", 0.25), mix(accent, on_accent, 0.85), on_accent, image_switch)
 
 
 def css_colors(colors):
@@ -488,10 +492,16 @@ SEARCH_CSS = (
 # APPLICATION, estas vencem as do tema seja qual for a especificidade: os ligados levam :not(:disabled) (o tema pinta
 # o desligado) e o levelbar fica de fora. Seletores com a menor especificidade que pega o widget: o CSS de cada
 # componente vem depois, no mesmo provider, e vence um empate. Uma regra por linha.
-WIDGET_CSS = (
+# O switch ligado no destaque, fora dos temas que o desenham numa imagem (Palette.image_switch): nesses, como o Mint-Y
+# (um PNG de 52×24 com a pílula e o botão), o background-image: none apagava a imagem e deixava um quadrado no destaque.
+SWITCH_CSS = (
     "switch:checked:not(:disabled) { background-image: none; background-color: @accent; border-color: @accent; "
     "color: @on_accent; }\n"
-    "switch:checked:not(:disabled) slider { border-color: @accent; }\n"
+    "switch:checked:not(:disabled) slider { border-color: @accent; }\n")
+
+# O radio leva o raio de círculo: temas como o Mint-Y o desenham numa imagem sem raio, e o fundo do destaque fazia uma
+# caixa de cantos retos atrás dela.
+WIDGET_CSS = (
     "button.suggested-action:not(:disabled) { background-image: none; background-color: @accent; "
     "border-color: @accent; color: @on_accent; }\n"
     "button.suggested-action:hover:not(:disabled) { background-image: none; background-color: @accent_hover; "
@@ -503,6 +513,7 @@ WIDGET_CSS = (
     "check:checked:not(:disabled), radio:checked:not(:disabled), check:indeterminate:not(:disabled), "
     "radio:indeterminate:not(:disabled) { background-image: none; background-color: @accent; border-color: @accent; "
     "color: @on_accent; }\n"
+    "radio:checked:not(:disabled), radio:indeterminate:not(:disabled) { border-radius: 100%; }\n"
     "scale highlight, progressbar progress { background-image: none; background-color: @accent; "
     "border-color: @accent; }\n"
     "calendar:selected, row:selected, flowboxchild:selected, .view:selected { background-color: @accent; "
@@ -513,7 +524,45 @@ WIDGET_CSS = (
 
 def accent_css(colors):
     """As cores com nome, os widgets e os campos de busca: o CSS do destaque dos componentes do Swaydesk."""
-    return css_colors(colors) + WIDGET_CSS + SEARCH_CSS
+    return css_colors(colors) + ("" if colors.image_switch else SWITCH_CSS) + WIDGET_CSS + SEARCH_CSS
+
+
+def css_draws_switch_image(css):
+    """Se o gtk.css de um tema desenha o switch numa imagem: uma regra de `switch` (ou `switch:…`) com um `url(`. Um
+    seletor com um ancestral (`* switch`, `.x switch`) fica de fora: nenhum tema conhecido o usa para a imagem."""
+    for chunk in css.split("}"):
+        selectors, brace, body = chunk.rpartition("{")
+        if brace and "url(" in body and any(s == "switch" or s.startswith("switch:")
+                                            for s in (s.strip() for s in selectors.split(","))):
+            return True
+    return False
+
+
+def gtk_theme_dirs():
+    """As pastas de temas do GTK, na ordem em que ele procura (o _gtk_css_find_theme): $XDG_DATA_HOME/themes, ~/.themes
+    e as do XDG_DATA_DIRS."""
+    data_dirs = os.environ.get("XDG_DATA_DIRS") or "/usr/local/share:/usr/share"
+    return [data_home() / "themes", Path.home() / ".themes",
+            *(Path(d) / "themes" for d in data_dirs.split(":") if d.startswith("/"))]
+
+
+def theme_draws_switch_image_in(theme, dirs):
+    """Se o tema do GTK 3 com esse nome desenha o switch numa imagem: o primeiro gtk-3.0/gtk.css dele nas pastas."""
+    if not THEME_NAME.fullmatch(theme or ""):
+        return False
+    for base in dirs:
+        try:
+            return css_draws_switch_image((Path(base) / theme / "gtk-3.0/gtk.css").read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError):
+            continue
+    return False
+
+
+@functools.lru_cache(maxsize=16)
+def _theme_draws_switch_image(theme, dirs):
+    """O theme_draws_switch_image_in lembrado: o palette() roda a cada desenho da prévia do app Tema, e o gtk.css de um
+    tema tem uns 130 KB."""
+    return theme_draws_switch_image_in(theme, dirs)
 
 
 def render_template(name, colors):

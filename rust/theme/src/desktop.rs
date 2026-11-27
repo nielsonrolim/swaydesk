@@ -789,7 +789,7 @@ pub fn gtk_css_ours(file: &Path, name: &str) -> bool {
         text.lines().find_map(|l| l.strip_prefix(&format!("@define-color {key} "))?.strip_suffix(';').map(str::to_string))
     };
     let (Some(accent), Some(on_accent)) = (color("accent_bg_color"), color("accent_fg_color")) else { return false };
-    let colors = Palette { accent, hover: String::new(), bright: String::new(), soft: String::new(), on_accent };
+    let colors = Palette { accent, hover: String::new(), bright: String::new(), soft: String::new(), on_accent, image_switch: false };
     gtk_css_files(&colors)
         .iter()
         .any(|(n, content)| *n == name && (*content == text || content.replacen(GTK_CSS_HEAD, OLD_GTK_CSS_HEAD, 1) == text))
@@ -1077,7 +1077,7 @@ mod tests {
 
     #[test]
     fn the_gtk_css_files_carry_the_accent() {
-        let colors = Palette { accent: "#e01b24".into(), hover: String::new(), bright: String::new(), soft: String::new(), on_accent: "#ffffff".into() };
+        let colors = Palette { accent: "#e01b24".into(), hover: String::new(), bright: String::new(), soft: String::new(), on_accent: "#ffffff".into(), image_switch: false };
         let [(gtk3, css3), (gtk4, css4)] = gtk_css_files(&colors);
         assert_eq!((gtk3, gtk4), ("gtk-3.0/gtk.css", "gtk-4.0/gtk.css"));
         for css in [&css3, &css4] {

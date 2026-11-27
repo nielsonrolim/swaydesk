@@ -287,6 +287,8 @@ pub struct Palette {
     pub soft: String,
     /// Texto sobre o destaque
     pub on_accent: String,
+    /// O tema do GTK desenha o switch numa imagem (theme_draws_switch_image_in): o accent_css fica sem o SWITCH_CSS
+    pub image_switch: bool,
 }
 
 fn env_dir(name: &str, fallback: &str) -> PathBuf {
@@ -643,6 +645,7 @@ pub fn contrast_with_white(color: &str) -> f64 {
 /// Os tons do destaque. O padrão usa os tons do tema Mint-Y; as outras cores, tons calculados.
 pub fn palette(config: &Config) -> Palette {
     let accent = config.accent.clone();
+    let image_switch = theme_draws_switch_image(&config.gtk_theme);
     if accent == DEFAULT_ACCENT {
         return Palette {
             accent,
@@ -650,6 +653,7 @@ pub fn palette(config: &Config) -> Palette {
             bright: "#29d0df".into(),
             soft: "#e0f4f6".into(),
             on_accent: "#ffffff".into(),
+            image_switch,
         };
     }
     let on_accent = if contrast_with_white(&accent) >= MIN_WHITE_CONTRAST { "#ffffff" } else { "#000000" };
@@ -659,6 +663,7 @@ pub fn palette(config: &Config) -> Palette {
         soft: mix(&accent, on_accent, 0.85),
         on_accent: on_accent.into(),
         accent,
+        image_switch,
     }
 }
 
@@ -688,15 +693,15 @@ pub fn gtk4_accent_css(colors: &Palette) -> String {
 /// usuário (USER) vence estas. Por isso os ligados levam :not(:disabled) (o tema pinta o desligado), e o levelbar fica
 /// de fora (o low e o full têm as cores do tema; a bateria e o sistema pintam os seus). Os seletores são os do tema do
 /// GTK 4.18, uma regra por linha; o contorno do suggested-action fica claro. O :backdrop (janela sem foco) fica no
-/// destaque, sem o cinza do tema.
+/// destaque, sem o cinza do tema. O radio leva o raio de círculo: temas como o Mint-Y o desenham numa imagem sem raio,
+/// e o fundo do destaque fazia uma caixa de cantos retos atrás dela. O switch fica no SWITCH_CSS.
 pub const WIDGET_CSS: &str = "\
-switch:checked:not(:disabled) { background-color: @accent; border-color: @accent; color: @on_accent; }
-switch:checked:not(:disabled) > slider { border-color: @accent; }
 button.suggested-action:not(:disabled) { background-image: none; background-color: @accent; border-color: @accent; color: @on_accent; }
 button.suggested-action:hover:not(:disabled) { background-image: none; background-color: @accent_hover; border-color: @accent_hover; }
 button.suggested-action:active:not(:disabled), button.suggested-action:checked:not(:disabled) { background-image: none; background-color: @accent_hover; border-color: @accent_hover; }
 button.suggested-action.flat:not(:disabled) { background-color: transparent; border-color: transparent; color: @accent; }
 check:checked:not(:disabled), radio:checked:not(:disabled), check:indeterminate:not(:disabled), radio:indeterminate:not(:disabled) { background-image: none; background-color: @accent; border-color: @accent; color: @on_accent; }
+radio:checked:not(:disabled), radio:indeterminate:not(:disabled) { border-radius: 100%; }
 scale > trough > highlight, progressbar > trough > progress { background-image: none; background-color: @accent; border-color: @accent; }
 calendar > grid > label.day-number:selected { background-color: @accent; color: @on_accent; }
 row:selected, .view:selected, gridview > child:selected, flowbox > flowboxchild:selected { background-color: @accent; color: @on_accent; }
@@ -705,6 +710,60 @@ entry:focus-within, spinbutton:focus-within { outline-color: alpha(@accent, 0.5)
 button.suggested-action:focus-visible { outline-color: alpha(@on_accent, 0.8); }
 text > selection:focus-within, label > selection:focus-within { background-color: alpha(@accent, 0.3); }
 ";
+
+/// O switch ligado no destaque, fora dos temas que o desenham numa imagem (Palette::image_switch): nesses, como o Mint-Y
+/// (um PNG de 52×24 com a pílula, o botão e o ✓, sem raio), o fundo do destaque pintava o retângulo inteiro do switch,
+/// uma caixa de cantos retos atrás da imagem, e o destaque não chega à imagem de qualquer jeito.
+pub const SWITCH_CSS: &str = "\
+switch:checked:not(:disabled) { background-color: @accent; border-color: @accent; color: @on_accent; }
+switch:checked:not(:disabled) > slider { border-color: @accent; }
+";
+
+/// Se o gtk-4.0/gtk.css de um tema desenha o switch numa imagem: uma regra de `switch` (ou `switch:…`) com um `url(`.
+/// Um seletor com um ancestral (`* switch`, `.x switch`) fica de fora: nenhum tema conhecido o usa para a imagem.
+pub fn css_draws_switch_image(css: &str) -> bool {
+    css.split('}').filter_map(|chunk| chunk.rsplit_once('{')).any(|(selectors, body)| {
+        body.contains("url(")
+            && selectors.split(',').map(str::trim).any(|s| s == "switch" || s.starts_with("switch:"))
+    })
+}
+
+/// As pastas de temas do GTK, na ordem em que ele procura (o _gtk_css_find_theme): $XDG_DATA_HOME/themes, ~/.themes e
+/// as de $XDG_DATA_DIRS.
+fn gtk_theme_dirs() -> Vec<PathBuf> {
+    let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default();
+    let data_home = std::env::var_os("XDG_DATA_HOME")
+        .map(PathBuf::from)
+        .filter(|p| p.is_absolute())
+        .unwrap_or_else(|| home.join(".local/share"));
+    let data_dirs = std::env::var("XDG_DATA_DIRS").ok().filter(|v| !v.is_empty()).unwrap_or_else(|| "/usr/local/share:/usr/share".into());
+    let mut dirs = vec![data_home.join("themes"), home.join(".themes")];
+    dirs.extend(data_dirs.split(':').filter(|d| d.starts_with('/')).map(|d| Path::new(d).join("themes")));
+    dirs
+}
+
+/// Se o tema do GTK 4 com esse nome desenha o switch numa imagem: o primeiro gtk-4.0/gtk.css dele nas gtk_theme_dirs.
+pub fn theme_draws_switch_image_in(theme: &str, dirs: &[PathBuf]) -> bool {
+    if !is_name(theme, true) {
+        return false;
+    }
+    dirs.iter()
+        .find_map(|dir| std::fs::read_to_string(dir.join(theme).join("gtk-4.0/gtk.css")).ok())
+        .is_some_and(|css| css_draws_switch_image(&css))
+}
+
+/// O theme_draws_switch_image_in nas gtk_theme_dirs, lembrado por nome: o palette() roda a cada desenho da prévia do
+/// app Tema, e o gtk.css de um tema tem uns 130 KB
+fn theme_draws_switch_image(theme: &str) -> bool {
+    static SEEN: std::sync::Mutex<Vec<(String, bool)>> = std::sync::Mutex::new(Vec::new());
+    let mut seen = SEEN.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some((_, image)) = seen.iter().find(|(name, _)| name == theme) {
+        return *image;
+    }
+    let image = theme_draws_switch_image_in(theme, &gtk_theme_dirs());
+    seen.push((theme.to_string(), image));
+    image
+}
 
 /// A classe dos campos de busca (o swaydesk_ui::search_entry): todos com o SEARCH_CSS.
 pub const SEARCH_CLASS: &str = "swaydesk-search";
@@ -741,7 +800,8 @@ entry.swaydesk-search.search-compact > image:last-child:not(:first-child) { -gtk
 
 /// As cores com nome, as do GTK 4, os widgets e os campos de busca: o CSS do destaque dos apps do Swaydesk.
 pub fn accent_css(colors: &Palette) -> String {
-    format!("{}{}{WIDGET_CSS}{SEARCH_CSS}", css_colors(colors), gtk4_accent_css(colors))
+    let switch = if colors.image_switch { "" } else { SWITCH_CSS };
+    format!("{}{}{switch}{WIDGET_CSS}{SEARCH_CSS}", css_colors(colors), gtk4_accent_css(colors))
 }
 
 /// As famílias, em ordem: a do texto, a do sistema, a dos ícones e a genérica.
@@ -796,7 +856,7 @@ mod tests {
     fn the_accent_css_colors_the_stock_gtk4_widgets() {
         // Os temas do GTK 4 sem libadwaita (o Default do GTK 4.18) não leem o --accent-bg-color: só regras
         // explícitas pintam os widgets. Uma regra por linha, com o destaque.
-        let css = accent_css(&palette(&Config::default()));
+        let css = accent_css(&Palette { image_switch: false, ..palette(&Config::default()) });
         // Os ligados só sem o :disabled: na prioridade APPLICATION, a regra venceria a do tema para desligado
         for selector in [
             "switch:checked:not(:disabled)",
@@ -822,7 +882,7 @@ mod tests {
         // Nenhum fundo ou borda de ligado sem o :not(:disabled) (o contorno do foco não importa: desligado não tem
         // foco); nada no levelbar (low, high e full têm cores do tema, e os popups da
         // bateria e do sistema pintam os seus com seletores menos específicos)
-        for line in WIDGET_CSS.lines() {
+        for line in SWITCH_CSS.lines().chain(WIDGET_CSS.lines()) {
             let head = line.split(" {").next().unwrap_or_default();
             for s in head.split(", ").filter(|_| line.contains("border-color")) {
                 if s.starts_with("switch:checked") || s.starts_with("button.suggested-action") || s.starts_with("check:") || s.starts_with("radio:") {
@@ -831,6 +891,60 @@ mod tests {
             }
             assert!(!line.contains("levelbar"), "{line}");
         }
+    }
+
+    #[test]
+    fn a_theme_that_draws_the_switch_in_an_image_keeps_it_without_the_accent_box() {
+        // O Mint-Y desenha o switch num PNG (a pílula, o botão e o ✓), sem raio: o fundo do destaque pintava o
+        // retângulo inteiro atrás dela. Com esse tema, o accent_css fica sem o SWITCH_CSS; com os outros, igual
+        let mint_y = "switch {\n  font-size: 1px;\n  min-width: 52px; }\n\nswitch {\n  background-image: \
+                      -gtk-scaled(url(\"assets/switch-dark.png\"), url(\"assets/switch-dark@2.png\")); }\n\
+                      headerbar switch:checked,\n.primary-toolbar switch:checked {\n  background-image: none; }\n";
+        assert!(css_draws_switch_image(mint_y));
+        let mint_x = "switch { border-radius: 3px; background-image: linear-gradient(to bottom, #fff, #eee); }\n\
+                      check { -gtk-icon-source: url(\"assets/check.png\"); }\nstackswitcher { background: url(\"a.png\"); }\n";
+        assert!(!css_draws_switch_image(mint_x), "an image on another widget doesn't count");
+        assert!(css_draws_switch_image("headerbar switch, switch:checked { background-image: url('on.png'); }"));
+        assert!(!css_draws_switch_image(""));
+
+        let base = std::env::temp_dir().join(format!("swaydesk-image-switch-{}", std::process::id()));
+        let (home, usr) = (base.join("home/.local/share/themes"), base.join("usr/share/themes"));
+        for (dir, name, css) in [(&home, "Mint-Y-Dark-Orange", mint_y), (&usr, "Mint-X", mint_x), (&usr, "Mint-Y-Dark-Orange", "")] {
+            std::fs::create_dir_all(dir.join(name).join("gtk-4.0")).unwrap();
+            std::fs::write(dir.join(name).join("gtk-4.0/gtk.css"), css).unwrap();
+        }
+        let dirs = [home.clone(), usr.clone()];
+        // O primeiro achado vale, como no GTK: o da pasta do usuário
+        assert!(theme_draws_switch_image_in("Mint-Y-Dark-Orange", &dirs));
+        assert!(!theme_draws_switch_image_in("Mint-X", &dirs));
+        assert!(!theme_draws_switch_image_in("Missing", &dirs));
+        assert!(!theme_draws_switch_image_in("../home/.local/share/themes/Mint-Y-Dark-Orange", &[usr.clone()]));
+        std::fs::remove_dir_all(&base).unwrap();
+
+        // Sem olhar as pastas de temas da máquina: o image_switch dito aqui
+        let colors = Palette { image_switch: false, ..palette(&Config::default()) };
+        assert!(accent_css(&colors).contains(SWITCH_CSS));
+        let css = accent_css(&Palette { image_switch: true, ..colors });
+        assert!(!css.contains("switch:checked"), "{css}");
+        assert!(css.contains("radio:checked:not(:disabled)"));
+    }
+
+    #[test]
+    fn the_accent_radio_is_a_circle_and_the_check_keeps_the_themes_radius() {
+        // O radio do Mint-Y também é uma imagem sem raio: o fundo do destaque fica num círculo, como o radio de
+        // todo tema. O check fica com o raio do tema (cada um tem o seu)
+        let rules = |selector: &str| {
+            WIDGET_CSS
+                .lines()
+                .filter(|line| line.split(" {").next().is_some_and(|head| head.split(", ").any(|s| s == selector)))
+                .collect::<String>()
+        };
+        for selector in ["radio:checked:not(:disabled)", "radio:indeterminate:not(:disabled)"] {
+            assert!(rules(selector).contains("border-radius: 100%;"), "{selector}");
+            assert!(rules(selector).contains("@accent"), "{selector}");
+        }
+        let check = rules("check:checked:not(:disabled)");
+        assert!(check.contains("@accent") && !check.contains("border-radius"));
     }
 
     #[test]
