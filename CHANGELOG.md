@@ -2,6 +2,32 @@
 
 Each release is published as packages and, shortly after, as install images. Updates arrive through `apt upgrade` or `pacman -Syu`.
 
+## 0.1.10 — 2026-11-27
+
+A cursor theme of your choice, with Bibata as the default cursor on Debian and Ubuntu, and a round of fixes: one screenshot at a time, third-party GTK 4 apps dark on Debian 13, the network popup on a PC without Wi-Fi, and switches that keep a Mint-Y theme's look. The empty transitional `swaydesk-scripts` leaves, and the site moves to https://swaydesk.org.
+
+### Upgrading
+
+- **From 0.1.8 or 0.1.9:** `sudo apt upgrade` or `pacman -Syu`. Plain `apt-get upgrade` lists the Swaydesk packages as not upgraded, because 0.1.10 brings a new package, `bibata-cursor-theme`. On Arch, `pacman -Syu` asks "Replace swaydesk-scripts with swaydesk-common?": answer yes. On Debian and Ubuntu, `swaydesk-scripts` stays installed, empty, and you can remove it with `sudo apt remove swaydesk-scripts`.
+- **From 0.1.6 or 0.1.7:** on Debian and Ubuntu, upgrade with `sudo apt full-upgrade`. `apt upgrade` lists every Swaydesk package under "Not upgrading" and exits without an error, because `swaydesk-scripts` has to be removed. Then read the 0.1.8 and 0.1.7 notes below.
+
+### Changed
+
+- **A cursor theme of your choice.** A new `cursor_theme` key at the top level of `config.toml` picks any installed cursor theme (a folder with `cursors/`). `swaydesk-desktop-config apply` and the Theme app apply it at once: Sway's cursor, the GTK settings, `gsettings` and the session's `XCURSOR_THEME`. Without the key, the automatic cursor stays: Bibata Modern Classic on Debian and Ubuntu, Capitaine on Arch. A theme that isn't installed only warns. Removing the key brings back the automatic cursor, unless you set the cursor some other way. A `seat … xcursor_theme` line of your own in `~/.config/sway/config.d` still wins, and apply says so.
+- **Bibata on Debian and Ubuntu.** `swaydesk-desktop` now recommends `bibata-cursor-theme`, which is in the Debian 13, Debian testing and Ubuntu 26.04 archives. Fresh installs and upgrades get the session's Bibata cursor instead of Xcursor's default.
+- **`swaydesk-scripts` is gone.** The empty transitional package from 0.1.7 left in 0.1.10, earlier than the 0.2.0 the 0.1.8 notes announced. `swaydesk-common` takes it over: on Arch, `pacman -Syu` replaces it; on Debian and Ubuntu it is removed when coming from 0.1.6 or 0.1.7 and stays as an empty package from 0.1.8 or 0.1.9.
+- **The site is now https://swaydesk.org;** the old address redirects. The packages' homepage, the snippets' links and the installer's branding point there.
+
+### Fixed
+
+- **One screenshot or recording at a time.** A second Print while you are still selecting an area does nothing, instead of starting another selection. The recording key during a recording only shows a notice. A screenshot during a recording still works.
+- **GTK 4 apps are dark with adw-gtk3-dark on Debian 13.** Volume Control (pavucontrol) and the other GTK 4 apps that don't use libadwaita opened light under the dark style, with GTK older than 4.20. This is fixed in `adw-gtk-theme` 6.5-2, in the Debian and Ubuntu repositories; Ubuntu 26.04 and Arch were already dark.
+- **The network popup on a PC without a Wi-Fi card** shows Wi-Fi as unavailable ("No Wi-Fi adapter") instead of a switch that did nothing. A card plugged in later works without reopening the popup.
+- **Switches keep a Mint-Y theme's look.** With a Mint-Y theme (such as Mint-Y-Dark-Orange), a switch that was on, like the Theme app's "Use the wallpaper's color" or Displays' "On", showed a square accent-colored box around Mint-Y's own pill. It now keeps the pill. Other themes keep the accent-colored switch, and the selected radio button is round in every theme.
+- **`swaydesk-desktop-config apply` only suggests restarting the components you have installed.** On a plain Sway with just one Swaydesk app, it no longer mentions the app grid, the dock, Waybar and others you don't have.
+- **Ubuntu's update notifier shows its icon in the tray.** It was a blank spot in the bar with Papirus; `swaydesk-common` ships the missing `system-software-update-symbolic` icon as a fallback.
+- **Config warnings are printed once.** An invalid key in `config.toml` (for example a bad `cursor_theme`) was printed twice by `swaydesk-desktop-config apply`, and the dock, the bar's popups and the other components repeated it in the session log each time they read the config (the dock on every reload). Each warning now appears once per program run; a new or different one still shows.
+
 ## 0.1.9 — 2026-11-26
 
 The accent color reaches the stock widgets of every Swaydesk app, Sway's tabs and the login screen follow it too, and a round of fixes: the weather follows a new city right away, Displays undoes a layout you never confirmed even if the app never starts again, and the files Swaydesk generates carry an English header.

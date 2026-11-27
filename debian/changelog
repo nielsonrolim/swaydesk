@@ -1,8 +1,24 @@
-swaydesk (0.1.10-1) UNRELEASED; urgency=medium
+swaydesk (0.1.10-1) unstable; urgency=medium
 
-  * Development after 0.1.9.
+  * Release 0.1.10.
+  * A cursor_theme key in config.toml applies any installed cursor theme
+    at once (Sway's seat, GTK, gsettings, XCURSOR_THEME); without it the
+    automatic cursor stays. swaydesk-desktop recommends
+    bibata-cursor-theme.
+  * The empty transitional swaydesk-scripts is retired: swaydesk-common
+    Breaks/Replaces swaydesk-scripts (<< 0.1.8~), where common pinned it
+    exactly; from 0.1.8 on it stays as an empty orphan.
+  * The site moves to https://swaydesk.org (Homepage, snippets,
+    installer branding).
+  * One screenshot or recording at a time.
+  * The network popup shows Wi-Fi as unavailable without an adapter.
+  * Switches keep a Mint-Y theme's pill; the selected radio is round.
+  * desktop-config apply suggests restarting only installed components.
+  * swaydesk-common ships system-software-update-symbolic as a fallback
+    icon for Ubuntu's update notifier.
+  * Each config warning is printed once per program run.
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Thu, 26 Nov 2026 21:27:47 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Fri, 27 Nov 2026 06:54:15 -0300
 
 swaydesk (0.1.9-1) unstable; urgency=medium
 
