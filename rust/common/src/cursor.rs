@@ -16,13 +16,18 @@ pub fn icon_dirs() -> Vec<PathBuf> {
     vec![config::home().join(".icons"), config::data_home().join("icons"), PathBuf::from(system)]
 }
 
-/// O primeiro de CURSOR_THEMES com cursores numa das pastas.
-pub fn cursor_theme_in(dirs: &[PathBuf]) -> Option<&'static str> {
-    CURSOR_THEMES.into_iter().find(|name| dirs.iter().any(|dir| has_cursors(&dir.join(name))))
+/// O tema do cursor da sessão: o pedido (o cursor_theme do config), se ele tem cursores numa das pastas; senão, o
+/// primeiro de CURSOR_THEMES com cursores. O cursor_theme do desktop_config.py.
+pub fn cursor_theme_in(dirs: &[PathBuf], wanted: &str) -> Option<String> {
+    let installed = |name: &str| dirs.iter().any(|dir| has_cursors(&dir.join(name)));
+    if !wanted.is_empty() && installed(wanted) {
+        return Some(wanted.to_string());
+    }
+    CURSOR_THEMES.into_iter().find(|name| installed(name)).map(str::to_string)
 }
 
-pub fn cursor_theme() -> Option<&'static str> {
-    cursor_theme_in(&icon_dirs())
+pub fn cursor_theme(wanted: &str) -> Option<String> {
+    cursor_theme_in(&icon_dirs(), wanted)
 }
 
 /// Os tamanhos oferecidos quando o arquivo do cursor não se lê.
@@ -71,10 +76,10 @@ pub fn theme_sizes_in(dirs: &[PathBuf], theme: &str) -> Vec<u32> {
     FALLBACK_SIZES.to_vec()
 }
 
-/// Os do tema do seat (cursor_theme); FALLBACK_SIZES sem nenhum.
-pub fn theme_sizes() -> Vec<u32> {
+/// Os do tema do seat (cursor_theme, com o pedido no config); FALLBACK_SIZES sem nenhum.
+pub fn theme_sizes(wanted: &str) -> Vec<u32> {
     let dirs = icon_dirs();
-    cursor_theme_in(&dirs).map_or_else(|| FALLBACK_SIZES.to_vec(), |theme| theme_sizes_in(&dirs, theme))
+    cursor_theme_in(&dirs, wanted).map_or_else(|| FALLBACK_SIZES.to_vec(), |theme| theme_sizes_in(&dirs, &theme))
 }
 
 /// O tamanho da lista mais perto do pedido; no empate, o menor. A própria lista vazia devolve o pedido.
@@ -106,11 +111,15 @@ mod tests {
         let tmp = tmp("order");
         let (user, system) = (tmp.join("user"), tmp.join("system"));
         let dirs = [user.clone(), system.clone()];
-        assert_eq!(cursor_theme_in(&dirs), None);
+        assert_eq!(cursor_theme_in(&dirs, ""), None);
         with_cursors(&system, "capitaine-cursors");
-        assert_eq!(cursor_theme_in(&dirs), Some("capitaine-cursors"));
+        assert_eq!(cursor_theme_in(&dirs, "").as_deref(), Some("capitaine-cursors"));
         with_cursors(&user, "Bibata-Modern-Classic");
-        assert_eq!(cursor_theme_in(&dirs), Some("Bibata-Modern-Classic"));
+        assert_eq!(cursor_theme_in(&dirs, "").as_deref(), Some("Bibata-Modern-Classic"));
+        // O pedido vence quando tem cursores; sem eles, o automático
+        assert_eq!(cursor_theme_in(&dirs, "Adwaita").as_deref(), Some("Bibata-Modern-Classic"));
+        with_cursors(&system, "Adwaita");
+        assert_eq!(cursor_theme_in(&dirs, "Adwaita").as_deref(), Some("Adwaita"));
         let _ = std::fs::remove_dir_all(&tmp);
     }
 
@@ -166,7 +175,7 @@ mod tests {
         let tmp = tmp("icons");
         std::fs::create_dir_all(tmp.join("Bibata-Modern-Classic")).unwrap();
         std::fs::write(tmp.join("Bibata-Modern-Classic/index.theme"), "[Icon Theme]\n").unwrap();
-        assert_eq!(cursor_theme_in(&[tmp.clone()]), None);
+        assert_eq!(cursor_theme_in(&[tmp.clone()], ""), None);
         let _ = std::fs::remove_dir_all(&tmp);
     }
 }

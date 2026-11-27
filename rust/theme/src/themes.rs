@@ -594,6 +594,12 @@ fn write_dconf(values: &[(&str, String)]) -> bool {
     all
 }
 
+/// Uma chave da base do Sway de volta ao padrão (gsettings reset). Devolve se deu certo.
+fn reset_dconf(key: &str) -> bool {
+    let gsettings = std::env::var("SWAY_THEME_GSETTINGS").unwrap_or_else(|_| FALLBACK_GSETTINGS.into());
+    run(&[&gsettings, "reset", INTERFACE, key], dconf_profile("sway").as_deref()) == 0
+}
+
 /// Em Wayland, o GTK lê o tema daqui, pelo portal. O tamanho do cursor (para os apps que leem o gsettings: GTK 3,
 /// Electron, o XWayland pelo portal) vai junto só na base própria do Sway: na base de todos (uma sessão antiga), a
 /// troca de tema mudaria o cursor do GNOME; ali, só o `sway-theme cursor` o grava.
@@ -628,20 +634,77 @@ pub fn init_dconf(config: &Config) -> bool {
     // na base de todos, só se ela não tem nenhum, como o resto. Sem conseguir ler, nada
     let size = config.cursor_size.to_string();
     let own = dconf_profile("sway").is_some();
-    let size_ok = match dconf_read("cursor-size") {
+    let mut size_ok = match dconf_read("cursor-size") {
         Some(current) if current != size && (own || current.is_empty()) => write_dconf(&[("cursor-size", size)]),
         _ => true,
     };
+    // O cursor_theme escolhido no config (e instalado) também, na base própria. Sem a chave, o automático só preenche
+    // uma base vazia, abaixo
+    size_ok = chosen_cursor_dconf(config) && size_ok;
     if !dconf_is_unset("gtk-theme") {
         return refresh_icons(config) && size_ok;
     }
     let mut values = dconf_values(config, None);
     // O mesmo do seat do Sway (00-cursor.conf): sem isso, o cursor mudaria ao passar por cima dos apps GTK
-    if let Some(cursor) = swaydesk_common::cursor::cursor_theme() {
-        values.push(("cursor-theme", cursor.to_string()));
+    if let Some(cursor) = swaydesk_common::cursor::cursor_theme(&config.cursor_theme) {
+        values.push(("cursor-theme", cursor));
     }
     let unset: Vec<(&str, String)> = values.into_iter().filter(|(key, _)| dconf_is_unset(key)).collect();
     write_dconf(&unset) && size_ok
+}
+
+fn written_cursor_file() -> PathBuf {
+    state_dir().join("cursor-theme")
+}
+
+/// O cursor do config no gsettings da base própria do Sway, quando o gravado é outro. Com um cursor_theme instalado, ele,
+/// e o arquivo de estado lembra que o valor é nosso. Sem a chave (ou com um tema fora de instalação), o automático, o
+/// mesmo do seat, mas só no lugar do que este código gravou: um cursor que o usuário pôs por outro caminho fica. Na base
+/// de todos (uma sessão antiga) ou com uma linha seat do config.d por cima do 00-cursor.conf (ela vence, e o
+/// cursor_warnings avisa), nada. Devolve se não falhou. O chosen_cursor_dconf do sway_themes.py.
+pub fn chosen_cursor_dconf(config: &Config) -> bool {
+    if dconf_profile("sway").is_none() || !dc::later_seat_cursors().is_empty() {
+        return true;
+    }
+    let automatic = swaydesk_common::cursor::cursor_theme(&config.cursor_theme);
+    let chosen = &config.cursor_theme;
+    let chosen_ok = !chosen.is_empty() && automatic.as_ref() == Some(chosen);
+    let marker = written_cursor_file();
+    let ours = std::fs::read_to_string(&marker).map(|t| t.trim().to_string()).unwrap_or_default();
+    let Some(recorded) = dconf_read("cursor-theme") else { return true };
+    if !chosen_ok && (ours.is_empty() || recorded != format!("'{ours}'")) {
+        return true;
+    }
+    // Sem a chave e sem nenhum dos CURSOR_THEMES (o seat no "default"), o padrão do sistema: o reset
+    let wanted = if chosen_ok { Some(chosen.clone()) } else { automatic };
+    let ok = match wanted {
+        Some(wanted) => recorded == format!("'{wanted}'") || write_dconf(&[("cursor-theme", wanted)]),
+        None => reset_dconf("cursor-theme"),
+    };
+    if ok {
+        // Só a lembrança de quem gravou: sem ela, o pior é um cursor que não volta ao automático
+        let _ = if chosen_ok { dc::write_file(&marker, &format!("{chosen}\n")) } else { std::fs::remove_file(&marker) };
+    }
+    ok
+}
+
+/// No apply (o do app Tema), o cursor do config vale na hora, como uma troca de tamanho: o gsettings e, numa sessão do
+/// Sway aberta, o seat e o XCURSOR_* do systemd e do D-Bus. Fora dela, o XCURSOR_* iria para os apps de outro desktop;
+/// com uma linha seat do config.d por cima do 00-cursor.conf (o cursor_warnings avisa), quem vale é ela, e nada muda.
+/// Devolve (o dconf não falhou, o ambiente da sessão não falhou). O refresh_cursor do sway_themes.py.
+pub fn refresh_cursor(config: &Config) -> (bool, bool) {
+    let ok = chosen_cursor_dconf(config);
+    if !dc::later_seat_cursors().is_empty() {
+        return (ok, true);
+    }
+    // Sem nenhum dos temas, o "default", como no 00-cursor.conf
+    let theme = swaydesk_common::cursor::cursor_theme(&config.cursor_theme).unwrap_or_else(|| "default".to_string());
+    let size = config.cursor_size.to_string();
+    if run(&["swaymsg", "seat", "seat0", "xcursor_theme", &theme, &size], None) != 0 {
+        return (ok, true);
+    }
+    let env = [format!("XCURSOR_THEME={theme}"), format!("XCURSOR_SIZE={size}")];
+    (ok, run(&["dbus-update-activation-environment", "--systemd", &env[0], &env[1]], None) == 0)
 }
 
 /// Com um tema já gravado, só o ícone, e só se ainda é o da config. Outro valor é do usuário.
@@ -913,9 +976,9 @@ pub fn apply_cursor_size(size: u32) -> Result<Applied, Error> {
     }
     let size = size.to_string();
     // Sem nenhum dos temas, o "default" do Xcursor, como no 00-cursor.conf
-    let theme = swaydesk_common::cursor::cursor_theme().unwrap_or("default");
+    let theme = swaydesk_common::cursor::cursor_theme(&config.cursor_theme).unwrap_or_else(|| "default".to_string());
     // Só com o seat trocado (uma sessão do Sway): fora dela, o XCURSOR_* iria para os apps de outro desktop
-    if run(&["swaymsg", "seat", "seat0", "xcursor_theme", theme, &size], None) == 0 {
+    if run(&["swaymsg", "seat", "seat0", "xcursor_theme", &theme, &size], None) == 0 {
         let env = [format!("XCURSOR_THEME={theme}"), format!("XCURSOR_SIZE={size}")];
         if run(&["dbus-update-activation-environment", "--systemd", &env[0], &env[1]], None) != 0 {
             failures.push(tr("cursor size in the session environment"));

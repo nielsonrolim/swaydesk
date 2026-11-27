@@ -233,6 +233,16 @@ msgstr ""
 msgid "The new color shows when you log in again or restart it:"
 msgstr ""
 
+#: home/.local/bin/sway-desktop-config home/.local/bin/sway-theme
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "Could not update: %s"
+msgstr ""
+
+#: home/.local/bin/sway-desktop-config
+msgid "cursor in the session environment"
+msgstr ""
+
 #: home/.local/bin/sway-desktop-config
 #, python-format
 msgid "could not write: %s"
@@ -456,11 +466,6 @@ msgstr ""
 #: home/.local/bin/sway-theme
 #, python-format
 msgid "Cursor size: %s"
-msgstr ""
-
-#: home/.local/bin/sway-theme home/.local/bin/sway-theme-app
-#, python-format
-msgid "Could not update: %s"
 msgstr ""
 
 #: home/.local/bin/sway-theme

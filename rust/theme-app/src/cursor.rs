@@ -72,7 +72,7 @@ impl CursorSize {
         if self.applying.get() {
             return;
         }
-        let sizes = theme_sizes();
+        let sizes = theme_sizes(&config.cursor_theme);
         let current = closest_size(&sizes, config.cursor_size);
         self.updating.set(true);
         let labels: Vec<String> = sizes.iter().map(|size| fill_one(&tr("%s px"), &size.to_string())).collect();

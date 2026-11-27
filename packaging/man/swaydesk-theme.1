@@ -66,9 +66,11 @@ open), the current one marked with *, or the one nearest it, which is the one th
 Set cursor_size to SIZE (16 to 96) and apply it: the Sway seat and the GTK settings.ini files, the cursor\-size key in
 dconf (gsettings) and, in a Sway session, the seat at once and XCURSOR_THEME and XCURSOR_SIZE in the systemd and D\-Bus
 environment. GTK 4 and Qt 6 apps follow at once; older ones (GTK 3, Qt 5, Electron, X11) when they open again. Any
-other value exits 2 and changes nothing. The seat gets the cursor theme the desktop uses (Bibata Modern Classic, Capitaine
-where it is missing, or Xcursor's default theme with neither). A seat line of your own in
-~/.config/sway/config.d/50-local.conf is read after the generated one and wins again at the next reload or login.
+other value exits 2 and changes nothing. The seat gets the cursor theme the desktop uses: cursor_theme in config.toml
+when that theme is installed, otherwise Bibata Modern Classic, Capitaine where it is missing, or Xcursor's default theme
+with neither. The sizes listed by \fBcursor\fR are that theme's. A seat line of your own in
+~/.config/sway/config.d/50-local.conf is read after the generated one and wins again at the next reload or login;
+\fBswaydesk\-desktop\-config generate\fR warns when it sets another theme or size.
 .TP
 .B set THEME
 Use the GTK theme THEME; \-\-accent sets the accent color and \-\-folders the Papirus folder color. Changing the theme or the color keeps an icon theme that is not Papirus; Papirus follows the style of the theme, and the icons that came with the previous theme follow the new one.

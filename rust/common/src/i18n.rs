@@ -101,16 +101,22 @@ pub fn layout_name(name: &str) -> String {
     XKB_CATALOG
         .get_or_init(|| {
             let env: HashMap<String, String> = std::env::vars().collect();
-            load_xkb(&config::message_languages(&config::load(), &env), &XKB_DIRS.map(PathBuf::from))
+            load_xkb(&config::message_languages(&quiet_config(), &env), &XKB_DIRS.map(PathBuf::from))
         })
         .gettext(name)
         .to_string()
 }
 
+/// A config só para a língua, sem imprimir os avisos: quem lê a config de verdade (o config::load do programa) já os
+/// imprime, e com o load aqui cada aviso saía duas vezes. O sway_i18n.py faz o mesmo.
+fn quiet_config() -> config::Config {
+    config::load_config(&config::path()).0
+}
+
 fn catalog() -> &'static Catalog {
     CATALOG.get_or_init(|| {
         let env: HashMap<String, String> = std::env::vars().collect();
-        load(&config::message_languages(&config::load(), &env), &locale_dirs())
+        load(&config::message_languages(&quiet_config(), &env), &locale_dirs())
     })
 }
 

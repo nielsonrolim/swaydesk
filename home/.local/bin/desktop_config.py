@@ -21,6 +21,9 @@ MIN_WHITE_CONTRAST = 2.4  # abaixo disso, texto preto: todas as cores do Mint-Y 
 TEMPLATES = Path(__file__).resolve().parents[1] / "share/sway-desktop/templates"
 TEMPLATE_NAMES = ("swaylock.conf", "kitty-theme.conf", "rofi.rasi", "gtklock.css")  # os que o render_template usa
 THEME_NAME = re.compile(r"[\w .+-]+")
+# O cursor_theme vai sem aspas na linha seat do Sway: sem espaço (partiria o tema do tamanho) e sem um nome só de
+# pontos (a pasta de cima). O is_cursor_name do swaydesk_common::config
+CURSOR_NAME = re.compile(r"(?!\.+$)[\w.+-]+")
 # O tema de reserva, quando o pedido não está instalado: o adw-gtk3-dark (o pacote adw-gtk-theme), que segue a cor
 # de destaque; sem ele, o Adwaita-dark do gnome-themes-extra
 FALLBACK_THEME = "adw-gtk3-dark"
@@ -116,6 +119,7 @@ class Config:
     # ou "never"
     power_profiles_in_system: str = "auto"
     cursor_size: int = 24  # o tamanho do cursor, em pixels, de CURSOR_SIZES (o CURSOR_SIZE)
+    cursor_theme: str = ""  # o tema do cursor instalado; vazio ou ausente: o automático (o cursor_theme())
     # Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui está
     # ligado: a chave ausente liga, para um config antigo continuar como era (menos as do DEFAULT_OFF)
     enabled: frozenset = frozenset()
@@ -254,7 +258,8 @@ def parse_config(data):
             warnings.append(f"config: invalid accent color: {value} (use one like {DEFAULT_ACCENT})")
         elif key == "accent":
             config = replace(config, accent=value.lower())
-        elif key in ("gtk_theme", "icon_theme") and not THEME_NAME.fullmatch(value):
+        elif key in ("gtk_theme", "icon_theme") and not THEME_NAME.fullmatch(value) \
+                or key == "cursor_theme" and value and not CURSOR_NAME.fullmatch(value):
             warnings.append(f"config: invalid theme name in {key}: {value}")
         elif key == "folder_color" and value and value not in PAPIRUS_COLORS:
             warnings.append(f"config: invalid folder color: {value} (use one of sway-theme colors, or empty)")
@@ -387,7 +392,7 @@ def get(config, key, env=os.environ):
         name = file_manager(config)
         return FILE_MANAGERS.get(name, name)
     if key in ("weather_location", "holidays", "accent", "gtk_theme", "icon_theme", "folder_color", "components",
-               "shortcuts"):
+               "shortcuts", "cursor_theme"):
         return getattr(config, key)
     return None
 
@@ -779,7 +784,7 @@ def gtk_settings(config, prefer_dark=False):
             f"gtk-theme-name={effective_gtk_theme(config)}\n"
             f"gtk-application-prefer-dark-theme={int(prefer_dark)}\n"
             f"gtk-icon-theme-name={effective_icon_theme(config)}\n"
-            f"{gtk_cursor_settings(cursor_theme(), config.cursor_size)}")
+            f"{gtk_cursor_settings(cursor_theme(config.cursor_theme), config.cursor_size)}")
 
 
 def gtk_cursor_settings(theme, size):
@@ -905,10 +910,57 @@ CURSOR_THEMES = ("Bibata-Modern-Classic", "capitaine-cursors")
 CURSOR_SIZE = 24
 
 
-def cursor_theme():
-    """O primeiro de CURSOR_THEMES com cursores (a pasta cursors/) numa das pastas de ícones, ou None."""
-    return next((name for name in CURSOR_THEMES if any((base / name / "cursors").is_dir() for base in icon_dirs())),
-                None)
+def has_cursors(name, dirs=None):
+    """Se o tema tem cursores (a pasta cursors/) numa das pastas de ícones."""
+    return any((base / name / "cursors").is_dir() for base in (dirs if dirs is not None else icon_dirs()))
+
+
+def cursor_theme(wanted=""):
+    """O tema do cursor da sessão: o do cursor_theme do config (wanted), se estiver instalado; senão, o primeiro de
+    CURSOR_THEMES com cursores numa das pastas de ícones, ou None. O cursor_theme do swaydesk_common::cursor."""
+    dirs = icon_dirs()
+    if wanted and has_cursors(wanted, dirs):
+        return wanted
+    return next((name for name in CURSOR_THEMES if has_cursors(name, dirs)), None)
+
+
+# Uma linha seat com o cursor num arquivo do config.d: o tema e, se houver, o tamanho
+SEAT_CURSOR = re.compile(r"^\s*seat\s+\S+\s+xcursor_theme\s+(\S+)(?:\s+(\d+))?", re.M)
+SWAY_DEFAULT_CURSOR_SIZE = 24  # o do Sway numa linha seat sem tamanho
+
+
+def cursor_warnings(config):
+    """Os avisos do cursor para o generate: um cursor_theme que não está instalado (vale o automático) e uma linha
+    seat num arquivo do config.d lido depois do 00-cursor.conf (o 50-local.conf, por exemplo), que vence o config
+    com outro tema ou tamanho. O cursor_warnings do rust/theme."""
+    warnings = []
+    theme = cursor_theme(config.cursor_theme)
+    if config.cursor_theme and theme != config.cursor_theme:
+        warnings.append(f"config: cursor_theme {config.cursor_theme} is not installed; using {theme or 'the default cursor'}")
+    theme = theme or "default"
+    for file, name, size in later_seat_cursors():
+        if (name, size) != (theme, config.cursor_size):
+            warnings.append(f"config: sway/config.d/{file} sets the cursor to {name} {size}, over cursor_theme "
+                            f"and cursor_size ({theme} {config.cursor_size}): remove that line to use the config")
+    return warnings
+
+
+def later_seat_cursors():
+    """As linhas seat com o cursor nos arquivos do config.d lidos depois do 00-cursor.conf, que vencem o dele: (arquivo,
+    tema, tamanho), na ordem do Sway. O later_seat_cursors do rust/theme."""
+    folder = config_home() / "sway/config.d"
+    try:
+        later = sorted(f for f in folder.iterdir() if f.name > "00-cursor.conf" and f.name.endswith(".conf"))
+    except OSError:
+        later = []
+    found = []
+    for file in later:
+        try:
+            text = file.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        found += [(file.name, m.group(1), int(m.group(2) or SWAY_DEFAULT_CURSOR_SIZE)) for m in SEAT_CURSOR.finditer(text)]
+    return found
 
 
 CURSOR_FALLBACK_SIZES = (24, 32, 48, 64)  # os tamanhos oferecidos quando o arquivo do cursor não se lê
@@ -947,9 +999,9 @@ def theme_cursor_sizes(theme, dirs=None):
     return list(CURSOR_FALLBACK_SIZES)
 
 
-def cursor_sizes():
+def cursor_sizes(config):
     """Os do tema do seat (cursor_theme); CURSOR_FALLBACK_SIZES sem nenhum."""
-    theme = cursor_theme()
+    theme = cursor_theme(config.cursor_theme)
     return theme_cursor_sizes(theme) if theme else list(CURSOR_FALLBACK_SIZES)
 
 
@@ -1138,7 +1190,7 @@ def generated_files(colors, config=None, fonts=None):
         "waybar/accent.css": css,
         "sway/config.d/00-accent.conf": sway,
         "sway/config.d/00-font.conf": sway_font(fonts),
-        "sway/config.d/00-cursor.conf": sway_cursor(cursor_theme(), config.cursor_size),
+        "sway/config.d/00-cursor.conf": sway_cursor(cursor_theme(config.cursor_theme), config.cursor_size),
         "sway/config.d/00-keys.conf": sway_keys(config),
         "sway/config.d/10-effects.conf": sway_effects(config.effects, is_swayfx()),
         "waybar/fonts.css": fonts_css,

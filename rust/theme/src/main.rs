@@ -149,7 +149,7 @@ fn set_icons(name: &str) -> ExitCode {
 
 fn show_cursor_sizes() -> ExitCode {
     let config = load_config(&path()).0;
-    let sizes = swaydesk_common::cursor::theme_sizes();
+    let sizes = swaydesk_common::cursor::theme_sizes(&config.cursor_theme);
     let current = swaydesk_common::cursor::closest_size(&sizes, config.cursor_size);
     for size in sizes {
         out!("{} {size}", if size == current { "*" } else { " " });

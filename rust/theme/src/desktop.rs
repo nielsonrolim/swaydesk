@@ -197,6 +197,7 @@ pub fn get(config: &Config, key: &str) -> Option<String> {
         "folder_color" => config.folder_color.clone(),
         "components" => config.components.clone(),
         "shortcuts" => config.shortcuts.clone(),
+        "cursor_theme" => config.cursor_theme.clone(),
         _ => return None,
     })
 }
@@ -243,7 +244,7 @@ fn gtk_settings_with(config: &Config, prefer_dark: bool) -> String {
         effective_gtk_theme(config),
         u8::from(prefer_dark),
         effective_icon_theme(config),
-        gtk_cursor_settings(cursor_theme(), config.cursor_size)
+        gtk_cursor_settings(cursor_theme(&config.cursor_theme).as_deref(), config.cursor_size)
     )
 }
 
@@ -371,6 +372,64 @@ pub fn font_family(font: &str) -> String {
         Some((family, size)) if is_number(size) => family.to_string(),
         _ => font.to_string(),
     }
+}
+
+/// Uma linha seat com o cursor num arquivo do config.d: o tema e, se houver, o tamanho.
+static SEAT_CURSOR: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"(?m)^\s*seat\s+\S+\s+xcursor_theme\s+(\S+)(?:\s+(\d+))?").unwrap());
+/// O do Sway numa linha seat sem tamanho.
+const SWAY_DEFAULT_CURSOR_SIZE: u32 = 24;
+
+/// Os avisos do cursor para o generate: um cursor_theme que não está instalado (vale o automático) e uma linha seat
+/// num arquivo do config.d lido depois do 00-cursor.conf (o 50-local.conf, por exemplo), que vence o config com outro
+/// tema ou tamanho. O cursor_warnings do desktop_config.py.
+pub fn cursor_warnings(config: &Config) -> Vec<String> {
+    let mut warnings = Vec::new();
+    let theme = cursor_theme(&config.cursor_theme);
+    if !config.cursor_theme.is_empty() && theme.as_deref() != Some(config.cursor_theme.as_str()) {
+        warnings.push(format!(
+            "config: cursor_theme {} is not installed; using {}",
+            config.cursor_theme,
+            theme.as_deref().unwrap_or("the default cursor")
+        ));
+    }
+    let theme = theme.unwrap_or_else(|| "default".to_string());
+    for (name, seat_theme, size) in later_seat_cursors() {
+        if (seat_theme.as_str(), size) != (theme.as_str(), config.cursor_size) {
+            warnings.push(format!(
+                "config: sway/config.d/{name} sets the cursor to {seat_theme} {size}, over cursor_theme and cursor_size \
+                 ({theme} {}): remove that line to use the config",
+                config.cursor_size
+            ));
+        }
+    }
+    warnings
+}
+
+/// As linhas seat com o cursor nos arquivos do config.d lidos depois do 00-cursor.conf, que vencem o dele: (arquivo,
+/// tema, tamanho), na ordem do Sway. O later_seat_cursors do desktop_config.py.
+pub fn later_seat_cursors() -> Vec<(String, String, u32)> {
+    let mut later: Vec<PathBuf> = std::fs::read_dir(config_home().join("sway/config.d"))
+        .map(|entries| {
+            entries
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.file_name().and_then(|n| n.to_str()).is_some_and(|n| n > "00-cursor.conf" && n.ends_with(".conf")))
+                .collect()
+        })
+        .unwrap_or_default();
+    later.sort();
+    let mut found = Vec::new();
+    for file in later {
+        let Ok(bytes) = std::fs::read(&file) else { continue };
+        let text = String::from_utf8_lossy(&bytes);
+        let name = file.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+        for seat in SEAT_CURSOR.captures_iter(&text) {
+            let size = seat.get(2).and_then(|s| s.as_str().parse().ok()).unwrap_or(SWAY_DEFAULT_CURSOR_SIZE);
+            found.push((name.clone(), seat[1].to_string(), size));
+        }
+    }
+    found
 }
 
 /// O cursor do seat, no tamanho do cursor_size: vence a linha fixa do config do Sway (o Bibata), que fica para quem
@@ -636,7 +695,7 @@ pub fn generated_files(colors: &Palette, config: &Config, fonts: &Fonts) -> std:
         ("waybar/accent.css", css),
         ("sway/config.d/00-accent.conf", sway),
         ("sway/config.d/00-font.conf", sway_font(fonts)),
-        ("sway/config.d/00-cursor.conf", sway_cursor(cursor_theme(), config.cursor_size)),
+        ("sway/config.d/00-cursor.conf", sway_cursor(cursor_theme(&config.cursor_theme).as_deref(), config.cursor_size)),
         ("sway/config.d/00-keys.conf", sway_keys(config, &swaydesk_common::config::keys_dir())),
         ("sway/config.d/10-effects.conf", sway_effects(&config.effects, is_swayfx())),
         ("waybar/fonts.css", fonts_css),

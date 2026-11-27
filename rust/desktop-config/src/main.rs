@@ -145,7 +145,13 @@ fn write_files(config: &Config, session: bool) -> Option<bool> {
         if session {
             let ok = st::refresh_icons(config);
             dc::generate(config)?;
-            Ok(ok)
+            // O cursor_theme e o tamanho na hora, no gsettings e na sessão (sem esperar o próximo login). O ambiente da
+            // sessão que falha só avisa: os arquivos e o dconf foram gravados
+            let (cursor_ok, env_ok) = st::refresh_cursor(config);
+            if !env_ok {
+                eprintln!("{}", fill_one(&tr("Could not update: %s"), &tr("cursor in the session environment")));
+            }
+            Ok(cursor_ok && ok)
         } else {
             st::config_icon_theme(config, false);
             dc::generate(config)?;
@@ -206,6 +212,12 @@ fn main() -> ExitCode {
         }
     }
     let config = config::load();
+    // O cursor que o config pede e não vale: um tema que não está instalado, ou uma linha seat do config.d por cima
+    if matches!(args.as_slice(), [c] if c == "generate" || c == "apply") {
+        for warning in dc::cursor_warnings(&config) {
+            eprintln!("{warning}");
+        }
+    }
     match args.iter().map(String::as_str).collect::<Vec<_>>().as_slice() {
         ["get", key] => match dc::get(&config, key) {
             Some(value) => {

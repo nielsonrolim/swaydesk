@@ -176,9 +176,9 @@ fn apply_system_keyboard() {
 /// O cursor da sessão (o Bibata, senão o Capitaine), o mesmo da sessão do pacote. Sem nenhum, o padrão.
 /// Bloqueia: numa linha à parte.
 fn apply_cursor() {
-    let Some(theme) = swaydesk_common::cursor::cursor_theme() else { return };
+    let Some(theme) = swaydesk_common::cursor::cursor_theme("") else { return };
     let size = swaydesk_common::cursor::CURSOR_SIZE.to_string();
-    if output_within(Command::new("swaymsg").args(["seat", "seat0", "xcursor_theme", theme, &size]), SWAYMSG_TIMEOUT).is_none() {
+    if output_within(Command::new("swaymsg").args(["seat", "seat0", "xcursor_theme", &theme, &size]), SWAYMSG_TIMEOUT).is_none() {
         log(&format!("could not apply the cursor {theme}"));
     }
 }

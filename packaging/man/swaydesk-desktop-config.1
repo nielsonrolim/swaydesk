@@ -36,7 +36,10 @@ The session runs it under the name sway\-desktop\-config (a link in the package'
 Print a value of the configuration; an unknown key exits 2.
 .TP
 .B generate
-Write the files that depend on the color.
+Write the files that depend on the color. It warns, on standard error, when the cursor the configuration asks for does
+not take effect: a cursor_theme that is not installed (the automatic theme is used), or a seat ... xcursor_theme line
+in a file of ~/.config/sway/config.d read after 00\-cursor.conf (50\-local.conf, for example) that sets another theme
+or size and wins over cursor_theme and cursor_size. apply warns the same way.
 .TP
 .B apply
 Write the files and reload Sway.

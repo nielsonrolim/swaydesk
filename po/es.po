@@ -240,6 +240,16 @@ msgstr "Los popups ya se abren con el color nuevo. El resto cambia al volver a i
 msgid "The new color shows when you log in again or restart it:"
 msgstr "El color nuevo aparece al volver a iniciar sesión o al reiniciar:"
 
+#: home/.local/bin/sway-desktop-config home/.local/bin/sway-theme
+#: home/.local/bin/sway-theme-app
+#, python-format
+msgid "Could not update: %s"
+msgstr "No se pudo actualizar: %s"
+
+#: home/.local/bin/sway-desktop-config
+msgid "cursor in the session environment"
+msgstr "cursor en el entorno de la sesión"
+
 #: home/.local/bin/sway-desktop-config
 #, python-format
 msgid "could not write: %s"
@@ -464,11 +474,6 @@ msgstr "Los iconos Papirus no están instalados: instala el paquete papirus-icon
 #, python-format
 msgid "Cursor size: %s"
 msgstr "Tamaño del cursor: %s"
-
-#: home/.local/bin/sway-theme home/.local/bin/sway-theme-app
-#, python-format
-msgid "Could not update: %s"
-msgstr "No se pudo actualizar: %s"
 
 #: home/.local/bin/sway-theme
 #, python-format

@@ -11,7 +11,7 @@ pub const ICON_FONT: &str = "Symbols Nerd Font";
 // As mesmas chaves do Config do desktop_config.py
 const KNOWN: &[&str] = &[
     "locale", "weather_location", "holidays", "accent", "accent_auto", "gtk_theme", "icon_theme", "folder_color", "file_manager",
-    "components", "enabled", "effects", "shortcuts", "power_profiles_in_system", "cursor_size",
+    "components", "enabled", "effects", "shortcuts", "power_profiles_in_system", "cursor_size", "cursor_theme",
 ];
 /// As chaves do [enabled]: os componentes da sessão que podem ser desligados (o ENABLED_KEYS do Python).
 pub const ENABLED_KEYS: &[&str] = &[
@@ -97,6 +97,8 @@ pub struct Config {
     pub power_profiles_in_system: String,
     /// O tamanho do cursor, em pixels, de CURSOR_SIZES; o cursor::CURSOR_SIZE sem a chave ou com um valor inválido
     pub cursor_size: u32,
+    /// O tema do cursor instalado; vazio ou ausente: o automático (o cursor::cursor_theme)
+    pub cursor_theme: String,
     /// Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui
     /// está ligado: a chave ausente liga, para um config antigo continuar como era (menos as do DEFAULT_OFF)
     pub disabled: BTreeSet<String>,
@@ -255,11 +257,18 @@ impl Default for Config {
             shortcuts: "swaydesk".to_string(),
             power_profiles_in_system: "auto".to_string(),
             cursor_size: crate::cursor::CURSOR_SIZE,
+            cursor_theme: String::new(),
             disabled: BTreeSet::new(),
             turned_on: BTreeSet::new(),
             effects: Effects::default(),
         }
     }
+}
+
+/// Um nome para o cursor_theme, que vai sem aspas na linha seat do Sway: o is_name sem espaço (partiria o tema do
+/// tamanho) e sem um nome só de pontos (a pasta de cima). O CURSOR_NAME do desktop_config.py.
+fn is_cursor_name(value: &str) -> bool {
+    is_name(value, false) && !value.chars().all(|c| c == '.')
 }
 
 /// O `[\w .+-]+` (THEME_NAME) e, sem o espaço, o `[\w.+-]+` (COMMAND_NAME) do Python.
@@ -419,6 +428,10 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
             }
             "holidays" => config.holidays = value.to_string(),
             "weather_location" => config.weather_location = value.to_string(),
+            "cursor_theme" if !value.is_empty() && !is_cursor_name(value) => {
+                warnings.push(format!("config: invalid theme name in {key}: {value}"))
+            }
+            "cursor_theme" => config.cursor_theme = value.to_string(),
             "gtk_theme" | "icon_theme" if !is_name(value, true) => {
                 warnings.push(format!("config: invalid theme name in {key}: {value}"))
             }
@@ -1112,6 +1125,23 @@ mod tests {
         assert_eq!(warnings, ["config: invalid shortcuts: sway (use swaydesk, i3, hyprland, niri or dwm)"]);
         assert_eq!(parse_config("shortcuts = 1").1, ["config: invalid value in shortcuts"]);
         assert!(shortcut_keys_file("../etc/passwd").is_none());
+    }
+
+    #[test]
+    fn cursor_theme_values_and_warnings() {
+        // Os mesmos casos do test_cursor_theme_values_and_warnings (tests/test_desktop_config.py)
+        assert_eq!(parse_config("").0.cursor_theme, "");
+        for value in ["Adwaita", "breeze_cursors", "capitaine-cursors", ""] {
+            let (config, warnings) = parse_config(&format!("cursor_theme = \"{value}\""));
+            assert_eq!((config.cursor_theme.as_str(), warnings.len()), (value, 0), "{value}");
+        }
+        // O nome vai sem aspas na linha seat do Sway: nem espaço nem um nome só de pontos
+        for value in ["../x", "Breeze Light", "..", "."] {
+            let (config, warnings) = parse_config(&format!("cursor_theme = \"{value}\""));
+            assert_eq!((config.cursor_theme.as_str(), warnings), ("", vec![format!("config: invalid theme name in cursor_theme: {value}")]), "{value}");
+        }
+        let (config, warnings) = parse_config("cursor_theme = 3");
+        assert_eq!((config.cursor_theme.as_str(), warnings), ("", vec!["config: invalid value in cursor_theme".to_string()]));
     }
 
     #[test]
