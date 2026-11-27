@@ -74,8 +74,11 @@ DISPLAYS_ENTRY=org.swaydesktop.Displays.desktop
 HELP_ENTRY=org.swaydesktop.Help.desktop
 # Os ícones de Captura de Tela, Gravar Tela e do app Tema: cópias de ícones do Papirus (GPL-3, ver o
 # debian/copyright), no hicolor para aparecerem com qualquer tema de ícones, porque o papirus-icon-theme é só
-# recomendado e o Adwaita não tem o preferences-desktop-theme
-HICOLOR_ICONS=(swaydesk-screenshot.svg swaydesk-screen-record.svg org.swaydesktop.Theme.svg)
+# recomendado e o Adwaita não tem o preferences-desktop-theme. E os da bandeja que o Papirus não tem (o
+# unattended-upgrades do Ubuntu pede o system-software-update-symbolic): no hicolor, a reserva de todo tema.
+# Caminhos dentro de hicolor/scalable
+HICOLOR_ICONS=(apps/swaydesk-screenshot.svg apps/swaydesk-screen-record.svg apps/org.swaydesktop.Theme.svg
+  status/system-software-update-symbolic.svg)
 SESSION_CONFIGS=(sway/config waybar/config.jsonc waybar/style.css xdg-desktop-portal/sway-portals.conf)  # de home/.config
 # Os atalhos: o base.conf e um arquivo por perfil do shortcuts (sway/keys, ao lado do sway/config)
 KEY_PROFILES=(base swaydesk i3 hyprland niri dwm)
@@ -91,7 +94,7 @@ if [[ ${1:-} == --sources ]]; then
   done
   (cd "$root" && printf '%s\n' home/.local/share/locale/*/LC_MESSAGES/sway-desktop.mo)
   for entry in "${CAPTURE_ENTRIES[@]}" "$THEME_ENTRY" "$HELP_ENTRY" "$DISPLAYS_ENTRY"; do echo "home/.local/share/applications/$entry"; done
-  for icon in "${HICOLOR_ICONS[@]}"; do echo "home/.local/share/icons/hicolor/scalable/apps/$icon"; done
+  for icon in "${HICOLOR_ICONS[@]}"; do echo "home/.local/share/icons/hicolor/scalable/$icon"; done
   (cd "$root" && printf '%s\n' home/.local/share/sway-desktop/templates/* home/.local/share/sway-desktop/dconf/*)
   for file in "${SESSION_CONFIGS[@]}"; do echo "home/.config/$file"; done
   for name in "${KEY_PROFILES[@]}"; do echo "home/.config/sway/keys/$name.conf"; done
@@ -173,7 +176,7 @@ case $pkg in
     install -Dm755 "$root/packaging/snippets/swaydesk-sway-unit" "$dest$libexec/swaydesk-sway-unit"
     # Os ícones do hicolor, aqui porque a Ajuda (swaydesk-help) também os mostra
     for icon in "${HICOLOR_ICONS[@]}"; do
-      install -Dm644 "$data/icons/hicolor/scalable/apps/$icon" "$dest/usr/share/icons/hicolor/scalable/apps/$icon"
+      install -Dm644 "$data/icons/hicolor/scalable/$icon" "$dest/usr/share/icons/hicolor/scalable/$icon"
     done
     # O destaque de cada conta no AccountsService (o swaydesk-desktop-config grava, a tela de login lê): a
     # interface no lugar das do D-Bus e o link na pasta que o accounts-daemon lê ao subir

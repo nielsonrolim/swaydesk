@@ -20,6 +20,7 @@ Comment: SymbolsNerdFont-Regular.ttf from NerdFontsSymbolsOnly v3.4.0
 
 Files: home/.local/share/icons/hicolor/scalable/apps/swaydesk-*.svg
        home/.local/share/icons/hicolor/scalable/apps/org.swaydesktop.Theme.svg
+       home/.local/share/icons/hicolor/scalable/status/system-software-update-symbolic.svg
 Copyright: 2016-2022 Alexey Varfolomeev <varlesh@gmail.com>
            2016-2023 Serhii Yeremenko <finalitik@gmail.com>
            2016-2023 Papirus Development Team
@@ -29,9 +30,12 @@ Comment: Unmodified copies of icons from papirus-icon-theme 20260801
  Papirus/64x64/apps: swaydesk-screen-record.svg is
  com.github.mohelm97.screenrecorder.svg and swaydesk-screenshot.svg is
  mx-snapshot.svg, and org.swaydesktop.Theme.svg is
- preferences-desktop-theme.svg. Renamed and shipped in hicolor so that the
- Screenshot, Record Screen and Desktop Theme entries keep their icons under
- any icon theme.
+ preferences-desktop-theme.svg; and from
+ Papirus/16x16/symbolic/status, system-software-update-symbolic.svg is
+ software-update-available-symbolic.svg. Renamed and shipped in hicolor so
+ that the Screenshot, Record Screen and Desktop Theme entries keep their
+ icons under any icon theme, and so that a tray item asking for a name
+ Papirus lacks (Ubuntu's unattended-upgrades) still finds one.
 
 Files: rust/vendor/aho-corasick-1.1.5/*
 Copyright: Andrew Gallant <jamslam@gmail.com>
