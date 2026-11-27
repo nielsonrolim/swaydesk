@@ -11,7 +11,7 @@ pkgname=(swaydesk-common swaydesk-notifd swaydesk-dock swaydesk-drawer swaydesk-
         swaydesk-switcher swaydesk-help swaydesk-click-catcher swaydesk-capture swaydesk-theme-tool
         swaydesk-portal swaydesk-theme-app swaydesk-displays swaydesk-session-menu swaydesk-lock
         swaydesk-keyring swaydesk-sessionmgr swaydesk-desktop swaydesk-greeter swaydesk-widgets swaydesk-theme
-        swaydesk-session swaydesk-bar swaydesk-apps swaydesk-scripts)
+        swaydesk-session swaydesk-bar swaydesk-apps)
 pkgver=0.1.10
 pkgrel=1
 pkgdesc="Sway desktop components in Rust and GTK 4 for wlroots compositors with layer-shell"
@@ -75,6 +75,10 @@ package_swaydesk-common() {
   optdepends=('libnotify: session notices')
   # O try-restart do accounts-daemon, que só lê a interface do destaque (org.swaydesktop.Accounts) ao subir
   install=swaydesk-common.install
+  # O swaydesk-scripts (metapacote de transição, saiu na 0.1.10) dependia deste: até a 0.1.7 na versão exata, e sem o
+  # replaces o pacman -Syu de quem ainda o tem pararia ali; na 0.1.8 e na 0.1.9 sem versão, e o replaces o tira do
+  # mesmo jeito. É o único (RETIRED_TRANSITIONAL)
+  replaces=('swaydesk-scripts')
   SWAYDESK_BUNDLED_FONT=0 _install swaydesk-common
 }
 
@@ -393,16 +397,4 @@ package_swaydesk-apps() {
   license=(MIT)
   depends=("swaydesk-theme-app=$pkgver-$pkgrel" "swaydesk-displays=$pkgver-$pkgrel" "swaydesk-help=$pkgver-$pkgrel" "swaydesk-capture=$pkgver-$pkgrel")
   _install swaydesk-apps
-}
-
-package_swaydesk-scripts() {
-  pkgdesc="Sway desktop components - transitional, goes away in 0.2.0 (metapackage)"
-  arch=(any)
-  license=(MIT)
-  # Até a 0.1.6, os scripts auxiliares; desde a 0.1.7, cada script vai no pacote que o chama (os de mais de um, no
-  # swaydesk-common), e quem atualiza um componente já recebe os dele. Este fica só para a atualização: puxar os
-  # pacotes que levaram os scripts daria a quem só tinha a grade o bloqueio, o calendário e a captura. Sai na 0.2.0.
-  # O common sem versão (desde a 0.1.8): o que sobrar instalado não segura o common novo quando este sair do repositório
-  depends=(swaydesk-common)
-  _install swaydesk-scripts
 }

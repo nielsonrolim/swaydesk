@@ -37,9 +37,6 @@ swaydesk-theme:
 swaydesk-session:
 swaydesk-bar:
 swaydesk-apps:
-# Antes da 0.1.7, os scripts auxiliares. Hoje cada script vai no pacote que o chama: este só puxa esses pacotes,
-# para quem atualiza, e sai na 0.2.0
-swaydesk-scripts:
 # A sessão completa (configs do Sway e da Waybar, scripts da sessão, o skel), sem binário em Rust
 swaydesk-desktop:
 # A tela de login sobre o greetd. Só nos pacotes: o install.sh --system usa o nwg-hello (não está no

@@ -18,8 +18,8 @@ Architecture: all
 Pre-Depends: ${misc:Pre-Depends}, swaydesk-dpkg-includes (= ${source:Version})
 Depends: hicolor-icon-theme, ${misc:Depends}
 Recommends: libnotify-bin
-Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)
-Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.7~)
+Breaks: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.8~)
+Replaces: swaydesk-desktop (<< 0.1.7~), swaydesk-scripts (<< 0.1.8~)
 Description: Sway desktop components - shared data
  The translations, the Symbols Nerd Font (the icons) and the helper scripts
  and modules more than one component uses, shared by the
@@ -411,19 +411,6 @@ Description: Swaydesk apps: Desktop Theme, Displays, Help, Screenshot (metapacka
  The window apps, without the bar or the session.
  .
  This is an empty package that depends on the others.
-
-Package: swaydesk-scripts
-Section: oldlibs
-Architecture: all
-Depends: swaydesk-common, ${misc:Depends}
-Description: Swaydesk helper scripts (transitional metapackage)
- Until 0.1.6, the helper scripts the components call. Since 0.1.7, each
- script ships with the package that calls it (the shared ones in
- swaydesk-common), so upgrading a component brings its scripts along. This
- package is left only for the upgrade; it can be removed, and goes away in
- 0.2.0.
- .
- This is an empty package.
 
 Package: swaydesk-efi
 Architecture: all
