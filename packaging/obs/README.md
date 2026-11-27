@@ -50,6 +50,12 @@ Debian 13 e do Arch (com o limite de memória) e cada `rust/scripts/headless-*.s
 resumo. O `headless-lock` sai como SKIP sem uma imagem com o gtk4-layer-shell 1.2+, e fica para a rodada de VM. Uma falha
 segura a versão até ser corrigida ou explicada; o resumo vai junto do pedido de ok ao usuário.
 
+Na mesma hora, `packaging/check-upstream.py`: cada pacote de terceiros que levamos no OBS (a lista é o
+`upstream.list`; hoje o adw-gtk-theme) contra a última versão do upstream. Sai com 0 com tudo em dia, 1 com uma versão
+nova (`NEWER`) e 2 quando a conferência falhou (sem rede: rode de novo). Um `NEWER` não segura a versão sozinho: é
+relatado, e o usuário decide se atualiza. Um pacote de terceiros novo entra no `upstream.list` (o
+`test_check_upstream` confere).
+
 1. O commit de lançamento, num PR que só é mesclado com o ok do usuário (o `mirror.sh` publica o `packaging/public` no espelho):
    - feche a entrada de cima do `debian/changelog`: a versão `X.Y.Z-1`, a distribuição `unstable` no lugar de `UNRELEASED`, a data e o resumo das mudanças;
    - a entrada `## X.Y.Z — AAAA-MM-DD` no topo do `packaging/public/CHANGELOG.md`, que é a nota do Release, e a

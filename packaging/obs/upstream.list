@@ -1,0 +1,4 @@
+# Os pacotes de terceiros que levamos no OBS (a pasta tem o arquivo upstream: o orig vem de fora) e onde sai a versão
+# nova de cada um. O packaging/check-upstream.py confere a cada RC e lançamento. Fica fora das pastas: o test_obs fixa
+# o conteúdo de cada uma por versão.
+adw-gtk-theme github:lassekongo83/adw-gtk3
