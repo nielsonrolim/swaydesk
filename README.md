@@ -6,7 +6,7 @@ Swaydesk is a desktop session built on [Sway](https://swaywm.org): the tiling Wa
 
 Full documentation, with screenshots and the keyboard shortcuts: **https://swaydesk.nielsonrolim.com** ([English](https://swaydesk.nielsonrolim.com/en-us/) · [Português](https://swaydesk.nielsonrolim.com/pt-br/)).
 
-**Current release: 0.1.8.** What changes in each release is in [CHANGELOG.md](CHANGELOG.md) and on the [releases page](https://github.com/nielsonrolim/swaydesk/releases). Once installed, updates arrive with your usual `apt upgrade` or `pacman -Syu`.
+**Current release: 0.1.9.** What changes in each release is in [CHANGELOG.md](CHANGELOG.md) and on the [releases page](https://github.com/nielsonrolim/swaydesk/releases). Once installed, updates arrive with your usual `apt upgrade` or `pacman -Syu`.
 
 Swaydesk is an independent project built on top of [Sway](https://swaywm.org). It is not affiliated with, or endorsed by, the Sway project or its developers.
 

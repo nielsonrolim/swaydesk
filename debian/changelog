@@ -1,8 +1,31 @@
-swaydesk (0.1.9-1) UNRELEASED; urgency=medium
+swaydesk (0.1.9-1) unstable; urgency=medium
 
-  * Development after 0.1.8.
+  * Release 0.1.9.
+  * The accent color reaches the stock GTK widgets of every Swaydesk app
+    (a user's own gtk-4.0/gtk.css still wins), and the Theme app paints
+    the selected Style toggle in it.
+  * Sway's tabbed and stacked titlebars: taller, centred, semibold and
+    outlined, in three levels from the accent; theme-tool ships the
+    same look for plain Sway as an opt-in snippet.
+  * The login screen shows each user's accent, read from
+    AccountsService: swaydesk-common installs the extension interface
+    and restarts accounts-daemon, which reads new interfaces only when
+    it starts.
+  * Generated files carry an English header; the old Portuguese one is
+    still recognised.
+  * The weather follows a new city at once; Displays undoes an
+    unconfirmed layout from the profile service too; the Arch update
+    notice drops what is already installed at login.
+  * herdr is reloaded only when it runs, and a reload reported as
+    failed is a failure.
+  * Displays and Help are dark under adw-gtk3-dark, Swaydesk windows
+    follow a theme switch, and the always-dark surfaces get light text.
+  * The restart hints after desktop-config apply name commands that
+    exist in each install.
+  * desktop-config generate is quiet without a Waybar config.
+  * swaydesk-common depends on hicolor-icon-theme.
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Thu, 26 Nov 2026 08:48:50 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Thu, 26 Nov 2026 18:55:20 -0300
 
 swaydesk (0.1.8-1) unstable; urgency=medium
 
