@@ -12,7 +12,7 @@ pkgname=(swaydesk-common swaydesk-notifd swaydesk-dock swaydesk-drawer swaydesk-
         swaydesk-portal swaydesk-theme-app swaydesk-displays swaydesk-session-menu swaydesk-lock
         swaydesk-keyring swaydesk-sessionmgr swaydesk-desktop swaydesk-greeter swaydesk-widgets swaydesk-theme
         swaydesk-session swaydesk-bar swaydesk-apps swaydesk-scripts)
-pkgver=0.1.9
+pkgver=0.1.10
 pkgrel=1
 pkgdesc="Sway desktop components in Rust and GTK 4 for wlroots compositors with layer-shell"
 arch=(x86_64 aarch64)
