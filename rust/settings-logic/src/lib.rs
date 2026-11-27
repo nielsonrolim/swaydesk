@@ -166,14 +166,16 @@ pub fn visible_panels(installed: impl Fn(&str) -> bool) -> Vec<&'static PanelInf
 /// Se o programa está numa pasta do PATH dado (o mesmo do popup Sistema e da Ajuda, que procuram a Central).
 pub use swaydesk_common::settings_center::on_path;
 
-/// O que o Tema e as Telas, abertos pelo .desktop com o `--settings-panel`, passam à Central: os argumentos do
-/// painel (sem o programa) quando ela está no PATH dado e o painel apareceria (o programa de que ele precisa
-/// também está); senão None, e o app abre a janela dele.
-pub fn hand_off(panel: &str, path: &std::ffi::OsStr) -> Option<Vec<&'static str>> {
+/// O que o Tema e as Telas, abertos pelo .desktop com o `--settings-panel`, passam à Central: o caminho absoluto
+/// dela no PATH dado e os argumentos do painel, quando ela está lá e o painel apareceria (o programa de que ele
+/// precisa também está); senão None, e o app abre a janela dele.
+pub fn hand_off(panel: &str, path: &std::ffi::OsStr) -> Option<(std::path::PathBuf, Vec<&'static str>)> {
     use swaydesk_common::settings_center as center;
     let info = find(panel).filter(|p| p.kind == Kind::Builtin)?;
-    let shows = needs(info.id).is_none_or(|program| on_path(program, path));
-    (center::installed_in(path) && shows).then(|| center::args(Some(info.id)))
+    if !needs(info.id).is_none_or(|program| on_path(program, path)) {
+        return None;
+    }
+    center::find_in(path).map(|program| (program, center::args(Some(info.id))))
 }
 
 /// O `--settings-panel` do .desktop do Tema e das Telas: o processo vira a Central no painel (um exec) quando a
@@ -185,8 +187,9 @@ pub fn exec_hand_off(panel: &str, program: &str) {
     if !in_sway(&std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default()) {
         return;
     }
-    let Some(args) = std::env::var_os("PATH").and_then(|path| hand_off(panel, &path)) else { return };
-    let err = std::process::Command::new(PROGRAM).args(args).exec();
+    let Some((center, args)) = std::env::var_os("PATH").and_then(|path| hand_off(panel, &path)) else { return };
+    // O caminho absoluto que o hand_off achou: o exec pelo nome buscaria de novo no PATH todo
+    let err = std::process::Command::new(center).args(args).exec();
     eprintln!("{program}: could not open {PROGRAM}: {err}");
 }
 
@@ -265,15 +268,16 @@ mod tests {
             hand_off("sound", all.as_os_str()),
             hand_off("nope", all.as_os_str()),
         );
-        for dir in [all, no_center, no_tool] {
+        for dir in [&all, &no_center, &no_tool] {
             let _ = std::fs::remove_dir_all(dir);
         }
+        let center = |dir: &std::path::Path| dir.join("swaydesk-settings");
         assert_eq!(got, (
-            Some(vec!["--panel", "appearance"]),
-            Some(vec!["--panel", "displays"]),
+            Some((center(&all), vec!["--panel", "appearance"])),
+            Some((center(&all), vec!["--panel", "displays"])),
             None,
             None,
-            Some(vec!["--panel", "displays"]),
+            Some((center(&no_tool), vec!["--panel", "displays"])),
             None,
             None,
         ));

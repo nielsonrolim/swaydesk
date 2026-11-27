@@ -770,7 +770,9 @@ impl Popup {
 
     fn open_settings(&self) {
         use swaydesk_common::settings_center as center;
-        match spawn_detached(center::PROGRAM, &center::args(None)) {
+        // O caminho absoluto da Central (o link só aparece com ela); se ela sumiu nesse meio-tempo, o aviso de sempre
+        let opened = center::find().ok_or_else(|| std::io::Error::from(std::io::ErrorKind::NotFound));
+        match opened.and_then(|program| spawn_detached(program, &center::args(None))) {
             Ok(()) => self.popup.close("configurações"),
             Err(err) => self.set_status(
                 &tr("Could not open %(program)s: %(error)s").replace("%(program)s", center::PROGRAM).replace("%(error)s", &err.to_string()),
