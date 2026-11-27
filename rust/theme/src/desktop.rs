@@ -189,6 +189,11 @@ pub fn get(config: &Config, key: &str) -> Option<String> {
             let name = file_manager(config);
             FILE_MANAGERS.iter().find(|(n, _)| *n == name).map_or(name.clone(), |(_, d)| d.to_string())
         }
+        "terminal" => config::terminal(config, crate::which),
+        "terminal_desktop" => {
+            let name = config::terminal(config, crate::which);
+            config::TERMINALS.iter().find(|(n, _)| *n == name).map_or(name.clone(), |(_, d)| d.to_string())
+        }
         "weather_location" => config.weather_location.clone(),
         "holidays" => config.holidays.clone(),
         "accent" => config.accent.clone(),
@@ -197,6 +202,7 @@ pub fn get(config: &Config, key: &str) -> Option<String> {
         "folder_color" => config.folder_color.clone(),
         "components" => config.components.clone(),
         "shortcuts" => config.shortcuts.clone(),
+        key if config.idle_minutes(key).is_some() => config.idle_minutes(key)?.to_string(),
         "cursor_theme" => config.cursor_theme.clone(),
         _ => return None,
     })
@@ -934,6 +940,22 @@ pub fn reload_sway() -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn get_gives_the_idle_minutes_to_the_scripts() {
+        let config = swaydesk_common::config::parse_config("lock_after = 0\nsuspend_after = 45\n").0;
+        let got: Vec<Option<String>> = swaydesk_common::config::IDLE_KEYS.iter().map(|k| super::get(&config, k)).collect();
+        assert_eq!(got, [Some("0".into()), Some("15".into()), Some("45".into())]);
+    }
+
+    #[test]
+    fn get_gives_the_terminal_and_its_desktop_id() {
+        for (name, desktop) in [("kgx", "org.gnome.Console"), ("alacritty", "Alacritty"), ("wezterm", "wezterm")] {
+            let config = swaydesk_common::config::parse_config(&format!("terminal = \"{name}\"\n")).0;
+            assert_eq!(super::get(&config, "terminal").as_deref(), Some(name));
+            assert_eq!(super::get(&config, "terminal_desktop").as_deref(), Some(desktop));
+        }
+    }
+
     use super::*;
 
     #[test]

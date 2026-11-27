@@ -33,6 +33,10 @@ LAST_FALLBACK_THEME = "Adwaita-dark"
 # (para a dock). O Nemo vem com o Mint; no Ubuntu e no Debian, o --deps instala o Thunar, mais leve
 FILE_MANAGERS = {"nemo": "nemo", "thunar": "thunar", "nautilus": "org.gnome.Nautilus", "dolphin": "org.kde.dolphin"}
 COMMAND_NAME = re.compile(r"[\w.+-]+")
+# Os terminais conhecidos, com o .desktop de cada um: o kitty, o do Swaydesk, vem antes; sem ele, o primeiro
+# instalado. São também os que o sway-terminal sabe abrir com um comando (-e) e uma classe (--class)
+TERMINALS = {"kitty": "kitty", "foot": "foot", "alacritty": "Alacritty", "ptyxis": "org.gnome.Ptyxis",
+             "kgx": "org.gnome.Console", "konsole": "org.kde.konsole", "xfce4-terminal": "xfce4-terminal"}
 # As cores do papirus-folders, com a cor da frente da pasta (48x48/places/folder-<cor>.svg). A adwaita e
 # a yaru são o destaque padrão desses temas, e não a cor da pasta
 PAPIRUS_COLORS = {
@@ -67,6 +71,9 @@ class Effects:
 MAX_CORNER_RADIUS = 30  # mais que isso, os cantos comem o conteúdo das janelas
 MAX_ANIMATION_DURATION_MS = 5000  # o limite do animation_duration_ms do SwayFX (5 segundos)
 CURSOR_SIZES = range(16, 97)  # o tamanho do cursor aceito no cursor_size, em pixels (o padrão é o CURSOR_SIZE)
+# Os tempos do sway-idle, em minutos inteiros: bloquear, apagar a tela e suspender (só na bateria). O 0 é nunca
+IDLE_KEYS = ("lock_after", "screen_off_after", "suspend_after")
+IDLE_MINUTES = range(0, 1441)  # um dia no máximo
 
 
 def parse_effects(data, warnings):
@@ -114,12 +121,17 @@ class Config:
     icon_theme: str = "Papirus-Dark"
     folder_color: str = ""  # a cor das pastas do Papirus, como "teal"; vazio: a mais perto do destaque
     file_manager: str = ""  # comando, como "thunar"; vazio: o primeiro instalado de FILE_MANAGERS
+    terminal: str = ""  # comando, como "foot"; vazio: o kitty ou o primeiro instalado de TERMINALS
     components: str = "auto"  # a versão dos componentes: auto (Rust onde houver), python ou rust
     shortcuts: str = "swaydesk"  # o perfil de atalhos, um dos SHORTCUT_PROFILES
     # Quando o popup Sistema mostra os perfis de energia, um dos POWER_IN_SYSTEM: "auto" (só sem bateria), "always"
     # ou "never"
     power_profiles_in_system: str = "auto"
     cursor_size: int = 24  # o tamanho do cursor, em pixels, de CURSOR_SIZES (o CURSOR_SIZE)
+    # Os IDLE_KEYS: os minutos até bloquear, apagar a tela e suspender (na bateria); 0 é nunca
+    lock_after: int = 10
+    screen_off_after: int = 15
+    suspend_after: int = 30
     cursor_theme: str = ""  # o tema do cursor instalado; vazio ou ausente: o automático (o cursor_theme())
     # Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui está
     # ligado: a chave ausente liga, para um config antigo continuar como era (menos as do DEFAULT_OFF)
@@ -247,6 +259,10 @@ def parse_config(data):
             auto_given = True
         elif key == "accent_auto":
             warnings.append("config: invalid value in accent_auto (use true or false)")
+        elif key in IDLE_KEYS and type(value) is int and value in IDLE_MINUTES:
+            config = replace(config, **{key: value})
+        elif key in IDLE_KEYS:
+            warnings.append(f"config: invalid {key} (use 0 to 1440 minutes; 0 is never)")
         elif key == "cursor_size" and type(value) is int and value in CURSOR_SIZES:
             config = replace(config, cursor_size=value)
         elif key == "cursor_size":
@@ -274,6 +290,8 @@ def parse_config(data):
             warnings.append(f"config: invalid power_profiles_in_system: {value} (use auto, always or never)")
         elif key == "file_manager" and value and not COMMAND_NAME.fullmatch(value):
             warnings.append(f"config: invalid file manager: {value} (use the command name, like thunar)")
+        elif key == "terminal" and value and not COMMAND_NAME.fullmatch(value):
+            warnings.append(f"config: invalid terminal: {value} (use the command name, like kitty)")
         else:
             config = replace(config, **{key: value})
     if not auto_given:
@@ -394,6 +412,13 @@ def file_manager(config, which=shutil.which):
     return next((name for name in FILE_MANAGERS if which(name)), "thunar")
 
 
+def terminal(config, which=shutil.which):
+    """O da config ou, sem ele, o primeiro instalado de TERMINALS (o kitty antes). Sem nenhum, o kitty."""
+    if config.terminal:
+        return config.terminal
+    return next((name for name in TERMINALS if which(name)), "kitty")
+
+
 def get(config, key, env=os.environ):
     """Valor para os scripts em Bash; None se a chave não existir."""
     if key == "locale":
@@ -403,9 +428,16 @@ def get(config, key, env=os.environ):
     if key == "file_manager_desktop":  # o .desktop, para fixar na dock
         name = file_manager(config)
         return FILE_MANAGERS.get(name, name)
+    if key == "terminal":
+        return terminal(config)
+    if key == "terminal_desktop":  # o .desktop, para a Central de Configurações e a dock
+        name = terminal(config)
+        return TERMINALS.get(name, name)
     if key in ("weather_location", "holidays", "accent", "gtk_theme", "icon_theme", "folder_color", "components",
                "shortcuts", "cursor_theme"):
         return getattr(config, key)
+    if key in IDLE_KEYS:
+        return str(getattr(config, key))
     return None
 
 

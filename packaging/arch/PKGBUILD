@@ -9,7 +9,7 @@ pkgname=(swaydesk-common swaydesk-notifd swaydesk-dock swaydesk-drawer swaydesk-
         swaydesk-audio swaydesk-network swaydesk-bluetooth swaydesk-battery swaydesk-brightness
         swaydesk-caffeine swaydesk-system swaydesk-media swaydesk-clipboard swaydesk-osd swaydesk-language
         swaydesk-switcher swaydesk-help swaydesk-click-catcher swaydesk-capture swaydesk-theme-tool
-        swaydesk-portal swaydesk-theme-app swaydesk-displays swaydesk-session-menu swaydesk-lock
+        swaydesk-portal swaydesk-theme-app swaydesk-displays swaydesk-settings swaydesk-session-menu swaydesk-lock
         swaydesk-keyring swaydesk-sessionmgr swaydesk-desktop swaydesk-greeter swaydesk-widgets swaydesk-theme
         swaydesk-session swaydesk-bar swaydesk-apps)
 pkgver=0.2.0
@@ -252,6 +252,16 @@ package_swaydesk-displays() {
   _install swaydesk-displays
 }
 
+package_swaydesk-settings() {
+  pkgdesc="Sway desktop components - Settings center"
+  depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell cairo gdk-pixbuf2 graphene pango glibc libgcc)
+  optdepends=('hwdata: the graphics card names in About' 'nm-connection-editor: the Network panel' 'blueman: the Bluetooth panel'
+              'pavucontrol: the Sound panel' 'power-profiles-daemon: the power profile in Power and lock'
+              'swaydesk-caffeine: the idle times in Power and lock' 'swaydesk-theme-tool: the Appearance panel and the shortcut profile'
+              'swaydesk-displays: the Displays panel')
+  _install swaydesk-settings
+}
+
 package_swaydesk-session-menu() {
   pkgdesc="Sway desktop components - session menu"
   depends=("swaydesk-common=$pkgver-$pkgrel" glib2 gtk4 gtk4-layer-shell pango glibc libgcc)
@@ -317,7 +327,7 @@ package_swaydesk-desktop() {
            swaydesk-weather swaydesk-audio swaydesk-network swaydesk-bluetooth swaydesk-battery
            swaydesk-brightness swaydesk-caffeine swaydesk-system swaydesk-media swaydesk-clipboard swaydesk-osd
            swaydesk-language swaydesk-switcher swaydesk-help swaydesk-click-catcher swaydesk-capture
-           swaydesk-theme-tool swaydesk-portal swaydesk-theme-app swaydesk-displays swaydesk-session-menu
+           swaydesk-theme-tool swaydesk-portal swaydesk-theme-app swaydesk-displays swaydesk-settings swaydesk-session-menu
            swaydesk-lock swaydesk-keyring swaydesk-sessionmgr
            sway swaybg swayidle waybar kitty rofi libqalculate jq curl
            wl-clipboard cliphist xdg-desktop-portal-wlr xdg-desktop-portal-gtk dconf glib2 noto-fonts noto-fonts-emoji gnome-themes-extra adw-gtk-theme systemd
@@ -392,9 +402,9 @@ package_swaydesk-bar() {
 }
 
 package_swaydesk-apps() {
-  pkgdesc="Sway desktop components - Desktop Theme, Displays, Help and Screenshot (metapackage)"
+  pkgdesc="Sway desktop components - Settings, Desktop Theme, Displays, Help and Screenshot (metapackage)"
   arch=(any)
   license=(MIT)
-  depends=("swaydesk-theme-app=$pkgver-$pkgrel" "swaydesk-displays=$pkgver-$pkgrel" "swaydesk-help=$pkgver-$pkgrel" "swaydesk-capture=$pkgver-$pkgrel")
+  depends=("swaydesk-theme-app=$pkgver-$pkgrel" "swaydesk-displays=$pkgver-$pkgrel" "swaydesk-help=$pkgver-$pkgrel" "swaydesk-capture=$pkgver-$pkgrel" "swaydesk-settings=$pkgver-$pkgrel")
   _install swaydesk-apps
 }

@@ -597,6 +597,15 @@ pub fn terminal_command(commandline: &str, terminal: &str) -> Option<Vec<String>
     Some(argv)
 }
 
+/// O terminal dos apps com Terminal=true: o sway-terminal (o terminal da config), se existir; sem ele, o kitty
+/// de antes, se instalado (`kitty`); senão None, e o Gio escolhe.
+pub fn terminal_program(helper: Option<&Path>, kitty: bool) -> Option<String> {
+    match helper {
+        Some(path) => Some(path.to_string_lossy().into_owned()),
+        None => kitty.then(|| "kitty".to_string()),
+    }
+}
+
 /// Os fixados salvos. Sem o arquivo, os do nwg-drawer (legacy), se houver. Outro erro sobe:
 /// tratar como lista vazia apagaria os fixados ao salvar. UTF-8 inválido também é erro.
 pub fn load_pins(path: &Path, legacy: Option<&Path>) -> io::Result<Vec<String>> {

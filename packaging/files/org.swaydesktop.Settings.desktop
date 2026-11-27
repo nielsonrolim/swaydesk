@@ -1,0 +1,65 @@
+[Desktop Entry]
+Type=Application
+Name=Settings
+Name[pt_BR]=Configurações
+Name[es]=Configuración
+GenericName=Desktop settings
+GenericName[pt_BR]=Configurações do desktop
+GenericName[es]=Configuración del escritorio
+Comment=The settings of the Swaydesk desktop, one panel for each part
+Comment[pt_BR]=As configurações do desktop Swaydesk, um painel para cada parte
+Comment[es]=La configuración del escritorio Swaydesk, un panel para cada parte
+Exec=swaydesk-settings
+TryExec=swaydesk-settings
+Icon=preferences-system
+Terminal=false
+StartupNotify=false
+Categories=GTK;Settings;DesktopSettings;
+OnlyShowIn=sway;
+Keywords=preferences;configuration;control;panel;
+Keywords[pt_BR]=preferências;configuração;controle;painel;
+Keywords[es]=preferencias;ajustes;control;panel;
+Actions=keyboard;mouse;power;desktop;default-apps;region;about;
+
+[Desktop Action keyboard]
+Name=Keyboard
+Name[pt_BR]=Teclado
+Name[es]=Teclado
+Exec=swaydesk-settings --panel keyboard
+
+[Desktop Action mouse]
+Name=Mouse and touchpad
+Name[pt_BR]=Mouse e touchpad
+Name[es]=Ratón y panel táctil
+Exec=swaydesk-settings --panel mouse
+
+[Desktop Action power]
+Name=Power and lock
+Name[pt_BR]=Energia e bloqueio
+Name[es]=Energía y bloqueo
+Exec=swaydesk-settings --panel power
+
+[Desktop Action desktop]
+Name=Desktop
+Name[pt_BR]=Desktop
+Name[es]=Escritorio
+Exec=swaydesk-settings --panel desktop
+
+[Desktop Action default-apps]
+Name=Default apps
+Name[pt_BR]=Apps padrão
+Name[es]=Aplicaciones predeterminadas
+Exec=swaydesk-settings --panel default-apps
+
+[Desktop Action region]
+Name=Region
+Name[pt_BR]=Região
+Name[es]=Región
+Exec=swaydesk-settings --panel region
+
+[Desktop Action about]
+Name=About
+Name[pt_BR]=Sobre
+Name[es]=Acerca de
+Exec=swaydesk-settings --panel about
+

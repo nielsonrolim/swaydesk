@@ -25,6 +25,7 @@ use swaydesk_common::{config, i18n, resident};
 pub mod cmd;
 pub mod list;
 pub mod modal;
+pub mod settings;
 
 /// Os popups da barra: abrir um fecha os outros (a mesma lista do `waybar_popup.py`).
 pub const POPUPS: &[&str] = &[

@@ -1,0 +1,23 @@
+[package]
+name = "swaydesk-settings"
+description = "A Central de Configurações (GTK 4): os painéis numa barra lateral, um por área do desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "swaydesk-settings"
+path = "src/main.rs"
+
+[dependencies]
+swaydesk-common.workspace = true
+swaydesk-settings-logic.workspace = true
+swaydesk-ui.workspace = true
+# O painel Aparência: a página do app Tema, ligada estaticamente (o pacote da Central não depende do dele)
+swaydesk-theme-app.workspace = true
+# O painel Telas: a página do app Telas, do mesmo jeito
+swaydesk-displays.workspace = true
+gtk4.workspace = true
+libc.workspace = true
+serde_json.workspace = true

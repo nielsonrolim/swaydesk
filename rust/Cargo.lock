@@ -1365,6 +1365,7 @@ dependencies = [
  "libc",
  "serde_json",
  "toml 0.8.23",
+ "toml_edit 0.22.27",
  "unicode-normalization",
 ]
 
@@ -1667,6 +1668,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "swaydesk-settings"
+version = "0.2.0"
+dependencies = [
+ "gtk4",
+ "libc",
+ "serde_json",
+ "swaydesk-common",
+ "swaydesk-displays",
+ "swaydesk-settings-logic",
+ "swaydesk-theme-app",
+ "swaydesk-ui",
+]
+
+[[package]]
+name = "swaydesk-settings-logic"
+version = "0.2.0"
+dependencies = [
+ "serde_json",
+ "swaydesk-common",
+ "toml 0.8.23",
+]
+
+[[package]]
 name = "swaydesk-switcher"
 version = "0.2.0"
 dependencies = [
@@ -1902,6 +1926,7 @@ dependencies = [
  "serde",
  "serde_spanned 0.6.9",
  "toml_datetime 0.6.11",
+ "toml_write",
  "winnow 0.7.15",
 ]
 
@@ -1925,6 +1950,12 @@ checksum = "baa693a8032d7e1cada7d0041e96126df243179ff061456783ac7f12bda4744c"
 dependencies = [
  "winnow 1.0.5",
 ]
+
+[[package]]
+name = "toml_write"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "toml_writer"

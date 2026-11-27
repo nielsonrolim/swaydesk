@@ -19,7 +19,7 @@ use gtk4::{gdk, gio, glib, graphene, pango};
 use gtk4_layer_shell::{Edge, KeyboardMode, Layer, LayerShell};
 use swaydesk_common::config::{self, Config};
 use swaydesk_common::i18n::{ntr, ptr, tr};
-use swaydesk_common::{app_scope, renderer, resident};
+use swaydesk_common::{app_scope, paths, renderer, resident};
 use swaydesk_drawer_logic as logic;
 use swaydesk_drawer_logic::groups::{self, Group};
 use swaydesk_drawer_logic::{dock, App, AppFields};
@@ -46,7 +46,6 @@ const FILE_DELAY: Duration = Duration::from_millis(300);
 const QALC_DELAY: Duration = Duration::from_millis(150);
 const QALC_TIMEOUT: Duration = Duration::from_secs(2);
 const MENU_CLICK_GRACE: Duration = Duration::from_millis(300);
-const TERMINAL: &str = "kitty"; // o $term do config do Sway
 const FALLBACK_ICON: &str = "application-x-executable";
 
 /// A paleta é a da Waybar e dos popups. O rodapé (.status) tem fundo opaco. A janela cobre a tela e a
@@ -1405,10 +1404,15 @@ impl Drawer {
             (info, terminal)
         };
         self.hide();
-        if terminal && glib::find_program_in_path(TERMINAL).is_some() {
-            // O Gio escolhe o terminal de uma lista própria, que pode não ter nenhum instalado
+        // O Gio escolhe o terminal de uma lista própria, que pode não ter nenhum instalado: o terminal da config,
+        // pelo sway-terminal (o mesmo do Ctrl+Alt+T)
+        let program = terminal.then(|| {
+            let helper = paths::find_helper("sway-terminal");
+            logic::terminal_program(helper.as_deref(), glib::find_program_in_path("kitty").is_some())
+        });
+        if let Some(program) = program.flatten() {
             let commandline = info.commandline().map(|c| c.to_string_lossy().into_owned()).unwrap_or_default();
-            if let Some(argv) = logic::terminal_command(&commandline, TERMINAL) {
+            if let Some(argv) = logic::terminal_command(&commandline, &program) {
                 if run_app(&argv, app_id) {
                     return;
                 }

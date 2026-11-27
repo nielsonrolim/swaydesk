@@ -10,8 +10,9 @@ pub const TEXT_FONT: &str = "Noto Sans";
 pub const ICON_FONT: &str = "Symbols Nerd Font";
 // As mesmas chaves do Config do desktop_config.py
 const KNOWN: &[&str] = &[
-    "locale", "weather_location", "holidays", "accent", "accent_auto", "gtk_theme", "icon_theme", "folder_color", "file_manager",
+    "locale", "weather_location", "holidays", "accent", "accent_auto", "gtk_theme", "icon_theme", "folder_color", "file_manager", "terminal",
     "components", "enabled", "effects", "shortcuts", "power_profiles_in_system", "cursor_size", "cursor_theme",
+    "lock_after", "screen_off_after", "suspend_after",
 ];
 /// As chaves do [enabled]: os componentes da sessão que podem ser desligados (o ENABLED_KEYS do Python).
 pub const ENABLED_KEYS: &[&str] = &[
@@ -43,6 +44,10 @@ pub const MAX_CORNER_RADIUS: i64 = 30;
 pub const MAX_ANIMATION_DURATION_MS: i64 = 5000;
 /// O tamanho do cursor aceito no cursor_size, em pixels (o padrão é o cursor::CURSOR_SIZE)
 pub const CURSOR_SIZES: std::ops::RangeInclusive<i64> = 16..=96;
+/// Os tempos do sway-idle, em minutos inteiros: bloquear, apagar a tela e suspender (só na bateria). O 0 é nunca
+pub const IDLE_KEYS: &[&str] = &["lock_after", "screen_off_after", "suspend_after"];
+/// Os minutos aceitos nos IDLE_KEYS (um dia no máximo)
+pub const IDLE_MINUTES: std::ops::RangeInclusive<i64> = 0..=1440;
 
 /// As cores do papirus-folders, com a cor da frente da pasta (48x48/places/folder-<cor>.svg). A adwaita e
 /// a yaru são o destaque padrão desses temas, e não a cor da pasta. Na ordem do desktop_config.py.
@@ -88,6 +93,8 @@ pub struct Config {
     pub folder_color: String,
     /// O comando, como "thunar"; vazio: o primeiro instalado
     pub file_manager: String,
+    /// O terminal (um comando, como "foot"); vazio: o kitty ou o primeiro instalado dos TERMINALS
+    pub terminal: String,
     /// A versão dos componentes: auto (Rust onde houver), python ou rust
     pub components: String,
     /// O perfil de atalhos, um dos SHORTCUT_PROFILES; "swaydesk" sem a chave ou com um nome inválido
@@ -97,6 +104,10 @@ pub struct Config {
     pub power_profiles_in_system: String,
     /// O tamanho do cursor, em pixels, de CURSOR_SIZES; o cursor::CURSOR_SIZE sem a chave ou com um valor inválido
     pub cursor_size: u32,
+    /// Os IDLE_KEYS: os minutos até bloquear, apagar a tela e suspender (na bateria); 0 é nunca
+    pub lock_after: u32,
+    pub screen_off_after: u32,
+    pub suspend_after: u32,
     /// O tema do cursor instalado; vazio ou ausente: o automático (o cursor::cursor_theme)
     pub cursor_theme: String,
     /// Os componentes desligados no [enabled] (false), como "dock" ou "bar.weather". O que não está aqui
@@ -110,6 +121,25 @@ pub struct Config {
 }
 
 impl Config {
+    /// Os minutos de um dos IDLE_KEYS; None para outra chave.
+    pub fn idle_minutes(&self, key: &str) -> Option<u32> {
+        match key {
+            "lock_after" => Some(self.lock_after),
+            "screen_off_after" => Some(self.screen_off_after),
+            "suspend_after" => Some(self.suspend_after),
+            _ => None,
+        }
+    }
+
+    fn idle_slot(&mut self, key: &str) -> Option<&mut u32> {
+        match key {
+            "lock_after" => Some(&mut self.lock_after),
+            "screen_off_after" => Some(&mut self.screen_off_after),
+            "suspend_after" => Some(&mut self.suspend_after),
+            _ => None,
+        }
+    }
+
     /// Se o componente está ligado. Um nome desconhecido conta como ligado.
     pub fn enabled(&self, name: &str) -> bool {
         if self.disabled.contains(name) {
@@ -253,10 +283,14 @@ impl Default for Config {
             icon_theme: "Papirus-Dark".to_string(),
             folder_color: String::new(),
             file_manager: String::new(),
+            terminal: String::new(),
             components: "auto".to_string(),
             shortcuts: "swaydesk".to_string(),
             power_profiles_in_system: "auto".to_string(),
             cursor_size: crate::cursor::CURSOR_SIZE,
+            lock_after: 10,
+            screen_off_after: 15,
+            suspend_after: 30,
             cursor_theme: String::new(),
             disabled: BTreeSet::new(),
             turned_on: BTreeSet::new(),
@@ -360,6 +394,27 @@ pub fn file_manager(config: &Config, installed: impl Fn(&str) -> bool) -> String
     FILE_MANAGERS.iter().map(|(n, _)| *n).find(|n| installed(n)).unwrap_or("thunar").to_string()
 }
 
+/// Os terminais conhecidos, com o .desktop de cada um: o kitty, o do Swaydesk, vem antes. São também os que o
+/// sway-terminal sabe abrir com um comando (-e) e uma classe (--class).
+pub const TERMINALS: &[(&str, &str)] = &[
+    ("kitty", "kitty"),
+    ("foot", "foot"),
+    ("alacritty", "Alacritty"),
+    ("ptyxis", "org.gnome.Ptyxis"),
+    ("kgx", "org.gnome.Console"),
+    ("konsole", "org.kde.konsole"),
+    ("xfce4-terminal", "xfce4-terminal"),
+];
+
+/// O terminal: o terminal da config ou, sem ele, o primeiro dos TERMINALS instalado (o kitty antes), ou o
+/// kitty. O `get terminal` do desktop-config, que o sway-terminal usa.
+pub fn terminal(config: &Config, installed: impl Fn(&str) -> bool) -> String {
+    if !config.terminal.is_empty() {
+        return config.terminal.clone();
+    }
+    TERMINALS.iter().map(|(n, _)| *n).find(|n| installed(n)).unwrap_or("kitty").to_string()
+}
+
 /// O `#[0-9a-fA-F]{6}` (ACCENT) do Python.
 pub fn is_accent(value: &str) -> bool {
     value.len() == 7 && value.starts_with('#') && value[1..].bytes().all(|c| c.is_ascii_hexdigit())
@@ -397,6 +452,15 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
                     auto_given = true;
                 }
                 None => warnings.push("config: invalid value in accent_auto (use true or false)".to_string()),
+            }
+            continue;
+        }
+        if IDLE_KEYS.contains(&key.as_str()) {
+            match value {
+                toml::Value::Integer(n) if IDLE_MINUTES.contains(n) => {
+                    *config.idle_slot(key).expect("an idle key") = *n as u32;
+                }
+                _ => warnings.push(format!("config: invalid {key} (use 0 to 1440 minutes; 0 is never)")),
             }
             continue;
         }
@@ -459,6 +523,10 @@ pub fn parse_config(text: &str) -> (Config, Vec<String>) {
                 warnings.push(format!("config: invalid file manager: {value} (use the command name, like thunar)"))
             }
             "file_manager" => config.file_manager = value.to_string(),
+            "terminal" if !value.is_empty() && !is_name(value, false) => {
+                warnings.push(format!("config: invalid terminal: {value} (use the command name, like kitty)"))
+            }
+            "terminal" => config.terminal = value.to_string(),
             _ => {}
         }
     }
@@ -838,6 +906,27 @@ mod tests {
         assert!(SEARCH_CSS.contains(&format!("entry.{SEARCH_CLASS}.{SEARCH_DARK_CLASS} {{ background: #38383d;")));
         // O waybar/accent.css continua só com as cores
         assert!(!css_colors(&colors).contains("entry"));
+    }
+
+    #[test]
+    fn terminal_is_the_configs_then_kitty_then_the_first_installed() {
+        let mut config = Config::default();
+        assert_eq!(terminal(&config, |_| true), "kitty");
+        assert_eq!(terminal(&config, |n| n == "konsole" || n == "foot"), "foot");
+        assert_eq!(terminal(&config, |_| false), "kitty");
+        config.terminal = "wezterm".into();
+        assert_eq!(terminal(&config, |_| false), "wezterm");
+        assert_eq!(TERMINALS.iter().find(|(n, _)| *n == "kgx").map(|(_, d)| *d), Some("org.gnome.Console"));
+    }
+
+    #[test]
+    fn terminal_key_takes_only_a_command_name() {
+        let (config, warnings) = parse_config("terminal = \"foot\"\n");
+        assert_eq!((config.terminal.as_str(), warnings.len()), ("foot", 0));
+        for bad in ["kitty; rm -rf", "/usr/bin/kitty", "a b"] {
+            let (config, warnings) = parse_config(&format!("terminal = \"{bad}\"\n"));
+            assert_eq!((config.terminal.as_str(), warnings.len()), ("", 1), "{bad}");
+        }
     }
 
     #[test]
@@ -1247,6 +1336,25 @@ mod tests {
         assert_eq!(warnings, ["config: invalid shortcuts: sway (use swaydesk, i3, hyprland, niri or dwm)"]);
         assert_eq!(parse_config("shortcuts = 1").1, ["config: invalid value in shortcuts"]);
         assert!(shortcut_keys_file("../etc/passwd").is_none());
+    }
+
+    #[test]
+    fn idle_times() {
+        // Os mesmos casos do IdleTimesTests do Python: minutos inteiros de 0 (nunca) a 1440
+        let config = parse_config("").0;
+        assert_eq!((config.lock_after, config.screen_off_after, config.suspend_after), (10, 15, 30));
+        for key in IDLE_KEYS {
+            for value in [0, 1, 1440] {
+                let (config, warnings) = parse_config(&format!("{key} = {value}"));
+                assert_eq!((config.idle_minutes(key), warnings.len()), (Some(value), 0), "{key} = {value}");
+            }
+            for value in ["-1", "1441", "\"10\"", "10.5", "true"] {
+                let (config, warnings) = parse_config(&format!("{key} = {value}"));
+                assert_eq!(config.idle_minutes(key), Config::default().idle_minutes(key), "{key} = {value}");
+                assert_eq!(warnings, [format!("config: invalid {key} (use 0 to 1440 minutes; 0 is never)")], "{value}");
+            }
+        }
+        assert_eq!(Config::default().idle_minutes("cursor_size"), None);
     }
 
     #[test]

@@ -1,52 +1,20 @@
-//! Telas: a posição, a resolução, a taxa, a escala e a rotação de cada tela no Sway, e o serviço que aplica
-//! o layout de cada conjunto de monitores ao plugar ou desplugar. O substituto do nwg-displays.
+//! O app Telas: a janela da página da biblioteca (lib.rs), o serviço de perfis e o apply.
 //!
 //! uso: swaydesk-displays           a janela (abrir de novo traz a que já está aberta)
 //!      swaydesk-displays daemon    o serviço de perfis (o laço do config do Sway o abre)
 //!      swaydesk-displays apply     aplica o perfil do conjunto agora (o bindswitch da tampa)
 //!      swaydesk-displays --check   só confere que o binário carrega
-//!
-//! Aplicar muda as telas na hora e pergunta se mantém; sem resposta em 15 s, volta ao que era. Manter
-//! guarda o perfil do conjunto (~/.config/swaydesk/displays.json) e o arquivo que o Sway lê no login
-//! (~/.config/sway/config.d/90-displays.conf).
-mod daemon;
-mod identify;
-mod sway;
-mod window;
-
 use std::cell::RefCell;
-use std::fs::File;
-use std::path::PathBuf;
 use std::process::ExitCode;
 use std::rc::Rc;
-use std::time::Duration;
 
 use gtk4::prelude::*;
 use gtk4::{gio, glib};
-use swaydesk_common::{config, i18n, resident};
+use swaydesk_common::{config, i18n};
+use swaydesk_displays::{daemon, Displays};
 
-pub const PROGRAM: &str = "sway-displays";
 /// Igual ao nome do .desktop: é como a dock acha o ícone, e como o swaydesk-help abre o app
 const APP_ID: &str = "org.swaydesktop.Displays";
-
-pub fn warn(message: &str) {
-    eprintln!("{PROGRAM}: {message}"); // vai para o sway.log, junto com o resto da sessão
-}
-
-/// A trava que o app segura enquanto mostra a prévia: o serviço não aplica perfis por cima dela
-fn preview_lock_path() -> PathBuf {
-    resident::runtime_dir().join("sway-displays-preview.lock")
-}
-
-/// Segura a trava da prévia; None se outra janela já segura
-pub fn take_preview_lock() -> Option<File> {
-    resident::take_lock(&preview_lock_path(), Duration::ZERO)
-}
-
-/// Uma prévia está na tela?
-pub fn preview_active() -> bool {
-    take_preview_lock().is_none()
-}
 
 /// O --help (swaydesk_common::early_args!)
 const USAGE: &str = concat!(
@@ -71,13 +39,13 @@ fn main() -> ExitCode {
     let app = gtk4::Application::new(Some(APP_ID), gio::ApplicationFlags::default());
     // O adw-gtk3 num GTK antes do 4.20 deixa a janela clara até no escuro: o Adwaita embutido no lugar
     app.connect_startup(|_| swaydesk_ui::follow_theme_stand_in());
-    let window: Rc<RefCell<Option<Rc<window::Window>>>> = Rc::new(RefCell::new(None));
+    let window: Rc<RefCell<Option<Displays>>> = Rc::new(RefCell::new(None));
     app.connect_activate(move |app| {
-        let existing = window.borrow().clone();
-        match existing {
-            Some(w) => w.reopen(),
-            None => *window.borrow_mut() = Some(window::Window::new(app)),
+        if let Some(w) = window.borrow().as_ref() {
+            w.reopen();
+            return;
         }
+        *window.borrow_mut() = Some(swaydesk_displays::open(app));
     });
     // O SIGTERM (um pkill, o systemd), o SIGINT e o SIGHUP fecham as janelas: a que tem uma prévia sem resposta
     // desfaz no close-request, como no Super+Q

@@ -1,7 +1,7 @@
 #!/bin/bash
 # Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
 # seu UID (o pgrep -u da sessão também os acha): rode com outro UID (-u 64000:64000), como o run-all-tests.sh.
-# As janelas comuns do Swaydesk (Telas e Ajuda) ficam escuras com o adw-gtk3-dark num GTK antes do 4.20 (o Debian
+# As janelas comuns do Swaydesk (Telas, Ajuda e a Central de Configurações) ficam escuras com o adw-gtk3-dark num GTK antes do 4.20 (o Debian
 # 13 tem o 4.18), num Sway headless. O CSS de GTK 4 do adw-gtk3 6.5 é o mesmo nas duas variantes e só escurece
 # dentro de `@media (prefers-color-scheme: dark)`, que o GTK só lê a partir do 4.20: um tema falso em ~/.themes
 # com essa forma (claro fora do @media, escuro dentro), escolhido no settings.ini com o prefer-dark, faz a janela
@@ -15,6 +15,7 @@
 #   docker run --rm --memory 6g --memory-swap 6g -u 64000:64000 -e HOME=/tmp -v <passwd com o 64000>:/etc/passwd:ro \
 #     -v $PWD:/repo:ro -v $PWD/rust/target/debian13/release/swaydesk-displays:/bin/swaydesk-displays:ro \
 #     -v $PWD/rust/target/debian13/release/swaydesk-help:/bin/swaydesk-help:ro \
+#     -v $PWD/rust/target/debian13/release/swaydesk-settings:/bin/swaydesk-settings:ro \
 #     -v $PWD/rust/target/debian13/release/swaydesk-calendar:/bin/swaydesk-calendar:ro \
 #     -v /tmp/out:/out swaydesk-smoke:debian13-gsettings /repo/rust/scripts/headless-dark-windows.sh
 #
@@ -99,7 +100,8 @@ command -v gsettings > /dev/null || { fail "sem o gsettings: rode na imagem sway
 # 1. adw-gtk3-dark, com e sem o prefer-dark no settings.ini: escuras (no máximo 2% da cor clara do tema falso)
 for prefer in 1 0; do
   settings adw-gtk3-dark $prefer prefer-dark
-  for app in "swaydesk-displays org.swaydesktop.Displays displays" "swaydesk-help org.swaydesktop.Help help"; do
+  for app in "swaydesk-displays org.swaydesktop.Displays displays" "swaydesk-help org.swaydesktop.Help help" \
+    "swaydesk-settings org.swaydesktop.Settings settings"; do
     set -- $app
     shot "$1" "$2" "dark-$3-$prefer"
     n=$(share "/out/dark-$3-$prefer.ppm" $LIGHT)
@@ -116,7 +118,8 @@ light=$(lum /out/help-light.ppm)
 
 # 3. Com a janela aberta, a troca da sessão (o Claro e o Escuro do app Tema, e um tema de fora): a janela segue, sem
 #    reabrir. O settings.ini fica no escuro de quando ela abriu: o GTK 4.18 só o lê ao abrir
-for app in "swaydesk-displays org.swaydesktop.Displays displays" "swaydesk-help org.swaydesktop.Help help"; do
+for app in "swaydesk-displays org.swaydesktop.Displays displays" "swaydesk-help org.swaydesktop.Help help" \
+  "swaydesk-settings org.swaydesktop.Settings settings"; do
   set -- $app
   settings adw-gtk3-dark 1 prefer-dark
   "/bin/$1" >> /out/app.log 2>&1 &

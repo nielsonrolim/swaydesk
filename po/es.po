@@ -2802,6 +2802,11 @@ msgstr "indicador de volumen y brillo: sway-osd-bar en lugar de wob"
 msgid "volume and brightness indicator: log in to Sway again to open the sway-osd-bar"
 msgstr "indicador de volumen y brillo: vuelve a iniciar sesión en Sway para abrir sway-osd-bar"
 
+#: rust/displays/src/lib.rs rust/help/src/cards.rs
+#: rust/settings-logic/src/lib.rs
+msgid "Displays"
+msgstr "Pantallas"
+
 #: rust/displays/src/window.rs
 msgid "Normal"
 msgstr "Normal"
@@ -2809,10 +2814,6 @@ msgstr "Normal"
 #: rust/displays/src/window.rs
 msgid "Flipped"
 msgstr "Reflejada"
-
-#: rust/displays/src/window.rs rust/help/src/cards.rs
-msgid "Displays"
-msgstr "Pantallas"
 
 #: rust/displays/src/window.rs
 msgid "On"
@@ -2930,7 +2931,7 @@ msgstr "Nombre de usuario"
 msgid "Log in"
 msgstr "Iniciar sesión"
 
-#: rust/greeter/src/main.rs
+#: rust/greeter/src/main.rs rust/settings-logic/src/desktop.rs
 msgid "Keyboard layout"
 msgstr "Distribución del teclado"
 
@@ -2946,7 +2947,7 @@ msgstr "Ctrl"
 msgid "Shift"
 msgstr "Shift"
 
-#: rust/help-logic/src/keys.rs
+#: rust/help-logic/src/keys.rs rust/settings/src/keyboard.rs
 msgid "Caps Lock"
 msgstr "Bloq Mayús"
 
@@ -3090,7 +3091,7 @@ msgstr "El tema GTK, claro u oscuro, y el color de acento de todo el escritorio:
 msgid "Capture a region, a window or the whole screen. In the panel, G opens the capture in Gradia to crop and annotate it."
 msgstr "Captura una región, una ventana o la pantalla completa. En el panel, G abre la captura en Gradia para recortarla y anotarla."
 
-#: rust/help/src/cards.rs
+#: rust/help/src/cards.rs rust/settings-logic/src/desktop.rs
 msgid "Screen recording"
 msgstr "Grabación de pantalla"
 
@@ -3102,7 +3103,7 @@ msgstr "Graba una región, una ventana o la pantalla completa, con el sonido del
 msgid "What you copied, text and images. Pick an item to copy it again."
 msgstr "Lo que copiaste, textos e imágenes. Elige un elemento para copiarlo de nuevo."
 
-#: rust/help/src/cards.rs
+#: rust/help/src/cards.rs rust/settings-logic/src/desktop.rs
 msgid "App grid"
 msgstr "Cuadrícula de aplicaciones"
 
@@ -3110,7 +3111,7 @@ msgstr "Cuadrícula de aplicaciones"
 msgid "All the installed apps, with search and favorites. Super alone shows and hides it."
 msgstr "Todas las aplicaciones instaladas, con búsqueda y favoritos. Super solo la muestra y la oculta."
 
-#: rust/help/src/cards.rs
+#: rust/help/src/cards.rs rust/settings-logic/src/desktop.rs
 msgid "Dock"
 msgstr "Dock"
 
@@ -3163,7 +3164,7 @@ msgstr "Desactivado. Para activarlo: %s en ~/.config/swaydesk/config.toml y vuel
 msgid "No shortcut"
 msgstr "Sin atajo"
 
-#: rust/help/src/cards.rs rust/help/src/main.rs
+#: rust/help/src/cards.rs rust/help/src/main.rs rust/settings/src/main.rs
 msgctxt "button"
 msgid "Open"
 msgstr "Abrir"
@@ -3222,7 +3223,7 @@ msgstr "Perfil dwm: el modificador es Alt, como en dwm, no Super. Algunos atajos
 msgid "Switch"
 msgstr "Cambiar"
 
-#: rust/help/src/main.rs
+#: rust/help/src/main.rs rust/settings/src/desktop.rs
 msgid "Shortcut profile"
 msgstr "Perfil de atajos"
 
@@ -3258,6 +3259,515 @@ msgstr "Otro agente de contraseñas está activo"
 #: rust/nm/src/rules.rs rust/nm/src/standalone/tests.rs
 msgid "No network service running"
 msgstr "No hay ningún servicio de red en ejecución"
+
+#: rust/settings-logic/src/apps.rs
+msgid "Web browser"
+msgstr "Navegador web"
+
+#: rust/settings-logic/src/apps.rs
+msgid "Mail"
+msgstr "Correo"
+
+#: rust/settings-logic/src/apps.rs
+msgid "Text editor"
+msgstr "Editor de texto"
+
+#: rust/settings-logic/src/apps.rs
+msgid "Images"
+msgstr "Imágenes"
+
+#: rust/settings-logic/src/apps.rs
+msgid "PDF documents"
+msgstr "Documentos PDF"
+
+#: rust/settings-logic/src/apps.rs
+msgid "Video"
+msgstr "Vídeo"
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Window switcher (Alt+Tab)"
+msgstr "Selector de ventanas (Alt+Tab)"
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Volume and brightness indicator"
+msgstr "Indicador de volumen y brillo"
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Wallpaper of the day"
+msgstr "Fondo de pantalla del día"
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Update notifications"
+msgstr "Avisos de actualizaciones"
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Weather"
+msgstr "Tiempo"
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Clock"
+msgstr "Reloj"
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Media"
+msgstr "Multimedia"
+
+#: rust/settings-logic/src/desktop.rs rust/settings-logic/src/lib.rs
+msgid "Bluetooth"
+msgstr "Bluetooth"
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Volume"
+msgstr "Volumen"
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Power menu"
+msgstr "Menú de energía"
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Updates"
+msgstr "Actualizaciones"
+
+#: rust/settings-logic/src/lib.rs
+msgid "Appearance"
+msgstr "Apariencia"
+
+#: rust/settings-logic/src/lib.rs
+msgid "Mouse and touchpad"
+msgstr "Ratón y panel táctil"
+
+#: rust/settings-logic/src/lib.rs
+msgid "Power and lock"
+msgstr "Energía y bloqueo"
+
+#: rust/settings-logic/src/lib.rs
+msgid "Desktop"
+msgstr "Escritorio"
+
+#: rust/settings-logic/src/lib.rs rust/settings/src/apps.rs
+msgid "Default apps"
+msgstr "Aplicaciones predeterminadas"
+
+#: rust/settings-logic/src/lib.rs
+msgid "About"
+msgstr "Acerca de"
+
+#: rust/settings-logic/src/lib.rs
+msgid "Sound"
+msgstr "Sonido"
+
+#: rust/settings-logic/src/region.rs
+msgid "Same as the system"
+msgstr "Igual que el sistema"
+
+#: rust/settings/src/about.rs
+msgid "Distribution"
+msgstr "Distribución"
+
+#: rust/settings/src/about.rs
+msgid "Kernel"
+msgstr "Kernel"
+
+#: rust/settings/src/about.rs
+msgid "Processor"
+msgstr "Procesador"
+
+#: rust/settings/src/about.rs
+msgid "Graphics"
+msgstr "Gráficos"
+
+#: rust/settings/src/about.rs
+msgid "%(used)s used of %(total)s"
+msgstr "%(used)s usados de %(total)s"
+
+#: rust/settings/src/about.rs
+msgid "Device name"
+msgstr "Nombre del dispositivo"
+
+#: rust/settings/src/about.rs
+msgid "Could not read the system information"
+msgstr "No se pudo leer la información del sistema"
+
+#: rust/settings/src/about.rs
+msgid "Copy info"
+msgstr "Copiar información"
+
+#: rust/settings/src/about.rs
+msgctxt "button"
+msgid "Help"
+msgstr "Ayuda"
+
+#: rust/settings/src/about.rs
+msgid "Website"
+msgstr "Sitio web"
+
+#: rust/settings/src/about.rs
+msgid "Copied"
+msgstr "Copiado"
+
+#: rust/settings/src/apps.rs rust/settings/src/desktop.rs
+#: rust/settings/src/power.rs rust/settings/src/region.rs
+msgid ""
+"Your config.toml has an error. Fix it to change these settings:\n"
+"%(error)s"
+msgstr ""
+"Tu config.toml tiene un error. Corrígelo para cambiar estos ajustes:\n"
+"%(error)s"
+
+#: rust/settings/src/apps.rs
+msgid "System default (%(app)s)"
+msgstr "Predeterminado del sistema (%(app)s)"
+
+#: rust/settings/src/apps.rs
+msgid "None"
+msgstr "Ninguno"
+
+#: rust/settings/src/apps.rs
+msgid "Automatic (%(app)s)"
+msgstr "Automático (%(app)s)"
+
+#: rust/settings/src/apps.rs
+msgid "Automatic"
+msgstr "Automático"
+
+#: rust/settings/src/apps.rs rust/settings/src/desktop.rs
+#: rust/settings/src/input.rs rust/settings/src/power.rs
+#: rust/settings/src/region.rs
+msgid ""
+"Could not save:\n"
+"%(error)s"
+msgstr ""
+"No se pudo guardar:\n"
+"%(error)s"
+
+#: rust/settings/src/apps.rs
+msgid "The file manager was saved, but folders opened by other apps may still use the old one"
+msgstr "El gestor de archivos se guardó, pero las carpetas abiertas por otras aplicaciones aún pueden ir al anterior"
+
+#: rust/settings/src/apps.rs rust/settings/src/desktop.rs
+#: rust/settings/src/input.rs rust/settings/src/power.rs
+msgid "Changes apply at once"
+msgstr "Los cambios se aplican al instante"
+
+#: rust/settings/src/apps.rs
+msgid "Terminal"
+msgstr "Terminal"
+
+#: rust/settings/src/desktop.rs
+msgid "The bar did not restart"
+msgstr "La barra no se reinició"
+
+#: rust/settings/src/desktop.rs
+msgid "The shortcuts were not written"
+msgstr "Los atajos no se escribieron"
+
+#: rust/settings/src/desktop.rs
+msgid "Sway did not reload"
+msgstr "Sway no se recargó"
+
+#: rust/settings/src/desktop.rs
+msgid "Changes apply when the bar restarts"
+msgstr "Los cambios se aplican cuando la barra se reinicie"
+
+#: rust/settings/src/desktop.rs rust/settings/src/region.rs
+msgid "Changes apply at the next login"
+msgstr "Los cambios se aplican en el próximo inicio de sesión"
+
+#: rust/settings/src/desktop.rs
+msgid "The change was saved, but not applied"
+msgstr "El cambio se guardó, pero no se aplicó"
+
+#: rust/settings/src/desktop.rs rust/settings/src/power.rs
+msgid "Not installed (%(package)s)"
+msgstr "No instalado (%(package)s)"
+
+#: rust/settings/src/desktop.rs
+msgid "Set by the system"
+msgstr "Definido por el sistema"
+
+#: rust/settings/src/desktop.rs
+msgid "Use the default"
+msgstr "Usar el valor predeterminado"
+
+#: rust/settings/src/desktop.rs
+msgid ""
+"The system's config.toml has an error:\n"
+"%(error)s"
+msgstr ""
+"El config.toml del sistema tiene un error:\n"
+"%(error)s"
+
+#: rust/settings/src/desktop.rs
+msgid "Desktop components"
+msgstr "Componentes del escritorio"
+
+#: rust/settings/src/desktop.rs
+msgid "Bar modules"
+msgstr "Módulos de la barra"
+
+#: rust/settings/src/desktop.rs
+msgid "Keyboard shortcuts"
+msgstr "Atajos de teclado"
+
+#: rust/settings/src/input.rs
+msgid "A setting for a single device in your Sway config wins over this panel for it: %(devices)s"
+msgstr "Un ajuste de un solo dispositivo en la configuración de su Sway prevalece sobre este panel para él: %(devices)s"
+
+#: rust/settings/src/input.rs
+msgid ""
+"Your Sway config may not read these settings at login. To keep them, add this line to it:\n"
+"%(line)s"
+msgstr ""
+"Es posible que la configuración de su Sway no lea estos ajustes al iniciar sesión. Para conservarlos, añada esta línea:\n"
+"%(line)s"
+
+#: rust/settings/src/input.rs
+msgid "Saved. Changes apply at the next login"
+msgstr "Guardado. Los cambios se aplican en el próximo inicio de sesión"
+
+#: rust/settings/src/input.rs
+msgid ""
+"Saved, but not applied:\n"
+"%(error)s"
+msgstr ""
+"Guardado, pero no aplicado:\n"
+"%(error)s"
+
+#: rust/settings/src/keyboard.rs
+msgid "Only the shortcut"
+msgstr "Solo el atajo"
+
+#: rust/settings/src/keyboard.rs
+msgid "Other (%(option)s)"
+msgstr "Otra (%(option)s)"
+
+#: rust/settings/src/keyboard.rs
+msgid "Chosen here"
+msgstr "Elegida aquí"
+
+#: rust/settings/src/keyboard.rs
+msgid "The system keyboard"
+msgstr "El teclado del sistema"
+
+#: rust/settings/src/keyboard.rs
+msgid "Move up"
+msgstr "Subir"
+
+#: rust/settings/src/keyboard.rs
+msgid "Move down"
+msgstr "Bajar"
+
+#: rust/settings/src/keyboard.rs
+msgid "Remove"
+msgstr "Quitar"
+
+#: rust/settings/src/keyboard.rs
+msgid "Add a layout…"
+msgstr "Añadir una distribución…"
+
+#: rust/settings/src/keyboard.rs
+msgid "Use the system keyboard"
+msgstr "Usar el teclado del sistema"
+
+#: rust/settings/src/keyboard.rs
+msgid "Keyboard layouts"
+msgstr "Distribuciones del teclado"
+
+#: rust/settings/src/keyboard.rs
+msgid "The login screen keeps the system keyboard"
+msgstr "La pantalla de inicio de sesión mantiene el teclado del sistema"
+
+#: rust/settings/src/keyboard.rs
+msgid "Switching layouts"
+msgstr "Cambio de distribución"
+
+#: rust/settings/src/keyboard.rs
+msgid "Besides the layout shortcut, which is in the Help"
+msgstr "Además del atajo de distribución, que está en la Ayuda"
+
+#: rust/settings/src/keyboard.rs
+msgid "Switch key"
+msgstr "Tecla de cambio"
+
+#: rust/settings/src/keyboard.rs
+msgid "Typing"
+msgstr "Escritura"
+
+#: rust/settings/src/keyboard.rs
+msgid "Repeat delay"
+msgstr "Retardo de repetición"
+
+#: rust/settings/src/keyboard.rs
+msgid "Milliseconds before a held key repeats"
+msgstr "Milisegundos antes de que una tecla pulsada se repita"
+
+#: rust/settings/src/keyboard.rs
+msgid "Repeat rate"
+msgstr "Velocidad de repetición"
+
+#: rust/settings/src/keyboard.rs
+msgid "Repeats per second"
+msgstr "Repeticiones por segundo"
+
+#: rust/settings/src/keyboard.rs
+msgid "Num Lock on"
+msgstr "Bloq Num activado"
+
+#: rust/settings/src/keyboard.rs
+msgid "When the keyboard appears, as at login"
+msgstr "Cuando aparece el teclado, como al iniciar sesión"
+
+#: rust/settings/src/main.rs
+msgid "This panel is not available yet"
+msgstr "Este panel aún no está disponible"
+
+#: rust/settings/src/main.rs
+msgid "unknown panel '%(name)s'; the panels are: %(panels)s"
+msgstr "panel desconocido '%(name)s'; los paneles son: %(panels)s"
+
+#: rust/settings/src/main.rs
+msgid "--panel needs a panel name"
+msgstr "--panel necesita el nombre de un panel"
+
+#: rust/settings/src/main.rs
+msgid "unknown argument '%(name)s'"
+msgstr "argumento desconocido '%(name)s'"
+
+#: rust/settings/src/main.rs
+msgid "usage: swaydesk-settings [--panel <name>]"
+msgstr "uso: swaydesk-settings [--panel <nombre>]"
+
+#: rust/settings/src/main.rs
+msgid "Settings"
+msgstr "Configuración"
+
+#: rust/settings/src/main.rs
+msgid "%(program)s is not installed"
+msgstr "%(program)s no está instalado"
+
+#: rust/settings/src/mouse.rs
+msgid "Touchpad"
+msgstr "Panel táctil"
+
+#: rust/settings/src/mouse.rs
+msgid "Natural scrolling"
+msgstr "Desplazamiento natural"
+
+#: rust/settings/src/mouse.rs
+msgid "The content moves with the fingers"
+msgstr "El contenido se mueve con los dedos"
+
+#: rust/settings/src/mouse.rs
+msgid "Left-handed"
+msgstr "Zurdo"
+
+#: rust/settings/src/mouse.rs
+msgid "The primary button is on the right"
+msgstr "El botón principal está a la derecha"
+
+#: rust/settings/src/mouse.rs
+msgid "Tap to click"
+msgstr "Tocar para hacer clic"
+
+#: rust/settings/src/mouse.rs
+msgid "Disable while typing"
+msgstr "Desactivar al escribir"
+
+#: rust/settings/src/power.rs
+msgid "Never"
+msgstr "Nunca"
+
+#: rust/settings/src/power.rs
+msgid "%(minutes)s min"
+msgstr "%(minutes)s min"
+
+#: rust/settings/src/power.rs rust/settings/src/region.rs
+msgid ""
+"Not saved:\n"
+"%(error)s"
+msgstr ""
+"No se guardó:\n"
+"%(error)s"
+
+#: rust/settings/src/power.rs
+msgid "The times were saved, but not applied"
+msgstr "Los tiempos se guardaron, pero no se aplicaron"
+
+#: rust/settings/src/power.rs
+msgid "The power profile did not change"
+msgstr "El perfil de energía no cambió"
+
+#: rust/settings/src/power.rs
+msgid "Profile"
+msgstr "Perfil"
+
+#: rust/settings/src/power.rs
+msgid "Less power, or more speed"
+msgstr "Menos consumo, o más velocidad"
+
+#: rust/settings/src/power.rs
+msgid "When idle"
+msgstr "Sin uso"
+
+#: rust/settings/src/power.rs
+msgid "The screen goes off before it locks"
+msgstr "La pantalla se apaga antes de bloquearse"
+
+#: rust/settings/src/power.rs
+msgid "Lock the screen after"
+msgstr "Bloquear la pantalla tras"
+
+#: rust/settings/src/power.rs
+msgid "Turn the screen off after"
+msgstr "Apagar la pantalla tras"
+
+#: rust/settings/src/power.rs
+msgid "Suspend after"
+msgstr "Suspender tras"
+
+#: rust/settings/src/power.rs
+msgid "Only on battery. The screen always locks before suspending"
+msgstr "Solo con batería. La pantalla siempre se bloquea antes de suspender"
+
+#: rust/settings/src/power.rs
+msgid "Changes apply at once. With the caffeine on, none of them applies"
+msgstr "Los cambios se aplican al instante. Con la cafeína activada, ninguno se aplica"
+
+#: rust/settings/src/power.rs
+msgid "These times apply in the Swaydesk session"
+msgstr "Estos tiempos se aplican en la sesión de Swaydesk"
+
+#: rust/settings/src/region.rs
+msgid "The texts change at the next login, but the date stays in the system's language until the %(locale)s locale is generated on this computer"
+msgstr "Los textos cambian en el próximo inicio de sesión, pero la fecha se queda en el idioma del sistema hasta que se genere el locale %(locale)s en este equipo"
+
+#: rust/settings/src/region.rs
+msgid "From your location"
+msgstr "Según tu ubicación"
+
+#: rust/settings/src/region.rs
+msgid "The language's country"
+msgstr "El país del idioma"
+
+#: rust/settings/src/region.rs
+msgid "Language"
+msgstr "Idioma"
+
+#: rust/settings/src/region.rs
+msgid "Weather city"
+msgstr "Ciudad del tiempo"
+
+#: rust/settings/src/region.rs
+msgid "Empty: the city of your connection. The bar's weather updates within a minute"
+msgstr "Vacío: la ciudad de tu conexión. El tiempo de la barra se actualiza en menos de un minuto"
+
+#: rust/settings/src/region.rs
+msgid "Holidays"
+msgstr "Festivos"
+
+#: rust/settings/src/region.rs
+msgid "A country code such as BR, or none. Empty: the language's country"
+msgstr "Un código de país, como BR, o none. Vacío: el país del idioma"
 
 #: rust/theme/src/local_conf.rs
 msgid ""
@@ -3443,10 +3953,6 @@ msgstr "Captura de pantalla de la ventana, abierta en Gradia"
 #: home/.config/sway/keys/base.conf
 msgid "Media and brightness"
 msgstr "Multimedia y brillo"
-
-#: home/.config/sway/keys/base.conf
-msgid "Mouse and touchpad"
-msgstr "Ratón y panel táctil"
 
 #: home/.config/sway/keys/base.conf
 msgid "Go to the previous workspace"

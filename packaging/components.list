@@ -26,6 +26,7 @@ swaydesk-theme-tool: theme desktop-config
 swaydesk-portal: portal
 swaydesk-theme-app: theme-app
 swaydesk-displays: displays
+swaydesk-settings: settings
 swaydesk-session-menu: session-menu
 swaydesk-lock: lock
 swaydesk-keyring: keyring

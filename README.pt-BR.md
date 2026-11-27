@@ -27,6 +27,7 @@ O Swaydesk é um projeto independente, construído sobre o [Sway](https://swaywm
 | Captura e gravação | `swaydesk-capture` | Os painéis de captura de tela (área, janela, tela) e de gravação |
 | Tema | `swaydesk-theme-app`, `swaydesk-theme-tool`, `swaydesk-portal` | O app Tema: cor de destaque, claro ou escuro e ícones, aplicados ao GTK, ao Qt, ao Sway, à Waybar e ao rofi; as ferramentas de linha de comando que ele usa e o portal que dá a cor de destaque aos apps libadwaita |
 | Telas | `swaydesk-displays` | O app Telas: arruma as telas num mapa, com resolução, taxa de atualização, escala e rotação, e um perfil por conjunto de monitores, aplicado ao conectá-los ou ao fechar a tampa |
+| Configurações | `swaydesk-settings` | Uma janela com um painel para cada parte do desktop: aparência, telas, teclado, mouse e touchpad, energia e bloqueio, componentes do desktop, apps padrão, região e sobre. Os apps Tema e Telas continuam separados, e os painéis deles aparecem quando estão instalados |
 | Ajuda | `swaydesk-help` | Uma janela com os atalhos do Sway em uso e um cartão por app do desktop |
 | Tela de bloqueio | `swaydesk-lock` | Hora, data e a senha em todos os monitores, sobre o papel de parede desfocado |
 | Sessão | `swaydesk-session-menu`, `swaydesk-keyring`, `swaydesk-sessionmgr` | O menu da sessão (sair, suspender, reiniciar, desligar), o desbloqueio do chaveiro e o gerenciador de sessão das atualizações |
@@ -34,7 +35,7 @@ O Swaydesk é um projeto independente, construído sobre o [Sway](https://swaywm
 
 Cada componente se instala sozinho. Alguns pacotes instalam grupos:
 - `swaydesk-bar`: todos os itens da barra, com o indicador de volume e brilho;
-- `swaydesk-apps`: os apps Tema, Telas e Ajuda e os painéis de captura;
+- `swaydesk-apps`: a Central de Configurações, os apps Tema, Telas e Ajuda e os painéis de captura;
 - `swaydesk-desktop`: a sessão completa, com tudo.
 
 O `swaydesk-widgets`, o `swaydesk-theme` e o `swaydesk-session`, os nomes dos pacotes antes da 0.1.7, instalam os mesmos componentes de antes. O `swaydesk-scripts`, um pacote de transição, saiu na 0.1.10: no Debian e no Ubuntu você pode removê-lo (`sudo apt remove swaydesk-scripts`), e no Arch o `pacman -Syu` o substitui. Se você vem para a 0.1.10 direto da 0.1.6 ou da 0.1.7, atualize com `sudo apt full-upgrade`: o `apt upgrade` e a loja de apps manteriam a versão antiga. O `swaydesk-common` traz os dados, as fontes e os scripts auxiliares em comum. No Debian e no Ubuntu, o `swaydesk-desktop` também traz o `swaydesk-efi`, que mantém funcionando com o Secure Boot o caminho de reserva do firmware (`EFI/BOOT`) dos sistemas instalados por uma imagem do Swaydesk. Em qualquer outro sistema, inclusive um que só adicionou este repositório, ele não faz nada: nunca mexe no ESP, nas entradas de boot nem nos arquivos de outro sistema. Para desligá-lo: `sudo mkdir -p /etc/swaydesk && echo off | sudo tee /etc/swaydesk/efi-fallback`. Para ver por que ele agiu ou não, rode `sudo SWAYDESK_EFI_VERBOSE=1 /usr/libexec/swaydesk/swaydesk-efi-fallback`: ele diz qual verificação o parou, ou o que mudou.

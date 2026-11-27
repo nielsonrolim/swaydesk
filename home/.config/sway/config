@@ -1,8 +1,9 @@
 # Sway no Mint — atalhos alinhados ao KDE + Krohnkite (kglobalshortcutsrc)
 
 set $mod  Mod4
-set $term kitty
 set $bin  ~/.local/bin
+# O terminal da config (terminal no config.toml; sem ele, o kitty), pelo sway-terminal
+set $term $bin/sway-terminal
 # Bloqueio pelo sway-lock: o bloqueio próprio (Rust, depois Python), ou o gtklock como reserva
 set $lock $bin/sway-lock
 

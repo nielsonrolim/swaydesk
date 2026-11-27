@@ -34,6 +34,11 @@ accent_auto = true
 # e rode sway-desktop-config generate, para as pastas abertas por outros apps também irem para ele
 file_manager = ""
 
+# O terminal: o do Ctrl+Alt+T, o da tecla do Yazi e o dos apps de terminal abertos pela grade, todos pelo
+# sway-terminal. Vazio: o kitty ou, sem ele, o primeiro instalado entre foot, alacritty, ptyxis, kgx, konsole e
+# xfce4-terminal. Escreva o nome do comando, como "foot"; vale na hora, sem generate
+terminal = ""
+
 # A versão dos componentes (grade de apps e, aos poucos, os outros). "auto": a versão em Rust + GTK 4
 # onde ela estiver instalada (./install.sh --rust) e carregar; senão, a em Python. "python": sempre a
 # em Python. "rust": a em Rust, com um aviso no log quando ela faltar. Vale ao abrir o componente
@@ -53,6 +58,12 @@ power_profiles_in_system = "auto"
 # Os apps novos (GTK 4, Qt 6) mudam na hora; os mais velhos (GTK 3, Qt 5, Electron, XWayland), ao abrir de novo
 cursor_size = 24
 
+# Os tempos sem uso, em minutos inteiros (0 a 1440; 0 é nunca): bloquear a tela, apagá-la e suspender (só na
+# bateria). Valem ao rodar o sway-idle de novo (a Central de Configurações faz isso) ou no próximo login; com a
+# cafeína ligada, nenhum vale. Antes de suspender, a tela sempre bloqueia
+# lock_after = 10
+# screen_off_after = 15
+# suspend_after = 30
 # O tema do cursor: um dos instalados com cursores (a pasta cursors/), como Adwaita, breeze_cursors ou
 # capitaine-cursors. Sem a chave, o Bibata Modern Classic e, sem ele, o Capitaine. Um tema que não está instalado
 # avisa e fica o automático. Vale no Sway, no GTK e nos outros apps no próximo login ou com sway-desktop-config apply

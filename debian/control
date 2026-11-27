@@ -281,6 +281,26 @@ Description: Swaydesk Displays app
  refresh rate, scale and rotation. Each set of monitors keeps its own
  layout, applied when you plug or unplug a screen.
 
+Package: swaydesk-settings
+Architecture: any
+Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
+Recommends: pci.ids, swaydesk-theme-tool, swaydesk-displays, swaydesk-caffeine
+Suggests: network-manager-gnome, blueman, pavucontrol, power-profiles-daemon
+Description: Swaydesk Settings center
+ One window with a panel for each part of the desktop, in a sidebar. The
+ Appearance panel (with swaydesk-theme-tool) and the Displays panel (with
+ swaydesk-displays) are those apps' own pages; the Keyboard and the Mouse
+ and touchpad panels set the layouts, the repeat, the pointer speed and
+ the touchpad; the About panel shows the system and its hardware, with the
+ text to paste into a bug report (pci.ids names the graphics cards); the
+ Desktop panel turns the session's components and the bar's modules on
+ and off; the Region panel sets the language, the weather city and the
+ holidays country; the Power and lock panel sets the idle times and the
+ power profile; the Default apps panel picks the browser, mail, file
+ manager, terminal and the viewers, in the user's own files. The network,
+ Bluetooth and sound panels open the distribution's own tools when they
+ are installed.
+
 Package: swaydesk-session-menu
 Architecture: any
 Depends: swaydesk-common (= ${source:Version}), ${shlibs:Depends}, ${misc:Depends}
@@ -331,7 +351,7 @@ Description: Swaydesk session manager service
 
 Package: swaydesk-desktop
 Architecture: all
-Depends: mate-polkit | lxpolkit, swaydesk-common (= ${source:Version}), swaydesk-notifd (>= ${source:Version}), swaydesk-notifd (<< ${source:Version}.1~), swaydesk-dock (>= ${source:Version}), swaydesk-dock (<< ${source:Version}.1~), swaydesk-drawer (>= ${source:Version}), swaydesk-drawer (<< ${source:Version}.1~), swaydesk-switcher (>= ${source:Version}), swaydesk-switcher (<< ${source:Version}.1~), swaydesk-calendar (>= ${source:Version}), swaydesk-calendar (<< ${source:Version}.1~), swaydesk-weather (>= ${source:Version}), swaydesk-weather (<< ${source:Version}.1~), swaydesk-audio (>= ${source:Version}), swaydesk-audio (<< ${source:Version}.1~), swaydesk-network (>= ${source:Version}), swaydesk-network (<< ${source:Version}.1~), swaydesk-bluetooth (>= ${source:Version}), swaydesk-bluetooth (<< ${source:Version}.1~), swaydesk-battery (>= ${source:Version}), swaydesk-battery (<< ${source:Version}.1~), swaydesk-brightness (>= ${source:Version}), swaydesk-brightness (<< ${source:Version}.1~), swaydesk-caffeine (>= ${source:Version}), swaydesk-caffeine (<< ${source:Version}.1~), swaydesk-system (>= ${source:Version}), swaydesk-system (<< ${source:Version}.1~), swaydesk-media (>= ${source:Version}), swaydesk-media (<< ${source:Version}.1~), swaydesk-clipboard (>= ${source:Version}), swaydesk-clipboard (<< ${source:Version}.1~), swaydesk-osd (>= ${source:Version}), swaydesk-osd (<< ${source:Version}.1~), swaydesk-language (>= ${source:Version}), swaydesk-language (<< ${source:Version}.1~), swaydesk-help (>= ${source:Version}), swaydesk-help (<< ${source:Version}.1~), swaydesk-click-catcher (>= ${source:Version}), swaydesk-click-catcher (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-theme-tool (>= ${source:Version}), swaydesk-theme-tool (<< ${source:Version}.1~), swaydesk-portal (>= ${source:Version}), swaydesk-portal (<< ${source:Version}.1~), swaydesk-theme-app (>= ${source:Version}), swaydesk-theme-app (<< ${source:Version}.1~), swaydesk-displays (>= ${source:Version}), swaydesk-displays (<< ${source:Version}.1~), swaydesk-session-menu (>= ${source:Version}), swaydesk-session-menu (<< ${source:Version}.1~), swaydesk-lock (>= ${source:Version}), swaydesk-lock (<< ${source:Version}.1~), swaydesk-keyring (>= ${source:Version}), swaydesk-keyring (<< ${source:Version}.1~), swaydesk-sessionmgr (>= ${source:Version}), swaydesk-sessionmgr (<< ${source:Version}.1~), swaydesk-efi (>= ${source:Version}), swaydesk-efi (<< ${source:Version}.1~), ${misc:Depends}, sway, swaybg, swayidle, waybar, kitty, rofi, qalc, jq, curl, wl-clipboard, cliphist, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, dconf-cli, libglib2.0-bin, fonts-noto-core, fonts-noto-color-emoji, gnome-themes-extra, adw-gtk-theme, systemd
+Depends: mate-polkit | lxpolkit, swaydesk-common (= ${source:Version}), swaydesk-notifd (>= ${source:Version}), swaydesk-notifd (<< ${source:Version}.1~), swaydesk-dock (>= ${source:Version}), swaydesk-dock (<< ${source:Version}.1~), swaydesk-drawer (>= ${source:Version}), swaydesk-drawer (<< ${source:Version}.1~), swaydesk-switcher (>= ${source:Version}), swaydesk-switcher (<< ${source:Version}.1~), swaydesk-calendar (>= ${source:Version}), swaydesk-calendar (<< ${source:Version}.1~), swaydesk-weather (>= ${source:Version}), swaydesk-weather (<< ${source:Version}.1~), swaydesk-audio (>= ${source:Version}), swaydesk-audio (<< ${source:Version}.1~), swaydesk-network (>= ${source:Version}), swaydesk-network (<< ${source:Version}.1~), swaydesk-bluetooth (>= ${source:Version}), swaydesk-bluetooth (<< ${source:Version}.1~), swaydesk-battery (>= ${source:Version}), swaydesk-battery (<< ${source:Version}.1~), swaydesk-brightness (>= ${source:Version}), swaydesk-brightness (<< ${source:Version}.1~), swaydesk-caffeine (>= ${source:Version}), swaydesk-caffeine (<< ${source:Version}.1~), swaydesk-system (>= ${source:Version}), swaydesk-system (<< ${source:Version}.1~), swaydesk-media (>= ${source:Version}), swaydesk-media (<< ${source:Version}.1~), swaydesk-clipboard (>= ${source:Version}), swaydesk-clipboard (<< ${source:Version}.1~), swaydesk-osd (>= ${source:Version}), swaydesk-osd (<< ${source:Version}.1~), swaydesk-language (>= ${source:Version}), swaydesk-language (<< ${source:Version}.1~), swaydesk-help (>= ${source:Version}), swaydesk-help (<< ${source:Version}.1~), swaydesk-click-catcher (>= ${source:Version}), swaydesk-click-catcher (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-theme-tool (>= ${source:Version}), swaydesk-theme-tool (<< ${source:Version}.1~), swaydesk-portal (>= ${source:Version}), swaydesk-portal (<< ${source:Version}.1~), swaydesk-theme-app (>= ${source:Version}), swaydesk-theme-app (<< ${source:Version}.1~), swaydesk-displays (>= ${source:Version}), swaydesk-displays (<< ${source:Version}.1~), swaydesk-settings (>= ${source:Version}), swaydesk-settings (<< ${source:Version}.1~), swaydesk-session-menu (>= ${source:Version}), swaydesk-session-menu (<< ${source:Version}.1~), swaydesk-lock (>= ${source:Version}), swaydesk-lock (<< ${source:Version}.1~), swaydesk-keyring (>= ${source:Version}), swaydesk-keyring (<< ${source:Version}.1~), swaydesk-sessionmgr (>= ${source:Version}), swaydesk-sessionmgr (<< ${source:Version}.1~), swaydesk-efi (>= ${source:Version}), swaydesk-efi (<< ${source:Version}.1~), ${misc:Depends}, sway, swaybg, swayidle, waybar, kitty, rofi, qalc, jq, curl, wl-clipboard, cliphist, xdg-desktop-portal-wlr, xdg-desktop-portal-gtk, dconf-cli, libglib2.0-bin, fonts-noto-core, fonts-noto-color-emoji, gnome-themes-extra, adw-gtk-theme, systemd
 Recommends: papirus-icon-theme, thunar | file-manager, grim, slurp, wf-recorder, brightnessctl, playerctl, pavucontrol, gammastep, blueman, network-manager-applet | network-manager-gnome, libnotify-bin, power-profiles-daemon, xwayland, qt5ct, qt6ct, gnome-text-editor, bibata-cursor-theme
 Suggests: fcitx5
 Description: Sway desktop - the full session
@@ -406,8 +426,8 @@ Description: Swaydesk bar items (metapackage)
 
 Package: swaydesk-apps
 Architecture: all
-Depends: swaydesk-theme-app (>= ${source:Version}), swaydesk-theme-app (<< ${source:Version}.1~), swaydesk-displays (>= ${source:Version}), swaydesk-displays (<< ${source:Version}.1~), swaydesk-help (>= ${source:Version}), swaydesk-help (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), ${misc:Depends}
-Description: Swaydesk apps: Desktop Theme, Displays, Help, Screenshot (metapackage)
+Depends: swaydesk-theme-app (>= ${source:Version}), swaydesk-theme-app (<< ${source:Version}.1~), swaydesk-displays (>= ${source:Version}), swaydesk-displays (<< ${source:Version}.1~), swaydesk-help (>= ${source:Version}), swaydesk-help (<< ${source:Version}.1~), swaydesk-capture (>= ${source:Version}), swaydesk-capture (<< ${source:Version}.1~), swaydesk-settings (>= ${source:Version}), swaydesk-settings (<< ${source:Version}.1~), ${misc:Depends}
+Description: Swaydesk apps: Settings, Desktop Theme, Displays, Help, Screenshot (metapackage)
  The window apps, without the bar or the session.
  .
  This is an empty package that depends on the others.

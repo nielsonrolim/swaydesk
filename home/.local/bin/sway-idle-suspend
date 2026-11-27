@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Suspende por inatividade, só na bateria. Chamado pelo swayidle depois de 30 min parado.
+# Suspende por inatividade, só na bateria. Chamado pelo swayidle depois do suspend_after (30 min por padrão) parado.
 # uso: sway-idle-suspend start|stop
 #   start  deixa em segundo plano o laço que confere a cada minuto (o swayidle -w espera o
 #          comando terminar). Assim, tirar da tomada com a máquina parada também vale.

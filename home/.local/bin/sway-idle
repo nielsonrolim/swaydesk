@@ -2,7 +2,9 @@
 # Único lugar com os argumentos do swayidle. A Waybar não deixa controlar o idle_inhibitor por
 # script, então a cafeína troca o swayidle em execução.
 # uso: sway-idle
-#   Cafeína desligada: bloqueia em 10 min, apaga a tela em 15 e suspende em 30 (só na bateria).
+#   Cafeína desligada: bloqueia, apaga a tela e suspende (só na bateria) nos tempos do config.toml (lock_after,
+#   screen_off_after e suspend_after, em minutos; 0 é nunca), pelo desktop-config get; sem ele, ou com um valor
+#   que não é de 0 a 1440, em 10, 15 e 30 min. Rodar de novo troca o swayidle (a Central de Configurações faz isso).
 #   Cafeína ligada: sem tempos; fechar a tampa continua bloqueando a tela.
 # Trocas ao mesmo tempo passam uma por vez, e cada uma lê o modo só depois de entrar: dois
 # cliques rápidos terminam no estado certo, com um swayidle só.
@@ -19,16 +21,44 @@ run=${XDG_RUNTIME_DIR:-/tmp}
 exec 9>"$run/sway-idle.lock"
 flock 9 || exit 1
 
+self=$(readlink -f -- "$0")
+# Um programa do projeto: o de ~/.local/bin primeiro (o link do --rust-only vai direto ao binário em
+# Rust, sem o Python), depois o da pasta deste script (o repositório, ou o /usr/libexec/swaydesk do pacote).
+# Na sessão do pacote (SWAYDESK_SESSION=package), só o do pacote: os dotfiles da mesma conta não entram
+sibling() {
+  if [[ ${SWAYDESK_SESSION-} != package && -x $HOME/.local/bin/$1 ]]; then
+    printf '%s' "$HOME/.local/bin/$1"
+  else
+    printf '%s' "${self%/*}/$1"
+  fi
+}
+# O desktop-config: o dos dotfiles (sibling); nos pacotes, que não o levam ao lado, o swaydesk-desktop-config do PATH
+desktop_config=$(sibling sway-desktop-config)
+[[ -x $desktop_config ]] || desktop_config=$(command -v swaydesk-desktop-config) || desktop_config=
+# minutes CHAVE PADRÃO: os minutos do config, ou o padrão sem o desktop-config ou com um valor fora de 0..1440
+minutes() {
+  local value=
+  [[ -n $desktop_config ]] && value=$("$desktop_config" get "$1" 2>/dev/null)
+  if [[ $value =~ ^[0-9]{1,4}$ ]] && (( 10#$value <= 1440 )); then
+    echo $(( 10#$value ))
+  else
+    echo "$2"
+  fi
+}
+
 if [[ $("$bin/sway-caffeine" status) == off ]]; then
-  args=(
-    # Desligar/religar a tela fica registrado no journal: journalctl -t swayidle-dpms
-    timeout 600 "$lock"
-    timeout 900 'logger -t swayidle-dpms "power off"; swaymsg "output * power off"'
-      resume 'logger -t swayidle-dpms "power on"; swaymsg "output * power on" || logger -t swayidle-dpms "power on failed"'
-    timeout 1800 "$bin/sway-idle-suspend start"
-      resume "$bin/sway-idle-suspend stop"
-    before-sleep "$lock"
-  )
+  lock_after=$(minutes lock_after 10) screen_off_after=$(minutes screen_off_after 15)
+  suspend_after=$(minutes suspend_after 30)
+  # Um 0 tira o tempo; a ordem é a do config (apagar antes de bloquear vale), e antes de suspender sempre bloqueia
+  args=()
+  (( lock_after )) && args+=(timeout $(( lock_after * 60 )) "$lock")
+  # Desligar/religar a tela fica registrado no journal: journalctl -t swayidle-dpms
+  (( screen_off_after )) && args+=(timeout $(( screen_off_after * 60 ))
+    'logger -t swayidle-dpms "power off"; swaymsg "output * power off"'
+    resume 'logger -t swayidle-dpms "power on"; swaymsg "output * power on" || logger -t swayidle-dpms "power on failed"')
+  (( suspend_after )) && args+=(timeout $(( suspend_after * 60 )) "$bin/sway-idle-suspend start"
+    resume "$bin/sway-idle-suspend stop")
+  args+=(before-sleep "$lock")
 else
   args=(before-sleep "$lock")
 fi

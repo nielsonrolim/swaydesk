@@ -1,0 +1,16 @@
+[package]
+name = "swaydesk-settings-logic"
+description = "Os painéis da Central de Configurações (swaydesk-settings) e os argumentos dela, sem GTK"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[lib]
+name = "swaydesk_settings_logic"
+path = "src/lib.rs"
+
+[dependencies]
+serde_json.workspace = true
+swaydesk-common.workspace = true
+toml.workspace = true

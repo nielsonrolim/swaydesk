@@ -29,7 +29,7 @@ libexec=${SWAYDESK_LIBEXEC:-/usr/libexec}/swaydesk
 # sway-idle vai com a cafeína, que só funciona por ele (ela troca o swayidle em execução). O ícone em bash de cada
 # item da barra (waybar-volume…) vai com o popup dele, e o sway-osd (as teclas de volume e brilho) com o indicador,
 # junto com o sway-brightness que ele roda. O tests/test_packaging.py confere que cada um vai num pacote só
-SCRIPTS=(swaydesk-common:session-action swaydesk-common:waybar-notify
+SCRIPTS=(swaydesk-common:session-action swaydesk-common:waybar-notify swaydesk-common:sway-terminal
          swaydesk-drawer:sway-files
          swaydesk-brightness:sway-nightlight swaydesk-brightness:waybar-brightness
          swaydesk-osd:sway-osd swaydesk-osd:sway-brightness
@@ -259,6 +259,12 @@ case $pkg in
       echo "install-tree: $entry: no Exec=sway-displays line to point at the package binary" >&2
       exit 1
     }
+    ;;
+  swaydesk-settings)
+    # A Central de Configurações (0.2.0): só existe nos pacotes, e o .desktop (nome = app_id, uma ação por
+    # painel) fica no packaging/
+    install -Dm644 "$root/packaging/files/org.swaydesktop.Settings.desktop" \
+      "$dest/usr/share/applications/org.swaydesktop.Settings.desktop"
     ;;
   swaydesk-desktop)
     # A sessão "Sway Desktop": só com os pacotes, sem os dotfiles. O sway-session --package abre o Sway com

@@ -812,16 +812,7 @@ fn wait_for_tray() {
     }
 }
 
-/// O programa que o laço do config do Sway reabre: o de ~/.local/bin nos dotfiles, ou, na sessão do pacote
-/// swaydesk-desktop, o da pasta dos scripts dele (/usr/libexec/swaydesk). Só com os componentes, sem uma
-/// das duas sessões, não há esse laço: encerrar o programa o deixaria fechado até o próximo login.
-fn in_session_loop(name: &str) -> Option<PathBuf> {
-    if swaydesk_common::paths::package_session() {
-        return swaydesk_common::paths::find_helper(name);
-    }
-    let path = config::home().join(".local/bin").join(name);
-    path.is_file().then_some(path)
-}
+use swaydesk_common::paths::in_session_loop;
 
 fn shell_quote(path: &Path) -> String {
     format!("'{}'", path.display().to_string().replace('\'', r"'\''"))

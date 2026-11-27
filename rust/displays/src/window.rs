@@ -1,4 +1,4 @@
-//! A janela: o mapa das telas (arrastar para posicionar, com encaixe nas bordas), os ajustes da tela
+//! A página (a janela do app ou o painel da Central): o mapa das telas (arrastar para posicionar, com encaixe nas bordas), os ajustes da tela
 //! escolhida e o Aplicar, com a pergunta "Manter ou desfazer" que volta sozinha em 15 s.
 use std::cell::{Cell, RefCell};
 use std::fs::File;
@@ -27,7 +27,7 @@ const MAP_MARGIN: f64 = 24.0;
 const SNAP_PIXELS: f64 = 12.0;
 
 /// A área de trabalho guardada no Aplicar (lida uma vez: o Desfazer a usa e a esquece)
-fn w_home(me: &Weak<Window>) -> Option<(String, String)> {
+fn w_home(me: &Weak<Page>) -> Option<(String, String)> {
     me.upgrade().and_then(|w| w.home.borrow_mut().take())
 }
 
@@ -104,9 +104,14 @@ struct Drag {
     view: View,
 }
 
-pub struct Window {
-    pub window: gtk4::ApplicationWindow,
-    me: Weak<Window>,
+pub(crate) struct Page {
+    /// O conteúdo inteiro (rola numa tela pequena): o filho da janela do app, ou o painel da Central
+    pub(crate) root: gtk4::ScrolledWindow,
+    /// A janela do app; nenhuma no painel
+    window: Option<gtk4::ApplicationWindow>,
+    /// O CSS do aviso, tirado do display quando a página some (a Central continua aberta)
+    provider: gtk4::CssProvider,
+    me: Weak<Page>,
     area: gtk4::DrawingArea,
     screens: gtk4::DropDown,
     enabled: gtk4::Switch,
@@ -135,9 +140,10 @@ pub struct Window {
     accent: String,
 }
 
-impl Window {
+impl Page {
+    /// Monta a página; com a janela do app, ela vira o filho dela. Quem monta mostra a janela e chama o focus.
     #[allow(deprecated)]
-    pub fn new(app: &gtk4::Application) -> Rc<Window> {
+    pub(crate) fn new(window: Option<&gtk4::ApplicationWindow>) -> Rc<Page> {
         let palette = config::palette(&config::load());
         let provider = gtk4::CssProvider::new();
         // O destaque da config nos widgets (o interruptor, o Aplicar), em qualquer tema
@@ -145,9 +151,6 @@ impl Window {
         if let Some(display) = gdk::Display::default() {
             gtk4::style_context_add_provider_for_display(&display, &provider, gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION);
         }
-        let window = gtk4::ApplicationWindow::new(app);
-        window.set_title(Some(&tr("Displays")));
-        window.set_default_size(780, 600);
         let accent = palette.accent;
 
         let area = gtk4::DrawingArea::new();
@@ -248,10 +251,14 @@ impl Window {
         scroller.set_hscrollbar_policy(gtk4::PolicyType::Never);
         scroller.set_propagate_natural_height(true);
         scroller.set_child(Some(&content));
-        window.set_child(Some(&scroller));
+        if let Some(window) = window {
+            window.set_child(Some(&scroller));
+        }
 
-        let me = Rc::new_cyclic(|me| Window {
-            window,
+        let me = Rc::new_cyclic(|me| Page {
+            root: scroller,
+            window: window.cloned(),
+            provider,
             me: me.clone(),
             area,
             screens,
@@ -279,25 +286,50 @@ impl Window {
         crate::daemon::restore_pending("app start");
         // Fechar a janela (Super+Q, o sinal do main.rs) com a pergunta aberta: desfaz antes de o app sair. No
         // close-request, não no destroy: a janela fica viva enquanto esta struct a segura, e o destroy só viria
-        // depois do fim do app
+        // depois do fim do app. A janela é a de cima da página, a do app ou a da Central (que não tem a própria
+        // janela aqui): ela só existe quando a página entra nela, no realize, e o tratador entra uma vez só
         let weak = me.me.clone();
-        me.window.connect_close_request(move |_| {
-            if let Some(w) = weak.upgrade() {
-                w.undo_now();
+        let hooked = Cell::new(false);
+        me.root.connect_realize(move |root| {
+            let Some(top) = root.root().and_downcast::<gtk4::Window>() else { return };
+            if hooked.replace(true) {
+                return;
             }
-            glib::Propagation::Proceed
+            let weak = weak.clone();
+            top.connect_close_request(move |_| {
+                if let Some(w) = weak.upgrade() {
+                    w.undo_now();
+                }
+                glib::Propagation::Proceed
+            });
         });
         me.reload();
         me.watch();
-        me.window.present();
-        // O foco começa na lista das telas: o Tab segue para os ajustes da escolhida
-        me.screens.grab_focus();
+        let provider = me.provider.clone();
+        me.root.connect_destroy(move |_| {
+            if let Some(display) = gdk::Display::default() {
+                gtk4::style_context_remove_provider_for_display(&display, &provider);
+            }
+        });
         me
+    }
+
+    /// O foco começa na lista das telas: o Tab segue para os ajustes da escolhida
+    pub(crate) fn focus(&self) {
+        self.screens.grab_focus();
+    }
+
+    /// O painel apareceu: as telas de agora, se não há prévia nem arrasto (as mudanças por aplicar ficam, se o
+    /// conjunto de monitores é o mesmo)
+    pub(crate) fn on_shown(&self) {
+        if self.preview.borrow().is_none() && self.drag.borrow().is_none() {
+            self.on_outputs_changed();
+        }
     }
 
     /// Abrir de novo (a janela já estava aberta): traz a janela e escolhe a tela com o foco, se não houver
     /// mudança por aplicar nem uma prévia na tela
-    pub fn reopen(&self) {
+    pub(crate) fn reopen(&self) {
         if self.preview.borrow().is_none() && self.drag.borrow().is_none() && !self.dirty() {
             if let Some(list) = sway::get_outputs() {
                 let focused = list.iter().position(|o| o.focused);
@@ -308,10 +340,12 @@ impl Window {
                 }
             }
         }
-        self.window.present();
+        if let Some(window) = &self.window {
+            window.present();
+        }
     }
 
-    fn with<A>(&self, f: impl Fn(&Rc<Window>, A) + 'static) -> impl Fn(A) + 'static {
+    fn with<A>(&self, f: impl Fn(&Rc<Page>, A) + 'static) -> impl Fn(A) + 'static {
         let me = self.me.clone();
         move |a| {
             if let Some(w) = me.upgrade() {
@@ -351,7 +385,7 @@ impl Window {
         // Os sinais dos campos: só as escolhas do usuário, não o preenchimento. A resposta vem depois do
         // sinal (idle): trocar o modelo de um GtkDropDown dentro do notify::selected dele mesmo, com o
         // popover aberto, prende o GTK num laço (visto na VM ao escolher a resolução)
-        fn later(me: &Weak<Window>, f: impl Fn(&Rc<Window>) + 'static) -> impl Fn() + 'static {
+        fn later(me: &Weak<Page>, f: impl Fn(&Rc<Page>) + 'static) -> impl Fn() + 'static {
             let me = me.clone();
             let f = Rc::new(f);
             move || {
@@ -403,7 +437,10 @@ impl Window {
             }
             glib::Propagation::Proceed
         });
-        self.window.add_controller(keys);
+        match &self.window {
+            Some(window) => window.add_controller(keys),
+            None => self.root.add_controller(keys),
+        }
     }
 
     // --- Estado ---
@@ -891,7 +928,9 @@ impl Window {
     /// A pergunta "Manter ou desfazer", que desfaz sozinha em 15 s
     fn confirm(self: &Rc<Self>, previous: Vec<(String, OutputConfig)>) {
         self.show_info("");
-        let dialog = gtk4::Window::builder().transient_for(&self.window).modal(true).resizable(false).build();
+        // Por cima da janela do app, ou da janela da Central em que o painel está
+        let dialog = gtk4::Window::builder().modal(true).resizable(false).build();
+        dialog.set_transient_for(self.root.root().and_downcast::<gtk4::Window>().as_ref());
         dialog.set_title(Some(&tr("Keep these display settings?")));
         let question = gtk4::Label::new(Some(&tr("Keep these display settings?")));
         question.add_css_class("title-3");

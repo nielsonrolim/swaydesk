@@ -327,6 +327,15 @@ fn bad_or_empty_command() {
     assert_eq!(terminal_command("", "kitty"), None);
 }
 
+#[test]
+fn the_terminal_is_the_sway_terminal_helper_then_kitty() {
+    // O sway-terminal (o terminal da config) ao lado; sem ele, o kitty de antes, se instalado
+    let helper = PathBuf::from("/x/sway-terminal");
+    assert_eq!(terminal_program(Some(&helper), true).as_deref(), Some("/x/sway-terminal"));
+    assert_eq!(terminal_program(None, true).as_deref(), Some("kitty"));
+    assert_eq!(terminal_program(None, false), None);
+}
+
 // Fixados
 
 #[test]

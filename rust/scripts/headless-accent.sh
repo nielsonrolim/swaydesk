@@ -1,7 +1,8 @@
 #!/bin/bash
 # Rodada curta: o contêiner sai (--rm) ao fim do teste, e nada dele fica no ar. O host vê os processos dele, com o
 # seu UID (o pgrep -u da sessão também os acha): rode com outro UID (-u 64000:64000), como o run-all-tests.sh.
-# A cor de destaque nos widgets do GTK 4 dos apps do Swaydesk (o interruptor "Ligada" do app Telas), num Sway
+# A cor de destaque nos widgets do GTK 4 dos apps do Swaydesk (o interruptor "Ligada" do app Telas e a barra lateral
+# da Central de Configurações), num Sway
 # headless, com a cor da config em vermelho (#e01b24), longe do azul do GTK:
 #   1. sem o ~/.config/gtk-4.0/gtk.css, como numa máquina com outro desktop (o app Tema não o grava): o
 #      config::accent_css que o app carrega dá a cor;
@@ -15,6 +16,7 @@
 #
 #   docker run --rm --memory 6g --memory-swap 6g -u 64000:64000 -e HOME=/tmp -v <passwd com o 64000>:/etc/passwd:ro \
 #     -v $PWD:/repo:ro -v $PWD/rust/target/debian13/release/swaydesk-displays:/bin/swaydesk-displays:ro \
+#     -v $PWD/rust/target/debian13/release/swaydesk-settings:/bin/swaydesk-settings:ro \
 #     -v /tmp/out:/out swaydesk-smoke:debian13 /repo/rust/scripts/headless-accent.sh
 #
 # Sai com 1 se algum caso falhar.
@@ -96,6 +98,26 @@ printf 'switch:checked { background-color: %s; border-color: %s; }\n' $GREEN $GR
 shot accent-3-user-css
 n=$(count /out/accent-3-user-css.ppm $GREEN)
 [ "$n" -ge $ENOUGH ] && ok "o gtk.css do usuário vence ($n pixels em verde)" || fail "o gtk.css do usuário não venceu: $n pixels em verde"
+
+# 4. A Central de Configurações carrega o mesmo CSS: a linha escolhida da barra lateral fica na cor de destaque. Sem o
+#    gtk.css (outro desktop) e sem o app Telas no PATH (o painel dele, que instala o mesmo CSS, não é montado), no
+#    painel de Energia e bloqueio
+rm -rf "$HOME/.config/gtk-4.0"
+mkdir -p /tmp/no-displays
+for f in /usr/bin/*; do [ "${f##*/}" = swaydesk-displays ] || ln -sf "$f" /tmp/no-displays/; done
+PATH=/tmp/no-displays /bin/swaydesk-settings --panel power >> /out/app.log 2>&1 &
+app=$!
+for _ in $(seq $ticks); do
+  swaymsg -t get_tree | grep -q '"app_id": "org.swaydesktop.Settings"' && break
+  sleep 0.1
+done
+sleep 1.5
+grim -t ppm /out/accent-4-settings.ppm
+grim /out/accent-4-settings.png 2>/dev/null
+kill $app 2>/dev/null; wait $app 2>/dev/null
+n=$(count /out/accent-4-settings.ppm $RED)
+[ "$n" -ge $ENOUGH ] && ok "a Central: a linha escolhida na cor de destaque ($n pixels)" \
+  || fail "a Central: só $n pixels na cor de destaque (sem o theme_css no startup?)"
 
 rm -f /out/*.ppm
 [ "$failed" = 0 ] || exit 1

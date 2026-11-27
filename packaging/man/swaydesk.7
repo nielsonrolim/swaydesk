@@ -42,7 +42,7 @@ swaydesk\-media\-popup(1), swaydesk\-network\-popup(1), swaydesk\-system\-popup(
 .TP
 .B Theme and screens
 swaydesk\-theme(1), swaydesk\-theme\-app(1), swaydesk\-desktop\-config(1), swaydesk\-portal(1),
-swaydesk\-displays(1)
+swaydesk\-displays(1), swaydesk\-settings(1)
 .TP
 .B Services
 swaydesk\-caffeinate(1), swaydesk\-clip\-store(1), swaydesk\-keyring(1), swaydesk\-sessionmgr(1)
@@ -68,7 +68,7 @@ The session menu.
 .SH FILES
 .TP
 .I ~/.config/swaydesk/config.toml
-The desktop configuration: language (locale), accent color (accent), GTK and icon themes (gtk_theme, icon_theme), folder color (folder_color), cursor size in pixels (cursor_size, 16 to 96, default 24), cursor theme (cursor_theme: any installed theme with a cursors directory; without it, Bibata Modern Classic, or Capitaine where it is missing; a theme that is not installed warns and the automatic one stays), file manager (file_manager), weather location (weather_location), holidays (holidays) and when the System popup shows the power profiles (power_profiles_in_system: auto, always or never; see swaydesk\-system\-popup(1)). The fonts come from the GTK system font.
+The desktop configuration: language (locale), accent color (accent), GTK and icon themes (gtk_theme, icon_theme), folder color (folder_color), cursor size in pixels (cursor_size, 16 to 96, default 24), cursor theme (cursor_theme: any installed theme with a cursors directory; without it, Bibata Modern Classic, or Capitaine where it is missing; a theme that is not installed warns and the automatic one stays), file manager (file_manager), terminal (terminal: kitty unless set, for Ctrl+Alt+T and the terminal apps of the app grid), weather location (weather_location), holidays (holidays), the idle times in minutes (lock_after, screen_off_after and suspend_after, on battery; 0 to 1440, 0 is never, default 10, 15 and 30) and when the System popup shows the power profiles (power_profiles_in_system: auto, always or never; see swaydesk\-system\-popup(1)). The fonts come from the GTK system font.
 Change it with swaydesk\-theme\-app(1) or swaydesk\-theme(1). Its [enabled] and [enabled.bar] tables turn
 session components and bar modules off, and its shortcuts key picks the shortcut profile (see
 swaydesk\-desktop\-config(1)).

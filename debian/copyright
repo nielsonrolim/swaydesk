@@ -630,6 +630,10 @@ Files: rust/vendor/toml_parser-1.1.5+spec-1.1.0/*
 Copyright: the toml_parser authors
 License: MIT or Apache-2.0
 
+Files: rust/vendor/toml_write-0.1.2/*
+Copyright: the toml_write authors
+License: MIT or Apache-2.0
+
 Files: rust/vendor/toml_writer-1.2.0+spec-1.1.0/*
 Copyright: the toml_writer authors
 License: MIT or Apache-2.0

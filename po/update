@@ -36,12 +36,13 @@ if ((${#shell_files[@]})); then
 fi
 # Os textos do Rust: quase todos repetem um do Python, mas os componentes só em Rust (o backend iwd do
 # popup de rede, o sway-desktop-config) têm os seus. O xgettext não tem a língua Rust, e o modo C lê bem
-# os tr("...") e ntr/ptr (o CSS em r#"..."# dá um aviso de aspas, sem efeito). Num .pot à parte: o modo C
+# os tr("...") e ntr/ptr (o CSS em r#"..."# dá um aviso de aspas, sem efeito), e os n_("...") que só marcam
+# um texto (os títulos dos painéis da Central, numa tabela const). Num .pot à parte: o modo C
 # marcaria c-format nos textos com %s, que são do Python (python-format), e o msgcat junta os dois
 mapfile -t rust_files < <(find rust -path rust/target -prune -o -name '*.rs' -print | sort)
 rust_pot=$(mktemp --suffix=.pot)
 trap 'rm -f "$rust_pot"' EXIT
-xgettext "${common[@]}" --language=C --keyword= --keyword=tr --keyword=ntr:1,2 --keyword=ptr:1c,2 \
+xgettext "${common[@]}" --language=C --keyword= --keyword=tr --keyword=n_ --keyword=ntr:1,2 --keyword=ptr:1c,2 \
   -o "$rust_pot" "${rust_files[@]}" 2> >(grep -v 'unterminated' >&2)
 sed -i -e '/^#, c-format$/d' -e 's/^#, c-format, /#, /' "$rust_pot"
 # As descrições (## Texto) e as seções (### Texto) dos atalhos do config do Sway, que a Ajuda do Swaydesk

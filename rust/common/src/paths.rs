@@ -48,7 +48,7 @@ pub fn helper(name: &str) -> PathBuf {
 /// de pacote nenhum.
 fn helper_package(name: &str) -> Option<&'static str> {
     Some(match name {
-        "session-action" | "waybar-notify" | "sway_i18n.py" | "desktop_config.py" | "sway-i18n.sh" => "swaydesk-common",
+        "session-action" | "waybar-notify" | "sway-terminal" | "sway_i18n.py" | "desktop_config.py" | "sway-i18n.sh" => "swaydesk-common",
         "waybar-icon-lib" => "swaydesk-common",
         "sway-files" => "swaydesk-drawer",
         "sway-nightlight" | "waybar-brightness" => "swaydesk-brightness",
@@ -128,6 +128,18 @@ pub fn dotfiles_install() -> bool {
 /// SWAYDESK_SESSION=package). Lá, nada vem do ~/.local/bin, mesmo que os dotfiles estejam instalados.
 pub fn package_session() -> bool {
     std::env::var_os("SWAYDESK_SESSION").is_some_and(|v| v == "package")
+}
+
+/// O programa que o laço do config do Sway reabre: o de ~/.local/bin nos dotfiles, ou, na sessão do pacote
+/// swaydesk-desktop, o da pasta dos scripts dele (/usr/libexec/swaydesk). Só com os componentes, sem uma
+/// das duas sessões, não há esse laço: encerrar o programa o deixaria fechado até o próximo login. O sway-theme
+/// e a Central o usam (o sway-waybar restart, o laço da dock).
+pub fn in_session_loop(name: &str) -> Option<PathBuf> {
+    if package_session() {
+        return find_helper(name);
+    }
+    let path = local_bin().join(name);
+    path.is_file().then_some(path)
 }
 
 /// Outro componente: o lançador em Python de ~/.local/bin (dotfiles: ele respeita o components do config)

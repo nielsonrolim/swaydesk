@@ -2793,16 +2793,17 @@ msgstr ""
 msgid "volume and brightness indicator: log in to Sway again to open the sway-osd-bar"
 msgstr ""
 
+#: rust/displays/src/lib.rs rust/help/src/cards.rs
+#: rust/settings-logic/src/lib.rs
+msgid "Displays"
+msgstr ""
+
 #: rust/displays/src/window.rs
 msgid "Normal"
 msgstr ""
 
 #: rust/displays/src/window.rs
 msgid "Flipped"
-msgstr ""
-
-#: rust/displays/src/window.rs rust/help/src/cards.rs
-msgid "Displays"
 msgstr ""
 
 #: rust/displays/src/window.rs
@@ -2921,7 +2922,7 @@ msgstr ""
 msgid "Log in"
 msgstr ""
 
-#: rust/greeter/src/main.rs
+#: rust/greeter/src/main.rs rust/settings-logic/src/desktop.rs
 msgid "Keyboard layout"
 msgstr ""
 
@@ -2937,7 +2938,7 @@ msgstr ""
 msgid "Shift"
 msgstr ""
 
-#: rust/help-logic/src/keys.rs
+#: rust/help-logic/src/keys.rs rust/settings/src/keyboard.rs
 msgid "Caps Lock"
 msgstr ""
 
@@ -3081,7 +3082,7 @@ msgstr ""
 msgid "Capture a region, a window or the whole screen. In the panel, G opens the capture in Gradia to crop and annotate it."
 msgstr ""
 
-#: rust/help/src/cards.rs
+#: rust/help/src/cards.rs rust/settings-logic/src/desktop.rs
 msgid "Screen recording"
 msgstr ""
 
@@ -3093,7 +3094,7 @@ msgstr ""
 msgid "What you copied, text and images. Pick an item to copy it again."
 msgstr ""
 
-#: rust/help/src/cards.rs
+#: rust/help/src/cards.rs rust/settings-logic/src/desktop.rs
 msgid "App grid"
 msgstr ""
 
@@ -3101,7 +3102,7 @@ msgstr ""
 msgid "All the installed apps, with search and favorites. Super alone shows and hides it."
 msgstr ""
 
-#: rust/help/src/cards.rs
+#: rust/help/src/cards.rs rust/settings-logic/src/desktop.rs
 msgid "Dock"
 msgstr ""
 
@@ -3154,7 +3155,7 @@ msgstr ""
 msgid "No shortcut"
 msgstr ""
 
-#: rust/help/src/cards.rs rust/help/src/main.rs
+#: rust/help/src/cards.rs rust/help/src/main.rs rust/settings/src/main.rs
 msgctxt "button"
 msgid "Open"
 msgstr ""
@@ -3213,7 +3214,7 @@ msgstr ""
 msgid "Switch"
 msgstr ""
 
-#: rust/help/src/main.rs
+#: rust/help/src/main.rs rust/settings/src/desktop.rs
 msgid "Shortcut profile"
 msgstr ""
 
@@ -3248,6 +3249,503 @@ msgstr ""
 
 #: rust/nm/src/rules.rs rust/nm/src/standalone/tests.rs
 msgid "No network service running"
+msgstr ""
+
+#: rust/settings-logic/src/apps.rs
+msgid "Web browser"
+msgstr ""
+
+#: rust/settings-logic/src/apps.rs
+msgid "Mail"
+msgstr ""
+
+#: rust/settings-logic/src/apps.rs
+msgid "Text editor"
+msgstr ""
+
+#: rust/settings-logic/src/apps.rs
+msgid "Images"
+msgstr ""
+
+#: rust/settings-logic/src/apps.rs
+msgid "PDF documents"
+msgstr ""
+
+#: rust/settings-logic/src/apps.rs
+msgid "Video"
+msgstr ""
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Window switcher (Alt+Tab)"
+msgstr ""
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Volume and brightness indicator"
+msgstr ""
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Wallpaper of the day"
+msgstr ""
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Update notifications"
+msgstr ""
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Weather"
+msgstr ""
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Clock"
+msgstr ""
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Media"
+msgstr ""
+
+#: rust/settings-logic/src/desktop.rs rust/settings-logic/src/lib.rs
+msgid "Bluetooth"
+msgstr ""
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Volume"
+msgstr ""
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Power menu"
+msgstr ""
+
+#: rust/settings-logic/src/desktop.rs
+msgid "Updates"
+msgstr ""
+
+#: rust/settings-logic/src/lib.rs
+msgid "Appearance"
+msgstr ""
+
+#: rust/settings-logic/src/lib.rs
+msgid "Mouse and touchpad"
+msgstr ""
+
+#: rust/settings-logic/src/lib.rs
+msgid "Power and lock"
+msgstr ""
+
+#: rust/settings-logic/src/lib.rs
+msgid "Desktop"
+msgstr ""
+
+#: rust/settings-logic/src/lib.rs rust/settings/src/apps.rs
+msgid "Default apps"
+msgstr ""
+
+#: rust/settings-logic/src/lib.rs
+msgid "About"
+msgstr ""
+
+#: rust/settings-logic/src/lib.rs
+msgid "Sound"
+msgstr ""
+
+#: rust/settings-logic/src/region.rs
+msgid "Same as the system"
+msgstr ""
+
+#: rust/settings/src/about.rs
+msgid "Distribution"
+msgstr ""
+
+#: rust/settings/src/about.rs
+msgid "Kernel"
+msgstr ""
+
+#: rust/settings/src/about.rs
+msgid "Processor"
+msgstr ""
+
+#: rust/settings/src/about.rs
+msgid "Graphics"
+msgstr ""
+
+#: rust/settings/src/about.rs
+msgid "%(used)s used of %(total)s"
+msgstr ""
+
+#: rust/settings/src/about.rs
+msgid "Device name"
+msgstr ""
+
+#: rust/settings/src/about.rs
+msgid "Could not read the system information"
+msgstr ""
+
+#: rust/settings/src/about.rs
+msgid "Copy info"
+msgstr ""
+
+#: rust/settings/src/about.rs
+msgctxt "button"
+msgid "Help"
+msgstr ""
+
+#: rust/settings/src/about.rs
+msgid "Website"
+msgstr ""
+
+#: rust/settings/src/about.rs
+msgid "Copied"
+msgstr ""
+
+#: rust/settings/src/apps.rs rust/settings/src/desktop.rs
+#: rust/settings/src/power.rs rust/settings/src/region.rs
+msgid ""
+"Your config.toml has an error. Fix it to change these settings:\n"
+"%(error)s"
+msgstr ""
+
+#: rust/settings/src/apps.rs
+msgid "System default (%(app)s)"
+msgstr ""
+
+#: rust/settings/src/apps.rs
+msgid "None"
+msgstr ""
+
+#: rust/settings/src/apps.rs
+msgid "Automatic (%(app)s)"
+msgstr ""
+
+#: rust/settings/src/apps.rs
+msgid "Automatic"
+msgstr ""
+
+#: rust/settings/src/apps.rs rust/settings/src/desktop.rs
+#: rust/settings/src/input.rs rust/settings/src/power.rs
+#: rust/settings/src/region.rs
+msgid ""
+"Could not save:\n"
+"%(error)s"
+msgstr ""
+
+#: rust/settings/src/apps.rs
+msgid "The file manager was saved, but folders opened by other apps may still use the old one"
+msgstr ""
+
+#: rust/settings/src/apps.rs rust/settings/src/desktop.rs
+#: rust/settings/src/input.rs rust/settings/src/power.rs
+msgid "Changes apply at once"
+msgstr ""
+
+#: rust/settings/src/apps.rs
+msgid "Terminal"
+msgstr ""
+
+#: rust/settings/src/desktop.rs
+msgid "The bar did not restart"
+msgstr ""
+
+#: rust/settings/src/desktop.rs
+msgid "The shortcuts were not written"
+msgstr ""
+
+#: rust/settings/src/desktop.rs
+msgid "Sway did not reload"
+msgstr ""
+
+#: rust/settings/src/desktop.rs
+msgid "Changes apply when the bar restarts"
+msgstr ""
+
+#: rust/settings/src/desktop.rs rust/settings/src/region.rs
+msgid "Changes apply at the next login"
+msgstr ""
+
+#: rust/settings/src/desktop.rs
+msgid "The change was saved, but not applied"
+msgstr ""
+
+#: rust/settings/src/desktop.rs rust/settings/src/power.rs
+msgid "Not installed (%(package)s)"
+msgstr ""
+
+#: rust/settings/src/desktop.rs
+msgid "Set by the system"
+msgstr ""
+
+#: rust/settings/src/desktop.rs
+msgid "Use the default"
+msgstr ""
+
+#: rust/settings/src/desktop.rs
+msgid ""
+"The system's config.toml has an error:\n"
+"%(error)s"
+msgstr ""
+
+#: rust/settings/src/desktop.rs
+msgid "Desktop components"
+msgstr ""
+
+#: rust/settings/src/desktop.rs
+msgid "Bar modules"
+msgstr ""
+
+#: rust/settings/src/desktop.rs
+msgid "Keyboard shortcuts"
+msgstr ""
+
+#: rust/settings/src/input.rs
+msgid "A setting for a single device in your Sway config wins over this panel for it: %(devices)s"
+msgstr ""
+
+#: rust/settings/src/input.rs
+msgid ""
+"Your Sway config may not read these settings at login. To keep them, add this line to it:\n"
+"%(line)s"
+msgstr ""
+
+#: rust/settings/src/input.rs
+msgid "Saved. Changes apply at the next login"
+msgstr ""
+
+#: rust/settings/src/input.rs
+msgid ""
+"Saved, but not applied:\n"
+"%(error)s"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Only the shortcut"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Other (%(option)s)"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Chosen here"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "The system keyboard"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Move up"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Move down"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Remove"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Add a layout…"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Use the system keyboard"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Keyboard layouts"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "The login screen keeps the system keyboard"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Switching layouts"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Besides the layout shortcut, which is in the Help"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Switch key"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Typing"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Repeat delay"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Milliseconds before a held key repeats"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Repeat rate"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Repeats per second"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "Num Lock on"
+msgstr ""
+
+#: rust/settings/src/keyboard.rs
+msgid "When the keyboard appears, as at login"
+msgstr ""
+
+#: rust/settings/src/main.rs
+msgid "This panel is not available yet"
+msgstr ""
+
+#: rust/settings/src/main.rs
+msgid "unknown panel '%(name)s'; the panels are: %(panels)s"
+msgstr ""
+
+#: rust/settings/src/main.rs
+msgid "--panel needs a panel name"
+msgstr ""
+
+#: rust/settings/src/main.rs
+msgid "unknown argument '%(name)s'"
+msgstr ""
+
+#: rust/settings/src/main.rs
+msgid "usage: swaydesk-settings [--panel <name>]"
+msgstr ""
+
+#: rust/settings/src/main.rs
+msgid "Settings"
+msgstr ""
+
+#: rust/settings/src/main.rs
+msgid "%(program)s is not installed"
+msgstr ""
+
+#: rust/settings/src/mouse.rs
+msgid "Touchpad"
+msgstr ""
+
+#: rust/settings/src/mouse.rs
+msgid "Natural scrolling"
+msgstr ""
+
+#: rust/settings/src/mouse.rs
+msgid "The content moves with the fingers"
+msgstr ""
+
+#: rust/settings/src/mouse.rs
+msgid "Left-handed"
+msgstr ""
+
+#: rust/settings/src/mouse.rs
+msgid "The primary button is on the right"
+msgstr ""
+
+#: rust/settings/src/mouse.rs
+msgid "Tap to click"
+msgstr ""
+
+#: rust/settings/src/mouse.rs
+msgid "Disable while typing"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "Never"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "%(minutes)s min"
+msgstr ""
+
+#: rust/settings/src/power.rs rust/settings/src/region.rs
+msgid ""
+"Not saved:\n"
+"%(error)s"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "The times were saved, but not applied"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "The power profile did not change"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "Profile"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "Less power, or more speed"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "When idle"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "The screen goes off before it locks"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "Lock the screen after"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "Turn the screen off after"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "Suspend after"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "Only on battery. The screen always locks before suspending"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "Changes apply at once. With the caffeine on, none of them applies"
+msgstr ""
+
+#: rust/settings/src/power.rs
+msgid "These times apply in the Swaydesk session"
+msgstr ""
+
+#: rust/settings/src/region.rs
+msgid "The texts change at the next login, but the date stays in the system's language until the %(locale)s locale is generated on this computer"
+msgstr ""
+
+#: rust/settings/src/region.rs
+msgid "From your location"
+msgstr ""
+
+#: rust/settings/src/region.rs
+msgid "The language's country"
+msgstr ""
+
+#: rust/settings/src/region.rs
+msgid "Language"
+msgstr ""
+
+#: rust/settings/src/region.rs
+msgid "Weather city"
+msgstr ""
+
+#: rust/settings/src/region.rs
+msgid "Empty: the city of your connection. The bar's weather updates within a minute"
+msgstr ""
+
+#: rust/settings/src/region.rs
+msgid "Holidays"
+msgstr ""
+
+#: rust/settings/src/region.rs
+msgid "A country code such as BR, or none. Empty: the language's country"
 msgstr ""
 
 #: rust/theme/src/local_conf.rs
@@ -3417,10 +3915,6 @@ msgstr ""
 
 #: home/.config/sway/keys/base.conf
 msgid "Media and brightness"
-msgstr ""
-
-#: home/.config/sway/keys/base.conf
-msgid "Mouse and touchpad"
 msgstr ""
 
 #: home/.config/sway/keys/base.conf

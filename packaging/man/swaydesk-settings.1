@@ -1,0 +1,90 @@
+.TH SWAYDESK-SETTINGS 1 2026-11-25 "swaydesk 0.2.0" "Sway desktop components"
+.SH NAME
+swaydesk\-settings \- the Swaydesk Settings center
+.SH SYNOPSIS
+.B swaydesk\-settings
+.RB [ \-\-panel
+.IR name ]
+.br
+.B swaydesk\-settings \-\-about
+.SH DESCRIPTION
+One window with a panel for each part of the desktop, listed in a sidebar: appearance, displays, keyboard,
+mouse and touchpad, power and lock, desktop, default apps, region and about. The About panel shows the
+distribution, the kernel, Sway's version, the processor, the memory, the graphics, the disk use of / and the
+device name, with a Copy info button for bug reports, Help (when it is installed) and Website. Copy info
+copies the same report as
+.BR \-\-about :
+in English, and without the device name, since it goes into public bug reports. The Desktop
+panel turns the session's components and the bar's modules on and off and picks the shortcut profile: it
+writes the [enabled] and [enabled.bar] tables and the shortcuts key of
+.IR ~/.config/swaydesk/config.toml ,
+keeping its comments, shows the values that come from
+.I /etc/swaydesk/config.toml
+and the components that are not installed, and says when each change applies. The Region panel sets the
+language (locale, at the next login), the weather city (weather_location) and the holidays country (holidays);
+an empty field removes the key, so the default applies again, and a value the config would refuse is not
+written. The Power and lock panel sets the idle times (lock_after, screen_off_after and suspend_after, on
+battery; Never to 60 minutes) and runs sway\-idle again so they apply at once in the Swaydesk session, or says
+swaydesk\-caffeine is missing; with power\-profiles\-daemon running, it also picks the power profile. The Default apps panel sets the web
+browser, mail, text editor, images, PDF, video and music apps in
+.IR ~/.config/mimeapps.list ,
+only the user's layer (the system default, as in
+.IR /etc/xdg/mimeapps.list ,
+shows as "System default" and is never written), and the file manager and the terminal through the
+file_manager and terminal keys of the config. App names follow the config's locale; when it differs from the
+session's language, an app translated only by the distribution's language packs shows its untranslated name.
+.PP
+The Appearance and Displays panels are the pages of the Theme and Displays apps, which stay separate apps with
+their own windows (see
+.BR swaydesk\-theme\-app (1)
+and
+.BR swaydesk\-displays (1));
+each panel appears only when its app is installed. The Keyboard panel picks the layouts and their order, the
+switch key, the repeat delay and rate, and Num Lock at login; Use the system keyboard drops its layouts, so the
+system keyboard of 50\-local.conf applies again (the login screen always uses it). The Mouse and touchpad panel
+sets the speed, natural scrolling and the left\-handed button, and, with a touchpad, tap to click and disable
+while typing; it shows the values Sway applies now. Both panels write only the keys changed there and apply
+them at once. The network, Bluetooth and sound panels appear only when their program is installed
+(nm\-connection\-editor, blueman\-manager, pavucontrol), and open it.
+.PP
+There is one Settings window: running it again with \fB\-\-panel\fR shows that panel in the open window.
+Its menu entry is org.swaydesktop.Settings, with an action for each panel.
+.SH OPTIONS
+.TP
+.BI \-\-panel " name"
+Open on this panel: appearance (or theme), displays (screens, monitors), keyboard, mouse (touchpad), power
+(lock), desktop, default\-apps (apps), region, about, network, bluetooth or sound (audio). For network,
+Bluetooth and sound, only the program of the panel is started.
+.TP
+.B \-\-about
+Print the text of Copy info and exit, without a window or a display: what to paste into a bug report. It is
+in English and leaves out the device name.
+.SH FILES
+.TP
+.I ~/.config/swaydesk/config.toml
+The user's settings, written by the Desktop, Region, Power and lock and Default apps panels, which keep its
+comments.
+.TP
+.I /etc/swaydesk/config.toml
+The system layer: only its [enabled] table is read, under the user's file; never written.
+.TP
+.I ~/.config/sway/config.d/80\-input.conf
+The keys changed in the Keyboard and Mouse and touchpad panels, read by Sway after 50\-local.conf, so they win
+over it. Edits by hand are replaced at the next change in a panel.
+.TP
+.I ~/.config/mimeapps.list
+The default apps of the user; the system's, as in
+.IR /etc/xdg/mimeapps.list ,
+are only read.
+.TP
+.I ~/.config/swaydesk/displays.json
+.TQ
+.I ~/.config/sway/config.d/90\-displays.conf
+Written by the Displays panel, as by the Displays app.
+.SH EXIT STATUS
+0 on success; 1 when the program of an outside panel is not installed or does not start; 2 for an unknown
+panel or argument, also when the window is already open (it then stays as it was).
+.SH SEE ALSO
+.BR swaydesk\-theme\-app (1),
+.BR swaydesk\-displays (1),
+.BR swaydesk (7)

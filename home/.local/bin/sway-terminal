@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+# Abre o terminal da config (terminal), no lugar do kitty fixo: o Ctrl+Alt+T ($term no config do Sway), a tecla
+# do Yazi e a grade (apps com Terminal=true) chamam este script. Sem a chave, o kitty, como antes.
+# uso: sway-terminal [--class NOME] [-e COMANDO [ARGUMENTOS...]]
+#   --class: a classe (o app_id) da janela, só nos terminais que a aceitam (kitty, foot, alacritty); nos
+#   outros, fica de fora. -e: o comando a rodar, com os argumentos separados, sem passar por um shell.
+set -uo pipefail
+usage() {
+  echo "usage: sway-terminal [--class NAME] [-e COMMAND [ARGS...]]" >&2
+  exit 2
+}
+class= command=()
+while (($#)); do
+  case $1 in
+    --class) (($# >= 2)) || usage; class=$2; shift 2 ;;
+    -e) shift; (($#)) || usage; command=("$@"); break ;;
+    *) usage ;;
+  esac
+done
+
+self=$(readlink -f -- "$0")
+# Um programa do projeto: o de ~/.local/bin primeiro (o link do --rust-only vai direto ao binário em Rust),
+# depois o da pasta deste script (o repositório, ou o /usr/libexec/swaydesk do pacote). Na sessão do pacote
+# (SWAYDESK_SESSION=package), só o do pacote: os dotfiles da mesma conta não entram
+sibling() {
+  if [[ ${SWAYDESK_SESSION-} != package && -x $HOME/.local/bin/$1 ]]; then
+    printf '%s' "$HOME/.local/bin/$1"
+  else
+    printf '%s' "${self%/*}/$1"
+  fi
+}
+# O desktop-config: o dos dotfiles (sibling); nos pacotes, que não o levam ao lado, o swaydesk-desktop-config do PATH
+desktop_config=$(sibling sway-desktop-config)
+[[ -x $desktop_config ]] || desktop_config=$(command -v swaydesk-desktop-config) || desktop_config=
+terminal=
+[[ -n $desktop_config ]] && terminal=$("$desktop_config" get terminal 2>/dev/null)
+[[ $terminal =~ ^[[:alnum:]_.+-]+$ ]] || terminal=kitty
+# Sem ele, o kitty; sem nenhum conhecido (um Debian só com o gnome-terminal, um wezterm sem a chave), a escolha do
+# sistema: o xdg-terminal-exec e a alternativa x-terminal-emulator do Debian, como o Gio fazia na grade
+if ! command -v "$terminal" >/dev/null; then
+  wanted=$terminal terminal=
+  for fallback in kitty xdg-terminal-exec x-terminal-emulator; do
+    if [[ $fallback != "$wanted" ]] && command -v "$fallback" >/dev/null; then
+      terminal=$fallback
+      break
+    fi
+  done
+  if [[ -z $terminal ]]; then
+    echo "sway-terminal: no terminal: install $wanted or set terminal in config.toml" >&2
+    exit 127
+  fi
+  echo "sway-terminal: $wanted is not installed, opening $terminal" >&2
+fi
+
+# Cada terminal com a sua forma de receber a classe e o comando
+argv=("$terminal")
+case $terminal in
+  kitty | alacritty)
+    [[ -n $class ]] && argv+=(--class "$class")
+    ((${#command[@]})) && argv+=(-e "${command[@]}") ;;
+  foot)
+    [[ -n $class ]] && argv+=("--app-id=$class")
+    # O --: um comando que começa com - seria lido como uma opção do foot
+    ((${#command[@]})) && argv+=(-- "${command[@]}") ;;
+  ptyxis)
+    argv+=(--new-window)
+    ((${#command[@]})) && argv+=(-- "${command[@]}") ;;
+  kgx)
+    ((${#command[@]})) && argv+=(-- "${command[@]}") ;;
+  xfce4-terminal)
+    ((${#command[@]})) && argv+=(-x "${command[@]}") ;;
+  # A especificação do xdg-terminal-exec: o comando direto, sem -e
+  xdg-terminal-exec)
+    argv+=("${command[@]}") ;;
+  *)
+    ((${#command[@]})) && argv+=(-e "${command[@]}") ;;
+esac
+exec "${argv[@]}"

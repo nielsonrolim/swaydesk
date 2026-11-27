@@ -6,6 +6,10 @@ edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
 
+[lib]
+name = "swaydesk_theme_app"
+path = "src/lib.rs"
+
 [[bin]]
 name = "swaydesk-theme-app"
 path = "src/main.rs"
