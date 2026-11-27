@@ -605,11 +605,6 @@ msgstr "El fondo de pantalla no tiene color: el color de acento predeterminado %
 
 #: home/.local/bin/sway-theme-app
 #, python-format
-msgid "%s folders"
-msgstr "carpetas %s"
-
-#: home/.local/bin/sway-theme-app
-#, python-format
 msgid "The folders of %s don't change color: the color changes the accent only."
 msgstr "Las carpetas de %s no cambian de color: el color solo cambia el acento."
 
@@ -662,6 +657,15 @@ msgstr "Buscar…"
 #, python-format
 msgid "%(wanted)s is not installed: using %(used)s"
 msgstr "%(wanted)s no está instalado: se usa %(used)s"
+
+#: home/.local/bin/sway_themes.py
+msgid "(none)"
+msgstr "(ninguno)"
+
+#: home/.local/bin/sway_themes.py
+#, python-format
+msgid "%s folders"
+msgstr "carpetas %s"
 
 #: home/.local/bin/sway_themes.py
 msgid "Nothing applied yet: the desktop keeps its current look until you press Apply"

@@ -71,8 +71,14 @@ pub fn fill_one(template: &str, value: &str) -> String {
 /// Roda e espera até o prazo; None se não rodou ou passou do prazo (o processo é morto). Devolve o código
 /// de saída e a saída padrão.
 pub fn run_timeout(command: &mut Command, timeout: Duration) -> Option<(i32, String)> {
-    let mut child = command.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().ok()?;
-    let mut stdout = child.stdout.take()?;
+    run_reading(command, timeout, false)
+}
+
+/// O run_timeout, lendo a saída padrão ou, com `stderr`, a de erro (a outra vai para o /dev/null).
+fn run_reading(command: &mut Command, timeout: Duration, stderr: bool) -> Option<(i32, String)> {
+    let (out, err) = if stderr { (Stdio::null(), Stdio::piped()) } else { (Stdio::piped(), Stdio::null()) };
+    let mut child = command.stdin(Stdio::null()).stdout(out).stderr(err).spawn().ok()?;
+    let mut stdout: Box<dyn Read + Send> = if stderr { Box::new(child.stderr.take()?) } else { Box::new(child.stdout.take()?) };
     // A saída é lida numa linha à parte: um filho que escreve muito não trava esperando quem leia
     let reader = std::thread::spawn(move || {
         let mut text = Vec::new();
@@ -104,6 +110,22 @@ pub fn run(args: &[&str], dconf_profile: Option<&std::path::Path>) -> i32 {
         command.env("DCONF_PROFILE", profile);
     }
     run_timeout(&mut command, Duration::from_secs(10)).map_or(127, |(code, _)| code)
+}
+
+/// O `gsettings_error` do sway_themes: None se deu certo; senão, a causa (a primeira linha do stderr, ou o código
+/// de saída), para o aviso dizer por que falhou.
+pub fn run_error(args: &[&str], dconf_profile: Option<&std::path::Path>) -> Option<String> {
+    let (program, rest) = args.split_first()?;
+    let mut command = Command::new(program);
+    command.args(rest);
+    if let Some(profile) = dconf_profile {
+        command.env("DCONF_PROFILE", profile);
+    }
+    match run_reading(&mut command, Duration::from_secs(10), true) {
+        Some((0, _)) => None,
+        Some((code, err)) => Some(err.lines().map(str::trim).find(|l| !l.is_empty()).map_or_else(|| format!("exit {code}"), str::to_string)),
+        None => Some(format!("{program}: did not run")),
+    }
 }
 
 /// O programa está no PATH (o shutil.which do Python).

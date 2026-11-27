@@ -1102,10 +1102,9 @@ impl Page {
         // A cor das pastas só com o Papirus: com outros ícones, a nota diz que a cor muda só o destaque
         let papirus_icons = sp::is_papirus(&icons);
         let icons_label = self.icons_display(&icons);
-        let mut parts = vec![theme.clone().unwrap_or_else(|| "?".into()), icons_label.clone()];
-        if self.papirus.get() && papirus_icons {
-            parts.push(fill_one(&tr("%s folders"), &color));
-        }
+        // O "?" (nenhum tema escolhido, ou nenhum tema de ícones) é só interno: o resumo diz "(none)"
+        let folders = (self.papirus.get() && papirus_icons).then_some(color.as_str());
+        let parts = st::summary_parts(theme.as_deref(), Some(icons_label.as_str()).filter(|_| icons != "?"), folders);
         let folders_note = (self.papirus.get() && !papirus_icons && icons != "?")
             .then(|| fill_one(&tr("The folders of %s don't change color: the color changes the accent only."), &icons_label));
         self.folders_note.set_visible(folders_note.is_some());

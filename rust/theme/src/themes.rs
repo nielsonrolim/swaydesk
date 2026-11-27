@@ -14,7 +14,7 @@ use swaydesk_common::resident::own_uid;
 use crate::desktop::{self as dc, ICONS_WRAPPER};
 use crate::families::{self as sf, Style};
 use crate::papirus as sp;
-use crate::{command_name, fill, fill_one, run, run_timeout, Error};
+use crate::{command_name, fill, fill_one, run, run_error, run_timeout, Error};
 
 /// Em ordem: a primeira definição encontrada é a cor do tema
 const COLOR_NAMES: &[&str] = &["accent_color", "theme_selected_bg_color", "selected_bg_color"];
@@ -153,6 +153,15 @@ pub fn missing_note(config: &Config) -> Option<String> {
         return None;
     }
     Some(fill(&tr("%(wanted)s is not installed: using %(used)s"), &[("wanted", &config.gtk_theme), ("used", &dc::effective_gtk_theme(config))]))
+}
+
+/// As partes do "Will apply:": o tema, os ícones e, com a cor das pastas, "<cor> folders". Uma parte que falta
+/// (nenhum tema de ícones instalado, por exemplo) diz "(none)". O mesmo do summary_parts do sway_themes.py.
+pub fn summary_parts(theme: Option<&str>, icons: Option<&str>, folders: Option<&str>) -> Vec<String> {
+    let part = |value: Option<&str>| value.filter(|v| !v.is_empty()).map_or_else(|| tr("(none)"), str::to_string);
+    let mut parts = vec![part(theme), part(icons)];
+    parts.extend(folders.map(|color| fill_one(&tr("%s folders"), color)));
+    parts
 }
 
 /// O aviso de quem nunca aplicou um tema (um Sway puro, só com os pacotes): sem o gtk_theme no config do usuário,
@@ -586,41 +595,57 @@ fn written_icons() -> String {
     std::fs::read_to_string(written_icons_file()).map(|t| t.trim().to_string()).unwrap_or_default()
 }
 
-fn write_dconf(values: &[(&str, String)]) -> bool {
-    let gsettings = std::env::var("SWAY_THEME_GSETTINGS").unwrap_or_else(|_| FALLBACK_GSETTINGS.into());
-    let profile = dconf_profile("sway");
-    let mut all = true;
-    let mut icons_ok = false;
-    for (key, value) in values {
-        let ok = run(&[&gsettings, "set", INTERFACE, key, value], profile.as_deref()) == 0;
-        all &= ok;
-        if *key == "icon-theme" {
-            icons_ok = ok;
-        }
+/// Sem o org.gnome.desktop.interface (o gsettings-desktop-schemas, um Recommends), nenhum app lê essas chaves: não
+/// há o que gravar. Só o list-keys que roda e falha (o "No such schema"); um gsettings que nem roda é erro. Avisa
+/// uma vez por processo. O mesmo do interface_schema_missing do sway_themes.py.
+fn interface_schema_missing(gsettings: &str, profile: Option<&Path>) -> bool {
+    static NOTED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if matches!(run(&[gsettings, "list-keys", INTERFACE], profile), 0 | 127) {
+        return false;
     }
-    if icons_ok {
-        if let Some((_, icons)) = values.iter().find(|(k, _)| *k == "icon-theme") {
-            let _ = dc::write_file(&written_icons_file(), &format!("{icons}\n"));
-        }
+    if !NOTED.swap(true, std::sync::atomic::Ordering::Relaxed) {
+        eprintln!("swaydesk-theme: no {INTERFACE} schema (gsettings-desktop-schemas): the dconf step is skipped");
     }
-    all
+    true
 }
 
-/// Uma chave da base do Sway de volta ao padrão (gsettings reset). Devolve se deu certo.
+/// Grava as chaves; None se deu certo (ou não há o schema), senão a causa da primeira que falhou.
+fn write_dconf_error(values: &[(&str, String)]) -> Option<String> {
+    let gsettings = std::env::var("SWAY_THEME_GSETTINGS").unwrap_or_else(|_| FALLBACK_GSETTINGS.into());
+    let profile = dconf_profile("sway");
+    let mut first_error = None;
+    for (key, value) in values {
+        let error = run_error(&[&gsettings, "set", INTERFACE, key, value], profile.as_deref());
+        if *key == "icon-theme" && error.is_none() {
+            let _ = dc::write_file(&written_icons_file(), &format!("{value}\n"));
+        }
+        first_error = first_error.or(error);
+    }
+    // Só depois de uma falha: no caminho normal, nenhuma chamada a mais
+    first_error.filter(|_| !interface_schema_missing(&gsettings, profile.as_deref()))
+}
+
+fn write_dconf(values: &[(&str, String)]) -> bool {
+    write_dconf_error(values).is_none()
+}
+
+/// Uma chave da base do Sway de volta ao padrão (gsettings reset). Devolve se deu certo (ou não há o schema).
 fn reset_dconf(key: &str) -> bool {
     let gsettings = std::env::var("SWAY_THEME_GSETTINGS").unwrap_or_else(|_| FALLBACK_GSETTINGS.into());
-    run(&[&gsettings, "reset", INTERFACE, key], dconf_profile("sway").as_deref()) == 0
+    let profile = dconf_profile("sway");
+    run(&[&gsettings, "reset", INTERFACE, key], profile.as_deref()) == 0 || interface_schema_missing(&gsettings, profile.as_deref())
 }
 
 /// Em Wayland, o GTK lê o tema daqui, pelo portal. O tamanho do cursor (para os apps que leem o gsettings: GTK 3,
 /// Electron, o XWayland pelo portal) vai junto só na base própria do Sway: na base de todos (uma sessão antiga), a
 /// troca de tema mudaria o cursor do GNOME; ali, só o `sway-theme cursor` o grava.
-pub fn set_dconf(config: &Config, icons: Option<String>) -> bool {
+/// Devolve a causa de uma gravação que falhou (None: deu certo, ou não há o schema).
+fn set_dconf_error(config: &Config, icons: Option<String>) -> Option<String> {
     let mut values = dconf_values(config, icons);
     if dconf_profile("sway").is_some() {
         values.push(("cursor-size", config.cursor_size.to_string()));
     }
-    write_dconf(&values)
+    write_dconf_error(&values)
 }
 
 /// O valor só na base do Sway, como o dconf o mostra ('Mint-Y-Teal'); "" sem valor; None se falhou.
@@ -1061,8 +1086,8 @@ pub fn apply(theme: &str, accent: Option<&str>, folders: Option<&str>, themes: O
     if let Some(note) = snap_note(theme) {
         notes.push(note);
     }
-    if !set_dconf(&config, Some(icon_name)) {
-        failures.push(tr("theme in dconf (gsettings)"));
+    if let Some(error) = set_dconf_error(&config, Some(icon_name)) {
+        failures.push(format!("{}: {error}", tr("theme in dconf (gsettings)")));
     }
     // Só com os dotfiles: é o install.sh --system que resolve. Só com os pacotes, não há install.sh (e a grade
     // exporta XDG_CURRENT_DESKTOP=sway aos apps no Sway aberto do tty, o que faria a sessão parecer antiga)
@@ -1139,6 +1164,15 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn a_missing_part_of_the_summary_reads_none() {
+        // Sem nenhum tema de ícones (só os pacotes, --no-install-recommends), o resumo dizia "Adwaita-dark · ?".
+        // Os mesmos casos do test_summary_parts do tests/test_sway_theme.py
+        assert_eq!(summary_parts(Some("Adwaita-dark"), None, None), ["Adwaita-dark", "(none)"]);
+        assert_eq!(summary_parts(None, Some(""), None), ["(none)", "(none)"]);
+        assert_eq!(summary_parts(Some("Mint-Y"), Some("Papirus-Dark"), Some("teal")), ["Mint-Y", "Papirus-Dark", "teal folders"]);
+    }
 
     #[test]
     fn the_unapplied_note_only_while_the_config_has_no_gtk_theme() {
