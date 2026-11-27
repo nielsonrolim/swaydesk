@@ -16,7 +16,7 @@
 # primeiro painel, com o app_id e o título certos; uma segunda chamada com --panel troca o painel da mesma
 # janela (o GtkApplication único) e volta; encaminhado pelo D-Bus à janela aberta (o tratador dela, que o binário
 # não alcança com um argumento errado), um painel desconhecido volta 2 e não mexe nela;
-# todo painel próprio abre pelo id e pelo apelido; o painel Aparência (a página do app Tema) aplica um tema; o painel Telas (a página do app Telas) respeita a trava da prévia de outro processo e segura a sua; um painel de fora sem o programa instalado, e o Aparência ou o
+# todo painel próprio abre pelo id e pelo apelido; o painel Aparência (a página do app Tema) aplica um tema; o painel Telas (a página do app Telas) respeita a trava da prévia de outro processo e segura a sua; um painel de fora sem o programa instalado (o aviso com o pacote da distro), e o Aparência ou o
 # Telas sem o pacote de que dependem, saem com 1 e não abrem janela; fechar a janela encerra o app. Sai com 1 se
 # algum caso falhar.
 set -u
@@ -263,6 +263,19 @@ if ! command -v pavucontrol > /dev/null; then
   sleep 0.3
   [ "$(con_id)" = "$first" ] && [ "$(title)" = "$before" ] && ok "a janela não mudou" || fail "a janela mudou: '$(title)' (antes '$before'), con_id $(con_id)"
 fi
+
+# 6b. O aviso de um painel de fora diz o pacote da distro, não o programa: a imagem é Debian, onde o
+# nm-connection-editor vem no network-manager-gnome e o blueman-manager no blueman
+for triple in "network:nm-connection-editor:network-manager-gnome" "bluetooth:blueman-manager:blueman"; do
+  id=${triple%%:*} rest=${triple#*:}
+  program=${rest%%:*} package=${rest#*:}
+  PATH=$bare_path command -v "$program" > /dev/null && { fail "o $program ficou no PATH sem ele"; continue; }
+  before=$(title)
+  out=$(PATH=$bare_path timeout 10 "$bin" --panel "$id" 2>&1); rc=$?
+  if [ "$rc" = 1 ] && printf '%s' "$out" | grep -qF "$package is not installed"; then ok "--panel $id sem o $program sai com 1 e pede o $package"; else fail "--panel $id sem o $program: rc=$rc, saída: $out"; fi
+  sleep 0.3
+  [ "$(con_id)" = "$first" ] && [ "$(title)" = "$before" ] && ok "a janela não mudou" || fail "a janela mudou: '$(title)' (antes '$before'), con_id $(con_id)"
+done
 
 # 8. O painel Desktop, com cliques do ponteiro virtual. As posições valem para a saída de 1280x800, a janela
 # lado a lado (a tela toda), a barra lateral de 220 px e a página no topo, nesta ordem de cliques (a linha do OSD

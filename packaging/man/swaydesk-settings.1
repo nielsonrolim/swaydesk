@@ -45,7 +45,9 @@ system keyboard of 50\-local.conf applies again (the login screen always uses it
 sets the speed, natural scrolling and the left\-handed button, and, with a touchpad, tap to click and disable
 while typing; it shows the values Sway applies now. Both panels write only the keys changed there and apply
 them at once. The network, Bluetooth and sound panels appear only when their program is installed
-(nm\-connection\-editor, blueman\-manager, pavucontrol), and open it.
+(nm\-connection\-editor, blueman\-manager, pavucontrol), and open it. Without it, \fB\-\-panel\fR names the
+package to install on that distribution (network\-manager\-gnome and blueman on Debian and Ubuntu;
+nm\-connection\-editor and blueman on Arch).
 .PP
 There is one Settings window: running it again with \fB\-\-panel\fR shows that panel in the open window.
 Its menu entry is org.swaydesktop.Settings, with an action for each panel.

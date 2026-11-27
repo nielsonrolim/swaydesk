@@ -179,7 +179,10 @@ fn main() -> ExitCode {
     // Um painel que precisa de um programa ausente (o de um painel de fora, ou o pacote de que um próprio
     // depende) não abre: sai com 1, sem janela
     if let Some(id) = options.panel.filter(|id| logic::needs(id).is_some_and(|program| !installed(program))) {
-        let package = logic::package_to_install(id).unwrap_or(id);
+        // O nome do pacote muda com a distro (o nm-connection-editor vem no network-manager-gnome do Debian)
+        let os_release = std::fs::read_to_string("/etc/os-release").or_else(|_| std::fs::read_to_string("/usr/lib/os-release"));
+        let family = os_release.ok().as_deref().and_then(logic::family);
+        let package = logic::package_to_install(id, family).unwrap_or(id);
         eprintln!("swaydesk-settings: {}", tr("%(program)s is not installed").replace("%(program)s", package));
         return ExitCode::from(1);
     }

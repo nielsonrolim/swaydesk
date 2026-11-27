@@ -45,6 +45,16 @@ pub struct PanelInfo {
     /// Um painel próprio que precisa de um programa de outro pacote (que a Central não exige): só aparece com
     /// ele no PATH.
     pub needs: Option<Need>,
+    /// O pacote que traz o app de um painel de fora, em cada família de distro (o nome do programa nem sempre é
+    /// o do pacote).
+    pub packages: Option<Packages>,
+}
+
+/// O nome de um pacote no Debian/Ubuntu e no Arch.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Packages {
+    pub debian: &'static str,
+    pub arch: &'static str,
 }
 
 /// O que um painel próprio precisa de fora: o programa que se procura no PATH e o pacote que o traz (o que o
@@ -68,13 +78,14 @@ pub const PANELS: &[PanelInfo] = &[
     builtin("default-apps", n_("Default apps"), "applications-other", &["apps"]),
     builtin("region", n_("Region"), "preferences-desktop-locale", &[]),
     builtin("about", n_("About"), "help-about", &[]),
-    external("network", n_("Network"), "network-wired", &["nm-connection-editor"], &[]),
-    external("bluetooth", n_("Bluetooth"), "bluetooth", &["blueman-manager"], &[]),
-    external("sound", n_("Sound"), "audio-volume-high", &["pavucontrol"], &["audio"]),
+    // O nm-connection-editor vem no network-manager-gnome do Debian e do Ubuntu; o blueman-manager, no blueman
+    external("network", n_("Network"), "network-wired", &["nm-connection-editor"], &[], "network-manager-gnome", "nm-connection-editor"),
+    external("bluetooth", n_("Bluetooth"), "bluetooth", &["blueman-manager"], &[], "blueman", "blueman"),
+    external("sound", n_("Sound"), "audio-volume-high", &["pavucontrol"], &["audio"], "pavucontrol", "pavucontrol"),
 ];
 
 const fn builtin(id: &'static str, title: &'static str, icon: &'static str, aliases: &'static [&'static str]) -> PanelInfo {
-    PanelInfo { id, title, icon, kind: Kind::Builtin, aliases, needs: None }
+    PanelInfo { id, title, icon, kind: Kind::Builtin, aliases, needs: None, packages: None }
 }
 
 const fn builtin_needs(
@@ -85,7 +96,7 @@ const fn builtin_needs(
     program: &'static str,
     package: &'static str,
 ) -> PanelInfo {
-    PanelInfo { id, title, icon, kind: Kind::Builtin, aliases, needs: Some(Need { program, package }) }
+    PanelInfo { id, title, icon, kind: Kind::Builtin, aliases, needs: Some(Need { program, package }), packages: None }
 }
 
 const fn external(
@@ -94,8 +105,10 @@ const fn external(
     icon: &'static str,
     argv: &'static [&'static str],
     aliases: &'static [&'static str],
+    debian: &'static str,
+    arch: &'static str,
 ) -> PanelInfo {
-    PanelInfo { id, title, icon, kind: Kind::External(argv), aliases, needs: None }
+    PanelInfo { id, title, icon, kind: Kind::External(argv), aliases, needs: None, packages: Some(Packages { debian, arch }) }
 }
 
 /// O painel de um nome do `--panel` (o id ou um apelido).
@@ -111,13 +124,37 @@ pub fn needs(name: &str) -> Option<&'static str> {
     })
 }
 
+/// A família de pacotes da distro, que decide o nome do pacote de um app de fora.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Family {
+    /// Debian, Ubuntu, Mint (os .deb)
+    Debian,
+    /// Arch e derivadas
+    Arch,
+}
+
+/// A família de um /etc/os-release, pelo ID e pelo ID_LIKE (palavras inteiras; o ID vem primeiro).
+pub fn family(os_release: &str) -> Option<Family> {
+    let value = |key: &str| {
+        os_release.lines().find_map(|line| line.strip_prefix(key)?.strip_prefix('=')).map(|v| v.trim().trim_matches(['"', '\'']))
+    };
+    let ids = value("ID").into_iter().chain(value("ID_LIKE")).flat_map(str::split_whitespace);
+    ids.into_iter().find_map(|id| match id {
+        "debian" | "ubuntu" => Some(Family::Debian),
+        "arch" => Some(Family::Arch),
+        _ => None,
+    })
+}
+
 /// O pacote que o aviso de "não instalado" de um painel manda instalar: o do programa de um painel próprio; o
-/// próprio programa de um de fora (o nm-connection-editor, o blueman-manager e o pavucontrol têm o nome do
-/// pacote, ou perto disso).
-pub fn package_to_install(name: &str) -> Option<&'static str> {
-    find(name).and_then(|p| match p.kind {
-        Kind::Builtin => p.needs.as_ref().map(|n| n.package),
-        Kind::External(argv) => argv.first().copied(),
+/// de um de fora na família da distro; sem a família, o nome em que o Debian e o Arch concordam, ou o do programa.
+pub fn package_to_install(name: &str, family: Option<Family>) -> Option<&'static str> {
+    find(name).and_then(|p| match (&p.kind, p.packages.as_ref(), family) {
+        (Kind::Builtin, ..) => p.needs.as_ref().map(|n| n.package),
+        (Kind::External(_), Some(pk), Some(Family::Debian)) => Some(pk.debian),
+        (Kind::External(_), Some(pk), Some(Family::Arch)) => Some(pk.arch),
+        (Kind::External(_), Some(pk), None) if pk.debian == pk.arch => Some(pk.debian),
+        (Kind::External(argv), ..) => argv.first().copied(),
     })
 }
 
@@ -246,16 +283,62 @@ mod tests {
         assert_eq!(needs("displays"), Some("swaydesk-displays"));
         assert_eq!(needs("keyboard"), None);
         // O aviso de "não instalado" diz o pacote a instalar: o swaydesk-theme vem no swaydesk-theme-tool
-        assert_eq!(package_to_install("appearance"), Some("swaydesk-theme-tool"));
-        assert_eq!(package_to_install("theme"), Some("swaydesk-theme-tool"));
-        assert_eq!(package_to_install("displays"), Some("swaydesk-displays"));
-        assert_eq!(package_to_install("sound"), Some("pavucontrol"));
-        assert_eq!(package_to_install("keyboard"), None);
+        assert_eq!(package_to_install("appearance", None), Some("swaydesk-theme-tool"));
+        assert_eq!(package_to_install("theme", None), Some("swaydesk-theme-tool"));
+        assert_eq!(package_to_install("displays", None), Some("swaydesk-displays"));
+        assert_eq!(package_to_install("keyboard", None), None);
         let none: Vec<&str> = visible_panels(|_| false).iter().map(|p| p.id).collect();
         assert!(!none.contains(&"appearance") && !none.contains(&"displays"), "{none:?}");
         assert!(none.contains(&"keyboard") && none.contains(&"about"), "{none:?}");
         let theme_only: Vec<&str> = visible_panels(|p| p == "swaydesk-theme").iter().map(|p| p.id).collect();
         assert!(theme_only.contains(&"appearance") && !theme_only.contains(&"displays"), "{theme_only:?}");
+    }
+
+    #[test]
+    fn an_outside_app_names_the_package_of_each_distro() {
+        // O programa não é o nome do pacote: no Debian e no Ubuntu o nm-connection-editor vem no
+        // network-manager-gnome, e o blueman-manager no blueman (o mesmo no Arch)
+        let deb = |id| package_to_install(id, Some(Family::Debian));
+        assert_eq!((deb("network"), deb("bluetooth"), deb("sound")), (Some("network-manager-gnome"), Some("blueman"), Some("pavucontrol")));
+        let arch = |id| package_to_install(id, Some(Family::Arch));
+        assert_eq!((arch("network"), arch("bluetooth"), arch("sound")), (Some("nm-connection-editor"), Some("blueman"), Some("pavucontrol")));
+        // O apelido acha o mesmo pacote; um painel próprio não muda com a distro
+        assert_eq!(deb("audio"), Some("pavucontrol"));
+        assert_eq!(deb("displays"), Some("swaydesk-displays"));
+        assert_eq!(arch("appearance"), Some("swaydesk-theme-tool"));
+    }
+
+    #[test]
+    fn an_unknown_distro_gets_the_name_both_agree_on_or_the_program() {
+        // Sem saber a família: o nome que o Debian e o Arch dão igual; se divergem, o do programa, que é o
+        // que se procura no gerenciador de pacotes
+        let any = |id| package_to_install(id, None);
+        assert_eq!((any("network"), any("bluetooth"), any("sound")), (Some("nm-connection-editor"), Some("blueman"), Some("pavucontrol")));
+    }
+
+    #[test]
+    fn every_outside_app_has_a_package_on_each_distro() {
+        for panel in PANELS.iter().filter(|p| matches!(p.kind, Kind::External(_))) {
+            for family in [Family::Debian, Family::Arch] {
+                let package = package_to_install(panel.id, Some(family));
+                assert!(package.is_some_and(|p| !p.is_empty()), "{} on {family:?}", panel.id);
+            }
+        }
+    }
+
+    #[test]
+    fn the_family_comes_from_the_id_or_the_id_like_of_os_release() {
+        assert_eq!(family("ID=debian\nVERSION_ID=\"13\"\n"), Some(Family::Debian));
+        assert_eq!(family("ID=ubuntu\nID_LIKE=debian\n"), Some(Family::Debian));
+        assert_eq!(family("NAME=\"Linux Mint\"\nID=linuxmint\nID_LIKE=\"ubuntu debian\"\n"), Some(Family::Debian));
+        assert_eq!(family("ID=arch\n"), Some(Family::Arch));
+        assert_eq!(family("ID=endeavouros\nID_LIKE=arch\n"), Some(Family::Arch));
+        assert_eq!(family("ID='manjaro'\nID_LIKE='arch'\n"), Some(Family::Arch));
+        // Uma outra família, um comentário ou um ID_LIKE só parecido não contam
+        assert_eq!(family("ID=fedora\n"), None);
+        assert_eq!(family("# ID=arch\nID=fedora\n"), None);
+        assert_eq!(family("ID=archlike\nID_LIKE=debianish\n"), None);
+        assert_eq!(family(""), None);
     }
 
     #[test]
