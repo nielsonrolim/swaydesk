@@ -7,7 +7,7 @@ use std::rc::{Rc, Weak};
 use std::time::Duration;
 
 use crate::choice::{Choice, Custom};
-use crate::{choice, cursor, preview};
+use crate::{choice, cursor, effects, preview};
 use gtk4::prelude::*;
 use gtk4::{gdk, gio, glib, pango};
 use swaydesk_common::config::{self, load_config, papirus_color, Config, PAPIRUS_COLORS};
@@ -220,6 +220,8 @@ pub(crate) struct Page {
     icons_dropdown: gtk4::DropDown,
     /// O tamanho do cursor, numa seção própria que aplica ao escolher (cursor.rs)
     cursor_size: Rc<cursor::CursorSize>,
+    /// Os efeitos do SwayFX, só no SwayFX, aplicados ao mudar (effects.rs)
+    effects: Rc<effects::EffectsSection>,
     /// Os temas de ícones da faixa, um por nome (a busca de cada ícone usa a herança do tema)
     icon_lookups: RefCell<HashMap<String, gtk4::IconTheme>>,
     /// O Papirus da faixa: o que contrasta com o fundo da janela, não o do estilo escolhido
@@ -387,6 +389,8 @@ impl Page {
         let cursor_size = cursor::CursorSize::new();
         content.append(&cursor_size.row);
         content.append(&cursor_size.note);
+        let effects = effects::EffectsSection::new();
+        content.append(&effects.root);
 
         let color_title = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
         color_title.set_margin_top(8);
@@ -534,6 +538,7 @@ impl Page {
             icons_model,
             icons_dropdown,
             cursor_size,
+            effects,
             icon_lookups: RefCell::new(HashMap::new()),
             strip_papirus: RefCell::new(String::new()),
             folders_note,
@@ -776,6 +781,7 @@ impl Page {
         *self.current_icons.borrow_mut() = it::entry_of(&dc::installed_icon_theme(&config)).to_string();
         self.accent_provider.load_from_string(&format!("{}{STYLE_TOGGLE_CSS}", config::accent_css(&config::palette(&config))));
         self.cursor_size.load(&config);
+        self.effects.load(&config.effects);
         // Sem a chave no config, o interruptor desligado e intocado não grava o false no Aplicar
         self.choice.borrow_mut().auto_inferred = !config.accent_auto_set;
         *self.config.borrow_mut() = config;

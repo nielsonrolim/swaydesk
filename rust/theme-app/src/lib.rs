@@ -10,6 +10,7 @@
 //! ([`panel`], ligado estaticamente: a Central não depende do pacote do app).
 mod choice;
 mod cursor;
+mod effects;
 mod page;
 mod preview;
 

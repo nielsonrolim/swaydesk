@@ -472,6 +472,11 @@ msgstr "Los iconos Papirus no están instalados: instala el paquete papirus-icon
 
 #: home/.local/bin/sway-theme
 #, python-format
+msgid "Effect: %s"
+msgstr "Efecto: %s"
+
+#: home/.local/bin/sway-theme
+#, python-format
 msgid "Cursor size: %s"
 msgstr "Tamaño del cursor: %s"
 
@@ -744,6 +749,14 @@ msgstr "Las aplicaciones más antiguas (GTK 3, Qt 5, Electron, X11) toman el tam
 #: home/.local/bin/sway_themes.py
 msgid "No Sway session: the rest changes when you log in to it"
 msgstr "No hay sesión de Sway: el resto cambia cuando inicies sesión en ella"
+
+#: home/.local/bin/sway_themes.py
+msgid "Without SwayFX the effects are only saved: they apply when the session runs on SwayFX"
+msgstr "Sin SwayFX, los efectos solo se guardan: se aplican cuando la sesión usa SwayFX"
+
+#: home/.local/bin/sway_themes.py
+msgid "No Sway session: the effects apply when you log in to it"
+msgstr "No hay sesión de Sway: los efectos se aplican cuando inicies sesión en ella"
 
 #: home/.local/bin/sway_themes.py
 #, python-format
@@ -3784,6 +3797,38 @@ msgstr "Festivos"
 #: rust/settings/src/region.rs
 msgid "A country code such as BR, or none. Empty: the language's country"
 msgstr "Un código de país, como BR, o none. Vacío: el país del idioma"
+
+#: rust/theme-app/src/effects.rs
+msgid "SwayFX effects"
+msgstr "Efectos de SwayFX"
+
+#: rust/theme-app/src/effects.rs
+msgid "Rounded corners (px)"
+msgstr "Esquinas redondeadas (px)"
+
+#: rust/theme-app/src/effects.rs
+msgid "Blur behind windows"
+msgstr "Desenfoque detrás de las ventanas"
+
+#: rust/theme-app/src/effects.rs
+msgid "Window shadows"
+msgstr "Sombras de las ventanas"
+
+#: rust/theme-app/src/effects.rs
+msgid "Blur behind the bar, dock and popups"
+msgstr "Desenfoque detrás de la barra, el dock y los popups"
+
+#: rust/theme-app/src/effects.rs
+msgid "Dim inactive windows"
+msgstr "Oscurecer las ventanas sin foco"
+
+#: rust/theme-app/src/effects.rs
+msgid "Animations (ms, 0 turns them off)"
+msgstr "Animaciones (ms, 0 las desactiva)"
+
+#: rust/theme-app/src/effects.rs
+msgid "Animations need SwayFX 0.6 or newer"
+msgstr "Las animaciones necesitan SwayFX 0.6 o más reciente"
 
 #: rust/theme/src/local_conf.rs
 msgid ""

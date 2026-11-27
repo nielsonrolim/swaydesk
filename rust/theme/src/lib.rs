@@ -2,6 +2,7 @@
 //! `sway_theme_families.py`, do `sway_papirus.py` e da parte do `desktop_config.py` que grava os arquivos.
 //! O `sway-theme`, o `sway-desktop-config` e o app Tema (o sway-theme-app) usam esta biblioteca.
 pub mod desktop;
+pub mod effects;
 pub mod families;
 pub mod icon_themes;
 pub mod local_conf;

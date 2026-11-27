@@ -37,7 +37,7 @@ pub const BAR_MODULES: &[(&str, &str)] = &[
     ("battery", "custom/battery"), ("power", "custom/power"), ("updates", "custom/updates"),
 ];
 // As chaves do [effects] (o Effects do desktop_config.py)
-const EFFECT_KEYS: &[&str] = &["corner_radius", "blur", "shadows", "layer_blur", "dim_inactive", "animation_duration_ms"];
+pub const EFFECT_KEYS: &[&str] = &["corner_radius", "blur", "shadows", "layer_blur", "dim_inactive", "animation_duration_ms"];
 /// O maior corner_radius aceito: mais que isso, os cantos comem o conteúdo das janelas
 pub const MAX_CORNER_RADIUS: i64 = 30;
 /// O limite do animation_duration_ms do SwayFX (5 segundos)
@@ -223,7 +223,7 @@ impl Default for Effects {
 }
 
 /// O [effects] da config, com os avisos de cada chave ruim (as outras valem).
-fn parse_effects(table: &toml::Table, warnings: &mut Vec<String>) -> Effects {
+pub fn parse_effects(table: &toml::Table, warnings: &mut Vec<String>) -> Effects {
     let mut effects = Effects::default();
     for (key, value) in table {
         if !EFFECT_KEYS.contains(&key.as_str()) {

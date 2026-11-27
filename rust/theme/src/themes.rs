@@ -7,7 +7,8 @@ use std::sync::LazyLock;
 use std::time::Duration;
 
 use regex::Regex;
-use swaydesk_common::config::{self, contrast_with_white, is_accent, load_config, papirus_color, Config, Palette, DEFAULT_ACCENT};
+use swaydesk_common::config::{self, contrast_with_white, is_accent, load_config, papirus_color, Config, Effects, Palette, DEFAULT_ACCENT};
+use swaydesk_common::config_edit::{self, Edit};
 use swaydesk_common::i18n::tr;
 use swaydesk_common::resident::own_uid;
 
@@ -976,6 +977,92 @@ fn accent_auto_value(auto: Option<bool>, color: &str, current: &Config, has_key:
 /// Se o config.toml tem a chave (solta, antes das tabelas). Ilegível: não.
 fn has_key(file: &Path, key: &str) -> bool {
     std::fs::read_to_string(file).ok().and_then(|text| text.parse::<toml::Table>().ok()).is_some_and(|t| t.contains_key(key))
+}
+
+/// O texto de uma chave do Effects como no config.toml: o dim_inactive (em centésimos) vira float. None: uma chave
+/// que não existe. O effect_text do sway_themes.py.
+pub fn effect_text(effects: &Effects, key: &str) -> Option<String> {
+    Some(match key {
+        "corner_radius" => effects.corner_radius.to_string(),
+        "blur" => effects.blur.to_string(),
+        "shadows" => effects.shadows.to_string(),
+        "layer_blur" => effects.layer_blur.to_string(),
+        // O Debug do f64 guarda o ".0" (1.0, 0.0), como o repr do Python
+        "dim_inactive" => format!("{:?}", f64::from(effects.dim_inactive) / 100.0),
+        "animation_duration_ms" => effects.animation_duration_ms.to_string(),
+        _ => return None,
+    })
+}
+
+/// As linhas do sway-theme effects: cada chave do [effects] com o valor em uso.
+pub fn effects_lines(effects: &Effects) -> Vec<String> {
+    config::EFFECT_KEYS.iter().filter_map(|key| effect_text(effects, key).map(|text| format!("{key} = {text}"))).collect()
+}
+
+/// O valor de uma chave do [effects] escrito como no config.toml ("true", "12", "0.35"): o texto a mostrar e o
+/// valor a gravar. Erro com o aviso do config para uma chave que não existe ou um valor fora da regra dela. O
+/// parse_effect do sway_themes.py.
+pub fn parse_effect(key: &str, text: &str) -> Result<(String, config_edit::Value), Error> {
+    // Um texto com mais de um valor ("true\nshadows = false") não é um valor
+    let value = format!("v = {text}")
+        .parse::<toml::Table>()
+        .ok()
+        .filter(|table| table.len() == 1)
+        .and_then(|mut table| table.remove("v"))
+        .unwrap_or_else(|| toml::Value::String(text.to_string()));
+    let mut warnings = Vec::new();
+    let effects = config::parse_effects(&toml::Table::from_iter([(key.to_string(), value)]), &mut warnings);
+    if let Some(warning) = warnings.first() {
+        return Err(Error::Value(warning.trim_start_matches("config: ").to_string()));
+    }
+    let written = match key {
+        "corner_radius" => config_edit::Value::Int(effects.corner_radius.into()),
+        "blur" => config_edit::Value::Bool(effects.blur),
+        "shadows" => config_edit::Value::Bool(effects.shadows),
+        "layer_blur" => config_edit::Value::Bool(effects.layer_blur),
+        "dim_inactive" => config_edit::Value::Hundredths(effects.dim_inactive),
+        _ => config_edit::Value::Int(effects.animation_duration_ms.into()),
+    };
+    Ok((effect_text(&effects, key).unwrap_or_default(), written))
+}
+
+/// Grava uma chave do [effects] e a aplica (o apply_effects). Devolve o valor gravado e os avisos. O mesmo do
+/// apply_effect do sway_themes.py.
+pub fn apply_effect(key: &str, text: &str) -> Result<(String, Applied), Error> {
+    let (shown, _) = parse_effect(key, text)?;
+    Ok((shown, apply_effects(&[(key.to_string(), text.to_string())])?))
+}
+
+/// Grava as chaves do [effects] de uma vez (pelo config_edit: os comentários ficam) e as aplica: o 10-effects.conf
+/// gerado e, no SwayFX, um reload do Sway. Um valor ruim é erro antes de mudar qualquer coisa. A página da
+/// Aparência junta as mudanças de uma rajada aqui (effects::EffectQueue).
+pub fn apply_effects(changes: &[(String, String)]) -> Result<Applied, Error> {
+    let mut edits = Vec::new();
+    let mut dim = None;
+    for (key, text) in changes {
+        let (shown, value) = parse_effect(key, text)?;
+        if key == "dim_inactive" {
+            dim = Some(shown);
+        }
+        edits.push(Edit::Set(format!("effects.{key}"), value));
+    }
+    let file = config::path();
+    let problems = load_config(&file).1;
+    if problems.iter().any(|p| p.contains("could not read")) {
+        return Err(Error::Value(fill_one(&tr("fix the file first: %s"), &problems[0])));
+    }
+    config_edit::write(&file, &edits).map_err(|err| Error::Value(fill_one(&tr("fix the file first: %s"), &err)))?;
+    dc::generate(&load_config(&file).0)?;
+    let mut notes = Vec::new();
+    if !dc::is_swayfx() {
+        notes.push(tr("Without SwayFX the effects are only saved: they apply when the session runs on SwayFX"));
+    } else if !dc::reload_sway() {
+        notes.push(tr("No Sway session: the effects apply when you log in to it"));
+    } else if let Some(dim) = dim {
+        // O default_dim_inactive só vale para as janelas novas: as abertas recebem o valor pelo critério [all]
+        run(&["swaymsg", "[all]", "dim_inactive", &dim], None);
+    }
+    Ok(Applied { notes, failures: Vec::new() })
 }
 
 /// Grava o cursor_size e o aplica: os arquivos gerados (o seat do Sway e os settings.ini), o gsettings da base do

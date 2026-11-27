@@ -490,8 +490,25 @@ pub fn is_swayfx() -> bool {
 
 /// Se o programa (um sway) responde "swayfx version ..." ao --version. Sem ele: não.
 fn program_is_swayfx(program: impl AsRef<std::ffi::OsStr>) -> bool {
-    run_timeout(Command::new(program).arg("--version"), Duration::from_secs(5))
-        .is_some_and(|(_, out)| out.lines().next().is_some_and(|line| line.starts_with("swayfx")))
+    program_swayfx(program).is_some()
+}
+
+/// O SwayFX instalado: None no Sway puro (ou sem o sway); Some com a versão (maior, menor) do SwayFX, ou Some(None)
+/// quando ela não se lê (um build do git). Roda o `sway --version`, até 5 s: fora da thread da interface. O
+/// SWAYDESK_SWAYFX (1 ou 0) decide no lugar dele, para os testes, com a versão do SWAYDESK_SWAYFX_VERSION ("0.5").
+pub fn swayfx() -> Option<Option<(u32, u32)>> {
+    if let Ok(value) = std::env::var("SWAYDESK_SWAYFX") {
+        let version = std::env::var("SWAYDESK_SWAYFX_VERSION").ok();
+        return (value == "1").then(|| version.and_then(|v| crate::effects::parse_swayfx_version(&format!("swayfx version {v}"))));
+    }
+    program_swayfx("sway")
+}
+
+/// O swayfx do programa dado.
+fn program_swayfx(program: impl AsRef<std::ffi::OsStr>) -> Option<Option<(u32, u32)>> {
+    let (_, out) = run_timeout(Command::new(program).arg("--version"), Duration::from_secs(5))?;
+    let line = out.lines().next().filter(|line| line.starts_with("swayfx"))?;
+    Some(crate::effects::parse_swayfx_version(line))
 }
 
 /// O config.d/00-keys.conf: os atalhos de todos os perfis (base.conf) e os do perfil do shortcuts, com o caminho
@@ -1238,13 +1255,20 @@ mod tests {
         // Um sway de mentira, que responde como o SwayFX ou como o Sway
         let dir = std::env::temp_dir().join(format!("swaydesk-swayfx-detection-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        for (name, line, want) in [("fx", "swayfx version 0.6.1", true), ("plain", "sway version 1.12", false)] {
+        for (name, line, want, version) in [
+            ("fx", "swayfx version 0.6.1", true, Some(Some((0, 6)))),
+            ("fx05", "swayfx version 0.5.3", true, Some(Some((0, 5)))),
+            ("fxgit", "swayfx version r42.deadbeef", true, Some(None)),
+            ("plain", "sway version 1.12", false, None),
+        ] {
             let sway = dir.join(name);
             std::fs::write(&sway, format!("#!/bin/sh\necho '{line}'\n")).unwrap();
             std::fs::set_permissions(&sway, std::os::unix::fs::PermissionsExt::from_mode(0o755)).unwrap();
             assert_eq!(program_is_swayfx(&sway), want, "{line}");
+            assert_eq!(program_swayfx(&sway), version, "{line}");
         }
         assert!(!program_is_swayfx(dir.join("missing")));
+        assert_eq!(program_swayfx(dir.join("missing")), None);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

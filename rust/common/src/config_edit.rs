@@ -13,6 +13,8 @@ pub enum Value {
     Str(String),
     Bool(bool),
     Int(i64),
+    /// Um número de 0.0 a 1.0 guardado em centésimos (o effects.dim_inactive do Config), gravado como float
+    Hundredths(u32),
 }
 
 /// Uma mudança: gravar o valor no caminho ("enabled.dock") ou tirar a chave, para valer o padrão (ou a camada do
@@ -63,6 +65,7 @@ fn set(root: &mut Table, path: &str, value: &Value) -> Result<(), String> {
         Value::Str(text) => toml_edit::Value::from(text.as_str()),
         Value::Bool(flag) => toml_edit::Value::from(*flag),
         Value::Int(number) => toml_edit::Value::from(*number),
+        Value::Hundredths(n) => toml_edit::Value::from(f64::from(*n) / 100.0),
     };
     match table.get_mut(last) {
         // A linha que já existe: o valor troca, os comentários e os espaços dela ficam
@@ -155,6 +158,18 @@ mod tests {
         let table: toml::Table = out.parse().unwrap();
         assert_eq!(table["lock_after"].as_integer(), Some(5), "{out}");
         assert!(out.contains("lock_after = 5\n"), "{out}");
+    }
+
+    #[test]
+    fn hundredths_are_written_as_a_toml_float() {
+        // O effects.dim_inactive (0.0 a 1.0), guardado em centésimos como no Config
+        let out = apply(SAMPLE, &[set("effects.dim_inactive", Value::Hundredths(35)), set("effects.x", Value::Hundredths(0))]).unwrap();
+        let table: toml::Table = out.parse().unwrap();
+        assert_eq!(table["effects"]["dim_inactive"].as_float(), Some(0.35), "{out}");
+        assert_eq!(table["effects"]["x"].as_float(), Some(0.0), "{out}");
+        assert!(out.contains("dim_inactive = 0.35\n") && out.contains("x = 0.0\n"), "{out}");
+        let (config, warnings) = crate::config::parse_config(&apply(SAMPLE, &[set("effects.dim_inactive", Value::Hundredths(100))]).unwrap());
+        assert_eq!((config.effects.dim_inactive, warnings.len()), (100, 0), "{warnings:?}");
     }
 
     #[test]

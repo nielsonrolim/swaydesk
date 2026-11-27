@@ -7,11 +7,13 @@
 //!      sway-theme pick <família> light|dark <cor> [--icons <ícones>] [--auto | --no-auto]
 //!      sway-theme accent-auto [--print]
 //!      sway-theme cursor [<tamanho>]
+//!      sway-theme effects [<chave> <valor>]
 //! --auto: a cor veio do papel de parede (accent_auto = true); --no-auto desliga o modo. Sem nenhum dos dois, uma
 //! cor diferente da atual desliga o modo e a mesma cor o deixa como está.
 //! icons: sem nome, os temas de ícones que dá para escolher (o * é o em uso); com nome, troca só os ícones.
 //! --icons: os ícones pedidos, no lugar dos que a troca de tema manteria.
 //! cursor: sem tamanho, os do tema do cursor (o * é o em uso, ou o mais perto dele); com ele, troca o tamanho.
+//! effects: sem chave, o [effects] em uso; com chave e valor (como no config.toml), troca um efeito do SwayFX.
 //! accent-auto: com accent_auto = true (o padrão), aplica a cor do papel de parede; --print só mostra o nome dela.
 //! --check: só confere que o binário carrega.
 use std::process::ExitCode;
@@ -39,7 +41,7 @@ macro_rules! out {
 
 /// O nome do processo. Nas mensagens vai o command_name, que nos pacotes é o swaydesk-theme
 const PROGRAM: &str = "sway-theme";
-const COMMANDS: &str = "{list,current,init,families,colors,icons,cursor,set,pick,accent-auto}";
+const COMMANDS: &str = "{list,current,init,families,colors,icons,cursor,effects,set,pick,accent-auto}";
 
 fn usage_line() -> String {
     format!("usage: {} [-h] {COMMANDS} ...", command_name())
@@ -155,6 +157,33 @@ fn show_cursor_sizes() -> ExitCode {
         out!("{} {size}", if size == current { "*" } else { " " });
     }
     ExitCode::SUCCESS
+}
+
+fn show_effects() -> ExitCode {
+    for line in st::effects_lines(&load_config(&path()).0.effects) {
+        out!("{line}");
+    }
+    ExitCode::SUCCESS
+}
+
+fn set_effect(key: &str, value: &str) -> ExitCode {
+    match st::locked(|| st::apply_effect(key, value)).and_then(|r| r) {
+        Ok((written, applied)) => {
+            println!("{}", fill_one(&tr("Effect: %s"), &format!("{key} = {written}")));
+            for note in &applied.notes {
+                println!("{note}");
+            }
+            if !applied.failures.is_empty() {
+                eprintln!("{}", fill_one(&tr("Could not update: %s"), &applied.failures.join(", ")));
+                return ExitCode::from(1);
+            }
+            ExitCode::SUCCESS
+        }
+        Err(err) => {
+            eprintln!("{err}");
+            ExitCode::from(2)
+        }
+    }
 }
 
 fn set_cursor_size(value: &str) -> ExitCode {
@@ -383,11 +412,17 @@ fn main() -> ExitCode {
             [size] => set_cursor_size(size),
             _ => usage_error(&format!("unrecognized arguments: {}", rest[1..].join(" "))),
         },
+        "effects" => match rest {
+            [] => show_effects(),
+            [_] => usage_error("the following arguments are required: value"),
+            [key, value] => set_effect(key, value),
+            _ => usage_error(&format!("unrecognized arguments: {}", rest[2..].join(" "))),
+        },
         "accent-auto" => match rest {
             [] => accent_auto(),
             [print] if print == "--print" => print_accent(),
             _ => usage_error(&format!("unrecognized arguments: {}", rest.join(" "))),
         },
-        other => usage_error(&format!("argument command: invalid choice: '{other}' (choose from 'list', 'current', 'init', 'families', 'colors', 'icons', 'cursor', 'set', 'pick', 'accent-auto')")),
+        other => usage_error(&format!("argument command: invalid choice: '{other}' (choose from 'list', 'current', 'init', 'families', 'colors', 'icons', 'cursor', 'effects', 'set', 'pick', 'accent-auto')")),
     }
 }

@@ -16,7 +16,10 @@
 # (um vermelho liso, só na versão em Rust): o interruptor abre ligado (o padrão, sem a chave), e o Aplicar grava o vermelho com
 # accent_auto = true; uma amostra (o azul) desliga o interruptor, e o Aplicar grava a cor com accent_auto = false;
 # ligar de novo volta ao vermelho; a lista do tamanho do cursor aplica ao escolher (só na versão em Rust). Sem o arquivo
-# do papel e sem a chave, o interruptor abre desligado. Sai com 1 se algum caso falhar.
+# do papel e sem a chave, o interruptor abre desligado. Os efeitos do SwayFX (só na versão em Rust): até aqui o app
+# roda com SWAYDESK_SWAYFX=0 (o Sway puro), e os cliques abaixo da linha do cursor só acertam sem a seção; com o SwayFX
+# 0.6 de mentira (e um swaymsg que conta os reloads), a seção aparece, e uma rajada de passos no campo dos cantos dá uma
+# gravação e um reload só; no SwayFX 0.5, a linha das animações some (as capturas). Sai com 1 se algum caso falhar.
 set -u
 . /repo/rust/scripts/lib-wait.sh
 impl=${1:-rust}
@@ -68,7 +71,13 @@ windows() { swaymsg -t get_tree | grep -c '"app_id": "org.swaydesktop.Theme"'; }
 # A lista de ícones só com os dois falsos: o tests/run-all-tests.sh monta o /usr/share/icons do host, e com o
 # Papirus lá a lista ganha a linha da família no topo, e o clique na primeira linha cai nela
 mkdir -p /tmp/no-system-icons
-app() { env G_DEBUG=fatal-criticals SWAY_SYSTEM_ICONS=/tmp/no-system-icons SWAY_DESKTOP_SHARE=/repo/home/.local/share/sway-desktop SWAY_THEME_APP_IMPL=$impl "$HOME/.local/bin/sway-theme-app" >> /tmp/app.log 2>&1 & }
+# O swaymsg que o app chama: o reload só fica anotado (no Sway puro do contêiner, as diretivas do SwayFX dariam erro de
+# config); o resto vai ao de verdade
+mkdir -p /tmp/fx-bin
+printf '#!/bin/sh\nif [ "$1" = reload ]; then echo reload >> /tmp/reloads; exit 0; fi\nexec /usr/bin/swaymsg "$@"\n' > /tmp/fx-bin/swaymsg
+chmod +x /tmp/fx-bin/swaymsg
+swayfx=0 swayfx_version=
+app() { env G_DEBUG=fatal-criticals SWAYDESK_SWAYFX=$swayfx SWAYDESK_SWAYFX_VERSION=$swayfx_version PATH=/tmp/fx-bin:$PATH SWAY_SYSTEM_ICONS=/tmp/no-system-icons SWAY_DESKTOP_SHARE=/repo/home/.local/share/sway-desktop SWAY_THEME_APP_IMPL=$impl "$HOME/.local/bin/sway-theme-app" >> /tmp/app.log 2>&1 & }
 
 app
 for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
@@ -160,7 +169,7 @@ printf 'gtk_theme = "Mint-Y-Dark-Teal"\naccent = "#199ca8"\nfolder_color = ""\na
 app
 for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
 sleep 1.5
-pid=$(pgrep -n -f "swaydesk-theme-app")
+pid=$(pgrep -n -f "swaydesk-theme-app|sway-theme-app")
 shot 8-padrao
 pointer move $((wx + 100)) $((wy + 235)) sleep 100 click sleep 500  # o Arc-Dark
 apply_and_wait 'gtk_theme = "Arc-Dark"'
@@ -206,7 +215,7 @@ printf 'gtk_theme = "Mint-Y-Dark-Teal"\n' > "$HOME/.config/swaydesk/config.toml"
 app
 for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
 sleep 1.5
-pid=$(pgrep -n -f "swaydesk-theme-app")
+pid=$(pgrep -n -f "swaydesk-theme-app|sway-theme-app")
 shot 14-sem-papel
 pointer move $((wx + 100)) $((wy + 235)) sleep 100 click sleep 500  # o Arc-Dark
 apply_and_wait 'gtk_theme = "Arc-Dark"'
@@ -216,6 +225,36 @@ if config | grep -qx 'gtk_theme = "Arc-Dark"' && ! config | grep -q '^accent_aut
 else
   fail "sem papel, o modo ligou: $(config)"
 fi
+fi
+# Os efeitos do SwayFX, no 0.6 de mentira: a seção aparece abaixo do cursor
+reopen() {  # fecha o app e o abre de novo
+  kill "$pid" 2>/dev/null
+  for _ in $(seq $ticks); do [ "$(windows)" = 0 ] && break; sleep 0.1; done
+  app
+  for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
+  sleep 1.5
+  pid=$(pgrep -n -f "swaydesk-theme-app|sway-theme-app")
+}
+if [ "$impl" = rust ]; then
+printf 'gtk_theme = "Arc-Dark"\n\n# os efeitos\n[effects]\ncorner_radius = 10  # os cantos\n' > "$HOME/.config/swaydesk/config.toml"
+swayfx=1 swayfx_version=0.6
+reopen
+shot 16-efeitos
+rm -f /tmp/reloads
+# Cinco passos da roda sobre o campo dos cantos, de uma vez: a espera de 300 ms junta tudo numa aplicação
+pointer move $((wx + 1165)) $((wy + 476)) sleep 100 scroll -5 sleep 100
+for _ in $(seq $ticks); do config | grep -q '^corner_radius = 15' && break; sleep 0.1; done
+sleep 1
+shot 17-efeitos-aplicado
+if config | grep -qx 'corner_radius = 15  # os cantos' && config | grep -qx '# os efeitos' \
+  && grep -qx 'corner_radius 15' "$HOME/.config/sway/config.d/10-effects.conf" && [ "$(cat /tmp/reloads 2>/dev/null | wc -l)" = 1 ]; then
+  ok "no SwayFX, a rajada nos cantos grava uma vez, com o comentário, e recarrega o Sway uma vez só"
+else
+  fail "os efeitos: $(config) / $(cat "$HOME/.config/sway/config.d/10-effects.conf" 2>&1) / reloads: $(cat /tmp/reloads 2>/dev/null | wc -l)"
+fi
+swayfx_version=0.5
+reopen
+shot 18-efeitos-swayfx-05
 fi
 grep -q "CRITICAL\|Traceback\|panicked" /tmp/app.log && { fail "avisos no log"; cat /tmp/app.log; }
 kill "$pid" 2>/dev/null
