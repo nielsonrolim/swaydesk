@@ -458,3 +458,115 @@ fn app_keeps_its_fields() {
     assert_eq!(app.id(), "configurações");
     assert_eq!(search(&[app], "acao").len(), 1);
 }
+
+// Entradas só da busca (NoDisplay=true com X-Swaydesk-Searchable=true): os painéis da Central
+
+fn entry<'a>() -> HiddenEntry<'a> {
+    HiddenEntry {
+        no_display: true,
+        hidden: false,
+        shown_here: true,
+        searchable: true,
+        try_exec: Some("swaydesk-settings"),
+        exec: Some("swaydesk-settings"),
+    }
+}
+
+#[test]
+fn a_searchable_nodisplay_entry_with_its_program_is_search_only() {
+    assert_eq!(SEARCHABLE_KEY, "X-Swaydesk-Searchable");
+    assert!(search_only(&entry(), |p| p == "swaydesk-settings"));
+}
+
+#[test]
+fn without_the_key_a_nodisplay_entry_stays_out() {
+    // Os NoDisplay dos outros pacotes (tratadores de MIME, autostart) não entram na busca
+    assert!(!search_only(&HiddenEntry { searchable: false, ..entry() }, |_| true));
+}
+
+#[test]
+fn hidden_another_desktop_or_a_shown_entry_is_never_search_only() {
+    // Hidden=true é "apagado"; o OnlyShowIn/NotShowIn de outro desktop vale também; um app que já aparece
+    // na grade (sem NoDisplay) não é "só da busca"
+    assert!(!search_only(&HiddenEntry { hidden: true, ..entry() }, |_| true));
+    assert!(!search_only(&HiddenEntry { shown_here: false, ..entry() }, |_| true));
+    assert!(!search_only(&HiddenEntry { no_display: false, ..entry() }, |_| true));
+}
+
+#[test]
+fn the_tryexec_and_the_exec_program_must_both_exist() {
+    let only = |name: &'static str| move |p: &str| p == name;
+    assert!(!search_only(&entry(), |_| false));
+    assert!(!search_only(&HiddenEntry { try_exec: Some("missing"), ..entry() }, only("swaydesk-settings")));
+    assert!(!search_only(&HiddenEntry { exec: Some("missing"), ..entry() }, only("swaydesk-settings")));
+    // Sem TryExec, vale só o Exec; sem Exec nenhum, não há o que abrir
+    assert!(search_only(&HiddenEntry { try_exec: None, ..entry() }, only("swaydesk-settings")));
+    assert!(search_only(&HiddenEntry { try_exec: Some(""), ..entry() }, only("swaydesk-settings")));
+    assert!(!search_only(&HiddenEntry { exec: None, try_exec: None, ..entry() }, |_| true));
+    assert!(!search_only(&HiddenEntry { exec: Some(""), try_exec: None, ..entry() }, |_| true));
+}
+
+#[test]
+fn program_exists_on_the_path_or_as_an_absolute_executable() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = TempDir::new("program-exists");
+    let exe = dir.path().join("tool");
+    fs::write(&exe, "").unwrap();
+    fs::set_permissions(&exe, fs::Permissions::from_mode(0o755)).unwrap();
+    let plain = dir.path().join("plain");
+    fs::write(&plain, "").unwrap();
+    fs::set_permissions(&plain, fs::Permissions::from_mode(0o644)).unwrap();
+    let path = std::ffi::OsString::from(format!("/nonexistent:{}", dir.path().display()));
+    assert!(program_exists("tool", &path));
+    assert!(!program_exists("plain", &path), "not executable");
+    assert!(!program_exists("tool", "".as_ref()));
+    assert!(program_exists(exe.to_str().unwrap(), "".as_ref()), "an absolute path needs no PATH");
+    assert!(!program_exists(plain.to_str().unwrap(), &path));
+    assert!(!program_exists("", &path));
+    // Uma pasta relativa no PATH dependeria da pasta atual; um nome com / relativo também
+    assert!(!program_exists("tool", "relative/dir".as_ref()));
+    assert!(!program_exists("bin/tool", &path));
+}
+
+fn browse_apps() -> Vec<App> {
+    let mut panel = app("Keyboard");
+    panel.categories = strings(&["Settings"]);
+    panel.keywords = strings(&["layout"]);
+    panel.search_only = true;
+    let mut term = app("Terminal");
+    term.categories = strings(&["System"]);
+    let mut apps: Vec<App> = [panel, term, app("Zed")].into_iter().map(App::new).collect();
+    sort_apps(&mut apps);
+    apps
+}
+
+#[test]
+fn search_only_apps_are_found_by_a_query() {
+    let apps = browse_apps();
+    let found: Vec<&str> = search(&apps, "layout").iter().map(|a| a.id()).collect();
+    assert_eq!(found, ["keyboard"]);
+    let found: Vec<&str> = search(&apps, "keyb").iter().map(|a| a.id()).collect();
+    assert_eq!(found, ["keyboard"]);
+}
+
+#[test]
+fn search_only_apps_never_show_in_the_grid_a_group_or_the_categories() {
+    let apps = browse_apps();
+    let ids = |list: Vec<usize>| list.into_iter().map(|i| apps[i].id().to_string()).collect::<Vec<_>>();
+    assert_eq!(ids(browse(&apps, None)), ["terminal", "zed"]);
+    let settings = Group { categories: strings(&["Settings", "System"]), ..Group::named("Settings") };
+    assert_eq!(ids(browse(&apps, Some(&settings))), ["terminal"]);
+    // Nem posto à mão num grupo
+    let by_hand = Group { apps: strings(&["keyboard", "zed"]), ..Group::named("Mine") };
+    assert_eq!(ids(browse(&apps, Some(&by_hand))), ["zed"]);
+    let only: Vec<&str> = groups::apps_in_group(&apps, &settings).iter().map(|a| a.id()).collect();
+    assert_eq!(only, ["terminal"]);
+    assert_eq!(used_categories(&apps), vec!["System", OTHER]);
+}
+
+#[test]
+fn search_only_apps_cannot_be_pinned() {
+    let apps = browse_apps();
+    let pinnable: Vec<&str> = apps.iter().filter(|a| a.pinnable()).map(|a| a.id()).collect();
+    assert_eq!(pinnable, ["terminal", "zed"]);
+}

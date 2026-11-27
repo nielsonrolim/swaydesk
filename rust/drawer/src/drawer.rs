@@ -194,6 +194,23 @@ fn run_program<S: AsRef<OsStr>>(argv: &[S], app_id: Option<&str>) -> bool {
     }
 }
 
+/// Se uma entrada que o should_show() esconde entra só na busca (os painéis da Central): a decisão é do
+/// `logic::search_only`, com o PATH do processo.
+fn search_only(info: &gio::DesktopAppInfo) -> bool {
+    let try_exec = info.string("TryExec").map(|t| t.to_string());
+    let exec = info.executable().to_string_lossy().into_owned();
+    let entry = logic::HiddenEntry {
+        no_display: info.is_nodisplay(),
+        hidden: info.is_hidden(),
+        shown_here: info.shows_in(None),
+        searchable: info.boolean(logic::SEARCHABLE_KEY),
+        try_exec: try_exec.as_deref(),
+        exec: Some(&exec),
+    };
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    logic::search_only(&entry, |program| logic::program_exists(program, &path))
+}
+
 fn app_fields(info: &gio::DesktopAppInfo) -> Option<AppFields> {
     let id = info.id()?.to_string();
     let id = id.strip_suffix(".desktop").unwrap_or(&id).to_string();
@@ -209,6 +226,7 @@ fn app_fields(info: &gio::DesktopAppInfo) -> Option<AppFields> {
         executable: info.executable().to_string_lossy().into_owned(),
         categories: logic::parse_categories(info.categories().as_deref().unwrap_or("")),
         terminal: info.boolean("Terminal"),
+        search_only: false,
         id,
     })
 }
@@ -610,10 +628,12 @@ impl Drawer {
         let mut apps = Vec::new();
         for info in gio::AppInfo::all() {
             let Ok(info) = info.downcast::<gio::DesktopAppInfo>() else { continue };
-            if !info.should_show() {
+            // Os NoDisplay com a X-Swaydesk-Searchable entram só na busca
+            let search_only = !info.should_show() && search_only(&info);
+            if !info.should_show() && !search_only {
                 continue;
             }
-            if let Some(fields) = app_fields(&info) {
+            if let Some(fields) = app_fields(&info).map(|f| AppFields { search_only, ..f }) {
                 infos.insert(fields.id.clone(), info);
                 apps.push(App::new(fields));
             }
@@ -712,7 +732,7 @@ impl Drawer {
         }
         let pinned: Vec<usize> = {
             let s = self.s.borrow();
-            s.pins.iter().filter_map(|pin| s.index.get(pin).copied()).collect()
+            s.pins.iter().filter_map(|pin| s.index.get(pin).copied()).filter(|&i| s.apps[i].pinnable()).collect()
         };
         for index in pinned {
             self.make_item(index, &self.w.pinned);
@@ -1040,10 +1060,9 @@ impl Drawer {
             let mut s = self.s.borrow_mut();
             let ranked: Vec<usize> = if !query.is_empty() {
                 logic::search(&s.apps, &query).iter().filter_map(|app| s.index.get(app.id()).copied()).collect()
-            } else if let Some(group) = s.group.and_then(|g| s.groups.get(g)) {
-                (0..s.apps.len()).filter(|&i| groups::in_group(&s.apps[i], group)).collect()
             } else {
-                (0..s.apps.len()).collect()
+                // Sem busca, a grade e os grupos ficam sem os só da busca
+                logic::browse(&s.apps, s.group.and_then(|g| s.groups.get(g)))
             };
             s.order = ranked.iter().enumerate().map(|(pos, &i)| (s.apps[i].id().to_string(), pos)).collect();
             s.ranked = ranked;
@@ -1443,6 +1462,11 @@ impl Drawer {
     }
 
     fn open_menu(self: &Rc<Self>, app_id: &str, widget: &gtk4::Widget, x: f64, y: f64) {
+        // Um app só da busca não se favorita, não se fixa na dock nem entra num grupo: ele não tem lugar
+        // fora da busca, então não há menu
+        if self.s.borrow().index.get(app_id).is_some_and(|&i| !self.s.borrow().apps[i].pinnable()) {
+            return;
+        }
         let favorite = self.s.borrow().pins.iter().any(|p| p == app_id);
         self.s.borrow_mut().menu_app = Some(app_id.to_string());
         // "Favoritar", e não "Fixar": fixar é na dock (o item de baixo)

@@ -71,9 +71,9 @@ pub fn in_group(app: &App, group: &Group) -> bool {
     group.categories.iter().any(|c| categories.contains(c.as_str()))
 }
 
-/// Os apps do grupo, na ordem em que vieram (a grade já os passa por nome).
+/// Os apps do grupo, na ordem em que vieram (a grade já os passa por nome), sem os só da busca.
 pub fn apps_in_group<'a>(apps: &'a [App], group: &Group) -> Vec<&'a App> {
-    apps.iter().filter(|app| in_group(app, group)).collect()
+    apps.iter().filter(|app| !app.fields.search_only && in_group(app, group)).collect()
 }
 
 /// O `str.strip()` do Python: além do espaço do Unicode, tira os separadores \x1c-\x1f. Assim um nome

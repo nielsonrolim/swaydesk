@@ -28,6 +28,8 @@ pub struct AppFields {
     /// As do .desktop, como vêm de `parse_categories`
     pub categories: Vec<String>,
     pub terminal: bool,
+    /// Uma entrada NoDisplay com X-Swaydesk-Searchable=true (`search_only`): só aparece na busca.
+    pub search_only: bool,
 }
 
 /// Um app, com os campos já normalizados para a busca (feitos uma vez, e não a cada tecla).
@@ -67,6 +69,58 @@ impl App {
     pub fn id(&self) -> &str {
         &self.fields.id
     }
+
+    /// Um app só da busca não vai para os fixados: ele não tem lugar na grade.
+    pub fn pinnable(&self) -> bool {
+        !self.fields.search_only
+    }
+}
+
+/// A chave que põe uma entrada NoDisplay na busca da grade (os painéis da Central, org.swaydesktop.Settings.<painel>).
+/// Sem ela, os NoDisplay dos outros pacotes (tratadores de MIME, autostart) ficam de fora.
+pub const SEARCHABLE_KEY: &str = "X-Swaydesk-Searchable";
+
+/// O que decide se uma entrada que o Gio esconde (should_show() falso) entra só na busca.
+pub struct HiddenEntry<'a> {
+    /// NoDisplay=true
+    pub no_display: bool,
+    /// Hidden=true: a entrada foi "apagada" (o usuário a mascara assim em ~/.local/share/applications)
+    pub hidden: bool,
+    /// O OnlyShowIn/NotShowIn deixam o desktop atual (o show_in(None) do Gio)
+    pub shown_here: bool,
+    /// X-Swaydesk-Searchable=true
+    pub searchable: bool,
+    pub try_exec: Option<&'a str>,
+    /// O programa do Exec (o executable() do Gio)
+    pub exec: Option<&'a str>,
+}
+
+/// Se a entrada escondida aparece só na busca: NoDisplay com a chave, não apagada, deste desktop, e com o
+/// TryExec (se houver) e o programa do Exec existindo.
+pub fn search_only(entry: &HiddenEntry, on_path: impl Fn(&str) -> bool) -> bool {
+    let try_exec_ok = entry.try_exec.filter(|t| !t.is_empty()).is_none_or(&on_path);
+    let exec_ok = entry.exec.filter(|e| !e.is_empty()).is_some_and(&on_path);
+    entry.no_display && !entry.hidden && entry.shown_here && entry.searchable && try_exec_ok && exec_ok
+}
+
+/// Se o programa existe: um caminho absoluto executável, ou um nome sem / numa pasta absoluta do PATH dado.
+pub fn program_exists(program: &str, path: &std::ffi::OsStr) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+    let executable = |file: &Path| fs::metadata(file).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0);
+    if program.starts_with('/') {
+        return executable(Path::new(program));
+    }
+    if program.is_empty() || program.contains('/') {
+        return false;
+    }
+    std::env::split_paths(path).filter(|dir| dir.is_absolute()).any(|dir| executable(&dir.join(program)))
+}
+
+/// Os apps da grade sem busca (todos, ou os de um grupo), sem os só da busca: os índices em `apps`.
+pub fn browse(apps: &[App], group: Option<&Group>) -> Vec<usize> {
+    (0..apps.len())
+        .filter(|&i| !apps[i].fields.search_only && group.is_none_or(|g| groups::in_group(&apps[i], g)))
+        .collect()
 }
 
 /// (chave, categorias do .desktop). Um app aparece em todas as que tiver.
@@ -104,7 +158,7 @@ pub fn categories_of(app: &App) -> HashSet<&'static str> {
 
 /// As categorias com algum app, na ordem de CATEGORIES, com OTHER no fim.
 pub fn used_categories(apps: &[App]) -> Vec<&'static str> {
-    let used: HashSet<&'static str> = apps.iter().flat_map(categories_of).collect();
+    let used: HashSet<&'static str> = apps.iter().filter(|app| !app.fields.search_only).flat_map(categories_of).collect();
     CATEGORIES
         .iter()
         .map(|(key, _members)| *key)
