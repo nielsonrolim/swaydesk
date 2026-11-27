@@ -1492,3 +1492,25 @@ def reload_sway():
         return subprocess.run(["swaymsg", "reload"], capture_output=True, timeout=5, check=False).returncode == 0
     except (OSError, subprocess.SubprocessError):
         return False
+
+
+# Os popups da barra (waybar-NOME-popup nos dotfiles, swaydesk-NOME-popup nos pacotes): o POPUPS do rust/desktop-config
+POPUPS = ("audio", "battery", "bluetooth", "brightness", "caffeine", "clipboard", "media", "network", "notifications",
+          "system", "weather")
+
+
+def installed_parts(home_bin=None, which=shutil.which):
+    """O que está instalado do que muda de cor no apply: cada um pelo lançador do ~/.local/bin ou pelo binário no
+    PATH, e a Waybar pelo programa no PATH. O mesmo do Parts::installed do rust/desktop-config."""
+    home_bin = Path(home_bin) if home_bin is not None else Path.home() / ".local/bin"
+
+    def has(launcher, binary):
+        return (home_bin / launcher).is_file() or which(binary) is not None
+
+    return {"popups": any(has(f"waybar-{n}-popup", f"swaydesk-{n}-popup") for n in POPUPS),
+            "waybar": which("waybar") is not None,
+            "drawer": has("sway-drawer", "swaydesk-drawer"),
+            "osd": has("sway-osd-bar", "swaydesk-osd-bar"),
+            "dock": has("sway-dock", "swaydesk-dock"),
+            "notifications": has("sway-notifd", "swaydesk-notifd")}
+

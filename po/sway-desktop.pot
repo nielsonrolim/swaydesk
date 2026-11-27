@@ -198,12 +198,39 @@ msgid ""
 msgstr ""
 
 #: home/.local/bin/sway-desktop-config
-msgid ""
-"The popups already open with the new color. The rest changes when you log in again or restart it:\n"
-"  Waybar: ~/.local/bin/sway-waybar restart\n"
-"  drawer: pkill -x sway-drawer; ~/.local/bin/sway-drawer start\n"
-"  volume and brightness indicator: pkill -x sway-osd-bar (it opens again by itself)\n"
-"  dock and notifications: when you log in again"
+msgid "when you log in again"
+msgstr ""
+
+#: home/.local/bin/sway-desktop-config home/.local/bin/sway_themes.py
+msgid "drawer"
+msgstr ""
+
+#: home/.local/bin/sway-desktop-config
+msgid "(it opens again by itself)"
+msgstr ""
+
+#: home/.local/bin/sway-desktop-config
+msgid "volume and brightness indicator"
+msgstr ""
+
+#: home/.local/bin/sway-desktop-config
+msgid "dock"
+msgstr ""
+
+#: home/.local/bin/sway-desktop-config
+msgid "notifications"
+msgstr ""
+
+#: home/.local/bin/sway-desktop-config
+msgid "The popups already open with the new color."
+msgstr ""
+
+#: home/.local/bin/sway-desktop-config
+msgid "The popups already open with the new color. The rest changes when you log in again or restart it:"
+msgstr ""
+
+#: home/.local/bin/sway-desktop-config
+msgid "The new color shows when you log in again or restart it:"
 msgstr ""
 
 #: home/.local/bin/sway-desktop-config
@@ -651,10 +678,6 @@ msgstr ""
 #: home/.local/bin/sway_themes.py
 #, python-format
 msgid "unknown icon theme: %(name)s. See them with: %(command)s icons"
-msgstr ""
-
-#: home/.local/bin/sway_themes.py
-msgid "drawer"
 msgstr ""
 
 #: home/.local/bin/sway_themes.py
@@ -2759,28 +2782,6 @@ msgstr ""
 
 #: install.sh
 msgid "volume and brightness indicator: log in to Sway again to open the sway-osd-bar"
-msgstr ""
-
-#: rust/desktop-config/src/main.rs
-msgid "when you log in again"
-msgstr ""
-
-#: rust/desktop-config/src/main.rs
-msgid ""
-"The popups already open with the new color. The rest changes when you log in again or restart it:\n"
-"  Waybar: %s\n"
-"  drawer (it opens again by itself): pkill -u \"$USER\" -x sway-drawer\n"
-"  volume and brightness indicator (it opens again by itself): pkill -u \"$USER\" -x sway-osd-bar\n"
-"  dock and notifications: when you log in again"
-msgstr ""
-
-#: rust/desktop-config/src/main.rs
-msgid ""
-"The popups already open with the new color. The rest changes when you log in again or restart it:\n"
-"  Waybar: when you log in again\n"
-"  drawer: systemctl --user restart swaydesk-drawer.service\n"
-"  volume and brightness indicator: systemctl --user restart swaydesk-osd.service\n"
-"  dock and notifications: when you log in again"
 msgstr ""
 
 #: rust/displays/src/window.rs
