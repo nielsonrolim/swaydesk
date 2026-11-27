@@ -655,6 +655,21 @@ pub fn system_monitor() -> Option<&'static str> {
     }))
 }
 
+/// Um link do rodapé do popup.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum FootLink {
+    /// O monitor do sistema instalado.
+    Monitor(&'static str),
+    /// A Central de Configurações (swaydesk-settings).
+    Settings,
+}
+
+/// Os links do rodapé: o monitor do sistema e a Central, cada um só quando está instalado; a Central por
+/// último, na ponta direita. Nenhum dos dois é dependência do pacote.
+pub fn foot_links(monitor: Option<&'static str>, settings: bool) -> Vec<FootLink> {
+    monitor.map(FootLink::Monitor).into_iter().chain(settings.then_some(FootLink::Settings)).collect()
+}
+
 /// 1.5 GB, 830.0 MB; `decimal` formata o número (a vírgula do português).
 pub fn size(value: u64, decimal: impl Fn(f64, usize) -> String) -> String {
     for (unit, scale) in [("TB", 1u64 << 40), ("GB", 1 << 30), ("MB", 1 << 20)] {

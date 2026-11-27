@@ -40,6 +40,9 @@ pub struct Card {
     pub component: Option<&'static str>,
 }
 
+/// O .desktop da Central de Configurações (o pacote swaydesk-settings), de que a Ajuda não depende.
+pub const SETTINGS_DESKTOP: &str = "org.swaydesktop.Settings.desktop";
+
 pub fn cards() -> Vec<Card> {
     let card = |name: String, text: String, icons, shortcut, action| Card {
         name,
@@ -52,6 +55,17 @@ pub fn cards() -> Vec<Card> {
         component: None,
     };
     vec![
+        // A Central de Configurações: só com ela instalada (o .desktop dela, que tem o TryExec), como o Telas
+        Card {
+            needs_desktop: Some(SETTINGS_DESKTOP),
+            ..card(
+                tr("Settings"),
+                tr("All the desktop settings in one window: appearance, displays, keyboard, mouse, power and more."),
+                &["preferences-system"],
+                None,
+                Action::Desktop(SETTINGS_DESKTOP),
+            )
+        },
         card(
             tr("Desktop Theme"),
             tr("The GTK theme, light or dark, and the accent color of the whole desktop: bar, dock, popups and apps."),

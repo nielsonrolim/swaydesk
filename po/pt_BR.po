@@ -1817,6 +1817,14 @@ msgid "Open %s"
 msgstr "Abre o %s"
 
 #: home/.local/bin/waybar-system-popup
+msgid "Settings"
+msgstr "Configurações"
+
+#: home/.local/bin/waybar-system-popup
+msgid "Open the Settings center"
+msgstr "Abrir a Central de Configurações"
+
+#: home/.local/bin/waybar-system-popup
 msgid "Could not read the system data"
 msgstr "Não foi possível ler os dados do sistema"
 
@@ -3092,6 +3100,10 @@ msgid "Counterclockwise"
 msgstr "Sentido anti-horário"
 
 #: rust/help/src/cards.rs
+msgid "All the desktop settings in one window: appearance, displays, keyboard, mouse, power and more."
+msgstr "Todas as configurações do desktop numa janela: aparência, telas, teclado, mouse, energia e mais."
+
+#: rust/help/src/cards.rs
 msgid "The GTK theme, light or dark, and the accent color of the whole desktop: bar, dock, popups and apps."
 msgstr "O tema GTK, claro ou escuro, e a cor de destaque de todo o desktop: barra, dock, popups e apps."
 
@@ -3644,10 +3656,6 @@ msgstr "argumento desconhecido '%(name)s'"
 #: rust/settings/src/main.rs
 msgid "usage: swaydesk-settings [--panel <name>]"
 msgstr "uso: swaydesk-settings [--panel <nome>]"
-
-#: rust/settings/src/main.rs
-msgid "Settings"
-msgstr "Configurações"
 
 #: rust/settings/src/main.rs
 msgid "%(program)s is not installed"

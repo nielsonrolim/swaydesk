@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Keyboard
+Name[pt_BR]=Teclado
+Name[es]=Teclado
+Comment=Keyboard layouts, the key that switches them, key repeat and Num Lock
+Comment[pt_BR]=Os layouts do teclado, a tecla que os troca, a repetição das teclas e o Num Lock
+Comment[es]=Las distribuciones del teclado, la tecla que las cambia, la repetición de teclas y el Bloq Num
+Exec=swaydesk-settings --panel keyboard
+TryExec=swaydesk-settings
+Icon=input-keyboard
+Terminal=false
+StartupNotify=false
+NoDisplay=true
+X-Swaydesk-Searchable=true
+Categories=GTK;Settings;DesktopSettings;
+OnlyShowIn=sway;
+Keywords=layout;repeat;numlock;settings;
+Keywords[pt_BR]=layout;keyboard;repetição;numlock;configurações;
+Keywords[es]=distribución;keyboard;repetición;numlock;configuración;

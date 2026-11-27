@@ -482,13 +482,21 @@ impl Popup {
 
         let foot = gtk4::Box::new(gtk4::Orientation::Horizontal, 8);
         foot.append(&this.status);
-        if let Some(monitor) = this.monitor {
+        for link in ss::foot_links(this.monitor, swaydesk_common::settings_center::installed()) {
             let me = Rc::downgrade(&this);
-            foot.append(&link_button(&tr("System monitor"), &tr("Open %s").replace("%s", monitor), move || {
-                if let Some(p) = me.upgrade() {
-                    p.open_monitor();
-                }
-            }));
+            let button = match link {
+                ss::FootLink::Monitor(monitor) => link_button(&tr("System monitor"), &tr("Open %s").replace("%s", monitor), move || {
+                    if let Some(p) = me.upgrade() {
+                        p.open_monitor();
+                    }
+                }),
+                ss::FootLink::Settings => link_button(&tr("Settings"), &tr("Open the Settings center"), move || {
+                    if let Some(p) = me.upgrade() {
+                        p.open_settings();
+                    }
+                }),
+            };
+            foot.append(&button);
         }
         card.append(&foot);
 
@@ -756,6 +764,16 @@ impl Popup {
             Ok(()) => self.popup.close("monitor do sistema"),
             Err(err) => self.set_status(
                 &tr("Could not open %(program)s: %(error)s").replace("%(program)s", monitor).replace("%(error)s", &err.to_string()),
+            ),
+        }
+    }
+
+    fn open_settings(&self) {
+        use swaydesk_common::settings_center as center;
+        match spawn_detached(center::PROGRAM, &center::args(None)) {
+            Ok(()) => self.popup.close("configurações"),
+            Err(err) => self.set_status(
+                &tr("Could not open %(program)s: %(error)s").replace("%(program)s", center::PROGRAM).replace("%(error)s", &err.to_string()),
             ),
         }
     }

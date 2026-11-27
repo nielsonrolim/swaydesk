@@ -242,10 +242,10 @@ case $pkg in
     # Exec dos dotfiles é o lançador de ~/.local/bin, que o pacote não tem: aqui, o binário em /usr/bin
     entry=$THEME_ENTRY
     install -d "$dest/usr/share/applications"
-    sed 's/^Exec=sway-theme-app$/Exec=swaydesk-theme-app/' "$data/applications/$entry" > "$dest/usr/share/applications/$entry"
+    sed 's/^Exec=sway-theme-app\( \|$\)/Exec=swaydesk-theme-app\1/' "$data/applications/$entry" > "$dest/usr/share/applications/$entry"
     chmod 644 "$dest/usr/share/applications/$entry"
-    grep -qx 'Exec=swaydesk-theme-app' "$dest/usr/share/applications/$entry" || {
-      echo "install-tree: $entry: no Exec=sway-theme-app line to point at the package binary" >&2
+    grep -qx 'Exec=swaydesk-theme-app --settings-panel' "$dest/usr/share/applications/$entry" || {
+      echo "install-tree: $entry: no Exec=sway-theme-app --settings-panel line to point at the package binary" >&2
       exit 1
     }
     ;;
@@ -253,10 +253,10 @@ case $pkg in
     # O app Telas, do mesmo jeito (o nome do arquivo é o app_id, e o swaydesk-help o abre por ele)
     entry=$DISPLAYS_ENTRY
     install -d "$dest/usr/share/applications"
-    sed 's/^Exec=sway-displays$/Exec=swaydesk-displays/' "$data/applications/$entry" > "$dest/usr/share/applications/$entry"
+    sed 's/^Exec=sway-displays\( \|$\)/Exec=swaydesk-displays\1/' "$data/applications/$entry" > "$dest/usr/share/applications/$entry"
     chmod 644 "$dest/usr/share/applications/$entry"
-    grep -qx 'Exec=swaydesk-displays' "$dest/usr/share/applications/$entry" || {
-      echo "install-tree: $entry: no Exec=sway-displays line to point at the package binary" >&2
+    grep -qx 'Exec=swaydesk-displays --settings-panel' "$dest/usr/share/applications/$entry" || {
+      echo "install-tree: $entry: no Exec=sway-displays --settings-panel line to point at the package binary" >&2
       exit 1
     }
     ;;
@@ -265,6 +265,10 @@ case $pkg in
     # painel) fica no packaging/
     install -Dm644 "$root/packaging/files/org.swaydesktop.Settings.desktop" \
       "$dest/usr/share/applications/org.swaydesktop.Settings.desktop"
+    # Um .desktop por painel (a grade e o rofi acham o painel pelo nome): só neste pacote, com o TryExec da Central
+    for entry in "$root"/packaging/files/settings-panels/*.desktop; do
+      install -Dm644 "$entry" "$dest/usr/share/applications/${entry##*/}"
+    done
     ;;
   swaydesk-desktop)
     # A sessão "Sway Desktop": só com os pacotes, sem os dotfiles. O sway-session --package abre o Sway com

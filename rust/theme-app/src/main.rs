@@ -13,14 +13,20 @@ const APP_ID: &str = "org.swaydesktop.Theme"; // igual ao nome do .desktop: é c
 
 /// O --help (swaydesk_common::early_args!)
 const USAGE: &str = concat!(
-    "usage: swaydesk-theme-app\n",
-    "    Opens Desktop Theme: the GTK theme family, light or dark, and the accent color.",
+    "usage: swaydesk-theme-app [--settings-panel]\n",
+    "    Opens Desktop Theme: the GTK theme family, light or dark, and the accent color.\n",
+    "    --settings-panel opens the Appearance panel of Settings instead, when Settings is installed.",
 );
 
 fn main() -> ExitCode {
     swaydesk_common::early_args!(USAGE);
-    if std::env::args().nth(1).as_deref() == Some("--check") {
-        return ExitCode::SUCCESS; // o sway-theme-app em Python confere que o binário carrega
+    match std::env::args().nth(1).as_deref() {
+        Some("--check") => return ExitCode::SUCCESS, // o sway-theme-app em Python confere que o binário carrega
+        // O .desktop: com a Central instalada, o painel Aparência dela; sem, a janela daqui
+        Some(swaydesk_common::settings_center::SETTINGS_PANEL_FLAG) => {
+            swaydesk_settings_logic::exec_hand_off("appearance", "swaydesk-theme-app")
+        }
+        _ => {}
     }
     swaydesk_ui::use_cairo_renderer();
     // Sem isso, o app_id no Sway é o nome do programa, e a dock não acha o .desktop nem o ícone

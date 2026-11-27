@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Default apps
+Name[pt_BR]=Apps padrão
+Name[es]=Aplicaciones predeterminadas
+Comment=The app for links, mail, text, images, PDF, video, music, files and the terminal
+Comment[pt_BR]=O app de links, e-mail, texto, imagens, PDF, vídeo, música, arquivos e o terminal
+Comment[es]=La aplicación de enlaces, correo, texto, imágenes, PDF, vídeo, música, archivos y la terminal
+Exec=swaydesk-settings --panel default-apps
+TryExec=swaydesk-settings
+Icon=applications-other
+Terminal=false
+StartupNotify=false
+NoDisplay=true
+X-Swaydesk-Searchable=true
+Categories=GTK;Settings;DesktopSettings;
+OnlyShowIn=sway;
+Keywords=default;apps;browser;mail;files;settings;
+Keywords[pt_BR]=padrão;apps;navegador;e-mail;arquivos;configurações;
+Keywords[es]=predeterminadas;aplicaciones;navegador;correo;archivos;configuración;

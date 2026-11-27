@@ -163,13 +163,31 @@ pub fn visible_panels(installed: impl Fn(&str) -> bool) -> Vec<&'static PanelInf
     PANELS.iter().filter(|p| needs(p.id).is_none_or(&installed)).collect()
 }
 
-/// Se o programa está numa pasta do PATH dado (um arquivo executável), sem olhar o ambiente do processo.
-pub fn on_path(program: &str, path: &std::ffi::OsStr) -> bool {
-    use std::os::unix::fs::PermissionsExt;
-    // Só pastas absolutas: uma relativa (".", "bin") dependeria da pasta atual
-    std::env::split_paths(path).filter(|dir| dir.is_absolute()).any(|dir| {
-        std::fs::metadata(dir.join(program)).is_ok_and(|m| m.is_file() && m.permissions().mode() & 0o111 != 0)
-    })
+/// Se o programa está numa pasta do PATH dado (o mesmo do popup Sistema e da Ajuda, que procuram a Central).
+pub use swaydesk_common::settings_center::on_path;
+
+/// O que o Tema e as Telas, abertos pelo .desktop com o `--settings-panel`, passam à Central: os argumentos do
+/// painel (sem o programa) quando ela está no PATH dado e o painel apareceria (o programa de que ele precisa
+/// também está); senão None, e o app abre a janela dele.
+pub fn hand_off(panel: &str, path: &std::ffi::OsStr) -> Option<Vec<&'static str>> {
+    use swaydesk_common::settings_center as center;
+    let info = find(panel).filter(|p| p.kind == Kind::Builtin)?;
+    let shows = needs(info.id).is_none_or(|program| on_path(program, path));
+    (center::installed_in(path) && shows).then(|| center::args(Some(info.id)))
+}
+
+/// O `--settings-panel` do .desktop do Tema e das Telas: o processo vira a Central no painel (um exec) quando a
+/// sessão é um Sway (o XDG_CURRENT_DESKTOP, como o OnlyShowIn da Central) e o `hand_off` dá os argumentos. Volta só
+/// quando não ou o exec falha (com o erro no stderr), e o app abre a janela dele.
+pub fn exec_hand_off(panel: &str, program: &str) {
+    use std::os::unix::process::CommandExt;
+    use swaydesk_common::settings_center::{in_sway, PROGRAM};
+    if !in_sway(&std::env::var("XDG_CURRENT_DESKTOP").unwrap_or_default()) {
+        return;
+    }
+    let Some(args) = std::env::var_os("PATH").and_then(|path| hand_off(panel, &path)) else { return };
+    let err = std::process::Command::new(PROGRAM).args(args).exec();
+    eprintln!("{program}: could not open {PROGRAM}: {err}");
 }
 
 /// O que a linha de comando pediu.
@@ -217,6 +235,49 @@ pub fn parse_args(args: &[String]) -> Result<Options, ArgError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Uma pasta com os programas dados, executáveis.
+    fn path_with(test: &str, programs: &[&str]) -> std::path::PathBuf {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("settings-logic-hand-off-{test}-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        for program in programs {
+            std::fs::write(dir.join(program), "#!/bin/sh\n").unwrap();
+            std::fs::set_permissions(dir.join(program), std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        dir
+    }
+
+    #[test]
+    fn the_theme_and_displays_hand_off_only_when_the_panel_would_show() {
+        let all = path_with("all", &["swaydesk-settings", "swaydesk-theme", "swaydesk-displays"]);
+        let no_center = path_with("no-center", &["swaydesk-theme", "swaydesk-displays"]);
+        let no_tool = path_with("no-tool", &["swaydesk-settings", "swaydesk-displays"]);
+        let got = (
+            hand_off("appearance", all.as_os_str()),
+            hand_off("displays", all.as_os_str()),
+            hand_off("appearance", no_center.as_os_str()),
+            // O Aparência some sem o swaydesk-theme: o app Tema abre sozinho em vez de cair num painel ausente
+            hand_off("appearance", no_tool.as_os_str()),
+            hand_off("displays", no_tool.as_os_str()),
+            // Só os painéis próprios: um de fora (o som) não tem para onde passar a vez, nem um nome desconhecido
+            hand_off("sound", all.as_os_str()),
+            hand_off("nope", all.as_os_str()),
+        );
+        for dir in [all, no_center, no_tool] {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+        assert_eq!(got, (
+            Some(vec!["--panel", "appearance"]),
+            Some(vec!["--panel", "displays"]),
+            None,
+            None,
+            Some(vec!["--panel", "displays"]),
+            None,
+            None,
+        ));
+    }
 
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|a| a.to_string()).collect()
@@ -350,30 +411,6 @@ mod tests {
                 assert_eq!(needs(panel.id), argv.first().copied(), "{}", panel.id);
             }
         }
-    }
-
-    #[test]
-    fn on_path_finds_an_executable_and_nothing_with_an_empty_path() {
-        use std::os::unix::fs::PermissionsExt;
-        let dir = std::env::temp_dir().join(format!("settings-logic-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let exe = dir.join("blueman-manager");
-        std::fs::write(&exe, "").unwrap();
-        std::fs::set_permissions(&exe, std::fs::Permissions::from_mode(0o755)).unwrap();
-        let plain = dir.join("pavucontrol");
-        std::fs::write(&plain, "").unwrap();
-        std::fs::set_permissions(&plain, std::fs::Permissions::from_mode(0o644)).unwrap();
-        let path = std::ffi::OsString::from(format!("/nonexistent:{}", dir.display()));
-        let found = (on_path("blueman-manager", &path), on_path("pavucontrol", &path), on_path("blueman-manager", "".as_ref()));
-        // Uma pasta relativa do PATH (".", "bin") dependeria da pasta atual: não conta
-        let cwd = std::env::current_dir().unwrap();
-        let relative = dir.strip_prefix(&cwd).map(|r| r.to_path_buf()).unwrap_or_else(|_| {
-            std::path::PathBuf::from(format!("{}{}", "../".repeat(cwd.components().count()), dir.display().to_string().trim_start_matches('/')))
-        });
-        let from_relative = on_path("blueman-manager", relative.as_os_str());
-        let _ = std::fs::remove_dir_all(&dir);
-        assert_eq!(found, (true, false, false));
-        assert!(!from_relative, "a relative PATH entry ({}) counted", relative.display());
     }
 
     #[test]

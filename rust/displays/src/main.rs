@@ -4,6 +4,7 @@
 //!      swaydesk-displays daemon    o serviço de perfis (o laço do config do Sway o abre)
 //!      swaydesk-displays apply     aplica o perfil do conjunto agora (o bindswitch da tampa)
 //!      swaydesk-displays --check   só confere que o binário carrega
+//!      swaydesk-displays --settings-panel   o .desktop: o painel Telas da Central, se instalada; senão a janela
 use std::cell::RefCell;
 use std::process::ExitCode;
 use std::rc::Rc;
@@ -20,7 +21,8 @@ const APP_ID: &str = "org.swaydesktop.Displays";
 const USAGE: &str = concat!(
     "usage: swaydesk-displays          opens Displays: position, resolution, rate, scale and rotation of each screen\n",
     "       swaydesk-displays daemon   the service that applies the saved layout when screens change\n",
-    "       swaydesk-displays apply    applies the saved layout once",
+    "       swaydesk-displays apply    applies the saved layout once\n",
+    "       swaydesk-displays --settings-panel   opens the Displays panel of Settings instead, when Settings is installed",
 );
 
 fn main() -> ExitCode {
@@ -29,6 +31,9 @@ fn main() -> ExitCode {
         Some("--check") => return ExitCode::SUCCESS,
         Some("daemon") => return daemon::run(),
         Some("apply") => return daemon::apply_now(),
+        Some(swaydesk_common::settings_center::SETTINGS_PANEL_FLAG) => {
+            swaydesk_settings_logic::exec_hand_off("displays", "swaydesk-displays")
+        }
         _ => {}
     }
     swaydesk_common::renderer::use_cairo_renderer();

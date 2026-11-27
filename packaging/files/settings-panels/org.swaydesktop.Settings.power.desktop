@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Power and lock
+Name[pt_BR]=Energia e bloqueio
+Name[es]=Energía y bloqueo
+Comment=When the screen locks, turns off and the computer suspends, and the power profile
+Comment[pt_BR]=Quando a tela bloqueia, apaga e o computador suspende, e o perfil de energia
+Comment[es]=Cuándo se bloquea y se apaga la pantalla y se suspende el equipo, y el perfil de energía
+Exec=swaydesk-settings --panel power
+TryExec=swaydesk-settings
+Icon=system-shutdown
+Terminal=false
+StartupNotify=false
+NoDisplay=true
+X-Swaydesk-Searchable=true
+Categories=GTK;Settings;DesktopSettings;
+OnlyShowIn=sway;
+Keywords=power;lock;suspend;screen;idle;settings;
+Keywords[pt_BR]=energia;bloqueio;suspender;tela;inatividade;configurações;
+Keywords[es]=energía;bloqueo;suspender;pantalla;inactividad;configuración;

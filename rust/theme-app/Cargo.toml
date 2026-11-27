@@ -16,6 +16,8 @@ path = "src/main.rs"
 
 [dependencies]
 swaydesk-common.workspace = true
+# O --settings-panel passa a vez à Central só quando ela está instalada: a lógica, sem depender do pacote dela
+swaydesk-settings-logic.workspace = true
 swaydesk-theme.workspace = true
 swaydesk-ui.workspace = true
 gtk4.workspace = true

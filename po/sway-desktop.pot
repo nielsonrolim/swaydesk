@@ -1810,6 +1810,14 @@ msgid "Open %s"
 msgstr ""
 
 #: home/.local/bin/waybar-system-popup
+msgid "Settings"
+msgstr ""
+
+#: home/.local/bin/waybar-system-popup
+msgid "Open the Settings center"
+msgstr ""
+
+#: home/.local/bin/waybar-system-popup
 msgid "Could not read the system data"
 msgstr ""
 
@@ -3083,6 +3091,10 @@ msgid "Counterclockwise"
 msgstr ""
 
 #: rust/help/src/cards.rs
+msgid "All the desktop settings in one window: appearance, displays, keyboard, mouse, power and more."
+msgstr ""
+
+#: rust/help/src/cards.rs
 msgid "The GTK theme, light or dark, and the accent color of the whole desktop: bar, dock, popups and apps."
 msgstr ""
 
@@ -3624,10 +3636,6 @@ msgstr ""
 
 #: rust/settings/src/main.rs
 msgid "usage: swaydesk-settings [--panel <name>]"
-msgstr ""
-
-#: rust/settings/src/main.rs
-msgid "Settings"
 msgstr ""
 
 #: rust/settings/src/main.rs

@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Desktop
+Name[pt_BR]=Desktop
+Name[es]=Escritorio
+Comment=The desktop components, the bar modules and the shortcut profile
+Comment[pt_BR]=Os componentes do desktop, os módulos da barra e o perfil de atalhos
+Comment[es]=Los componentes del escritorio, los módulos de la barra y el perfil de atajos
+Exec=swaydesk-settings --panel desktop
+TryExec=swaydesk-settings
+Icon=user-desktop
+Terminal=false
+StartupNotify=false
+NoDisplay=true
+X-Swaydesk-Searchable=true
+Categories=GTK;Settings;DesktopSettings;
+OnlyShowIn=sway;
+Keywords=components;shortcuts;bar;dock;settings;
+Keywords[pt_BR]=componentes;atalhos;barra;dock;configurações;
+Keywords[es]=componentes;atajos;barra;dock;configuración;

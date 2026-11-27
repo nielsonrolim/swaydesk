@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=About
+Name[pt_BR]=Sobre
+Name[es]=Acerca de
+Comment=The system, the hardware and the Swaydesk version
+Comment[pt_BR]=O sistema, o hardware e a versão do Swaydesk
+Comment[es]=El sistema, el hardware y la versión de Swaydesk
+Exec=swaydesk-settings --panel about
+TryExec=swaydesk-settings
+Icon=help-about
+Terminal=false
+StartupNotify=false
+NoDisplay=true
+X-Swaydesk-Searchable=true
+Categories=GTK;Settings;DesktopSettings;
+OnlyShowIn=sway;
+Keywords=system;version;hardware;settings;
+Keywords[pt_BR]=sistema;versão;hardware;configurações;
+Keywords[es]=acerca;sistema;versión;hardware;configuración;

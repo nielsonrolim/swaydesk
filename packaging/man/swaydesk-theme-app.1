@@ -16,6 +16,9 @@ Apply, as swaydesk\-theme cursor does: GTK 4 and Qt 6 apps follow at once, older
 The session runs it under the name sway\-theme\-app (a link in the package's helper directory to /usr/bin/swaydesk\-theme\-app); the process name is sway\-theme\-app too.
 .SH OPTIONS
 .TP
+.B \-\-settings\-panel
+What the menu entry runs: in a Sway session (XDG_CURRENT_DESKTOP has sway), when Settings (swaydesk\-settings) is installed and shows its Appearance panel, open that panel instead (the process becomes swaydesk\-settings \-\-panel appearance); otherwise open this window. No package depends on Settings.
+.TP
 .B \-\-check
 Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
 .SH FILES

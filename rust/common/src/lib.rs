@@ -18,6 +18,7 @@ pub mod keyboard;
 pub mod offline_updates;
 pub mod renderer;
 pub mod resident;
+pub mod settings_center;
 pub mod sway_conf;
 pub mod theme_resources;
 pub mod text;

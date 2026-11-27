@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Mouse and touchpad
+Name[pt_BR]=Mouse e touchpad
+Name[es]=Ratón y panel táctil
+Comment=Pointer speed, natural scrolling, left-handed buttons and tap to click
+Comment[pt_BR]=Velocidade do ponteiro, rolagem natural, botões para canhotos e toque para clicar
+Comment[es]=Velocidad del puntero, desplazamiento natural, botones para zurdos y tocar para hacer clic
+Exec=swaydesk-settings --panel mouse
+TryExec=swaydesk-settings
+Icon=input-mouse
+Terminal=false
+StartupNotify=false
+NoDisplay=true
+X-Swaydesk-Searchable=true
+Categories=GTK;Settings;DesktopSettings;
+OnlyShowIn=sway;
+Keywords=mouse;touchpad;pointer;scroll;tap;settings;
+Keywords[pt_BR]=mouse;touchpad;ponteiro;rolagem;toque;configurações;
+Keywords[es]=ratón;mouse;touchpad;puntero;desplazamiento;toque;configuración;

@@ -21,6 +21,10 @@
 # no dwm e depois no i3: a abertura com o seletor e, no dwm, o aviso (sem ponteiro, a troca fica para a VM). Por
 # fim, como nos dotfiles: o ~/.config/sway/config é um link, e os perfis só existem ao lado do arquivo de verdade
 # (keys_dir segue o link): o seletor aparece do mesmo jeito.
+#
+# Com "settings" (e no fim da rodada padrão), o cartão da Central de Configurações na aba "Using Swaydesk": sem ela, nenhum (captura
+# settings-sem); com o .desktop dela e uma Central falsa no PATH (o TryExec), o cartão aparece primeiro (captura
+# settings-com). O nome da falsa é montado em tempo de execução: o run-all-tests monta todo swaydesk-* citado aqui.
 set -u
 . /repo/rust/scripts/lib-wait.sh
 mode=${1:-}
@@ -99,6 +103,41 @@ if [ "$mode" = repo ]; then
   exit $failed
 fi
 
+# O cartão da Central (o modo "settings", e também o fim da rodada padrão, a do run-all-tests)
+settings_cards() {
+  center=swaydesk-$(printf settings)
+  for case in sem com; do
+    if [ "$case" = com ]; then
+      mkdir -p /tmp/center "$HOME/.local/share/applications"
+      printf '#!/bin/sh\necho "$#:$*" >/tmp/center/args\n' > /tmp/center/$center && chmod +x /tmp/center/$center
+      cp /repo/packaging/files/org.swaydesktop.Settings.desktop "$HOME/.local/share/applications/"
+      run="env PATH=/tmp/center:$PATH"
+    else
+      run=env
+    fi
+    swaymsg "exec $run ~/.local/bin/sway-help >> /tmp/app.log 2>&1" > /dev/null
+    wait_windows 1 || { fail "a janela não abriu ($case)"; cat /tmp/app.log; exit 1; }
+    swaymsg '[app_id="org.swaydesktop.Help"] resize set 1200 700, move position 0 0' > /dev/null
+    sleep 1; key -M ctrl -k Tab -m ctrl; sleep 1; shot "settings-$case"
+    # A busca pelo nome: só o cartão da Central (com) ou nenhum (sem)
+    key Settings; sleep 0.5; shot "settings-$case-busca"
+    # Onde fica o ícone do primeiro resultado: com a Central, o cartão dela (várias cores); sem, só o fundo
+    n=$(grim -t ppm -g "40,105 30x30" - | python3 -c 'import sys
+data = sys.stdin.buffer.read().split(b"\n", 3)[3]
+print(len({data[i:i + 3] for i in range(0, len(data), 3)}))')
+    if [ "$case" = com ]; then want=varias; else want=1; fi
+    got=$([ "$n" -gt 1 ] && echo varias || echo 1)
+    [ "$got" = "$want" ] && ok "a busca por Settings $case a Central: $want cor(es) no 1º resultado" \
+      || fail "a busca por Settings $case a Central: $got cor(es) no 1º resultado, esperado $want (capturas help-settings-$case*.png)"
+    key -k Escape; key -k Escape; wait_windows 0 || fail "não fechou ($case)"
+  done
+}
+if [ "$mode" = settings ]; then
+  settings_cards
+  grep -q "CRITICAL\|panicked" /tmp/app.log && { fail "avisos no log"; cat /tmp/app.log; }
+  exit $failed
+fi
+
 if [ "$mode" = profiles ]; then
   # Sem ponteiro no headless, o seletor não é clicado aqui (a troca, a confirmação do dwm e o Cancelar são
   # da VM): só a abertura com cada perfil em uso. O nome no seletor e o aviso do dwm vêm do config.toml
@@ -149,6 +188,7 @@ sleep 0.5
 shot 4-cartoes
 key -k Escape
 wait_windows 0 && ok "o Esc com a busca vazia fecha" || fail "o Esc com a busca vazia não fechou"
+settings_cards
 
 grep -q "CRITICAL\|panicked" /tmp/app.log && { fail "avisos no log"; cat /tmp/app.log; }
 exit $failed

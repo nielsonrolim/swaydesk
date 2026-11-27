@@ -1,0 +1,20 @@
+[Desktop Entry]
+Type=Application
+Name=Region
+Name[pt_BR]=Região
+Name[es]=Región
+Comment=The desktop language, the weather city and the holidays country
+Comment[pt_BR]=O idioma do desktop, a cidade da previsão do tempo e o país dos feriados
+Comment[es]=El idioma del escritorio, la ciudad del tiempo y el país de los festivos
+Exec=swaydesk-settings --panel region
+TryExec=swaydesk-settings
+Icon=preferences-desktop-locale
+Terminal=false
+StartupNotify=false
+NoDisplay=true
+X-Swaydesk-Searchable=true
+Categories=GTK;Settings;DesktopSettings;
+OnlyShowIn=sway;
+Keywords=language;weather;holidays;settings;
+Keywords[pt_BR]=idioma;tempo;previsão;feriados;configurações;
+Keywords[es]=idioma;tiempo;festivos;configuración;

@@ -1389,6 +1389,7 @@ dependencies = [
  "serde_json",
  "swaydesk-common",
  "swaydesk-displays-logic",
+ "swaydesk-settings-logic",
  "swaydesk-ui",
 ]
 
@@ -1759,6 +1760,7 @@ dependencies = [
  "gtk4",
  "pangocairo",
  "swaydesk-common",
+ "swaydesk-settings-logic",
  "swaydesk-theme",
  "swaydesk-ui",
 ]

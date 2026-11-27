@@ -33,6 +33,9 @@ laptop lid closes or opens (bindswitch), so closing the lid with an external scr
 internal screen off, and opening it turns it back on. While the window waits for Keep or Undo, the service does not apply profiles.
 .SH OPTIONS
 .TP
+.B \-\-settings\-panel
+What the menu entry runs: in a Sway session (XDG_CURRENT_DESKTOP has sway), when Settings (swaydesk\-settings) is installed and shows its Displays panel, open that panel instead (the process becomes swaydesk\-settings \-\-panel displays); otherwise open this window. No package depends on Settings.
+.TP
 .B \-\-check
 Exit 0 at once without doing anything: the Python launchers use it to check that the binary and its libraries load.
 .SH EXIT STATUS

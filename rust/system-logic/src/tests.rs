@@ -514,3 +514,12 @@ fn python_like_paths() {
     assert!(is_interpreter("python3.12") && is_interpreter("python") && is_interpreter("sh"));
     assert!(!is_interpreter("python3-config") && !is_interpreter("fish"));
 }
+
+#[test]
+fn the_footer_links_follow_what_is_installed() {
+    assert_eq!(foot_links(None, false), []);
+    assert_eq!(foot_links(Some("resources"), false), [FootLink::Monitor("resources")]);
+    assert_eq!(foot_links(None, true), [FootLink::Settings]);
+    // A Central fica por último, na ponta direita do rodapé
+    assert_eq!(foot_links(Some("resources"), true), [FootLink::Monitor("resources"), FootLink::Settings]);
+}
