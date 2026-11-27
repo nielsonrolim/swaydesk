@@ -4,7 +4,7 @@
 
 O Swaydesk é uma sessão de desktop sobre o [Sway](https://swaywm.org), o compositor Wayland de janelas lado a lado, com as peças que fazem dele um desktop completo. Você tem uma barra com popups, uma dock, uma grade de apps, notificações, uma tela de bloqueio e uma tela de login. Cada peça é um programa nativo pequeno, escrito em Rust e GTK 4, e todas usam o mesmo tema.
 
-A documentação completa, com capturas de tela e os atalhos de teclado, está em **https://swaydesk.nielsonrolim.com** ([Português](https://swaydesk.nielsonrolim.com/pt-br/) · [English](https://swaydesk.nielsonrolim.com/en-us/)).
+A documentação completa, com capturas de tela e os atalhos de teclado, está em **https://swaydesk.org** ([Português](https://swaydesk.org/pt-br/) · [English](https://swaydesk.org/en-us/)).
 
 **Versão atual: 0.1.9.** O que muda em cada versão está nas [Novidades](CHANGELOG.pt-BR.md) (desde a 0.1.4; as anteriores, no [CHANGELOG.md](CHANGELOG.md), em inglês) e na [página de lançamentos](https://github.com/nielsonrolim/swaydesk/releases). Depois de instalado, as atualizações chegam com o `apt upgrade` ou o `pacman -Syu` de sempre.
 
@@ -52,7 +52,7 @@ Os pacotes vêm de um repositório no [Open Build Service](https://build.opensus
 
 Precisa de Debian 13 ou testing, Ubuntu 26.04, Linux Mint 27 ou Arch Linux, de 64 bits (x86_64), e de uma placa de vídeo Intel, AMD ou NVIDIA com driver para Wayland. Escolha a sua distro e rode um passo por vez:
 
-Os mesmos passos, com um botão de copiar em cada comando, estão na [página de instalação](https://swaydesk.nielsonrolim.com/pt-br/install/).
+Os mesmos passos, com um botão de copiar em cada comando, estão na [página de instalação](https://swaydesk.org/pt-br/install/).
 
 ### Debian 13
 

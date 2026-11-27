@@ -10,7 +10,7 @@ Build-Depends: debhelper-compat (= 13),
                libgtk4-layer-shell-dev,
                libpam0g,
 Standards-Version: 4.7.0
-Homepage: https://swaydesk.nielsonrolim.com
+Homepage: https://swaydesk.org
 Rules-Requires-Root: no
 
 Package: swaydesk-common

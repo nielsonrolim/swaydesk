@@ -16,7 +16,7 @@ pkgver=0.1.10
 pkgrel=1
 pkgdesc="Sway desktop components in Rust and GTK 4 for wlroots compositors with layer-shell"
 arch=(x86_64 aarch64)
-url="https://swaydesk.nielsonrolim.com"
+url="https://swaydesk.org"
 # Os binários ligam os crates de terceiros: as licenças deles (as do debian/copyright, que o
 # tests/test_packaging.py confere). Os pacotes sem binário (arch=any) ficam só com a MIT
 license=(MIT Apache-2.0 'Apache-2.0 WITH LLVM-exception' BSD-3-Clause CC0-1.0 CDLA-Permissive-2.0 GPL-3.0-only ISC

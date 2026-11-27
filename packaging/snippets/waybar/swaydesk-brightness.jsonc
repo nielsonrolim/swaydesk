@@ -1,4 +1,4 @@
-// swaydesk-brightness: the screen brightness icon: the popup on click, scroll changes it, for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/brightness/
+// swaydesk-brightness: the screen brightness icon: the popup on click, scroll changes it, for your own Waybar. More: https://swaydesk.org/en-us/components/brightness/
 // In ~/.config/waybar/config.jsonc, add "custom/swaydesk-brightness" to "modules-left", "modules-center" or
 // "modules-right", and paste the lines below next to your other modules (a comma between them).
 // The icons are Nerd Font symbols (Symbols Nerd Font, in swaydesk-common).

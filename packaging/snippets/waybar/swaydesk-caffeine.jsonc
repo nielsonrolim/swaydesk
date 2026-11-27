@@ -1,4 +1,4 @@
-// swaydesk-caffeine: the caffeine icon: the options (1 h, 2 h, always) on click, on or off on right click, for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/caffeine/
+// swaydesk-caffeine: the caffeine icon: the options (1 h, 2 h, always) on click, on or off on right click, for your own Waybar. More: https://swaydesk.org/en-us/components/caffeine/
 // In ~/.config/waybar/config.jsonc, add "custom/swaydesk-caffeine" to "modules-left", "modules-center" or
 // "modules-right", and paste the lines below next to your other modules (a comma between them).
 // Outside the Swaydesk session caffeine never touches your swayidle: while it's on, it holds an idle inhibitor.

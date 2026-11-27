@@ -1,4 +1,4 @@
-// swaydesk-media: what's playing: the player popup on click, next track on right click, for your own Waybar. More: https://swaydesk.nielsonrolim.com/en-us/components/media/
+// swaydesk-media: what's playing: the player popup on click, next track on right click, for your own Waybar. More: https://swaydesk.org/en-us/components/media/
 // In ~/.config/waybar/config.jsonc, add "custom/swaydesk-media" to "modules-left", "modules-center" or
 // "modules-right", and paste the lines below next to your other modules (a comma between them).
 // The icons are Nerd Font symbols (Symbols Nerd Font, in swaydesk-common).

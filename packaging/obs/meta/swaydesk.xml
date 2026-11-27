@@ -1,4 +1,4 @@
 <package name="swaydesk" project="home:nielsonrolim">
   <title>Sway desktop components</title>
-  <description>Desktop components for Sway in Rust and GTK 4: the dock, the app grid, the notification daemon, the Waybar popups, the theme tools, the session tools and the login screen. https://swaydesk.nielsonrolim.com</description>
+  <description>Desktop components for Sway in Rust and GTK 4: the dock, the app grid, the notification daemon, the Waybar popups, the theme tools, the session tools and the login screen. https://swaydesk.org</description>
 </package>
