@@ -1,3 +1,11 @@
+adw-gtk-theme (6.5-2) unstable; urgency=medium
+
+  * adw-gtk3-dark: the GTK 4 dark colours apply without the
+    prefers-color-scheme media query, which GTK before 4.20 (Debian 13)
+    skips, so GTK 4 apps without libadwaita (pavucontrol) are dark too.
+
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Thu, 26 Nov 2026 21:00:00 -0300
+
 adw-gtk-theme (6.5-1) unstable; urgency=medium
 
   * adw-gtk3 6.5 from the upstream release tarball, for Debian 13, Debian

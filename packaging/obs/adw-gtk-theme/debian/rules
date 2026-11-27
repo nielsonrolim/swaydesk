@@ -1,5 +1,6 @@
 #!/usr/bin/make -f
-# O tarball do upstream já traz o tema compilado (o sassc roda lá): só copia as duas variantes.
+# O tarball do upstream já traz o tema compilado (o sassc roda lá): copia as duas variantes, e o CSS de GTK 4 da
+# escura passa pelo dark-gtk4 (escura também num GTK antes do 4.20).
 %:
 	dh $@
 
@@ -10,3 +11,4 @@ override_dh_auto_install:
 	  mkdir -p debian/adw-gtk-theme/usr/share/themes/$$theme && \
 	  cp -r --no-preserve=mode,ownership $$theme/. debian/adw-gtk-theme/usr/share/themes/$$theme/ || exit 1; \
 	done
+	sh debian/dark-gtk4 debian/adw-gtk-theme/usr/share/themes/adw-gtk3-dark/gtk-4.0/libadwaita.css
