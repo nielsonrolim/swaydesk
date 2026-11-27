@@ -13,6 +13,7 @@
 # sem o módulo do tempo; com um modelo quebrado, sobe com o modelo e avisa; ligando de novo e repetindo os
 # exec, a dock e a grade sobem. Sai com 1 se algum caso falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" "$HOME/.config/waybar" /tmp/fake && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
@@ -40,7 +41,7 @@ EOF
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8 GTK_A11Y=none
 eval "$(dbus-daemon --session --fork --print-address=1 | sed 's/^/export DBUS_SESSION_BUS_ADDRESS=/')"
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 
 failed=0
@@ -48,7 +49,7 @@ ok() { printf 'ok      %s\n' "$1"; }
 fail() { printf 'FALHOU  %s\n' "$1"; failed=1; }
 running() { pgrep -x "$1" >/dev/null; }
 wait_running() {  # nome, 1 ou 0
-  for _ in $(seq 60); do
+  for _ in $(seq $ticks); do
     if running "$1"; then [ "$2" = 1 ] && return 0; else [ "$2" = 0 ] && return 0; fi
     sleep 0.1
   done
@@ -65,7 +66,7 @@ sleep 1
 
 # A barra: o config sem o módulo do tempo, a partir do modelo dos dotfiles
 "$HOME/.local/bin/sway-waybar" > /tmp/waybar.log 2>&1 & loop=$!
-for _ in $(seq 50); do [ -s /tmp/waybar-args ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ -s /tmp/waybar-args ] && break; sleep 0.1; done
 gen=$HOME/.config/swaydesk/waybar/config.jsonc
 if grep -qx -- "-c $gen" /tmp/waybar-args; then ok "a Waybar sobe com o config filtrado"; else fail "a Waybar subiu com: $(cat /tmp/waybar-args)"; fi
 python3 - "$gen" <<'PY' && ok "o filtrado não tem o custom/weather e tem o resto" || fail "o filtrado está errado"
@@ -81,7 +82,7 @@ pkill -f "sleep 3600"; kill $loop 2>/dev/null; wait $loop 2>/dev/null
 # Um modelo quebrado: a Waybar sobe com ele mesmo (a barra nunca some), e o log avisa
 echo '{ quebrado' > "$HOME/.config/waybar/config.jsonc"
 "$HOME/.local/bin/sway-waybar" > /tmp/waybar2.log 2>&1 & loop=$!
-for _ in $(seq 50); do [ -s /tmp/waybar-args ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ -s /tmp/waybar-args ] && break; sleep 0.1; done
 grep -qx -- "-c $HOME/.config/waybar/config.jsonc" /tmp/waybar-args && ok "modelo quebrado: sobe com o modelo" || fail "modelo quebrado: $(cat /tmp/waybar-args)"
 grep -q "was not generated" /tmp/waybar2.log && ok "e avisa no log" || fail "sem o aviso: $(cat /tmp/waybar2.log)"
 pkill -f "sleep 3600"; kill $loop 2>/dev/null; wait $loop 2>/dev/null

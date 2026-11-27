@@ -13,6 +13,7 @@
 # Os apps são falsos, com nomes de duas linhas, como os traduzidos ("Gerenciador de arquivos Thunar"), além dos
 # poucos da imagem. A conferência é pela captura: /out/<impl>-<tela>-<apps>.png.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 impl=${1:-rust} size=${2:-1280x800} count=${3:-20}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" "$HOME/.local/share/applications" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
@@ -35,13 +36,13 @@ done
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution %s\n' "$size" > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 sleep 0.5
 SWAY_DRAWER_IMPL=$impl "$HOME/.local/bin/sway-drawer" start > /tmp/drawer.log 2>&1 &
 sleep 2
 SWAY_DRAWER_IMPL=$impl "$HOME/.local/bin/sway-drawer"
-for _ in $(seq 30); do [ -e "$XDG_RUNTIME_DIR/sway-drawer.shown" ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ -e "$XDG_RUNTIME_DIR/sway-drawer.shown" ] && break; sleep 0.1; done
 sleep 1.5
 grim "/out/$impl-$size-$count.png"
 no_light_text "$impl: os nomes e as abas da grade"

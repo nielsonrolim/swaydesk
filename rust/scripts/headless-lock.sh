@@ -16,6 +16,7 @@
 # sway-lock de novo), e o swaylock nunca é chamado.
 # Digitar a senha fica para as VMs: o Sway headless não tem teclado virtual. Sai com 1 se algum falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
@@ -47,7 +48,7 @@ PY
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=2 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720 position 0 0\noutput HEADLESS-2 resolution 1024x768 position 1280 0\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 eval "$(dbus-daemon --session --fork --print-address=1 | sed 's/^/export DBUS_SESSION_BUS_ADDRESS=/')"
 sleep 0.5
@@ -97,7 +98,7 @@ pgrep -f "sleep 30" >/dev/null && ok "um get_inputs preso no ar" || fail "o get_
 first=$(pgrep -x swaydesk-lock)
 pkill -KILL -x swaydesk-lock
 second=
-for _ in $(seq 40); do
+for _ in $(seq $ticks); do
   second=$(pgrep -x swaydesk-lock | grep -vx "$first")
   [ -n "$second" ] && break
   sleep 0.1

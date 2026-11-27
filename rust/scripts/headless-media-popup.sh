@@ -10,6 +10,7 @@
 # captura, o play/pause e o "próxima" (conferidos pelas chamadas que o player falso anota), a troca para o
 # outro player e a captura. Sai com 1 se algo falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do [ -f "$f" ] && ln -sf "$f" "$HOME/.local/bin/"; done
@@ -26,7 +27,7 @@ open("/tmp/capa.png", "wb").write(png)'
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 DBUS_SESSION_BUS_ADDRESS=$(dbus-daemon --session --fork --print-address=1)
 export DBUS_SESSION_BUS_ADDRESS
@@ -39,7 +40,7 @@ start_player() {  # sufixo identidade
   mkfifo "/tmp/in.$1"
   /repo/tests/fakes/mpris-player "$DBUS_SESSION_BUS_ADDRESS" "$1" "$2" <"/tmp/in.$1" >"/tmp/out.$1" &
   eval "exec {fd_$1}>/tmp/in.$1"
-  for _ in $(seq 50); do grep -q ready "/tmp/out.$1" 2>/dev/null && break; sleep 0.1; done
+  for _ in $(seq $ticks); do grep -q ready "/tmp/out.$1" 2>/dev/null && break; sleep 0.1; done
 }
 say() { local fd="fd_$1"; printf '%s\n' "$2" >&"${!fd}"; sleep 0.3; }
 start_player um "Tocador Um"

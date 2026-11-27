@@ -15,6 +15,7 @@
 # Python, com este tema falso, não liga o switch (o tests/test_accent.py cobre o SWITCH_CSS dela). Sai com 1 se algum
 # caso falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 impl=rust
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" "$HOME/.config/gtk-3.0" "$HOME/.config/gtk-4.0" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
@@ -59,7 +60,7 @@ for gtk in gtk-3.0 gtk-4.0; do printf '[Settings]\ngtk-theme-name=%s\n' "$theme"
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 eval "$(dbus-daemon --session --fork --print-address=1 | sed 's/^/export DBUS_SESSION_BUS_ADDRESS=/')"
 
@@ -73,12 +74,12 @@ check() {
   env G_DEBUG=fatal-criticals SWAY_SYSTEM_ICONS=/tmp/no-system-icons SWAY_DESKTOP_SHARE=/repo/home/.local/share/sway-desktop \
     "$4=$impl" "$HOME/.local/bin/$2" >> /tmp/app.log 2>&1 &
   local pid=$!
-  for _ in $(seq 100); do [ "$(windows "$3")" = 1 ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ "$(windows "$3")" = 1 ] && break; sleep 0.1; done
   sleep 3
   grim -t ppm "/tmp/$1.ppm"
   grim "/out/image-switch-$impl-$1.png" 2>/dev/null
   swaymsg -q "[app_id=\"$3\"] kill"
-  for _ in $(seq 50); do [ "$(windows "$3")" = 0 ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ "$(windows "$3")" = 0 ] && break; sleep 0.1; done
   kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
   # Os pixels da pílula cinza e quantos dos 16 dos cantos da caixa dela não são o fundo da janela
   read -r pill corners <<< "$(python3 - "/tmp/$1.ppm" <<'PY'

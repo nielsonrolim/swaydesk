@@ -18,6 +18,7 @@
 # ligar de novo volta ao vermelho; a lista do tamanho do cursor aplica ao escolher (só na versão em Rust). Sem o arquivo
 # do papel e sem a chave, o interruptor abre desligado. Sai com 1 se algum caso falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 impl=${1:-rust}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" "$HOME/.local/share/wallpaper" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
@@ -49,7 +50,7 @@ python3 -c "import sys; sys.stdout.buffer.write(b'P6\n64 64\n255\n' + bytes([0xe
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 # O app é único pelo D-Bus da sessão (GtkApplication): sem barramento, cada um abriria a sua janela
 eval "$(dbus-daemon --session --fork --print-address=1 | sed 's/^/export DBUS_SESSION_BUS_ADDRESS=/')"
@@ -70,7 +71,7 @@ mkdir -p /tmp/no-system-icons
 app() { env G_DEBUG=fatal-criticals SWAY_SYSTEM_ICONS=/tmp/no-system-icons SWAY_DESKTOP_SHARE=/repo/home/.local/share/sway-desktop SWAY_THEME_APP_IMPL=$impl "$HOME/.local/bin/sway-theme-app" >> /tmp/app.log 2>&1 & }
 
 app
-for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
 sleep 1.5
 pid=$(pgrep -n -f "swaydesk-theme-app|sway-theme-app")
 if [ "$(windows)" != 1 ]; then
@@ -103,7 +104,7 @@ echo "janela: $wx $wy $ww $wh"
 pointer move $((wx + 100)) $((wy + 235)) sleep 100 click sleep 500
 shot 2-arc
 pointer move $((wx + ww - 171)) $((wy + 22)) sleep 100 click sleep 100  # o Aplicar, à esquerda dos botões da janela
-for _ in $(seq 100); do grep -q 'gtk_theme = "Arc-Dark"' "$HOME/.config/swaydesk/config.toml" && break; sleep 0.1; done
+for _ in $(seq $ticks); do grep -q 'gtk_theme = "Arc-Dark"' "$HOME/.config/swaydesk/config.toml" && break; sleep 0.1; done
 sleep 1
 shot 3-aplicado
 if grep -q 'gtk_theme = "Arc-Dark"' "$HOME/.config/swaydesk/config.toml"; then
@@ -127,7 +128,7 @@ fi
 close_info() { pointer move $((wx + ww - 23)) $((wy + 67)) sleep 100 click sleep 300; }
 apply_and_wait() {  # o Aplicar; espera a linha no config.toml
   pointer move $((wx + ww - 171)) $((wy + 22)) sleep 100 click sleep 100
-  for _ in $(seq 100); do config | grep -qx "$1" && break; sleep 0.1; done
+  for _ in $(seq $ticks); do config | grep -qx "$1" && break; sleep 0.1; done
   sleep 1
   close_info
 }
@@ -154,10 +155,10 @@ fi
 # Reaberto no destaque padrão exato (que não é amostra), com o modo desligado: trocar só o tema mantém o padrão,
 # em vez de gravar a amostra mais perto (darkcyan)
 kill "$pid" 2>/dev/null
-for _ in $(seq 50); do [ "$(windows)" = 0 ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ "$(windows)" = 0 ] && break; sleep 0.1; done
 printf 'gtk_theme = "Mint-Y-Dark-Teal"\naccent = "#199ca8"\nfolder_color = ""\naccent_auto = false\n' > "$HOME/.config/swaydesk/config.toml"
 app
-for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
 sleep 1.5
 pid=$(pgrep -n -f "swaydesk-theme-app")
 shot 8-padrao
@@ -187,7 +188,7 @@ fi
 pointer move $((wx + 374)) $((wy + 399)) sleep 100 click sleep 600
 shot 12-cursor-lista
 pointer move $((wx + 371)) $((wy + 519)) sleep 100 click sleep 500
-for _ in $(seq 100); do config | grep -qx 'cursor_size = 48' && break; sleep 0.1; done
+for _ in $(seq $ticks); do config | grep -qx 'cursor_size = 48' && break; sleep 0.1; done
 sleep 0.5
 shot 13-cursor-aplicado
 if config | grep -qx 'cursor_size = 48' && config | grep -qx 'icon_theme = "Adwaita"' \
@@ -199,11 +200,11 @@ fi
 # Sem o arquivo do papel e sem a chave accent_auto (o app Tema instalado sozinho): o interruptor abre desligado, e
 # o Aplicar de um tema não grava a cor de papel nenhum, nem o accent_auto (um papel que aparecer depois liga o modo)
 kill "$pid" 2>/dev/null
-for _ in $(seq 50); do [ "$(windows)" = 0 ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ "$(windows)" = 0 ] && break; sleep 0.1; done
 rm -f "$HOME/.local/share/wallpaper/current.jpg"
 printf 'gtk_theme = "Mint-Y-Dark-Teal"\n' > "$HOME/.config/swaydesk/config.toml"
 app
-for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
 sleep 1.5
 pid=$(pgrep -n -f "swaydesk-theme-app")
 shot 14-sem-papel

@@ -17,6 +17,7 @@
 # a esconde; o ponteiro na borda a traz de volta; o "sway-dock pin" chega; o reload refaz a dock e solta
 # a anterior. Sai com 1 se algum caso falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 impl=${1:-rust}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" "$HOME/.local/share/applications" \
@@ -55,7 +56,7 @@ printf 'launcher = "sh -c \x27env > /tmp/launcher.env\x27"\n' > "$HOME/.config/s
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 /bin/swaydesk-vpointer sleep 3600000 & keeper=$!
 # Um teclado que fica: um wtype novo manda a tecla antes de o cliente ligar o wl_keyboard
@@ -110,12 +111,12 @@ GLib.MainLoop().run()
 PY
   python3 /tmp/fake-systemd.py & fake_systemd=$!
   trap 'kill $keeper $kbd $fake_systemd "$(cat /tmp/dbus.pid 2>/dev/null)" 2>/dev/null' EXIT
-  for _ in $(seq 50); do [ -e /tmp/fake-systemd.ready ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ -e /tmp/fake-systemd.ready ] && break; sleep 0.1; done
 fi
 
 # Um CRITICAL do GTK derruba a dock: o teste falha em vez de passar com o aviso no log
 env G_DEBUG=fatal-criticals SWAY_DOCK_IMPL=$impl "$HOME/.local/bin/sway-dock" > /tmp/dock.log 2>&1 & dock=$!
-for _ in $(seq 50); do [ -e "$XDG_RUNTIME_DIR/sway-dock.pid" ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ -e "$XDG_RUNTIME_DIR/sway-dock.pid" ] && break; sleep 0.1; done
 sleep 1.5
 pid=$(cat "$XDG_RUNTIME_DIR/sway-dock.pid" 2>/dev/null)
 if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
@@ -130,7 +131,7 @@ dump | grep -q "visible=True\|visible=true" && ok "visível sem janelas" || fail
 # O item fixado é o primeiro: o centro da dock menos meio lugar (dois lugares de 56 px)
 item_x=612 item_y=688
 pointer move $item_x $item_y sleep 200 click sleep 200
-for _ in $(seq 50); do swaymsg -t get_tree | grep -q '"app_id": "dock-test-app"' && break; sleep 0.1; done
+for _ in $(seq $ticks); do swaymsg -t get_tree | grep -q '"app_id": "dock-test-app"' && break; sleep 0.1; done
 app=$(pgrep -f dock-test-app.py | head -1)
 if [ -n "$app" ]; then
   ok "o clique abre o app"

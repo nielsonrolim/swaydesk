@@ -15,6 +15,7 @@
 # O teclado (soltar o Alt, o toque rápido, Tab e Esc) fica para as VMs: o Sway headless não tem teclado.
 # Sai com 1 se algo falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 . /repo/rust/scripts/lib-dark-text.sh
@@ -24,7 +25,7 @@ cp /bin/swaydesk-switcher "$HOME/.local/bin/"
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720 bg #000000 solid_color\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 failed=0
 expect() {
@@ -62,7 +63,7 @@ w.connect("destroy", Gtk.main_quit)
 w.show_all()
 Gtk.main()
 PY
-  for _ in $(seq 50); do [ "$(focused)" = "$1" ] && return; sleep 0.1; done
+  for _ in $(seq $ticks); do [ "$(focused)" = "$1" ] && return; sleep 0.1; done
 }
 open_window A
 open_window B
@@ -73,7 +74,7 @@ for impl in ${IMPLS:-rust python}; do
   # O cartão aparece logo (50 ms) e espera o clique (4 s) antes de fechar por falta de teclado
   SWAY_SWITCHER_IMPL=$impl SWAY_SWITCHER_SHOW_MS=50 SWAY_SWITCHER_FOCUS_MS=4000 \
     "$HOME/.local/bin/sway-switcher" daemon 2>/tmp/switcher-$impl.log & daemon=$!
-  for _ in $(seq 100); do [ -s "$XDG_RUNTIME_DIR/sway-switcher.pid" ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ -s "$XDG_RUNTIME_DIR/sway-switcher.pid" ] && break; sleep 0.1; done
   sleep 0.5
   echo "$impl: $(readlink /proc/$daemon/exe), comm $(cat /proc/$daemon/comm)"
   expect "$impl: o PID do arquivo é o do residente" "$daemon" "$(cat "$XDG_RUNTIME_DIR/sway-switcher.pid" 2>/dev/null)"

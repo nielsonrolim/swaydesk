@@ -15,6 +15,7 @@
 # Depois, o Rust aberto como /bin/swaydesk-osd-bar (o nome do pacote): o sway-osd ainda o acha.
 # Sai com 1 se algo falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" /tmp/fakebin && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 cp /repo/home/.local/bin/* "$HOME/.local/bin/"
@@ -28,7 +29,7 @@ export PATH=/tmp/fakebin:$PATH
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720 bg #000000 solid_color\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 # A janela embaixo do indicador: anota cada clique
 python3 - <<'PY' & under=$!
@@ -71,7 +72,7 @@ click_through() {
 for impl in ${IMPLS:-rust python}; do
   rm -f "$XDG_RUNTIME_DIR"/sway-osd-bar.*
   SWAY_OSD_BAR_IMPL=$impl WAYLAND_DEBUG=1 "$HOME/.local/bin/sway-osd-bar" 2>/tmp/wl-$impl.log & bar=$!
-  for _ in $(seq 100); do [ -s "$XDG_RUNTIME_DIR/sway-osd-bar.pid" ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ -s "$XDG_RUNTIME_DIR/sway-osd-bar.pid" ] && break; sleep 0.1; done
   sleep 0.5
   echo "$impl: $(readlink /proc/$bar/exe), comm $(cat /proc/$bar/comm)"
   expect "$impl: o PID do arquivo é o do indicador" "$bar" "$(cat "$XDG_RUNTIME_DIR/sway-osd-bar.pid" 2>/dev/null)"
@@ -104,7 +105,7 @@ done
 # sway-osd-bar, e o sway-osd, que confere o cmdline, ainda o acha
 rm -f "$XDG_RUNTIME_DIR"/sway-osd-bar.*
 /bin/swaydesk-osd-bar 2>/tmp/wl-package-name.log & bar=$!
-for _ in $(seq 100); do [ -s "$XDG_RUNTIME_DIR/sway-osd-bar.pid" ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ -s "$XDG_RUNTIME_DIR/sway-osd-bar.pid" ] && break; sleep 0.1; done
 sleep 0.5
 expect "swaydesk-osd-bar: o argv[0] vira sway-osd-bar" "sway-osd-bar" "$(tr '\0' '\n' </proc/$bar/cmdline | head -n 1)"
 hidden=$(card_pixel)

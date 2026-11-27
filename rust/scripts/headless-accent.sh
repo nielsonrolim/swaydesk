@@ -19,12 +19,13 @@
 #
 # Sai com 1 se algum caso falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg XDG_CONFIG_HOME=/tmp/home/.config
 mkdir -p "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8 GTK_A11Y=none
 printf 'output HEADLESS-1 resolution 1280x800\ndefault_border none\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /out/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 eval "$(dbus-daemon --session --fork --print-address=1 | sed 's/^/export DBUS_SESSION_BUS_ADDRESS=/')"
 printf 'accent = "#e01b24"\naccent_auto = false\n' > "$HOME/.config/swaydesk/config.toml"
@@ -54,7 +55,7 @@ EOF
 shot() {
   /bin/swaydesk-displays >> /out/app.log 2>&1 &
   local app=$!
-  for _ in $(seq 100); do
+  for _ in $(seq $ticks); do
     swaymsg -t get_tree | grep -q '"app_id": "org.swaydesktop.Displays"' && break
     sleep 0.1
   done

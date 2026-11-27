@@ -18,6 +18,7 @@
 #   com a troca. O GTK 3 (a versão em Python) lê o gtk-3.0 do adw-gtk3, que já tem o negrito.
 # Sai com 1 se algum caso falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 impl=${1:-rust}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
@@ -39,7 +40,7 @@ accent="#d02090"
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 eval "$(dbus-daemon --session --fork --print-address=1 | sed 's/^/export DBUS_SESSION_BUS_ADDRESS=/')"
 
@@ -55,12 +56,12 @@ shot() {
   env G_DEBUG=fatal-criticals SWAY_SYSTEM_ICONS=/tmp/no-system-icons SWAY_DESKTOP_SHARE=/repo/home/.local/share/sway-desktop \
     SWAY_THEME_APP_IMPL="$impl" "$HOME/.local/bin/sway-theme-app" >> /tmp/app.log 2>&1 &
   local pid=$!
-  for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
   sleep 2
   grim -t ppm "/tmp/$1.ppm"
   grim "/out/theme-style-$impl-$1.png" 2>/dev/null
   swaymsg -q '[app_id="org.swaydesktop.Theme"] kill'
-  for _ in $(seq 50); do [ "$(windows)" = 0 ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ "$(windows)" = 0 ] && break; sleep 0.1; done
   kill "$pid" 2>/dev/null; wait "$pid" 2>/dev/null
 }
 # measure A B: os pixels na cor de destaque só em A, só em B; e a tinta clara (o texto) de cada um

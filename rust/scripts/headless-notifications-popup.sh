@@ -11,6 +11,7 @@
 # conferidos pelo List do daemon, e o popup segue aberto. Depois, uma crítica com a central aberta: ela fica
 # à esquerda da central, e o X dela a dispensa sem fechar a central. Sai com 1 se algo falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 . /repo/rust/scripts/lib-dark-text.sh
@@ -20,7 +21,7 @@ for f in /bin/swaydesk-*; do [ "${f##*/}" = swaydesk-vpointer ] || cp "$f" "$HOM
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 DBUS_SESSION_BUS_ADDRESS=$(dbus-daemon --session --fork --print-address=1)
 export DBUS_SESSION_BUS_ADDRESS
@@ -30,7 +31,7 @@ failed=0
 trap 'kill $keeper 2>/dev/null' EXIT
 sleep 0.5
 SWAY_NOTIFD_IMPL=rust "$HOME/.local/bin/sway-notifd" 2>/tmp/notifd.err &
-for _ in $(seq 50); do notify list >/dev/null 2>&1 && break; sleep 0.1; done
+for _ in $(seq $ticks); do notify list >/dev/null 2>&1 && break; sleep 0.1; done
 
 expect() {
   if [ "$2" = "$3" ]; then printf 'ok      %s\n' "$1"; else printf 'FALHOU  %s: obtido "%s", esperado "%s"\n' "$1" "$3" "$2"; failed=1; fi
@@ -38,7 +39,7 @@ expect() {
 click() { /bin/swaydesk-vpointer --size 1280x720 move "$1" "$2" click sleep 200; sleep 0.8; }
 open_popup() {
   SWAY_NOTIFICATIONS_POPUP_IMPL=$1 "$HOME/.local/bin/waybar-notifications-popup" 2>>/tmp/popup.err & popup=$!
-  for _ in $(seq 50); do [ -e "$XDG_RUNTIME_DIR/waybar-notifications-popup.pid" ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ -e "$XDG_RUNTIME_DIR/waybar-notifications-popup.pid" ] && break; sleep 0.1; done
   sleep 1.2
 }
 close_popup() { kill "$popup" 2>/dev/null; wait "$popup" 2>/dev/null; sleep 0.5; }

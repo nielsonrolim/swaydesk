@@ -14,13 +14,14 @@
 # reaplica; sem nenhuma tela ligada, o apply liga todas. O app: Aplicar e Esc desfaz; Aplicar e o tempo esgotado desfaz; fechar a janela ou o SIGTERM com a pergunta aberta desfaz, e depois de um SIGKILL o app desfaz ao abrir, e o serviço no reload e no apply; Aplicar e Manter grava o perfil
 # e o 90-displays.conf. Sai com 1 se algum caso falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.config/sway/config.d" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=2 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x800 position 0 0\noutput HEADLESS-2 resolution 1024x768 position 1280 0\n' > /tmp/sway.conf
 printf 'include %s/.config/sway/config.d/*\n' "$HOME" >> /tmp/sway.conf
 sway -c /tmp/sway.conf > /out/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 eval "$(dbus-daemon --session --fork --print-address=1 | sed 's/^/export DBUS_SESSION_BUS_ADDRESS=/')"
 
@@ -38,7 +39,7 @@ key_of() { swaymsg -r -t get_outputs | python3 -c "import json,sys
 o=[o for o in json.load(sys.stdin) if o['name']=='$1'][0]
 print(' '.join(x or 'Unknown' for x in (o['make'], o['model'], o['serial'])))"; }
 wait_layout() {  # espera até 5 s pelo layout
-  for _ in $(seq 50); do [ "$(layout)" = "$1" ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ "$(layout)" = "$1" ] && break; sleep 0.1; done
   layout
 }
 profiles=$HOME/.config/swaydesk/displays.json
@@ -112,7 +113,7 @@ set_scale_up() {
 }
 apply() { keys -M ctrl -k Return -m ctrl; }
 app
-for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done
 sleep 1.5
 expect "a janela abre" "1" "$(windows)"
 grim /out/displays-1-open.png
@@ -138,8 +139,8 @@ grim /out/displays-4-reverted.png
 # está aberta (a contagem segue); o SIGTERM desfaz na hora; depois de um SIGKILL (um crash), a próxima vez que o
 # app abre desfaz pelo arquivo pendente do XDG_RUNTIME_DIR
 pending=$XDG_RUNTIME_DIR/sway-displays-pending.json
-app_gone() { for _ in $(seq 50); do pgrep -u "$(id -u)" -f '/bin/swaydesk-displays$' > /dev/null || return 0; sleep 0.1; done; return 1; }
-reopen() { app; for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done; sleep 1.5; set_scale_up; }
+app_gone() { for _ in $(seq $ticks); do pgrep -u "$(id -u)" -f '/bin/swaydesk-displays$' > /dev/null || return 0; sleep 0.1; done; return 1; }
+reopen() { app; for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done; sleep 1.5; set_scale_up; }
 apply; sleep 1.5
 expect "Aplicar antes de fechar a janela" "1.5" "$(scale_of $first)"
 swaymsg -q '[app_id="org.swaydesktop.Displays" title="^Displays$"] kill'; sleep 1
@@ -156,7 +157,7 @@ expect "Aplicar antes do SIGKILL" "1.5" "$(scale_of $first)"
 pkill -u "$(id -u)" -KILL -f '/bin/swaydesk-displays$'
 app_gone; sleep 1
 expect "o SIGKILL não deixa desfazer (fica o arquivo pendente)" "1.5 yes" "$(scale_of $first) $([ -e "$pending" ] && echo yes || echo no)"
-app; for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done; sleep 2.5
+app; for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done; sleep 2.5
 expect "a próxima vez que o app abre, desfaz o que ficou pendente" "$before no" "$(scale_of $first) $([ -e "$pending" ] && echo yes || echo no)"
 grim /out/displays-4b-restored-on-start.png
 # O serviço também consome o arquivo pendente (o app pode não abrir de novo, e a tela pode estar apagada): no
@@ -177,7 +178,7 @@ app_gone; sleep 1
 /bin/swaydesk-displays apply 2>>/out/daemon.log
 expect "depois de um SIGKILL, o apply (a tampa) desfaz pelo arquivo pendente" "$before no" "$(scale_of $first) $([ -e "$pending" ] && echo yes || echo no)"
 mv "$profiles.bak" "$profiles"
-app; for _ in $(seq 100); do [ "$(windows)" = 1 ] && break; sleep 0.1; done; sleep 1.5
+app; for _ in $(seq $ticks); do [ "$(windows)" = 1 ] && break; sleep 0.1; done; sleep 1.5
 set_scale_up
 apply; sleep 1.5
 # Na pergunta, o foco começa no Desfazer: Tab vai ao Manter

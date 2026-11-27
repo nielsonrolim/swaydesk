@@ -18,6 +18,7 @@
 # - o swayidle é o mesmo processo do começo ao fim; com o fim do Sway, o sway-caffeinate sai.
 # Sai com 1 se algo falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 cp /repo/home/.local/bin/sway-caffeine /repo/home/.local/bin/sway-i18n.sh "$HOME/.local/bin/"
@@ -28,7 +29,7 @@ export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=2 LA
 printf 'output * resolution 1280x720 bg #000000 solid_color\n' >/tmp/sway.conf
 sway -c /tmp/sway.conf >/tmp/sway.log 2>&1 &
 sway_pid=$!
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 caffeine=$HOME/.local/bin/sway-caffeine
 
@@ -71,7 +72,7 @@ swaymsg -q output HEADLESS-2 enable
 expect "o sway-caffeinate seguiu no ar" 1 "$(holders)"
 
 "$caffeine" off
-for _ in $(seq 30); do [ "$(holders)" = 0 ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ "$(holders)" = 0 ] && break; sleep 0.1; done
 expect "off: o sway-caffeinate sai" 0 "$(holders)"
 expect "off: o arquivo de PID some" no "$([ -e "$XDG_RUNTIME_DIR/sway-caffeinate.pid" ] && echo yes || echo no)"
 expect "off: o swayidle volta a disparar" 1 "$(idle_fires)"
@@ -81,7 +82,7 @@ expect "o swayidle é o mesmo processo" yes "$(kill -0 "$idle_pid" 2>/dev/null &
 expect "ligada de novo" 1 "$(holders)"
 kill "$idle_pid" 2>/dev/null
 kill "$sway_pid"
-for _ in $(seq 30); do [ "$(holders)" = 0 ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ "$(holders)" = 0 ] && break; sleep 0.1; done
 expect "com o fim do Sway, o sway-caffeinate sai" 0 "$(holders)"
 if [ "$failed" != 0 ]; then
   echo "--- sway.log"; tail -n 30 /tmp/sway.log

@@ -22,6 +22,7 @@
 # fim, como nos dotfiles: o ~/.config/sway/config é um link, e os perfis só existem ao lado do arquivo de verdade
 # (keys_dir segue o link): o seletor aparece do mesmo jeito.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 mode=${1:-}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/sway/config.d" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
@@ -69,7 +70,7 @@ export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LA
 # config herdar o endereço; sem ele, cada chamada abriria a sua janela
 eval "$(dbus-daemon --session --fork --print-address=1 | sed 's/^/export DBUS_SESSION_BUS_ADDRESS=/')"
 sway -c "$HOME/.config/sway/config" > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 # Sem um teclado vivo, cada wtype cria o seu, e a primeira tecla se perde (o Esc sozinho, o f de "foot")
 wtype -s 3600000 -k F24 & keeper=$!
@@ -82,7 +83,7 @@ fail() { printf 'FALHOU  %s\n' "$1"; failed=1; }
 shot() { grim "/out/help-$1.png" 2>/dev/null; }
 windows() { swaymsg -t get_tree | grep -c '"app_id": "org.swaydesktop.Help"'; }
 wait_windows() {  # quantas janelas esperar
-  for _ in $(seq 100); do [ "$(windows)" = "$1" ] && return 0; sleep 0.1; done
+  for _ in $(seq $ticks); do [ "$(windows)" = "$1" ] && return 0; sleep 0.1; done
   return 1
 }
 key() { timeout 5 wtype "$@"; sleep 0.4; }

@@ -15,6 +15,7 @@
 # versão em Python, o Enter não chega à busca no headless (também na main): a cópia só é conferida no Rust.
 # Sai com 1 se algum caso falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 impl=${1:-rust}
 if ! command -v qalc >/dev/null || ! command -v wl-paste >/dev/null; then
   echo "FALHOU  o contêiner precisa do qalc e do wl-clipboard"
@@ -43,7 +44,7 @@ DESKTOP
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 # Sem um teclado vivo, cada wtype cria o seu, e o primeiro caractere se perde
 wtype -s 3600000 -k F24 & keeper=$!
@@ -67,7 +68,7 @@ copy_checked() { [ "$impl" = rust ]; }
 open_grid() {
   close_grid
   SWAY_DRAWER_IMPL=$impl "$HOME/.local/bin/sway-drawer"
-  for _ in $(seq 30); do shown && break; sleep 0.1; done
+  for _ in $(seq $ticks); do shown && break; sleep 0.1; done
   sleep 1
 }
 

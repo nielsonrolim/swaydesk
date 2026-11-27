@@ -10,6 +10,7 @@
 # pactl set-sink-port e o wpctl set-default), no mudo, e um clique na parte transparente da superfície,
 # abaixo do cartão, que tem de passar para o clique fora e fechar o popup. Sai com 1 se algo falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" /tmp/fakebin && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do [ -f "$f" ] && ln -sf "$f" "$HOME/.local/bin/"; done
@@ -45,7 +46,7 @@ export PATH=/tmp/fakebin:$PATH
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 failed=0
 /bin/swaydesk-vpointer sleep 3600000 & keeper=$!
@@ -84,7 +85,7 @@ for impl in $impls; do
   click 1214 "$link_y"
   expect "$impl: a região de entrada acompanha o cartão" "pavucontrol" "$(tail -n 1 "$XDG_RUNTIME_DIR/waybar-popups.log" | grep -o 'pavucontrol\|clique fora')"
   # O popup fecha com o clique; se não fechou (uma falha acima), não fica esperando para sempre
-  for _ in $(seq 50); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done
+  for _ in $(seq $ticks); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done
   kill "$popup" 2>/dev/null; wait $popup 2>/dev/null
   SWAY_AUDIO_IMPL=$impl "$HOME/.local/bin/waybar-audio" 2>>/tmp/popup.err & popup=$!
   sleep 2

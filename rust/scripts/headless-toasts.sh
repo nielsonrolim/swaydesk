@@ -13,6 +13,7 @@
 # Para cada versão (rust e python): três toasts e a captura; o clique no corpo de um toast com a ação
 # "default" a invoca e o fecha; o clique no X fecha; o clique num botão de ação. Sai com 1 se algo falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 # Os ids crescem: a, b, c, d (a ordem do sort numérico basta com menos de 10)
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
@@ -21,7 +22,7 @@ for f in /bin/swaydesk-*; do [ "${f##*/}" = swaydesk-vpointer ] || cp "$f" "$HOM
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 DBUS_SESSION_BUS_ADDRESS=$(dbus-daemon --session --fork --print-address=1)
 export DBUS_SESSION_BUS_ADDRESS
@@ -40,7 +41,7 @@ click() { /bin/swaydesk-vpointer --size 1280x720 move "$1" "$2" click sleep 200;
 
 for impl in rust python; do
   SWAY_NOTIFD_IMPL=$impl "$HOME/.local/bin/sway-notifd" 2>/tmp/notifd-$impl.err & daemon=$!
-  for _ in $(seq 50); do notify list >/dev/null 2>&1 && break; sleep 0.1; done
+  for _ in $(seq $ticks); do notify list >/dev/null 2>&1 && break; sleep 0.1; done
   a=$(notify notify "Bateria fraca" "Restam <b>10%</b>. Conecte o carregador." --app Energia --critical)
   b=$(notify notify "Mensagem nova" "Um corpo comprido o bastante para quebrar em mais de uma linha e ser cortado no fim com reticências, porque passa de três linhas de texto no cartão do toast." --app Chat --actions "default,Abrir,reply,Responder,later,Depois")
   c=$(notify notify "Download concluído" "arquivo.iso" --app Navegador)

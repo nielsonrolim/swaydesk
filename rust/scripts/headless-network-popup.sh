@@ -15,6 +15,7 @@
 # clique chama o "nmcli radio wifi off". A versão em Python precisa da libnm (gir1.2-nm-1.0), que a imagem
 # não tem: ela fica para a rodada na VM. Sai com 1 se algo falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" /tmp/fake && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do [ -f "$f" ] && ln -sf "$f" "$HOME/.local/bin/"; done
@@ -28,7 +29,7 @@ export PATH=/tmp/fake:$PATH
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 failed=0
 expect() {
@@ -40,7 +41,7 @@ bus=$(dbus-daemon --session --fork --print-address) || exit 1
 export DBUS_SYSTEM_BUS_ADDRESS=$bus
 DBUS_SYSTEM_BUS_ADDRESS=$bus python3 /repo/rust/scripts/fake-nm.py > /tmp/nm.ready 2>/tmp/nm.err & fake=$!
 trap 'kill $keeper $fake 2>/dev/null' EXIT
-for _ in $(seq 50); do grep -q ready /tmp/nm.ready 2>/dev/null && break; sleep 0.1; done
+for _ in $(seq $ticks); do grep -q ready /tmp/nm.ready 2>/dev/null && break; sleep 0.1; done
 sleep 0.5
 
 # O interruptor do Wi-Fi, no canto de cima do popup (o "Wi-Fi" à esquerda, o "Network" à direita)

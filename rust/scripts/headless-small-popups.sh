@@ -12,6 +12,7 @@
 # captura de cada popup e os cliques nos botões, conferidos pelas chamadas anotadas, e o popup segue
 # aberto. Sai com 1 se algo falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 # Cópias, não links: o Python chama os vizinhos pelo caminho real (o BIN do waybar_popup.py), e os
@@ -79,7 +80,7 @@ export BACKLIGHT_DIR=/tmp/backlight
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 failed=0
 /bin/swaydesk-vpointer sleep 3600000 & keeper=$!
@@ -92,7 +93,7 @@ expect() {
 click() { /bin/swaydesk-vpointer --size 1280x720 move "$1" "$2" click sleep 200; sleep 0.8; }
 open_popup() {  # impl script variável
   env "$3=$1" "$HOME/.local/bin/$2" 2>>/tmp/popup.err & popup=$!
-  for _ in $(seq 50); do [ -e "$XDG_RUNTIME_DIR/$2.pid" ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ -e "$XDG_RUNTIME_DIR/$2.pid" ] && break; sleep 0.1; done
   sleep 1.2
 }
 close_popup() { kill "$popup" 2>/dev/null; wait "$popup" 2>/dev/null; sleep 0.5; }
@@ -153,7 +154,7 @@ done
 # o run_single roda de novo com o nome do papel, e quem confere o arquivo de PID pelo cmdline o vê aberto
 echo off >"$state/caffeine"
 /bin/swaydesk-caffeine-popup 2>>/tmp/popup.err & popup=$!
-for _ in $(seq 50); do [ -s "$XDG_RUNTIME_DIR/waybar-caffeine-popup.pid" ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ -s "$XDG_RUNTIME_DIR/waybar-caffeine-popup.pid" ] && break; sleep 0.1; done
 sleep 1.2
 expect "swaydesk-caffeine-popup: o argv[0] vira waybar-caffeine-popup" "waybar-caffeine-popup" \
   "$(tr '\0' '\n' </proc/$popup/cmdline | head -n 1)"

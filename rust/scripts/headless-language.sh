@@ -12,12 +12,13 @@
 # para a VM. Aqui, o que enganava o sway/language da Waybar: um "swaymsg reload" e um teclado virtual do wtype (que
 # o Sway lista com layout nulo) não podem fazer o módulo aparecer: a única linha é a do começo, com o texto vazio.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\ninput type:keyboard xkb_layout br\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1
 SWAYSOCK=$(ls "$XDG_RUNTIME_DIR"/sway-ipc.*.sock 2>/dev/null | head -1)
 export SWAYSOCK

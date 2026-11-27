@@ -20,6 +20,7 @@
 # no dump do kill -USR2) só com a animação, e depois de solto nada fica fora do lugar nem animando
 # (shifted=0 drag_animating=false: o timer parou).
 set -u
+. /repo/rust/scripts/lib-wait.sh
 impl=${1:-rust}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" "$HOME/.local/share/applications" \
@@ -42,7 +43,7 @@ printf 'launcher = "true"\n' > "$HOME/.config/sway-dock/config.toml"
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 /bin/swaydesk-vpointer sleep 3600000 & keeper=$!
 trap 'kill $keeper 2>/dev/null' EXIT
@@ -58,7 +59,7 @@ shot() { grim "/out/$impl-drag-$mode-$1.png" 2>/dev/null; }
 dump() {
   local before; before=$(grep -c "dock 0:" /tmp/dock.log)
   kill -USR2 "$pid"
-  for _ in $(seq 20); do [ "$(grep -c "dock 0:" /tmp/dock.log)" -gt "$before" ] && break; sleep 0.05; done
+  for _ in $(seq $((ticks * 2))); do [ "$(grep -c "dock 0:" /tmp/dock.log)" -gt "$before" ] && break; sleep 0.05; done
   grep "dock 0:" /tmp/dock.log | tail -1
 }
 field() { sed -n "s/.* $1=\([^ ]*\).*/\1/p"; }
@@ -98,7 +99,7 @@ check() {  # NOME ORDEM-ESPERADA
 start_dock() {
   : > /tmp/dock.log
   env G_DEBUG=fatal-criticals SWAY_DOCK_IMPL=$impl "$HOME/.local/bin/sway-dock" >> /tmp/dock.log 2>&1 &
-  for _ in $(seq 50); do [ -e "$XDG_RUNTIME_DIR/sway-dock.pid" ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ -e "$XDG_RUNTIME_DIR/sway-dock.pid" ] && break; sleep 0.1; done
   sleep 1.5
   pid=$(cat "$XDG_RUNTIME_DIR/sway-dock.pid" 2>/dev/null)
   if [ -z "$pid" ] || ! kill -0 "$pid" 2>/dev/null; then
@@ -107,7 +108,7 @@ start_dock() {
 }
 stop_dock() {
   kill "$pid"
-  for _ in $(seq 30); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
+  for _ in $(seq $ticks); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
   rm -f "$XDG_RUNTIME_DIR/sway-dock.pid"
   grep -v "^$" /tmp/dock.log | grep -iv "old docks\|dock 0:" | head -20 | sed "s/^/log ($mode): /"
 }

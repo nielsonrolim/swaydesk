@@ -14,6 +14,7 @@
 # Cada caso: abre o popup (Rust e Python), espera o pidfile, clica e confere se ele fechou ou continua.
 # Sai com 1 se algum caso falhar. Para outro popup, acrescente linhas no fim.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do ln -sf "$f" "$HOME/.local/bin/"; done
@@ -21,7 +22,7 @@ for f in /bin/swaydesk-*; do [ "${f##*/}" = swaydesk-vpointer ] || cp "$f" "$HOM
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 failed=0
 # Um ponteiro virtual vivo o tempo todo: o seat já tem ponteiro quando cada popup sobe, e o GTK cria o
@@ -34,7 +35,7 @@ sleep 0.5
 check() {
   local program=$1 var=$2 impl=$3 x=$4 y=$5 expected=$6 pid got
   env "$var=$impl" "$HOME/.local/bin/$program" 2>/dev/null & pid=$!
-  for _ in $(seq 50); do [ -e "$XDG_RUNTIME_DIR/$program.pid" ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ -e "$XDG_RUNTIME_DIR/$program.pid" ] && break; sleep 0.1; done
   sleep 1  # o popup aparece e os catchers mapeiam
   # Um popup que nem abriu (caiu na subida) passaria no caso "fechado" sem ter testado nada
   if [ ! -e "$XDG_RUNTIME_DIR/$program.pid" ] || ! kill -0 "$pid" 2>/dev/null; then
@@ -60,10 +61,10 @@ toggle_log() {
   local impl=$1 pid log=$XDG_RUNTIME_DIR/waybar-popups.log
   : > "$log"
   SWAY_CALENDAR_IMPL=$impl "$HOME/.local/bin/waybar-calendar" 2>/dev/null & pid=$!
-  for _ in $(seq 50); do [ -e "$XDG_RUNTIME_DIR/waybar-calendar.pid" ] && break; sleep 0.1; done
+  for _ in $(seq $ticks); do [ -e "$XDG_RUNTIME_DIR/waybar-calendar.pid" ] && break; sleep 0.1; done
   sleep 1
   SWAY_CALENDAR_IMPL=$impl "$HOME/.local/bin/waybar-calendar" 2>/dev/null
-  for _ in $(seq 30); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
+  for _ in $(seq $ticks); do kill -0 "$pid" 2>/dev/null || break; sleep 0.1; done
   if kill -0 "$pid" 2>/dev/null; then
     printf 'FALHOU  waybar-calendar (%s): abrir de novo não fechou\n' "$impl"; failed=1; kill "$pid"
   elif grep -q 'waybar-calendar: opened again: SIGTERM to the open one' "$log" && grep -q 'waybar-calendar: SIGTERM$' "$log"; then

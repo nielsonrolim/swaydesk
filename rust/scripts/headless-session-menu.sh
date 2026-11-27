@@ -17,6 +17,7 @@
 # e o menu aberto sobre ela a cancela. O teclado (letras, setas, Esc) e a contagem de 60 s ficam para a VM:
 # o headless não tem teclado virtual. Sai com 1 se algum caso falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 impl=${1:-rust}
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" "$HOME/.config/swaydesk" && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
@@ -32,7 +33,7 @@ chmod +x "$HOME/.local/bin/session-action"
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 /bin/swaydesk-vpointer sleep 3600000 & keeper=$!
 trap 'kill $keeper 2>/dev/null' EXIT
@@ -46,14 +47,26 @@ shot() { grim "/out/session-menu-$impl-$1.png" 2>/dev/null; }
 pidfile=$XDG_RUNTIME_DIR/session-menu.pid
 menu() { env G_DEBUG=fatal-criticals SWAY_SESSION_MENU_IMPL=$impl "$HOME/.local/bin/session-menu" "$@" >> /tmp/menu.log 2>&1 & }
 up() {  # espera o menu abrir e desenhar; devolve o PID
-  for _ in $(seq 50); do [ -e "$pidfile" ] && break; sleep 0.1; done
+  wait_for test -e "$pidfile" || { echo "timeout: no $pidfile after $deadline s" >&2; return; }
   sleep 1
   cat "$pidfile" 2>/dev/null
 }
-gone() {  # o processo saiu em até 2 s
-  for _ in $(seq 20); do kill -0 "$1" 2>/dev/null || return 0; sleep 0.1; done
+dead() { ! kill -0 "$1" 2>/dev/null; }
+gone() {  # o processo saiu em até $deadline s; senão, diz qual ficou
+  wait_for dead "$1" && return 0
+  printf '        (o PID %s continua vivo depois de %s s)\n' "$1" "$deadline"
   return 1
 }
+next_pid() {  # next_pid ANTIGO: o PID de outro menu vivo no arquivo, em até $deadline s
+  local p n=$ticks
+  while ((n-- > 0)); do
+    p=$(cat "$pidfile" 2>/dev/null)
+    [ -n "$p" ] && [ "$p" != "$1" ] && kill -0 "$p" 2>/dev/null && { echo "$p"; return; }
+    sleep 0.1
+  done
+  echo "timeout: no menu other than $1 in $pidfile after $deadline s" >&2
+}
+has_action() { [ -s /tmp/actions ]; }
 
 menu
 pid=$(up)
@@ -80,7 +93,7 @@ pid=$(up)
 # O terceiro botão (Suspender) fica no centro da tela; a fileira, abaixo do cabeçalho
 pointer move 640 370 sleep 100 click sleep 300
 gone "$pid" && ok "o botão fecha o menu" || { fail "o botão não fechou o menu"; kill "$pid"; }
-for _ in $(seq 20); do [ -s /tmp/actions ] && break; sleep 0.1; done
+wait_for has_action
 action=$(cat /tmp/actions 2>/dev/null)
 case $action in
   "suspend sid="*) [ "${action#*sid=}" != "$(ps -o sid= -p $$ | tr -d ' ')" ] && ok "roda a ação ($action)" || fail "a ação ficou na sessão do menu" ;;
@@ -109,19 +122,19 @@ no_action "clicar fora"
 menu --confirm reboot
 pid=$(up)
 menu --confirm poweroff
-pid2=$(for _ in $(seq 50); do p=$(cat "$pidfile" 2>/dev/null); [ -n "$p" ] && [ "$p" != "$pid" ] && kill -0 "$p" 2>/dev/null && { echo "$p"; break; }; sleep 0.1; done)
+pid2=$(next_pid "$pid")
 gone "$pid" && [ -n "$pid2" ] && ok "outra confirmação abre no lugar" || fail "outra confirmação não substituiu a aberta"
 menu
-pid3=$(for _ in $(seq 50); do p=$(cat "$pidfile" 2>/dev/null); [ -n "$p" ] && [ "$p" != "$pid2" ] && kill -0 "$p" 2>/dev/null && { echo "$p"; break; }; sleep 0.1; done)
+pid3=$(next_pid "$pid2")
 gone "$pid2" && [ -n "$pid3" ] && ! grep -q -- "--confirm" /proc/$pid3/cmdline && ok "o menu cancela a confirmação e abre" || fail "o menu não abriu no lugar da confirmação"
 menu --confirm reboot
-pid4=$(for _ in $(seq 50); do p=$(cat "$pidfile" 2>/dev/null); [ -n "$p" ] && [ "$p" != "$pid3" ] && kill -0 "$p" 2>/dev/null && { echo "$p"; break; }; sleep 0.1; done)
+pid4=$(next_pid "$pid3")
 gone "$pid3" && [ -n "$pid4" ] && ok "a confirmação abre no lugar do menu" || fail "a confirmação não abriu no lugar do menu"
 sleep 1
 no_action "trocas"
 pointer move $accept_x $row_y sleep 100 click sleep 300
 gone "$pid4" && ok "Reiniciar agora fecha" || { fail "Reiniciar agora não fechou"; kill "$pid4"; }
-for _ in $(seq 20); do [ -s /tmp/actions ] && break; sleep 0.1; done
+wait_for has_action
 case $(cat /tmp/actions 2>/dev/null) in
   "reboot sid="*) ok "Reiniciar agora reinicia" ;;
   *) fail "Reiniciar agora: '$(cat /tmp/actions 2>/dev/null)'" ;;

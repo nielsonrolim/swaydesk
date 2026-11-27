@@ -12,6 +12,7 @@
 # ponteiro): fixar e apagar deixam a lista onde estava, e a linha seguinte toma o lugar da que saiu.
 # Sai com 1 se algo falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export HOME=/tmp/home XDG_RUNTIME_DIR=/tmp/xdg
 mkdir -p "$HOME/.local/bin" /tmp/fakebin && mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 for f in /repo/home/.local/bin/*; do [ -f "$f" ] && ln -sf "$f" "$HOME/.local/bin/"; done
@@ -48,7 +49,7 @@ export PATH=/tmp/fakebin:$PATH
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 failed=0
 /bin/swaydesk-vpointer sleep 3600000 & keeper=$!
@@ -73,13 +74,13 @@ for impl in ${IMPLS:-rust python}; do
   no_light_text "$impl: as linhas, a selecionada e as outras"
   click 1050 113  # o primeiro item: o texto comum
   expect "$impl: o clique copia o texto" "texto comum para copiar" "$(cat /tmp/copied 2>/dev/null)"
-  for _ in $(seq 50); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done  # o Python sai devagar
+  for _ in $(seq $ticks); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done  # o Python sai devagar
   expect "$impl: copiar fecha o popup" "fechado" "$(state)"
   open_popup "$impl"
   click 1050 163  # o segundo: o UTF-16, que vai convertido para UTF-8
   expect "$impl: o UTF-16 vai em UTF-8" "https://exemplo.com/ação" "$(cat /tmp/copied 2>/dev/null)"
   expect "$impl: com o tipo do UTF-8" "wl-copy --type text/plain;charset=utf-8" "$(grep wl-copy /tmp/calls | tail -n 1)"
-  for _ in $(seq 50); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done
+  for _ in $(seq $ticks); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done
   open_popup "$impl"
   click 1189 113  # o pino do primeiro
   sleep 0.5
@@ -120,7 +121,7 @@ scrolled_popup() {  # impl: abre e rola 12 passos da roda
   open_popup "$1"
   /bin/swaydesk-vpointer --size 1280x720 move 1050 200 scroll 12 sleep 800
 }
-wait_closed() { for _ in $(seq 50); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done; }
+wait_closed() { for _ in $(seq $ticks); do kill -0 "$popup" 2>/dev/null || break; sleep 0.1; done; }
 copied_at() { rm -f /tmp/copied; click 1050 "$1"; wait_closed; cat /tmp/copied 2>/dev/null; }
 for impl in ${IMPLS:-rust python}; do
   long_history; : >/tmp/calls; rm -rf "$HOME/.local/share/waybar-clipboard" "$HOME/.cache/waybar-clipboard"

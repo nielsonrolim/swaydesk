@@ -19,6 +19,7 @@
 # janela por cima), a faixa da borda fica livre e traz a dock por cima da grade. A versão
 # em Python precisa do python3-gi-cairo; sem ele, o caso é pulado. Sai com 1 se algum caso falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 impl=${1:-rust}
 if [ "$impl" = python ] && ! python3 -c 'import cairo, gi; gi.require_foreign("cairo")' 2>/dev/null; then
   echo "pulado  python: sem o python3-gi-cairo"
@@ -41,7 +42,7 @@ echo dock-test-app > "$HOME/.local/share/sway-dock/pinned"
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=1 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x720\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /tmp/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 /bin/swaydesk-vpointer sleep 3600000 & keeper=$!
 trap 'kill $keeper 2>/dev/null' EXIT
@@ -54,13 +55,13 @@ pointer() { /bin/swaydesk-vpointer --size 1280x720 "$@"; }
 shown() { [ -e "$XDG_RUNTIME_DIR/sway-drawer.shown" ]; }
 open_grid() {
   SWAY_DRAWER_IMPL=$impl "$HOME/.local/bin/sway-drawer"
-  for _ in $(seq 30); do shown && break; sleep 0.1; done
+  for _ in $(seq $ticks); do shown && break; sleep 0.1; done
   sleep 1  # mapeada, com a região de cliques aplicada
 }
 
 SWAY_DOCK_IMPL=$impl "$HOME/.local/bin/sway-dock" > /tmp/dock.log 2>&1 &
 SWAY_DRAWER_IMPL=$impl "$HOME/.local/bin/sway-drawer" start > /tmp/drawer.log 2>&1 &
-for _ in $(seq 50); do [ -e "$XDG_RUNTIME_DIR/sway-dock.area" ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ -e "$XDG_RUNTIME_DIR/sway-dock.area" ] && break; sleep 0.1; done
 sleep 1.5
 # Uma dock 1280x720: o item fixado é o primeiro, à esquerda do botão da grade
 read -r ax ay aw ah < "$XDG_RUNTIME_DIR/sway-dock.area" 2>/dev/null
@@ -98,7 +99,7 @@ swaymsg create_output >/dev/null
 swaymsg output HEADLESS-1 resolution 1280x720 position 0 0 >/dev/null
 swaymsg output HEADLESS-2 resolution 1280x720 position 1280 0 >/dev/null
 swaymsg focus output HEADLESS-2 >/dev/null
-for _ in $(seq 50); do [ "$(wc -l < "$XDG_RUNTIME_DIR/sway-dock.area" 2>/dev/null)" = 2 ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ "$(wc -l < "$XDG_RUNTIME_DIR/sway-dock.area" 2>/dev/null)" = 2 ] && break; sleep 0.1; done
 sleep 1
 [ "$(wc -l < "$XDG_RUNTIME_DIR/sway-dock.area")" = 2 ] && ok "uma área por saída" || fail "a área não tem as duas docks: $(cat "$XDG_RUNTIME_DIR/sway-dock.area")"
 open_grid
@@ -131,7 +132,7 @@ GLib.MainLoop().run()
 PY
 rm -f /tmp/launched
 python3 /tmp/cover.py & cover=$!
-for _ in $(seq 50); do swaymsg -t get_tree | grep -q '"app_id": "cover-app"' && break; sleep 0.1; done
+for _ in $(seq $ticks); do swaymsg -t get_tree | grep -q '"app_id": "cover-app"' && break; sleep 0.1; done
 pointer move 640 300 sleep 300
 sleep 2.5  # a dock desce (atraso e animação)
 read -r _ _ _ hh < "$XDG_RUNTIME_DIR/sway-dock.area" 2>/dev/null

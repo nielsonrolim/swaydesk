@@ -15,6 +15,7 @@
 #   uma conta sem cor fica com a da config.
 # Sai com 1 se algo falhar.
 set -u
+. /repo/rust/scripts/lib-wait.sh
 export XDG_RUNTIME_DIR=/tmp/xdg HOME=/root
 mkdir -p -m 700 "$XDG_RUNTIME_DIR"
 mkdir -p /usr/share/fonts/truetype/swaydesk && cp /fonts/*.ttf /usr/share/fonts/truetype/swaydesk/ && fc-cache -f >/dev/null
@@ -35,11 +36,11 @@ printf '[Desktop Entry]\nName=GNOME\nExec=gnome-session\nDesktopNames=GNOME\n' >
 export WLR_BACKENDS=headless WLR_LIBINPUT_NO_DEVICES=1 WLR_HEADLESS_OUTPUTS=2 LANG=C.UTF-8
 printf 'output HEADLESS-1 resolution 1280x800 position 0 0 bg #1b1b1f solid_color\noutput HEADLESS-2 resolution 1024x768 position 1280 0 bg #1b1b1f solid_color\ndefault_border none\n' > /tmp/sway.conf
 sway -c /tmp/sway.conf > /out/sway.log 2>&1 &
-for _ in $(seq 100); do [ -S "$XDG_RUNTIME_DIR/wayland-1" ] && break; sleep 0.1; done
+wait_sway
 export WAYLAND_DISPLAY=wayland-1 SWAYSOCK=$(ls $XDG_RUNTIME_DIR/sway-ipc.*.sock)
 export GREETD_SOCK=/tmp/greetd.sock SWAYDESK_GREETER_STATE=/tmp/state.json SWAYDESK_GREETER_CONFIG=/tmp/greeter.toml
 python3 /repo/rust/scripts/fake-greetd.py "$GREETD_SOCK" /out/greetd.log & 
-for _ in $(seq 50); do [ -S "$GREETD_SOCK" ] && break; sleep 0.1; done
+for _ in $(seq $ticks); do [ -S "$GREETD_SOCK" ] && break; sleep 0.1; done
 failed=0
 expect() {
   if [ "$2" = "$3" ]; then printf 'ok      %s\n' "$1"; else printf 'FALHOU  %s: obtido "%s", esperado "%s"\n' "$1" "$3" "$2"; failed=1; fi
@@ -50,7 +51,7 @@ start() {
 }
 # Digita e dá Enter. O teclado virtual novo de cada wtype perde a primeira tecla: um Shift vai antes
 type_line() { wtype -k Shift_L "$1" -k Return; }
-gone() { for _ in $(seq 50); do kill -0 "$greeter" 2>/dev/null || return 0; sleep 0.1; done; return 1; }
+gone() { for _ in $(seq $ticks); do kill -0 "$greeter" 2>/dev/null || return 0; sleep 0.1; done; return 1; }
 requests() { python3 -c 'import json,sys; print(" ".join(json.loads(l)["type"] for l in open("/out/greetd.log")))'; }
 
 : > /out/greetd.log
@@ -117,7 +118,7 @@ PY
 }
 bus_address=$(dbus-daemon --session --fork --print-address) || failed=1
 DBUS_SESSION_BUS_ADDRESS=$bus_address python3 /repo/rust/scripts/fake-accounts.py ana=#e11d48 bia=not-a-color > /tmp/accounts.ready &
-for _ in $(seq 50); do grep -q ready /tmp/accounts.ready 2>/dev/null && break; sleep 0.1; done
+for _ in $(seq $ticks); do grep -q ready /tmp/accounts.ready 2>/dev/null && break; sleep 0.1; done
 export DBUS_SYSTEM_BUS_ADDRESS=$bus_address
 printf '{"last_user": "ana"}' > /tmp/state.json
 start 3
