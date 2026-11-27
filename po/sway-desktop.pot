@@ -1597,6 +1597,10 @@ msgid "Searching for networks..."
 msgstr ""
 
 #: home/.local/bin/waybar-network-popup
+msgid "No Wi-Fi adapter"
+msgstr ""
+
+#: home/.local/bin/waybar-network-popup
 #, python-format
 msgid "Connected · %s"
 msgstr ""

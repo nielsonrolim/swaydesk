@@ -73,7 +73,7 @@ enum Detail {
 }
 
 /// O que, na lista, muda o que se vê: só com isso diferente a lista é refeita (a rolagem não se perde).
-type Signature = (Backend, Vec<(String, u32)>, Vec<(String, u32, Vec<(String, u8, bool, bool, String)>)>, Vec<(String, String, Option<u32>)>, Option<String>, bool);
+type Signature = (Backend, Vec<(String, u32)>, Vec<(String, u32, Vec<(String, u8, bool, bool, String)>)>, Vec<(String, String, Option<u32>)>, Option<String>, bool, bool);
 
 struct Popup {
     popup: Rc<PopupWindow>,
@@ -390,14 +390,16 @@ impl Popup {
         for w in self.nm_only.borrow().iter() {
             w.set_visible(!standalone);
         }
+        // Sem placa de Wi-Fi, o interruptor fica à vista, mas desativado (nos dois backends)
+        let absent = nm::wifi_absent(snap);
         for w in &self.wifi_toggle {
-            w.set_visible(!standalone || !nm::wifi_devices(snap).is_empty());
+            w.set_visible(!standalone || absent || !nm::wifi_devices(snap).is_empty());
         }
         self.updating.set(true);
         self.sw_net.set_active(snap.running && snap.networking);
         self.sw_net.set_sensitive(snap.running);
-        self.sw_wifi.set_active(snap.running && snap.wireless);
-        self.sw_wifi.set_sensitive(snap.running && snap.wireless_hardware && snap.networking);
+        self.sw_wifi.set_active(snap.running && snap.wireless && !absent);
+        self.sw_wifi.set_sensitive(snap.running && snap.wireless_hardware && snap.networking && !absent);
         self.updating.set(false);
     }
 
@@ -414,7 +416,7 @@ impl Popup {
             })
             .collect();
         let vpns = nm::vpn_rows(snap).iter().map(|(c, a)| (c.uuid.clone(), c.id.clone(), a.map(|a| a.state))).collect();
-        (snap.backend, wired, wifi, vpns, nm::wifi_blocked(snap), snap.running)
+        (snap.backend, wired, wifi, vpns, nm::wifi_blocked(snap), snap.running, nm::wifi_absent(snap))
     }
 
     fn fill_list(self: &Rc<Self>, snap: &Rc<Snapshot>) {
@@ -445,8 +447,12 @@ impl Popup {
                 rows.push(self.add_vpn_row());
                 self.list.append(&section("VPN", &rows));
             }
-            if standalone && wired.is_empty() && nm::wifi_devices(snap).is_empty() && !snap.iwd_denied {
+            let absent = nm::wifi_absent(snap);
+            if standalone && wired.is_empty() && nm::wifi_devices(snap).is_empty() && !snap.iwd_denied && !absent {
                 self.list.append(&empty_label(&tr("Not connected")));
+            }
+            if absent {
+                self.list.append(&section("Wi-Fi", &[empty_label(&tr("No Wi-Fi adapter")).upcast()]));
             }
             let wifi = nm::wifi_devices(snap);
             for dev in &wifi {

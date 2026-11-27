@@ -1604,6 +1604,10 @@ msgid "Searching for networks..."
 msgstr "Procurando redes..."
 
 #: home/.local/bin/waybar-network-popup
+msgid "No Wi-Fi adapter"
+msgstr "Nenhuma placa de Wi-Fi"
+
+#: home/.local/bin/waybar-network-popup
 #, python-format
 msgid "Connected · %s"
 msgstr "Conectado · %s"

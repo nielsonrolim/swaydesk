@@ -144,6 +144,11 @@ pub struct Snapshot {
     pub networking: bool,
     pub wireless: bool,
     pub wireless_hardware: bool,
+    /// Alguma placa de Wi-Fi vista fora de `devices` (sem o NM): um adaptador do iwd, mesmo sem Device
+    /// (desligado pelo rfkill), ou uma interface wlan do networkd (sem o iwd). Ver [`wifi_absent`]
+    pub wifi_adapter: bool,
+    /// O NM ainda está subindo (Startup), e a lista de placas pode estar incompleta
+    pub starting: bool,
     pub connectivity: u32,
     pub primary: Option<String>,
     pub activating: Option<String>,
@@ -327,6 +332,8 @@ fn read_nm(bus: &gio::DBusConnection, settings: bool) -> Snapshot {
     snap.networking = get(manager, "NetworkingEnabled").unwrap_or(false);
     snap.wireless = get(manager, "WirelessEnabled").unwrap_or(false);
     snap.wireless_hardware = get(manager, "WirelessHardwareEnabled").unwrap_or(false);
+    // Sem o objeto do gerenciador, também não se sabe que placas há
+    snap.starting = get(manager, "Startup").unwrap_or(true);
     snap.connectivity = get(manager, "Connectivity").unwrap_or(0);
     snap.primary = path_or_none(manager.get("PrimaryConnection").cloned());
     snap.activating = path_or_none(manager.get("ActivatingConnection").cloned());

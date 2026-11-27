@@ -163,6 +163,13 @@ pub fn vpn_rows(snap: &Snapshot) -> Vec<(&Connection, Option<&Active>)> {
     rows
 }
 
+/// Nenhuma placa de Wi-Fi no PC (só a de cabo): o popup mostra o Wi-Fi desativado. Uma placa bloqueada
+/// pelo rfkill continua contando (no NM ela segue na lista, e o interruptor a desbloqueia). Sem serviço no
+/// ar, com o NM ainda criando as placas ou com o iwd recusando a leitura, não se sabe, e nada muda.
+pub fn wifi_absent(snap: &Snapshot) -> bool {
+    snap.running && !snap.starting && !snap.iwd_denied && !snap.wifi_adapter && wifi_devices(snap).is_empty()
+}
+
 /// O motivo de não haver busca de redes, ou None.
 pub fn wifi_blocked(snap: &Snapshot) -> Option<String> {
     if !snap.networking {

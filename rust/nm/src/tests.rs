@@ -123,3 +123,35 @@ fn wifi_blocked_reasons() {
     snap.wireless = false;
     assert!(wifi_blocked(&snap).is_some());
 }
+
+fn wired_device() -> Device {
+    Device { path: "/d/2".into(), iface: "enp1s0".into(), kind: DeviceKind::Ethernet, ..wifi_device(&[], None) }
+}
+
+#[test]
+fn only_a_cable_means_no_wifi_adapter() {
+    let snap = snapshot(vec![], wired_device());
+    assert!(wifi_absent(&snap));
+}
+
+#[test]
+fn a_blocked_card_is_still_an_adapter() {
+    let mut card = wifi_device(&[], None);
+    card.state = device_state::UNAVAILABLE;
+    let mut snap = snapshot(vec![], card);
+    snap.wireless_hardware = false;
+    assert!(!wifi_absent(&snap));
+}
+
+#[test]
+fn nothing_running_says_nothing_about_the_adapter() {
+    assert!(!wifi_absent(&Snapshot::default()));
+}
+
+#[test]
+fn networkmanager_still_starting_says_nothing_about_the_adapter() {
+    // Logo depois do login o NM ainda cria as placas: a lista vazia não quer dizer "sem placa"
+    let mut snap = snapshot(vec![], wired_device());
+    snap.starting = true;
+    assert!(!wifi_absent(&snap));
+}

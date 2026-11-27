@@ -143,6 +143,7 @@ fn wifi(snap: &mut Snapshot, raw: &Raw, objects: &Objects) {
     paths.sort();
     for path in paths {
         let ifaces = &objects[path];
+        snap.wifi_adapter |= ifaces.contains_key(IWD_ADAPTER);
         if let Some(known) = ifaces.get(IWD_KNOWN) {
             let name = text(known, "Name");
             snap.connections.push(Connection {
@@ -244,6 +245,9 @@ fn wired(snap: &mut Snapshot, raw: &Raw) {
     let Some(links) = raw.networkd.as_ref().and_then(|d| d.get("Interfaces")).and_then(Value::as_array) else { return };
     for link in links {
         let field = |key: &str| link.get(key).and_then(Value::as_str).unwrap_or("").to_string();
+        if field("Type") == "wlan" {
+            snap.wifi_adapter = true; // a placa existe, mesmo sem o iwd para usá-la
+        }
         if field("Type") != "ether" {
             continue;
         }

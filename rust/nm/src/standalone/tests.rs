@@ -211,3 +211,41 @@ fn ordered_networks_from_dbus() {
     )]);
     assert_eq!(ordered_networks(&reply), [(HOME.to_string(), -4500)]);
 }
+
+/// O networkd com o cabo e sem a interface Wi-Fi (um PC só com placa de rede cabeada).
+fn cable_only() -> Value {
+    let mut links = networkd("routable", "configured");
+    links["Interfaces"].as_array_mut().unwrap().retain(|l| l["Type"] != "wlan");
+    links
+}
+
+#[test]
+fn a_cable_only_pc_has_no_wifi_adapter() {
+    let snap = build(&Raw { networkd: Some(cable_only()), iwd: Some(Objects::new()), ..Default::default() });
+    assert!(crate::wifi_absent(&snap));
+    let snap = build(&Raw { networkd: Some(cable_only()), ..Default::default() });
+    assert!(crate::wifi_absent(&snap));
+}
+
+#[test]
+fn an_iwd_adapter_without_a_device_is_still_an_adapter() {
+    // O rfkill desliga a placa: o iwd tira o Device e deixa o Adapter, com Powered falso
+    let mut objects = Objects::new();
+    objects.insert("/net/connman/iwd/0".into(), HashMap::from([(IWD_ADAPTER.to_string(), props(&[("Powered", false.to_variant())]))]));
+    let snap = build(&Raw { networkd: Some(cable_only()), iwd: Some(objects), ..Default::default() });
+    assert!(wifi_devices(&snap).is_empty());
+    assert!(!crate::wifi_absent(&snap));
+}
+
+#[test]
+fn a_wlan_link_in_networkd_is_still_an_adapter() {
+    // Sem o iwd, a placa só aparece no networkd (Type "wlan")
+    let snap = build(&Raw { networkd: Some(networkd("routable", "configured")), ..Default::default() });
+    assert!(!crate::wifi_absent(&snap));
+}
+
+#[test]
+fn denied_iwd_says_nothing_about_the_adapter() {
+    let snap = build(&Raw { networkd: Some(cable_only()), iwd_denied: true, ..Default::default() });
+    assert!(!crate::wifi_absent(&snap));
+}
