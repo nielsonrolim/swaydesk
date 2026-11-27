@@ -232,10 +232,9 @@ impl Panel {
         }
         line.append(&texts);
         if state.source == Source::User && editable {
-            let reset = gtk4::Button::from_icon_name("edit-undo-symbolic");
+            let reset = swaydesk_ui::icon_button("edit-undo-symbolic", &tr("Use the default"));
             reset.add_css_class("flat");
             reset.set_valign(gtk4::Align::Center);
-            reset.set_tooltip_text(Some(&tr("Use the default")));
             let panel = Rc::downgrade(self);
             let key = key.to_string();
             reset.connect_clicked(move |_| {

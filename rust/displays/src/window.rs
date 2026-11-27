@@ -164,6 +164,7 @@ impl Page {
         let enabled = gtk4::Switch::new();
         enabled.set_valign(gtk4::Align::Center);
         let enabled_label = gtk4::Label::new(Some(&tr("On")));
+        enabled.update_relation(&[gtk4::accessible::Relation::LabelledBy(&[enabled_label.upcast_ref()])]);
         let top = gtk4::Box::new(gtk4::Orientation::Horizontal, 12);
         top.append(&screens);
         top.append(&enabled_label);
@@ -193,6 +194,8 @@ impl Page {
             let label = gtk4::Label::new(Some(text));
             label.set_xalign(0.0);
             grid.attach(&label, 0, row as i32, 1, 1);
+            // O rótulo fica na outra coluna: sem a relação, a caixa da escala não tem nome no leitor de tela
+            widget.update_relation(&[gtk4::accessible::Relation::LabelledBy(&[label.upcast_ref()])]);
             widget.set_hexpand(true);
             grid.attach(*widget, 1, row as i32, 1, 1);
         }

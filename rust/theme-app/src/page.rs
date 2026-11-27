@@ -270,8 +270,7 @@ impl Page {
         let apply_button = gtk4::Button::with_label(&tr("Apply"));
         apply_button.add_css_class("suggested-action");
         let spinner = gtk4::Spinner::new();
-        let revert_button = gtk4::Button::from_icon_name("edit-undo-symbolic");
-        revert_button.set_tooltip_text(Some(&tr("Back to the theme in use")));
+        let revert_button = swaydesk_ui::icon_button("edit-undo-symbolic", &tr("Back to the theme in use"));
         // No painel, a linha dos botões fica acima do conteúdo, à direita da lateral
         let actions = gtk4::CenterBox::new();
         if let Some(window) = window {

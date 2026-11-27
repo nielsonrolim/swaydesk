@@ -872,3 +872,11 @@ mod tests {
         }
     }
 }
+
+/// Um botão só com o ícone, com a dica e o nome para o leitor de tela (sem ele, o GTK 4 diz só "botão").
+pub fn icon_button(icon: &str, label: &str) -> gtk4::Button {
+    let button = gtk4::Button::from_icon_name(icon);
+    button.set_tooltip_text(Some(label));
+    button.update_property(&[gtk4::accessible::Property::Label(label)]);
+    button
+}

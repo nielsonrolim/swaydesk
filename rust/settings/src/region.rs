@@ -144,6 +144,12 @@ pub(crate) fn line(label: &str, note: &str, control: &impl IsA<gtk4::Widget>) ->
     texts.append(&note);
     line.append(&texts);
     control.set_valign(gtk4::Align::Center);
+    // O nome e o aviso ao lado não chegam ao leitor de tela sozinhos: o controle é nomeado e descrito por eles
+    let widget = control.upcast_ref::<gtk4::Widget>();
+    widget.update_relation(&[gtk4::accessible::Relation::LabelledBy(&[name.upcast_ref()])]);
+    if !note.text().is_empty() {
+        widget.update_relation(&[gtk4::accessible::Relation::DescribedBy(&[note.upcast_ref()])]);
+    }
     line.append(control);
     line
 }

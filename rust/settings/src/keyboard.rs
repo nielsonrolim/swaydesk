@@ -173,8 +173,7 @@ impl Panel {
             ("list-remove-symbolic", tr("Remove"), layouts.len() > 1, 0),
         ];
         for (icon, tooltip, sensitive, step) in buttons {
-            let button = gtk4::Button::from_icon_name(icon);
-            button.set_tooltip_text(Some(&tooltip));
+            let button = swaydesk_ui::icon_button(icon, &tooltip);
             button.add_css_class("flat");
             button.set_sensitive(sensitive);
             let weak = Rc::downgrade(self);
