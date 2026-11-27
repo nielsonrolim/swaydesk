@@ -293,6 +293,14 @@ case $pkg in
     (cd "$root/home-copy" && find . -type f) | while IFS= read -r file; do
       install -Dm644 "$root/home-copy/$file" "$dest$share/skel/${file#./}"
     done
+    # A Central de Configurações no dock de quem é novo, depois do terminal (0.2.0): só nos pacotes, porque os
+    # dotfiles não têm a Central. Quem já tem o dock fica como está: o skel só vale para usuários novos
+    pinned=$dest$share/skel/.local/share/sway-dock/pinned
+    awk '{ print } $0 == "kitty" { print "org.swaydesktop.Settings" }' "$root/home-copy/.local/share/sway-dock/pinned" > "$pinned"
+    grep -qx 'org.swaydesktop.Settings' "$pinned" || {
+      echo "install-tree.sh: the skel's dock pins have no kitty to put the Settings center after" >&2
+      exit 1
+    }
     install -d "$dest/usr/share/wayland-sessions"
     sed "s|@LIBEXEC@|$libexec|" "$root/packaging/files/swaydesk.desktop" > "$dest/usr/share/wayland-sessions/swaydesk.desktop"
     chmod 644 "$dest/usr/share/wayland-sessions/swaydesk.desktop"
