@@ -357,6 +357,9 @@ impl Page {
             inner.append(&gtk4::Image::from_icon_name(icon));
             inner.append(&gtk4::Label::new(Some(&text)));
             button.set_child(Some(&inner));
+            // O nome acessível: o texto fica num rótulo dentro do botão, ao lado do ícone, e um leitor de tela
+            // anunciaria um botão sem nome
+            button.update_property(&[gtk4::accessible::Property::Label(&text)]);
             toggles.append(&button);
             style_buttons.push((style, button));
         }
