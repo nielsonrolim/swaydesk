@@ -2,6 +2,56 @@
 
 Each release is published as packages and, shortly after, as install images. Updates arrive through `apt upgrade` or `pacman -Syu`.
 
+## 0.2.0 — 2026-11-28
+
+Swaydesk now has a Settings center: one window, with a panel for each part of the desktop, from the keyboard and the mouse to the idle times, the default apps and the language. Desktop Theme and Displays become two of its panels, and they stay separate apps as well.
+
+### Upgrading
+
+- **From 0.1.8, 0.1.9 or 0.1.10: `sudo apt upgrade`**, the Software app or `pacman -Syu`. Plain `apt-get upgrade` lists the Swaydesk packages as not upgraded, because the full desktop now brings a new package, `swaydesk-settings`.
+- **From 0.1.6 or 0.1.7:** on Debian and Ubuntu, upgrade with `sudo apt full-upgrade`, and read the 0.1.10, 0.1.8 and 0.1.7 notes below. On Arch, `pacman -Syu` asks "Replace swaydesk-scripts with swaydesk-common?": answer yes.
+- **The full desktop gets the Settings center by itself.** `swaydesk-desktop` and the `swaydesk-apps` group now bring `swaydesk-settings`. With only some components installed, add it with `sudo apt install swaydesk-settings` or `sudo pacman -S swaydesk-settings`.
+
+### Added
+
+- **The Settings center** (`swaydesk-settings`, **Settings** in the app grid). It's one window, with the panels in a sidebar.
+  - **Appearance:** the Desktop Theme page: accent colour, light or dark, icons and cursor size.
+  - **Displays:** the Displays page, with the map, Apply with the 15-second undo, and the profiles.
+  - **Keyboard:** the layouts and their order, the key that switches between them, the key repeat delay and rate, and Num Lock at login. The first row is the system keyboard, and adding a layout keeps it. **Use the system keyboard** goes back to it, and the login screen always uses it.
+  - **Mouse and touchpad:** the speed, natural scrolling and the left-handed button; with a touchpad, also tap to click and disable while typing.
+  - **Power and lock:** when to lock, turn the screen off and suspend (on battery), from Never to 60 minutes, applied at once. With power-profiles-daemon running, also the power profile.
+  - **Desktop:** turn the session's components and the bar's modules on and off, and pick the shortcut profile. It shows what the system's `/etc/swaydesk/config.toml` sets and which components aren't installed, and says when each change applies.
+  - **Default apps:** the web browser, mail, text editor, images, PDF, video and music apps, plus the file manager and the terminal.
+  - **Region:** the language (at the next login), the weather city and the holidays country.
+  - **About:** the system and its hardware, with **Copy info** for a bug report. The copied text is in English and leaves out the device name; `swaydesk-settings --about` prints the same report.
+  - **Network, Bluetooth and Sound** show up when their program is installed (`nm-connection-editor`, `blueman-manager`, `pavucontrol`), and open it. `swaydesk-settings --panel network` without the program names the package to install for your distribution (`network-manager-gnome` on Debian and Ubuntu, for instance).
+- **Where it shows up:** with the Settings center installed, **Settings** appears at the right end of the System popup's footer and as the first card of the Help app's "Using Swaydesk" tab. Each panel also has its own menu entry (Keyboard, Mouse and touchpad, Power and lock, Desktop, Default apps, Region, About), kept out of the app grid's pages and found by its search. In a Sway session, the Desktop Theme and Displays icons open their panel in the Settings center; without it, they open their own windows, as before.
+- **Open a panel directly:** `swaydesk-settings --panel keyboard`, say, or from the entry's actions in the menu. Other names work too (`theme`, `screens`, `touchpad`). With the window already open, the panel shows there. `man swaydesk-settings` lists every panel and what it writes.
+- **Desktop Theme and Displays stay separate apps**, with their own windows and packages. The Settings center doesn't need them: their panels appear when they're installed. Each app still works without the Settings center.
+- **The Keyboard and Mouse and touchpad panels apply each change at once**, and write only the keys you changed, to `~/.config/sway/config.d/80-input.conf`. Changing the repeat rate doesn't reset the active layout. Num Lock applies at the next login. A setting for a single device in your own Sway config still wins for that device, and the panel names it. On plain Sway, if your config doesn't read that folder, the panel shows the `include` line to add.
+- **SwayFX effects in Appearance.** On SwayFX, the Appearance page (in Desktop Theme and in the Settings center) has an effects section: rounded corners, blur, shadows, layer blur, the dimming of inactive windows and, on SwayFX 0.6 or later, the animations. They come from `[effects]` in `config.toml` and apply as you change them, without Apply. `sway-theme effects` lists and changes them from the command line. On plain Sway the section doesn't show.
+- **The Settings center in the dock.** The dock of a new user now pins the Settings center after the terminal; existing docks keep their pins (pin it from the dock menu, or `swaydesk-dock pin org.swaydesktop.Settings`). On the live ISO, the dock also pins Desktop Theme, Displays, Help, Screenshot and Record Screen, before the installer.
+- **Pick your terminal.** The new `terminal` key in `config.toml`, also set in **Default apps**, is what Ctrl+Alt+T, the Yazi key and the terminal apps opened from the app grid use. Empty, it's kitty, as before. Without kitty, the first installed of foot, alacritty, ptyxis, kgx, konsole and xfce4-terminal is used. A terminal set but not installed opens kitty and logs a warning. With none of these, the system's own terminal opens (`xdg-terminal-exec` or `x-terminal-emulator`).
+- **Your files keep their comments.** The Settings center writes only the keys you change in `~/.config/swaydesk/config.toml` and `~/.config/mimeapps.list`. A value the config would refuse is never written. An empty field removes the key, so the default applies again.
+
+### Changed
+
+- **`swaydesk-apps` now also brings the Settings center**, and so does `swaydesk-desktop`.
+- **`swaydesk-settings` installs on its own.** On Debian and Ubuntu it recommends `swaydesk-theme-tool`, `swaydesk-displays` and `swaydesk-caffeine` (for the Appearance, Displays and Power and lock panels) and `pci.ids` (the graphics card names in About), and suggests the network, Bluetooth and sound tools and power-profiles-daemon. On Arch, each of these is an optional dependency named after its panel.
+- **Default apps shows app names in the config's language.** When that differs from the session's, an app translated only by the distribution's language packs (on Ubuntu) shows its untranslated name.
+- **Appearance says when nothing was applied yet.** On a plain Sway where no theme was ever applied, the page (in Desktop Theme and in the Settings center) described the defaults as the current look. It now says "Nothing applied yet: the desktop keeps its current look until you press Apply".
+
+### Fixed
+
+- **Apply in Desktop Theme without `gsettings-desktop-schemas`.** Without that recommended package, Apply showed "Could not update: theme in dconf (gsettings)", although nothing reads those keys then. It now skips that step and applies the rest. With the schemas, a real failure still shows, now with its cause. With no icon theme, the summary reads "(none)" instead of "?".
+- **The Settings center runs from the path where it was found.** The System popup's link and the Desktop Theme and Displays entries ran `swaydesk-settings` by name, so a relative folder such as `.` early in your `PATH` could run another program of that name from the current folder. They now run the file in the system folder (`/usr/bin/swaydesk-settings`) that the check found.
+- **Screen readers name more controls:** Desktop Theme's Light and Dark buttons, the icon-only buttons (Desktop Theme's revert, Settings' Use the default and the Keyboard layout buttons), the switches and number fields of Settings and Displays, and the Python Desktop Theme's wallpaper-colour switch and info-bar close button.
+
+### Known limitations
+
+- **On Ubuntu, changing the theme may ask for your password**, so that snap apps get the matching theme. You can cancel it, and the theme still applies to everything else.
+- **On Arch with Sway 1.12, the screen may stay black after it turns off from idle**, because the first "power on" doesn't take (seen in a QEMU VM; not confirmed on real hardware). Run `swaymsg "output * power on"` from a terminal or over SSH to bring it back.
+
 ## 0.1.10 — 2026-11-27
 
 A cursor theme of your choice, with Bibata as the default cursor on Debian and Ubuntu, and a round of fixes: one screenshot at a time, third-party GTK 4 apps dark on Debian 13, the network popup on a PC without Wi-Fi, and switches that keep a Mint-Y theme's look. The empty transitional `swaydesk-scripts` leaves, and the site moves to https://swaydesk.org.

@@ -2,6 +2,56 @@
 
 O que muda em cada versão do Swaydesk, em português a partir da 0.1.4. As versões anteriores estão no [CHANGELOG.md](CHANGELOG.md), em inglês. Cada versão sai primeiro em pacotes e, logo depois, em imagens de instalação. As atualizações chegam pelo `apt upgrade` ou pelo `pacman -Syu`.
 
+## 0.2.0 — 2026-11-28
+
+O Swaydesk agora tem uma Central de Configurações: uma janela só, com um painel para cada parte do desktop, do teclado e do mouse aos tempos de inatividade, aos apps padrão e ao idioma. O Tema do Desktop e o Telas viram dois dos painéis dela e continuam também como apps separados.
+
+### Como atualizar
+
+- **Da 0.1.8, da 0.1.9 ou da 0.1.10: `sudo apt upgrade`**, o app de Programas ou `pacman -Syu`. Um `apt-get upgrade` simples lista os pacotes do Swaydesk como não atualizados, porque o desktop completo agora traz um pacote novo, o `swaydesk-settings`.
+- **Da 0.1.6 ou da 0.1.7:** no Debian e no Ubuntu, atualize com `sudo apt full-upgrade` e leia as notas da 0.1.10, da 0.1.8 e da 0.1.7 abaixo. No Arch, o `pacman -Syu` pergunta "Replace swaydesk-scripts with swaydesk-common?": responda que sim.
+- **O desktop completo ganha a Central sozinho.** O `swaydesk-desktop` e o grupo `swaydesk-apps` agora trazem o `swaydesk-settings`. Com só alguns componentes, instale com `sudo apt install swaydesk-settings` ou `sudo pacman -S swaydesk-settings`.
+
+### Novo
+
+- **A Central de Configurações** (`swaydesk-settings`, **Configurações** na grade de apps). Uma janela só, com os painéis numa barra lateral.
+  - **Aparência:** a página do Tema do Desktop: cor de destaque, claro ou escuro, ícones e tamanho do cursor.
+  - **Telas:** a página do Telas, com o mapa, o Aplicar com a volta em 15 segundos e os perfis.
+  - **Teclado:** os layouts e a ordem deles, a tecla que troca de layout, o atraso e a taxa de repetição e o Num Lock no login. A primeira linha é o teclado do sistema, e acrescentar um layout o mantém. **Usar o teclado do sistema** volta a ele, e a tela de login sempre o usa.
+  - **Mouse e touchpad:** a velocidade, a rolagem natural e a mão esquerda; com um touchpad, também tocar para clicar e desligar ao digitar.
+  - **Energia e bloqueio:** quando bloquear, apagar a tela e suspender (na bateria), de Nunca a 60 minutos, aplicados na hora. Com o power-profiles-daemon rodando, também o perfil de energia.
+  - **Desktop:** liga e desliga os componentes da sessão e os módulos da barra, e escolhe o perfil de atalhos. Mostra o que o `/etc/swaydesk/config.toml` do sistema define e quais componentes não estão instalados, e diz quando cada mudança vale.
+  - **Apps padrão:** o navegador, o e-mail, o editor de texto e os apps de imagens, PDF, vídeo e música, e também o gerenciador de arquivos e o terminal.
+  - **Região:** o idioma (no próximo login), a cidade da previsão do tempo e o país dos feriados.
+  - **Sobre:** o sistema e o hardware, com **Copiar informações** para relatar um problema. O texto copiado vem em inglês e sem o nome do aparelho; o `swaydesk-settings --about` imprime o mesmo relato.
+  - **Rede, Bluetooth e Som** aparecem com o programa deles instalado (`nm-connection-editor`, `blueman-manager`, `pavucontrol`) e o abrem. Sem o programa, o `swaydesk-settings --panel network` diz qual pacote instalar na sua distribuição (o `network-manager-gnome` no Debian e no Ubuntu, por exemplo).
+- **Onde ela aparece:** com a Central instalada, **Configurações** aparece na ponta direita do rodapé do popup Sistema e como o primeiro cartão da aba "Usando o Swaydesk" do app Ajuda. Cada painel também tem uma entrada própria no menu (Teclado, Mouse e touchpad, Energia e bloqueio, Desktop, Apps padrão, Região, Sobre), fora das páginas da grade de apps e achada pela busca dela. Numa sessão do Sway, os ícones do Tema do Desktop e do Telas abrem o painel deles na Central; sem ela, abrem as próprias janelas, como antes.
+- **Abrir um painel direto:** `swaydesk-settings --panel keyboard`, por exemplo, ou pelas ações da entrada no menu. Outros nomes também valem (`theme`, `screens`, `touchpad`). Com a janela já aberta, o painel aparece nela. O `man swaydesk-settings` lista cada painel e o que ele grava.
+- **O Tema do Desktop e o Telas continuam apps separados**, com a sua janela e o seu pacote. A Central não depende deles: os painéis deles aparecem quando estão instalados. Cada app continua funcionando sem a Central.
+- **Os painéis Teclado e Mouse e touchpad aplicam cada mudança na hora** e gravam só as chaves mudadas, em `~/.config/sway/config.d/80-input.conf`. Mudar a taxa de repetição não volta ao primeiro layout. O Num Lock vale no próximo login. Um ajuste para um dispositivo só no seu config do Sway continua valendo para ele, e o painel diz qual é. Num Sway puro, se o seu config não lê essa pasta, o painel mostra a linha `include` para acrescentar.
+- **Os efeitos do SwayFX na Aparência.** No SwayFX, a página Aparência (no Tema do Desktop e na Central) tem uma seção de efeitos: cantos arredondados, desfoque, sombras, desfoque das camadas, o escurecimento das janelas inativas e, no SwayFX 0.6 ou mais novo, as animações. Eles vêm do `[effects]` do `config.toml` e valem enquanto você muda, sem o Aplicar. O `sway-theme effects` lista e muda os efeitos pela linha de comando. No Sway puro, a seção não aparece.
+- **A Central na dock.** A dock de um usuário novo agora fixa a Central de Configurações depois do terminal; docks que já existem ficam com os seus fixados (fixe pelo menu da dock, ou com `swaydesk-dock pin org.swaydesktop.Settings`). Na ISO live, a dock fixa também Tema do Desktop, Telas, Ajuda, Captura de Tela e Gravar Tela, antes do instalador.
+- **Escolha o terminal.** A chave nova `terminal` do `config.toml`, que também se escolhe em **Apps padrão**, é a que o Ctrl+Alt+T, a tecla do Yazi e os apps de terminal abertos pela grade usam. Vazia, é o kitty, como antes. Sem o kitty, vale o primeiro instalado entre foot, alacritty, ptyxis, kgx, konsole e xfce4-terminal. Um terminal escolhido que não está instalado abre o kitty, com um aviso no log. Sem nenhum deles, abre o terminal do próprio sistema (`xdg-terminal-exec` ou `x-terminal-emulator`).
+- **Os seus arquivos mantêm os comentários.** A Central grava só as chaves que você muda no `~/.config/swaydesk/config.toml` e no `~/.config/mimeapps.list`. Um valor que a config recusaria nunca é gravado. Um campo vazio tira a chave, e volta o padrão.
+
+### Mudou
+
+- **O `swaydesk-apps` agora traz também a Central**, e o `swaydesk-desktop` também.
+- **O `swaydesk-settings` se instala sozinho.** No Debian e no Ubuntu, ele recomenda o `swaydesk-theme-tool`, o `swaydesk-displays` e o `swaydesk-caffeine` (para os painéis Aparência, Telas e Energia e bloqueio) e o `pci.ids` (os nomes das placas de vídeo no Sobre), e sugere as ferramentas de rede, Bluetooth e som e o power-profiles-daemon. No Arch, cada um é uma dependência opcional com o nome do seu painel.
+- **Apps padrão mostra os nomes dos apps no idioma da config.** Quando ele é diferente do da sessão, um app traduzido só pelos pacotes de idioma da distribuição (no Ubuntu) aparece com o nome sem tradução.
+- **A Aparência diz quando nada foi aplicado ainda.** Num Sway puro em que nenhum tema foi aplicado, a página (no Tema do Desktop e na Central) descrevia o padrão como se fosse o visual atual. Agora ela diz "Nada aplicado ainda: o desktop mantém a aparência atual até você clicar em Aplicar".
+
+### Corrigido
+
+- **O Aplicar do Tema do Desktop sem o `gsettings-desktop-schemas`.** Sem esse pacote recomendado, o Aplicar mostrava "Não foi possível atualizar: tema no dconf (gsettings)", embora ninguém leia essas chaves nesse caso. Agora ele pula esse passo e aplica o resto. Com os schemas, uma falha de verdade continua aparecendo, agora com a causa. Sem tema de ícones, o resumo diz "(nenhum)" em vez de "?".
+- **A Central roda do caminho onde foi achada.** O link do popup Sistema e as entradas do Tema do Desktop e do Telas rodavam o `swaydesk-settings` pelo nome, e uma pasta relativa como `.` no começo do seu `PATH` podia rodar outro programa com esse nome da pasta atual. Agora elas rodam o arquivo da pasta do sistema (`/usr/bin/swaydesk-settings`) que a verificação achou.
+- **Os leitores de tela dão nome a mais controles:** os botões Claro e Escuro do Tema do Desktop, os botões só com ícone (o de voltar do Tema do Desktop, o Usar o padrão da Central e os botões dos layouts do Teclado), os interruptores e os campos numéricos da Central e do Telas, e, no Tema do Desktop em Python, o interruptor da cor do papel de parede e o botão de fechar da barra de aviso.
+
+### Limitações conhecidas
+
+- **No Ubuntu, trocar o tema pode pedir sua senha**, para que os apps em snap recebam o tema correspondente. Você pode cancelar, e o tema vale para todo o resto.
+- **No Arch com o Sway 1.12, a tela pode ficar preta depois de desligar por inatividade**, porque o primeiro "power on" não pega (visto numa VM QEMU; não confirmado em hardware real). Rode `swaymsg "output * power on"` num terminal ou pelo SSH para trazê-la de volta.
+
 ## 0.1.10 — 2026-11-27
 
 Um tema de cursor à sua escolha, com o Bibata como cursor padrão no Debian e no Ubuntu, e uma rodada de correções: uma captura por vez, os apps GTK 4 de terceiros escuros no Debian 13, o popup de rede num PC sem Wi-Fi e os switches que mantêm o visual de um tema Mint-Y. O pacote de transição vazio `swaydesk-scripts` sai, e o site passa para https://swaydesk.org.

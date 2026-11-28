@@ -1,8 +1,29 @@
-swaydesk (0.2.0-1) UNRELEASED; urgency=medium
+swaydesk (0.2.0-1) unstable; urgency=medium
 
-  * Development after 0.1.10.
+  * Release 0.2.0.
+  * New swaydesk-settings, the Settings center: one window with a panel
+    for appearance, displays, keyboard, mouse and touchpad, power and
+    lock, desktop components, default apps, region and about; network,
+    Bluetooth and sound open their own tools when installed. --panel
+    opens a panel, --about prints the bug report text.
+  * The Appearance and Displays panels are the Desktop Theme and Displays
+    pages, linked statically: swaydesk-settings recommends
+    swaydesk-theme-tool, swaydesk-displays, swaydesk-caffeine and
+    pci.ids, and each app stays installable and usable on its own.
+  * The Keyboard and Mouse panels write only the changed keys to
+    ~/.config/sway/config.d/80-input.conf and apply them live.
+  * A terminal key in config.toml (kitty unless set) for Ctrl+Alt+T, the
+    Yazi key and the grid's terminal apps, with a fallback to the
+    system's terminal.
+  * On SwayFX, Appearance edits [effects] (corners, blur, shadows, layer
+    blur, dimming, animations), applied live; sway-theme effects.
+  * A new user's dock pins the Settings center; the live ISO's dock pins
+    every Swaydesk app.
+  * Screen readers name the icon-only buttons, the Settings and Displays
+    switches and number fields, and the Light and Dark buttons.
+  * swaydesk-apps and swaydesk-desktop now depend on swaydesk-settings.
 
- -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Fri, 27 Nov 2026 08:38:56 -0300
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Sat, 28 Nov 2026 01:49:30 -0300
 
 swaydesk (0.1.10-1) unstable; urgency=medium
 
