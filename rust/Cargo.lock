@@ -1220,7 +1220,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "swaydesk-audio-popup"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "serde_json",
@@ -1230,7 +1230,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-battery-popup"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "libc",
@@ -1241,7 +1241,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-bluetooth"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "libc",
@@ -1252,7 +1252,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-bluetooth-popup"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "libc",
@@ -1263,7 +1263,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-bluez"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "swaydesk-common",
@@ -1271,7 +1271,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-brightness-popup"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "swaydesk-common",
@@ -1280,7 +1280,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-caffeinate"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "libc",
  "swaydesk-common",
@@ -1291,7 +1291,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-caffeine-popup"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "swaydesk-common",
@@ -1300,7 +1300,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-calendar"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "libc",
@@ -1311,7 +1311,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-capture"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "serde_json",
@@ -1321,7 +1321,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-click-catcher"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "libc",
@@ -1331,14 +1331,14 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-clip-store"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "swaydesk-common",
 ]
 
 [[package]]
 name = "swaydesk-clipboard"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde_json",
  "sha2",
@@ -1348,7 +1348,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-clipboard-popup"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "swaydesk-clipboard",
@@ -1358,7 +1358,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-common"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gettext",
  "gio",
@@ -1371,7 +1371,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-desktop-config"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde_json",
  "swaydesk-common",
@@ -1380,7 +1380,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-displays"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "gtk4-layer-shell",
@@ -1395,7 +1395,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-displays-logic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde_json",
  "swaydesk-common",
@@ -1403,7 +1403,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-dock"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "gtk4-layer-shell",
@@ -1417,7 +1417,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-dock-logic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "libc",
  "serde_json",
@@ -1428,7 +1428,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-drawer"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "gtk4-layer-shell",
@@ -1440,7 +1440,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-drawer-logic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "regex",
  "serde",
@@ -1451,7 +1451,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-greeter"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "gtk4",
@@ -1465,7 +1465,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-greeter-logic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -1476,7 +1476,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-help"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "swaydesk-common",
@@ -1487,7 +1487,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-help-logic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "libc",
  "serde_json",
@@ -1496,7 +1496,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-keyring"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "swaydesk-common",
@@ -1504,7 +1504,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-language"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde_json",
  "swaydesk-common",
@@ -1512,7 +1512,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-lock"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "gtk4",
@@ -1526,7 +1526,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-lock-logic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "libc",
  "serde_json",
@@ -1536,7 +1536,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-media"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "libc",
@@ -1547,7 +1547,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-media-popup"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "swaydesk-common",
@@ -1557,7 +1557,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-network"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "libc",
@@ -1568,7 +1568,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-network-popup"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "libc",
@@ -1579,7 +1579,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-nm"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "libc",
@@ -1589,7 +1589,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-notifd"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "gtk4-layer-shell",
@@ -1602,7 +1602,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-notifd-logic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde_json",
  "swaydesk-common",
@@ -1610,7 +1610,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-notifications"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "libc",
@@ -1621,7 +1621,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-notifications-popup"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "serde_json",
@@ -1633,7 +1633,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-osd-bar"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "gtk4-layer-shell",
@@ -1644,7 +1644,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-portal"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "swaydesk-common",
@@ -1652,7 +1652,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-session-menu"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "libc",
@@ -1662,7 +1662,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-sessionmgr"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "swaydesk-common",
@@ -1670,7 +1670,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-settings"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "libc",
@@ -1684,7 +1684,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-settings-logic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde_json",
  "swaydesk-common",
@@ -1693,7 +1693,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-switcher"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "gtk4-layer-shell",
@@ -1707,7 +1707,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-switcher-logic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "serde_json",
  "swaydesk-dock-logic",
@@ -1715,7 +1715,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-system"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "libc",
  "serde_json",
@@ -1725,14 +1725,14 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-system-logic"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "swaydesk-system-popup"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "libc",
@@ -1743,7 +1743,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-theme"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gdk-pixbuf",
  "libc",
@@ -1755,7 +1755,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-theme-app"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "pangocairo",
@@ -1767,7 +1767,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-ui"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "gtk4-layer-shell",
@@ -1778,7 +1778,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-vpointer"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "wayland-client",
  "wayland-protocols-wlr",
@@ -1786,7 +1786,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-weather"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gio",
  "serde_json",
@@ -1796,7 +1796,7 @@ dependencies = [
 
 [[package]]
 name = "swaydesk-weather-popup"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "gtk4",
  "serde_json",

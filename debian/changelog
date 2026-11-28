@@ -1,3 +1,9 @@
+swaydesk (0.2.1-1) UNRELEASED; urgency=medium
+
+  * Development after 0.2.0.
+
+ -- Nielson Rolim <nielsonrolim@users.noreply.github.com>  Sat, 28 Nov 2026 04:52:54 -0300
+
 swaydesk (0.2.0-1) unstable; urgency=medium
 
   * Release 0.2.0.
