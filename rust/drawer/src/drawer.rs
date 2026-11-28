@@ -196,16 +196,28 @@ fn run_program<S: AsRef<OsStr>>(argv: &[S], app_id: Option<&str>) -> bool {
 
 /// Se uma entrada que o should_show() esconde entra só na busca (os painéis da Central): a decisão é do
 /// `logic::search_only`, com o PATH do processo.
+/// O programa do Exec, ou None sem Exec. O g_app_info_get_executable dá NULL quando a entrada não tem Exec (o snap
+/// prompting-client do Ubuntu 26.04 é NoDisplay e DBusActivatable, sem Exec), e o executable() do gio-rs 0.20 o lê
+/// como texto, o que derruba a grade: só se chama com o Exec presente, e aí o GLib sempre tem o programa.
+fn executable(info: &gio::DesktopAppInfo) -> Option<String> {
+    info.string("Exec")?;
+    Some(info.executable().to_string_lossy().into_owned())
+}
+
 fn search_only(info: &gio::DesktopAppInfo) -> bool {
+    // Só as que pediram para entrar na busca: as outras escondidas nem têm o TryExec e o Exec lidos
+    if !info.is_nodisplay() || !info.boolean(logic::SEARCHABLE_KEY) {
+        return false;
+    }
     let try_exec = info.string("TryExec").map(|t| t.to_string());
-    let exec = info.executable().to_string_lossy().into_owned();
+    let exec = executable(info);
     let entry = logic::HiddenEntry {
-        no_display: info.is_nodisplay(),
+        no_display: true,
         hidden: info.is_hidden(),
         shown_here: info.shows_in(None),
-        searchable: info.boolean(logic::SEARCHABLE_KEY),
+        searchable: true,
         try_exec: try_exec.as_deref(),
-        exec: Some(&exec),
+        exec: exec.as_deref(),
     };
     let path = std::env::var_os("PATH").unwrap_or_default();
     logic::search_only(&entry, |program| logic::program_exists(program, &path))
@@ -223,7 +235,7 @@ fn app_fields(info: &gio::DesktopAppInfo) -> Option<AppFields> {
         generic: info.generic_name().map(|g| g.to_string()).unwrap_or_default(),
         comment: info.description().map(|d| d.to_string()).unwrap_or_default(),
         keywords: info.keywords().iter().map(|k| k.to_string()).collect(),
-        executable: info.executable().to_string_lossy().into_owned(),
+        executable: executable(info).unwrap_or_default(),
         categories: logic::parse_categories(info.categories().as_deref().unwrap_or("")),
         terminal: info.boolean("Terminal"),
         search_only: false,

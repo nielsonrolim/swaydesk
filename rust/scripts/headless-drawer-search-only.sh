@@ -15,6 +15,9 @@
 #    vem antes dele no nome e está na lista de favoritos (que ficariam em cima), não está lá.
 # 2. A palavra-chave do só da busca o acha, e o Enter o abre.
 # 3. Um NoDisplay sem a chave, e um com a chave mas sem o programa do TryExec, não aparecem nem na busca.
+# 4. Entradas sem Exec não derrubam a grade (o snap prompting-client do Ubuntu 26.04: NoDisplay, DBusActivatable,
+#    sem Exec; o g_app_info_get_executable dá NULL, que o gio-rs lia como texto): o caso 1 já não abriria a
+#    grade. Nem elas, nem uma com Exec= vazio, nem uma Hidden aparecem na busca, e a grade segue no ar.
 # Sai com 1 se algum caso falhar.
 set -u
 . /repo/rust/scripts/lib-wait.sh
@@ -36,6 +39,16 @@ entry aaa-painel "Aaa Painel" zzpainel 'NoDisplay=true\nX-Swaydesk-Searchable=tr
 entry aab-visivel "Aab Visivel" zzvisivel ''
 entry aaa-oculto "Aaa Oculto" zzoculto 'NoDisplay=true\n'
 entry aaa-semprog "Aaa Sem Programa" zzsemprog 'NoDisplay=true\nX-Swaydesk-Searchable=true\nTryExec=/nonexistent/tool\n'
+# Sem Exec (cada uma com a palavra-chave zzsemexec): o caso do snap, a mesma com a chave, um Exec= vazio, uma
+# Hidden com a chave, e um app visível D-Bus sem Exec (o caminho dos apps visíveis)
+noexec() {
+  printf '[Desktop Entry]\nType=Application\nName=%s\nKeywords=zzsemexec;\nIcon=utilities-terminal\n%b' "$2" "$3" > "$apps/$1.desktop"
+}
+noexec aaa-snap "Aaa Snap" 'NoDisplay=true\nDBusActivatable=true\n'
+noexec aaa-snapbusca "Aaa Snap Busca" 'NoDisplay=true\nDBusActivatable=true\nX-Swaydesk-Searchable=true\n'
+noexec aaa-execvazio "Aaa Exec Vazio" 'NoDisplay=true\nX-Swaydesk-Searchable=true\nExec=\n'
+noexec aaa-apagada "Aaa Apagada" 'Hidden=true\nX-Swaydesk-Searchable=true\nExec=sh -c "touch /tmp/launched-aaa-apagada"\n'
+noexec aac-dbus "Aac Dbus" 'DBusActivatable=true\n'
 # O só da busca nos favoritos (um fixado de antes, ou feito à mão): mesmo assim não aparece
 printf 'aaa-painel\n' > "$HOME/.local/share/sway-drawer/pinned"
 
@@ -112,6 +125,17 @@ for case in zzoculto:aaa-oculto zzsemprog:aaa-semprog; do
   got=$(nothing_launched)
   [ -z "$got" ] && ok "a busca por $word não acha o $id" || fail "a busca por $word abriu '$got'"
 done
+
+# 4. As entradas sem Exec: a grade segue no ar, e a busca não abre nenhuma das escondidas
+open_grid
+shown && ok "a grade abre com entradas sem Exec" || fail "a grade não abriu com entradas sem Exec"
+wtype zzsemexec
+sleep 1
+grim "/out/$impl-search-only-4-sem-exec.png" 2>/dev/null
+open_first_result
+got=$(nothing_launched)
+case $got in aaa-*) fail "a busca por zzsemexec abriu a escondida '$got'" ;; *) ok "a busca por zzsemexec não abre nenhuma escondida" ;; esac
+pgrep -u "$(id -u)" -f 'sway-drawer|swaydesk-drawer' > /dev/null && ok "a grade não caiu" || fail "a grade caiu"
 close_grid
 [ "$failed" = 0 ] || { echo "--- registro da grade"; cat /tmp/drawer.log; }
 exit "$failed"
